@@ -267,9 +267,9 @@ const SocialModal: React.FC<Props> = ({
                     </button>
                 </div>
 
-                <div className="flex-1 flex overflow-hidden relative">
+                <div className="social-modal-body flex-1 flex overflow-hidden relative">
                     {/* Left: Party Selection */}
-                    <div className="w-[300px] shrink-0 border-r border-white/5 bg-gradient-to-b from-black/80 to-black/90 overflow-y-auto custom-scrollbar p-3 space-y-2 relative z-10 z-[60]">
+                    <div className="social-roster-panel w-[300px] shrink-0 border-r border-white/5 bg-gradient-to-b from-black/80 to-black/90 overflow-y-auto custom-scrollbar p-3 space-y-2 relative z-10 z-[60]">
                         <div className="text-[10px] text-wuxia-gold/50 tracking-[0.3em] uppercase mb-4 px-2 flex items-center gap-2">
                             <span className="w-2 h-2 rounded bg-wuxia-gold/30 rotate-45"></span>
                             Character Roster
@@ -338,7 +338,7 @@ const SocialModal: React.FC<Props> = ({
                     </div>
 
                     {/* Right: JRPG Detail Screen */}
-                    <div className="flex-1 flex flex-col relative bg-black shrink-0 w-0 z-[50]">
+                    <div className="social-detail-pane flex-1 flex flex-col relative bg-black shrink-0 w-0 z-[50]">
                         {/* Global Background for Right Area */}
                         <div className="absolute inset-0 z-0">
                             {当前背景 ? (
@@ -364,7 +364,7 @@ const SocialModal: React.FC<Props> = ({
                             <button
                                 type="button"
                                 onClick={() => setShowFullBackground(!showFullBackground)}
-                                className="w-full py-2 bg-gradient-to-r from-transparent via-wuxia-gold/10 to-transparent border-b border-wuxia-gold/20 flex items-center justify-center gap-2 text-[11px] text-wuxia-gold/70 tracking-[0.2em] font-serif hover:bg-wuxia-gold/10 transition-all relative z-[60] bg-black/80 backdrop-blur shrink-0"
+                                className="social-background-toggle w-full py-2 bg-gradient-to-r from-transparent via-wuxia-gold/10 to-transparent border-b border-wuxia-gold/20 flex items-center justify-center gap-2 text-[11px] text-wuxia-gold/70 tracking-[0.2em] font-serif hover:bg-wuxia-gold/10 transition-all relative z-[60] bg-black/80 backdrop-blur shrink-0"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-4 h-4 transition-transform duration-300 ${showFullBackground ? 'rotate-180' : ''}`}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -377,7 +377,7 @@ const SocialModal: React.FC<Props> = ({
                         )}
 
                         {/* Expandable Background Scroll */}
-                        <div className={`relative z-[20] w-full transition-[height] duration-500 overflow-hidden shrink-0 ${showFullBackground ? 'h-[100vh]' : 'h-0'}`}>
+                        <div className={`social-background-scroll relative z-[20] w-full transition-[height] duration-500 overflow-hidden shrink-0 ${showFullBackground ? 'h-[100vh]' : 'h-0'}`}>
                             {当前背景 ? (
                                 <div
                                     className="absolute inset-0 w-full h-full bg-center opacity-90 bg-no-repeat"
@@ -392,7 +392,7 @@ const SocialModal: React.FC<Props> = ({
                         </div>
 
                         {currentNPC ? (
-                            <div className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar relative z-10 flex flex-col transition-all duration-500 ${showFullBackground ? 'p-0 gap-0 opacity-0 pointer-events-none' : 'p-6 gap-6 opacity-100'}`}>
+                            <div className={`social-detail-content flex-1 min-h-0 overflow-y-auto custom-scrollbar relative z-10 flex flex-col transition-all duration-500 ${showFullBackground ? 'p-0 gap-0 opacity-0 pointer-events-none' : 'p-6 gap-6 opacity-100'}`}>
                                 {/* JRPG Style Header */}
                                 <div className="relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-r from-black/80 via-black/60 to-black/80 backdrop-blur-md p-6 flex items-start justify-between shadow-2xl group shrink-0">
                                     <div className="absolute top-0 right-0 w-64 h-64 bg-wuxia-gold/5 rounded-full filter blur-3xl group-hover:bg-wuxia-gold/10 transition-colors"></div>

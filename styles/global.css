@@ -513,6 +513,34 @@
     flex: 1 1 auto !important;
   }
 
+  .desktop-right-detail-modal--social:not(.desktop-right-detail-modal--fullscreen) .social-modal-body {
+    flex-direction: column !important;
+  }
+
+  .desktop-right-detail-modal--social:not(.desktop-right-detail-modal--fullscreen) .social-detail-pane {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  .desktop-right-detail-modal--social:not(.desktop-right-detail-modal--fullscreen) .social-background-toggle {
+    display: none !important;
+  }
+
+  .desktop-right-detail-modal--social:not(.desktop-right-detail-modal--fullscreen) .social-background-scroll {
+    height: 0 !important;
+    min-height: 0 !important;
+  }
+
+  .desktop-right-detail-modal--social:not(.desktop-right-detail-modal--fullscreen) .social-detail-content {
+    padding: 1rem !important;
+    gap: 1rem !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    min-height: 0 !important;
+  }
+
   .desktop-right-detail-modal--social .fixed > div [class*="p-6"][class*="gap-6"] {
     padding: 1rem !important;
     gap: 1rem !important;
