@@ -402,6 +402,8 @@ export const useGame = () => {
     const 主角生图进行中Ref = useRef<Set<string>>(new Set());
     const 主角自动生图处理器Ref = useRef<(player: 角色数据结构) => void>(() => undefined);
     const NPC香闺秘档生图进行中Ref = useRef<Set<string>>(new Set());
+    const NPC自动生图签名Ref = useRef<Set<string>>(new Set());
+    const NPC自动香闺秘档生图签名Ref = useRef<Set<string>>(new Set());
     const 角色锚点补全进行中Ref = useRef<Set<string>>(new Set());
     const 主要角色资源补全签名Ref = useRef('');
     const 生图存档作用域Ref = useRef(`image_scope_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
@@ -422,6 +424,8 @@ export const useGame = () => {
         NPC生图进行中Ref.current.clear();
         主角生图进行中Ref.current.clear();
         NPC香闺秘档生图进行中Ref.current.clear();
+        NPC自动生图签名Ref.current.clear();
+        NPC自动香闺秘档生图签名Ref.current.clear();
         角色锚点补全进行中Ref.current.clear();
         setNPC生图任务队列([]);
         set场景生图任务队列([]);
@@ -1803,7 +1807,7 @@ export const useGame = () => {
     const 执行NPC香闺秘档部位生图 = async (
         npc: any,
         part: 香闺秘档部位类型,
-        options?: { 画风?: 当前可用接口结构['画风']; 画师串?: string; 画师串预设ID?: string; PNG画风预设ID?: string; 额外要求?: string; 尺寸?: string }
+        options?: { source?: 生图任务来源类型; 画风?: 当前可用接口结构['画风']; 画师串?: string; 画师串预设ID?: string; PNG画风预设ID?: string; 额外要求?: string; 尺寸?: string }
     ) => {
         await 确保NPC生图前角色锚点(npc);
         const { 执行NPC香闺秘档部位生图工作流 } = await 加载NPC香闺秘档生图工作流();
@@ -1831,14 +1835,6 @@ export const useGame = () => {
             更新NPC生图任务,
             写入NPC图片历史记录,
             更新NPC香闺秘档部位结果
-        });
-    };
-
-    const 触发新增NPC自动生图 = (newNpcList: any[]) => {
-        const npcList = Array.isArray(newNpcList) ? newNpcList : [];
-        if (npcList.length === 0) return;
-        npcList.forEach((npc) => {
-            void 执行单个NPC生图(npc).catch(() => undefined);
         });
     };
 
@@ -1876,6 +1872,138 @@ export const useGame = () => {
         return false;
     };
 
+    const 读取NPC文本字段 = (npc: any, key: string): string => (
+        typeof npc?.[key] === 'string' ? npc[key].trim() : ''
+    );
+
+    const 构建NPC自动构图签名列表 = (npc: any, 构图: '头像' | '半身' | '立绘'): string[] => {
+        const id = 读取NPC文本字段(npc, 'id');
+        const name = 读取NPC文本字段(npc, '姓名');
+        const gender = 读取NPC文本字段(npc, '性别');
+        return [
+            id ? `id:${id}::${构图}` : '',
+            name ? `name:${gender}:${name}::${构图}` : ''
+        ].filter(Boolean);
+    };
+
+    const 标记NPC自动构图签名 = (npc: any, 构图: '头像' | '半身' | '立绘'): string[] | null => {
+        const signatures = 构建NPC自动构图签名列表(npc, 构图);
+        if (signatures.length <= 0) return null;
+        if (signatures.some((signature) => NPC自动生图签名Ref.current.has(signature))) return null;
+        signatures.forEach((signature) => NPC自动生图签名Ref.current.add(signature));
+        return signatures;
+    };
+
+    const 清除NPC自动构图签名 = (signatures: string[] | null) => {
+        (signatures || []).forEach((signature) => NPC自动生图签名Ref.current.delete(signature));
+    };
+
+    const 执行NPC自动构图任务 = async (
+        npc: any,
+        构图: '头像' | '半身' | '立绘',
+        options?: { force?: boolean }
+    ): Promise<boolean> => {
+        const npcKey = 获取NPC唯一标识(npc);
+        if (!npcKey || NPC生图进行中Ref.current.has(npcKey)) return false;
+        if (!options?.force && !NPC符合自动生图条件(npc)) return false;
+        if (NPC是否已有成功构图(npc, [构图])) return false;
+
+        const signatures = 标记NPC自动构图签名(npc, 构图);
+        if (!signatures) return false;
+        try {
+            await 执行单个NPC生图(npc, {
+                force: options?.force,
+                source: 'auto',
+                构图
+            });
+            return true;
+        } catch (error) {
+            清除NPC自动构图签名(signatures);
+            throw error;
+        }
+    };
+
+    const 香闺秘档自动部位列表: 香闺秘档部位类型[] = ['胸部', '小穴', '屁穴'];
+
+    const NPC是否成人女性主要角色 = (npc: any): boolean => (
+        npc?.是否主要角色 === true
+        && 读取NPC文本字段(npc, '性别') === '女'
+        && typeof npc?.年龄 === 'number'
+        && npc.年龄 >= 18
+    );
+
+    const NPC是否已有成功香闺秘档部位 = (npc: any, part: 香闺秘档部位类型): boolean => {
+        const result = npc?.图片档案?.香闺秘档部位档案?.[part];
+        return result?.状态 === 'success' && Boolean(获取图片展示地址(result));
+    };
+
+    const 读取NPC香闺秘档缺失部位 = (npc: any): 香闺秘档部位类型[] => {
+        if (gameConfig?.启用NSFW模式 !== true || !NPC是否成人女性主要角色(npc)) return [];
+        return 香闺秘档自动部位列表.filter((part) => {
+            const field = part === '胸部' ? '胸部描述' : part === '小穴' ? '小穴描述' : '屁穴描述';
+            return Boolean(读取NPC文本字段(npc, field)) && !NPC是否已有成功香闺秘档部位(npc, part);
+        });
+    };
+
+    const 构建NPC自动香闺秘档签名列表 = (npc: any, part: 香闺秘档部位类型): string[] => {
+        const id = 读取NPC文本字段(npc, 'id');
+        const name = 读取NPC文本字段(npc, '姓名');
+        const gender = 读取NPC文本字段(npc, '性别');
+        return [
+            id ? `id:${id}::secret:${part}` : '',
+            name ? `name:${gender}:${name}::secret:${part}` : ''
+        ].filter(Boolean);
+    };
+
+    const 标记NPC自动香闺秘档签名 = (npc: any, part: 香闺秘档部位类型): string[] | null => {
+        const signatures = 构建NPC自动香闺秘档签名列表(npc, part);
+        if (signatures.length <= 0) return null;
+        if (signatures.some((signature) => NPC自动香闺秘档生图签名Ref.current.has(signature))) return null;
+        signatures.forEach((signature) => NPC自动香闺秘档生图签名Ref.current.add(signature));
+        return signatures;
+    };
+
+    const 清除NPC自动香闺秘档签名 = (signatures: string[] | null) => {
+        (signatures || []).forEach((signature) => NPC自动香闺秘档生图签名Ref.current.delete(signature));
+    };
+
+    const 执行NPC自动香闺秘档部位任务 = async (npc: any, part: 香闺秘档部位类型): Promise<boolean> => {
+        if (!读取NPC香闺秘档缺失部位(npc).includes(part)) return false;
+        const npcKey = 获取NPC唯一标识(npc);
+        if (!npcKey || NPC生图进行中Ref.current.has(npcKey) || NPC香闺秘档生图进行中Ref.current.has(`${npcKey}::${part}`)) return false;
+
+        const signatures = 标记NPC自动香闺秘档签名(npc, part);
+        if (!signatures) return false;
+        try {
+            await 执行NPC香闺秘档部位生图(npc, part, { source: 'auto' });
+            return true;
+        } catch (error) {
+            清除NPC自动香闺秘档签名(signatures);
+            throw error;
+        }
+    };
+
+    const 自动补齐NPC香闺秘档部位 = async (npc: any) => {
+        const npcKey = 获取NPC唯一标识(npc);
+        if (npcKey && NPC生图进行中Ref.current.has(npcKey)) return;
+        const missingParts = 读取NPC香闺秘档缺失部位(npc);
+        for (const part of missingParts) {
+            try {
+                await 执行NPC自动香闺秘档部位任务(npc, part);
+            } catch (error) {
+                console.warn('主要女角色香闺秘档自动补全失败', 读取NPC文本字段(npc, 'id') || 读取NPC文本字段(npc, '姓名'), part, error);
+            }
+        }
+    };
+
+    const 触发新增NPC自动生图 = (newNpcList: any[]) => {
+        const npcList = Array.isArray(newNpcList) ? newNpcList : [];
+        if (npcList.length === 0) return;
+        npcList.forEach((npc) => {
+            void 执行NPC自动构图任务(npc, '头像').catch(() => undefined);
+        });
+    };
+
     const 构建主要角色资源缺口签名 = (npcList: any[]): string => {
         return (Array.isArray(npcList) ? npcList : [])
             .filter((npc) => npc?.是否主要角色 === true && typeof npc?.id === 'string' && npc.id.trim())
@@ -1890,6 +2018,10 @@ export const useGame = () => {
                 }
                 if (npc?.性别 === '女' && !NPC是否已有成功构图(npc, ['半身', '立绘'])) {
                     missingParts.push('portrait');
+                }
+                const missingSecretParts = 读取NPC香闺秘档缺失部位(npc);
+                if (missingSecretParts.length > 0) {
+                    missingParts.push(`secret:${missingSecretParts.join(',')}`);
                 }
                 return missingParts.length > 0 ? `${npcId}:${missingParts.join(',')}` : '';
             })
@@ -1910,11 +2042,7 @@ export const useGame = () => {
 
             if (!NPC是否已有成功构图(npc, ['头像'])) {
                 try {
-                    await 执行单个NPC生图(npc, {
-                        force: true,
-                        source: 'auto',
-                        构图: '头像'
-                    });
+                    await 执行NPC自动构图任务(npc, '头像', { force: true });
                 } catch (error) {
                     console.warn('主要角色头像自动补全失败', npcId, error);
                 }
@@ -1922,15 +2050,13 @@ export const useGame = () => {
 
             if (npc?.性别 === '女' && !NPC是否已有成功构图(npc, ['半身', '立绘'])) {
                 try {
-                    await 执行单个NPC生图(npc, {
-                        force: true,
-                        source: 'auto',
-                        构图: '半身'
-                    });
+                    await 执行NPC自动构图任务(npc, '半身', { force: true });
                 } catch (error) {
                     console.warn('主要女角色展示图自动补全失败', npcId, error);
                 }
             }
+
+            await 自动补齐NPC香闺秘档部位(npc);
         }
     };
 

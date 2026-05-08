@@ -80,10 +80,23 @@ const 获取画风标签 = (style?: 当前可用接口结构['画风']): string 
     }
 };
 
+const 获取图片后端显示名 = (apiConfig: 当前可用接口结构): string => {
+    switch (apiConfig.图片后端类型) {
+        case 'comfyui':
+            return 'ComfyUI';
+        case 'sd_webui':
+            return 'Stable Diffusion WebUI';
+        case 'novelai':
+        case 'openai':
+        default:
+            return (apiConfig.model || '').trim() || '图片模型';
+    }
+};
+
 export const 执行NPC香闺秘档部位生图工作流 = async (
     npc: any,
     part: 香闺秘档部位类型,
-    options: { 画风?: 当前可用接口结构['画风']; 画师串?: string; 画师串预设ID?: string; PNG画风预设ID?: string; 额外要求?: string; 尺寸?: string } | undefined,
+    options: { source?: 生图任务来源类型; 画风?: 当前可用接口结构['画风']; 画师串?: string; 画师串预设ID?: string; PNG画风预设ID?: string; 额外要求?: string; 尺寸?: string } | undefined,
     deps: NPC秘档部位生图工作流依赖
 ): Promise<void> => {
     const npcKey = deps.获取NPC唯一标识(npc);
@@ -97,14 +110,15 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
     const backendType = imageApi?.图片后端类型;
     const shouldUsePromptTransformer = backendType === 'novelai' || imageFeature.使用词组转化器 !== false;
     const promptApi = shouldUsePromptTransformer ? deps.获取生图词组转化器接口配置(deps.apiConfig) : null;
-    const modelName = imageApi?.model || '';
+    const modelName = imageApi ? 获取图片后端显示名(imageApi) : '';
     const 画风 = options?.画风;
     const 额外要求 = (options?.额外要求 || '').trim();
     const 尺寸 = (options?.尺寸 || '').trim();
+    const taskSource: 生图任务来源类型 = options?.source || 'manual';
     const task = deps.创建NPC生图任务({
         npc,
         npcKey,
-        source: 'manual',
+        source: taskSource,
         modelName,
         构图: '部位特写',
         部位: part,
@@ -337,7 +351,10 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
             跳过基础负面提示词: Boolean((画师串预设?.负面提示词 || '').trim() || (PNG画风预设?.负面提示词 || '').trim()),
             PNG参数
         });
-        const localizedImageResult = await imageAIService.persistImageAssetLocally(imageResult).catch(() => imageResult);
+        const localizedImageResult = await imageAIService.persistImageAssetLocally(imageResult);
+        if (!localizedImageResult.图片URL && !localizedImageResult.本地路径) {
+            throw new Error('图片已生成，但未得到可展示或可保存的图片资源。');
+        }
         deps.更新NPC生图任务(task.id, (currentTask) => ({
             ...currentTask,
             进度阶段: 'saving',
