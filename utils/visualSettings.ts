@@ -10,25 +10,25 @@ export const 默认系统字体列表: 字体资源结构[] = [
 ];
 
 export const 默认区域样式: Record<可用视觉区域, Required<Pick<区域文字样式结构, '启用自定义' | '字体ID' | '字体颜色' | '字号' | '行高' | '字形'>>> = {
-    聊天: { 启用自定义: false, 字体ID: 'system-serif', 字体颜色: '#f3f4f6', 字号: 16, 行高: 1.6, 字形: 'normal' },
-    旁白: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#d1d5db', 字号: 16, 行高: 1.9, 字形: 'normal' },
-    角色对话: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#111827', 字号: 16, 行高: 1.7, 字形: 'normal' },
-    判定: { 启用自定义: false, 字体ID: 'system-serif', 字体颜色: '#f5e7a1', 字号: 15, 行高: 1.5, 字形: 'normal' },
-    顶部栏: { 启用自定义: false, 字体ID: 'system-serif', 字体颜色: '#e6c86e', 字号: 14, 行高: 1.3, 字形: 'normal' },
-    左侧栏: { 启用自定义: false, 字体ID: 'system-serif', 字体颜色: '#f3f4f6', 字号: 13, 行高: 1.45, 字形: 'normal' },
-    右侧栏: { 启用自定义: false, 字体ID: 'system-serif', 字体颜色: '#e6c86e', 字号: 13, 行高: 1.45, 字形: 'normal' },
-    角色档案: { 启用自定义: false, 字体ID: 'system-serif', 字体颜色: '#f3f4f6', 字号: 15, 行高: 1.7, 字形: 'normal' }
+    聊天: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#f8fafc', 字号: 18, 行高: 1.7, 字形: 'normal' },
+    旁白: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#f1f5f9', 字号: 18, 行高: 1.85, 字形: 'normal' },
+    角色对话: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#111827', 字号: 18, 行高: 1.65, 字形: 'normal' },
+    判定: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#fff1b8', 字号: 16, 行高: 1.55, 字形: 'normal' },
+    顶部栏: { 启用自定义: false, 字体ID: 'system-serif', 字体颜色: '#f1d778', 字号: 15, 行高: 1.35, 字形: 'normal' },
+    左侧栏: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#f8fafc', 字号: 15, 行高: 1.5, 字形: 'normal' },
+    右侧栏: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#f1d778', 字号: 15, 行高: 1.5, 字形: 'normal' },
+    角色档案: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#f8fafc', 字号: 17, 行高: 1.7, 字形: 'normal' }
 };
 
 export const 默认UI文字样式: Record<可用UI文字令牌, Required<Pick<UI文字样式结构, '启用自定义' | '字体ID' | '字体颜色' | '字号' | '行高' | '字形'>>> = {
-    页面标题: { 启用自定义: false, 字体ID: 'system-serif', 字体颜色: '#e6c86e', 字号: 28, 行高: 1.2, 字形: 'normal' },
-    分组标题: { 启用自定义: false, 字体ID: 'system-serif', 字体颜色: '#f3f4f6', 字号: 18, 行高: 1.35, 字形: 'normal' },
-    正文: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#e5e7eb', 字号: 14, 行高: 1.6, 字形: 'normal' },
-    辅助文本: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#9ca3af', 字号: 12, 行高: 1.5, 字形: 'normal' },
-    按钮: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#f3f4f6', 字号: 13, 行高: 1.2, 字形: 'normal' },
-    标签: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#d1d5db', 字号: 11, 行高: 1.3, 字形: 'normal' },
-    数字: { 启用自定义: false, 字体ID: 'system-mono', 字体颜色: '#f5e7a1', 字号: 13, 行高: 1.2, 字形: 'normal' },
-    等宽信息: { 启用自定义: false, 字体ID: 'system-mono', 字体颜色: '#d1d5db', 字号: 12, 行高: 1.45, 字形: 'normal' }
+    页面标题: { 启用自定义: false, 字体ID: 'system-serif', 字体颜色: '#f1d778', 字号: 30, 行高: 1.22, 字形: 'normal' },
+    分组标题: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#f8fafc', 字号: 20, 行高: 1.35, 字形: 'normal' },
+    正文: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#f1f5f9', 字号: 16, 行高: 1.6, 字形: 'normal' },
+    辅助文本: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#cbd5e1', 字号: 14, 行高: 1.5, 字形: 'normal' },
+    按钮: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#f8fafc', 字号: 15, 行高: 1.25, 字形: 'normal' },
+    标签: { 启用自定义: false, 字体ID: 'system-sans', 字体颜色: '#e5e7eb', 字号: 13, 行高: 1.35, 字形: 'normal' },
+    数字: { 启用自定义: false, 字体ID: 'system-mono', 字体颜色: '#fff1b8', 字号: 15, 行高: 1.25, 字形: 'normal' },
+    等宽信息: { 启用自定义: false, 字体ID: 'system-mono', 字体颜色: '#e5e7eb', 字号: 14, 行高: 1.45, 字形: 'normal' }
 };
 
 const 主题联动区域颜色: Record<可用视觉区域, string> = {

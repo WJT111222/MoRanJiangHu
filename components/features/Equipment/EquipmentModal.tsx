@@ -99,38 +99,38 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
         const item = getItem(itemRef);
         const qualityClass = item
             ? `${getRarityStyles(item.品质).border} ${getRarityStyles(item.品质).text} ${getRarityStyles(item.品质).bg} shadow-inner bg-opacity-10 border-opacity-50 hover:bg-opacity-20`
-            : 'border-wuxia-gold/10 text-gray-600 border-dashed bg-black/30 hover:bg-black/50 hover:border-wuxia-gold/30';
+            : 'border-wuxia-gold/15 text-gray-400 border-dashed bg-black/30 hover:bg-black/50 hover:border-wuxia-gold/35';
 
         return (
             <div 
                 key={slot.key} 
                 onClick={() => item && setSelectedItem(item)}
-                className={`flex items-center gap-2 p-2 md:gap-3 md:p-2.5 rounded-xl md:rounded-2xl border transition-all h-[62px] md:h-[82px] relative group overflow-hidden ${qualityClass} ${item ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
+                className={`flex items-center gap-2 p-2 md:gap-3 md:p-3 rounded-xl md:rounded-2xl border transition-all h-[66px] md:h-[88px] relative group overflow-hidden ${qualityClass} ${item ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
             >
                 {item && <div className="absolute right-0 top-0 bottom-0 w-1 bg-current opacity-50 shadow-[0_0_10px_currentColor]"></div>}
                 
                 {/* Icon Box */}
-                <div className={`w-9 h-9 md:w-12 md:h-12 shrink-0 rounded-lg md:rounded-xl flex items-center justify-center border ${item ? 'bg-black/50 border-white/10 shadow-lg text-wuxia-gold/80' : 'bg-black/60 border-gray-800/50 text-gray-600'}`}>
-                        <span className="scale-90 opacity-70 transition-opacity duration-300 group-hover:scale-110 group-hover:opacity-100 md:scale-100">{slot.icon}</span>
+                <div className={`w-9 h-9 md:w-12 md:h-12 shrink-0 rounded-lg md:rounded-xl flex items-center justify-center border ${item ? 'bg-black/50 border-white/10 shadow-lg text-wuxia-gold/90' : 'bg-black/60 border-gray-700/60 text-gray-400'}`}>
+                        <span className="scale-90 opacity-85 transition-opacity duration-300 group-hover:scale-110 group-hover:opacity-100 md:scale-100">{slot.icon}</span>
                     </div>
                 
                 {/* Info */}
                 <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
                     <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rotate-45 bg-gray-600 group-hover:bg-wuxia-gold/50 transition-colors"></span>
-                        <div className="text-[9px] md:text-[10px] text-gray-500 font-serif tracking-[0.15em] md:tracking-widest">{slot.label}</div>
+                        <span className="w-1.5 h-1.5 rotate-45 bg-gray-400 group-hover:bg-wuxia-gold/70 transition-colors"></span>
+                        <div className="text-[10px] md:text-xs text-gray-300 font-serif tracking-[0.12em] md:tracking-[0.18em]">{slot.label}</div>
                     </div>
                     {item ? (
                         <>
-                            <div className={`text-xs md:text-[15px] font-bold font-serif truncate drop-shadow-sm ${getRarityNameClass(item.品质)}`}>{item.名称}</div>
-                            <div className="text-[9px] md:text-[10px] text-gray-400 flex items-center gap-1.5 md:gap-2 font-mono mt-0.5">
+                            <div className={`text-sm md:text-base font-bold font-serif truncate drop-shadow-sm ${getRarityNameClass(item.品质)}`}>{item.名称}</div>
+                            <div className="text-[10px] md:text-xs text-gray-200 flex items-center gap-1.5 md:gap-2 font-mono mt-0.5">
                                 <span className={`border px-1.5 rounded-sm ${getRarityStyles(item.品质).text} ${getRarityStyles(item.品质).border}`}>{item.品质}</span>
                                 <span className="w-px h-2 bg-gray-700"></span>
                                 <span className="text-wuxia-gold/80">耐久 {item.当前耐久}</span>
                             </div>
                         </>
                     ) : (
-                        <div className="text-[10px] md:text-xs text-gray-600 font-serif italic mt-1 bg-black/40 px-2.5 md:px-3 py-0.5 rounded-full inline-block self-start border border-gray-800/50">空置</div>
+                        <div className="text-[11px] md:text-xs text-gray-300 font-serif mt-1 bg-black/45 px-2.5 md:px-3 py-0.5 rounded-full inline-block self-start border border-gray-700/60">空置</div>
                     )}
                 </div>
             </div>
@@ -140,7 +140,7 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
     return (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[200] flex items-center justify-center p-0 md:p-4 animate-fadeIn">
             {/* 主窗口：采用 max-w-7xl h-[90vh] 标准，增加仙侠金边渐变效果 */}
-            <div className="bg-ink-black/95 border-y border-wuxia-gold/20 md:border md:border-wuxia-gold/20 w-full max-w-none md:max-w-7xl h-[100dvh] md:max-h-[90vh] md:h-[90vh] flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] relative overflow-hidden rounded-none md:rounded-2xl">
+            <div className="bg-ink-black/95 border-y border-wuxia-gold/20 md:border md:border-wuxia-gold/20 w-full max-w-none md:max-w-[calc(100vw-2rem)] 2xl:max-w-[1780px] h-[100dvh] md:max-h-[92vh] md:h-[92vh] flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] relative overflow-hidden rounded-none md:rounded-2xl">
                 
                 {/* 背景装饰层 */}
                 <div className="absolute inset-0 pointer-events-none z-0">
@@ -162,7 +162,7 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                 <h3 className="truncate text-wuxia-gold font-serif font-bold text-base md:text-2xl tracking-[0.18em] md:tracking-[0.4em] drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]">全身披挂</h3>
                                 <span className="hidden md:inline-block text-[10px] uppercase text-wuxia-gold/50 tracking-widest border border-wuxia-gold/20 px-2 py-0.5 rounded-full mt-1">HERO EQUIPMENT</span>
                             </div>
-                            <p className="hidden md:flex text-gray-400 text-xs tracking-widest mt-1.5 italic font-serif items-center gap-2">
+                            <p className="hidden md:flex text-gray-200 text-sm tracking-[0.12em] mt-1.5 font-serif items-center gap-2">
                                 <span className="w-1.5 h-1.5 bg-wuxia-gold/50 rotate-45"></span>
                                 先利其器，后成其道
                             </p>
@@ -171,15 +171,15 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
 
                     <div className="flex items-center gap-3 md:gap-6 shrink-0">
                         <div className="flex items-center gap-2 md:gap-3 bg-black/60 px-3 md:px-5 py-1.5 md:py-2.5 rounded-xl border border-wuxia-gold/20 shadow-inner">
-                            <span className="text-[10px] md:text-xs text-wuxia-gold/70 font-serif tracking-[0.18em] md:tracking-widest">身负</span>
+                            <span className="text-xs md:text-sm text-wuxia-gold/80 font-serif tracking-[0.14em] md:tracking-widest">身负</span>
                             <div className="text-sm md:text-xl font-mono relative">
                                 <span className={character.当前负重 > character.最大负重 ? 'text-red-500 font-bold drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'text-wuxia-gold drop-shadow-[0_0_5px_rgba(212,175,55,0.5)]'}>
                                     {character.当前负重}
                                 </span>
-                                <span className="text-gray-500 mx-1">/</span>
-                                <span className="text-gray-400">{character.最大负重}</span>
+                                <span className="text-gray-300 mx-1">/</span>
+                                <span className="text-gray-100">{character.最大负重}</span>
                             </div>
-                            <span className="text-[9px] md:text-[10px] text-gray-500 font-serif">斤</span>
+                            <span className="text-[10px] md:text-xs text-gray-300 font-serif">斤</span>
                         </div>
                         <button onClick={onClose} className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-black/60 border border-gray-700 text-gray-400 hover:text-wuxia-red hover:border-wuxia-red hover:bg-red-950/30 transition-all hover:rotate-90 group">
                             <svg className="w-4 h-4 md:w-5 md:h-5 group-hover:drop-shadow-[0_0_5px_rgba(220,38,38,0.8)]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -265,7 +265,7 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
 
                     {/* Detail Panel */}
                     {selectedItem && (
-                        <div className="absolute inset-0 md:static w-full md:w-[450px] shrink-0 border-l-0 md:border-l border-wuxia-gold/20 bg-gradient-to-b from-black/95 to-[#0b0c0f]/95 backdrop-blur-md flex flex-col animate-slideInRight shadow-[-20px_0_80px_rgba(0,0,0,0.8)] relative z-20">
+                        <div className="absolute inset-0 md:static w-full md:w-[520px] 2xl:w-[560px] shrink-0 border-l-0 md:border-l border-wuxia-gold/20 bg-gradient-to-b from-black/95 to-[#0b0c0f]/95 backdrop-blur-md flex flex-col animate-slideInRight shadow-[-20px_0_80px_rgba(0,0,0,0.8)] relative z-20">
                             <div className="shrink-0 border-b border-wuxia-gold/10 bg-black/40 p-4 md:p-8 relative overflow-hidden">
                                 <div className={`absolute -right-10 -top-10 w-48 h-48 rounded-full filter blur-3xl opacity-20 ${getRarityStyles(selectedItem.品质).bg}`}></div>
                                 <div className="absolute right-4 bottom-4 text-[100px] opacity-[0.03] select-none pointer-events-none font-serif leading-none">
@@ -278,14 +278,14 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                         </span>
                                     </div>
                                     <div className="flex-1 min-w-0 pr-10 md:pr-6">
-                                        <div className={`text-lg md:text-2xl font-serif font-black truncate drop-shadow-md mb-2 md:mb-3 tracking-wide ${getRarityNameClass(selectedItem.品质)}`}>
+                                        <div className={`text-xl md:text-3xl font-serif font-black truncate drop-shadow-md mb-2 md:mb-3 tracking-wide ${getRarityNameClass(selectedItem.品质)}`}>
                                             {selectedItem.名称}
                                         </div>
                                         <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-                                            <span className={`text-[10px] md:text-[11px] px-2.5 md:px-3 py-1 rounded-sm border uppercase tracking-[0.15em] md:tracking-widest font-serif shadow-inner ${getRarityStyles(selectedItem.品质).border} ${getRarityStyles(selectedItem.品质).text} bg-black/60`}>
+                                            <span className={`text-xs md:text-sm px-2.5 md:px-3 py-1 rounded-sm border uppercase tracking-[0.12em] md:tracking-[0.18em] font-serif shadow-inner ${getRarityStyles(selectedItem.品质).border} ${getRarityStyles(selectedItem.品质).text} bg-black/60`}>
                                                 {selectedItem.品质}造物
                                             </span>
-                                            <span className="text-[10px] md:text-[11px] text-gray-400 font-serif border border-white/10 px-2.5 md:px-3 py-1 rounded-sm bg-black/60 shadow-inner">
+                                            <span className="text-xs md:text-sm text-gray-100 font-serif border border-white/10 px-2.5 md:px-3 py-1 rounded-sm bg-black/60 shadow-inner">
                                                 归类 · {selectedItem.类型}
                                             </span>
                                         </div>
@@ -302,17 +302,17 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                 </button>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-5 md:space-y-8 relative z-10" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                            <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-5 md:space-y-7 relative z-10" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                 <div className="bg-black/30 border-l-4 border-wuxia-gold/40 p-4 md:p-5 rounded-r-2xl shadow-inner relative overflow-hidden">
-                                    <p className="text-gray-300 text-[13px] md:text-[15px] font-serif italic leading-7 md:leading-loose tracking-wide overflow-wrap-break-word">
-                                        “ {selectedItem.描述 || '此神兵来历不明，似有天道之力缠绕。'} ”
+                                    <p className="text-gray-100 text-base md:text-lg font-serif leading-8 md:leading-9 tracking-wide overflow-wrap-break-word">
+                                        {selectedItem.描述 || '此神兵来历不明，似有天道之力缠绕。'}
                                     </p>
                                 </div>
 
-                                <div className="rounded-2xl border border-wuxia-gold/15 bg-wuxia-gold/5 p-4">
+                                <div className="rounded-2xl border border-wuxia-gold/20 bg-wuxia-gold/5 p-4">
                                     <div className="mb-3 flex items-center justify-between gap-3">
-                                        <span className="text-xs font-bold tracking-[0.18em] text-wuxia-gold/90">装备操作</span>
-                                        <span className="truncate text-[10px] text-gray-500">
+                                        <span className="text-sm font-bold tracking-[0.14em] text-wuxia-gold">装备操作</span>
+                                        <span className="truncate text-xs text-gray-300">
                                             {selectedSlot ? `当前：${selectedSlot}` : '未装备'}
                                         </span>
                                     </div>
@@ -321,7 +321,7 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                             type="button"
                                             onClick={handleUnequipSelected}
                                             disabled={!onCharacterChange || !selectedSlot}
-                                            className="rounded-lg border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-100 transition hover:border-sky-300/60 hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                            className="rounded-lg border border-sky-400/35 bg-sky-500/10 px-3 py-2.5 text-sm font-semibold text-sky-50 transition hover:border-sky-300/60 hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                                         >
                                             卸下
                                         </button>
@@ -329,12 +329,12 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                             type="button"
                                             onClick={handleSwitchSelected}
                                             disabled={!onCharacterChange || !switchTarget}
-                                            className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:border-emerald-300/60 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                            className="rounded-lg border border-emerald-400/35 bg-emerald-500/10 px-3 py-2.5 text-sm font-semibold text-emerald-50 transition hover:border-emerald-300/60 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                                         >
                                             切换
                                         </button>
                                     </div>
-                                    <div className="mt-2 truncate text-[10px] text-wuxia-gold/70">
+                                    <div className="mt-2 truncate text-xs text-wuxia-gold/90">
                                         {actionMessage || (switchTarget ? `可切换：${switchTarget.名称}` : '无可切换装备')}
                                     </div>
                                 </div>
@@ -342,26 +342,26 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                 <div>
                                     <div className="flex items-center gap-2 mb-4 border-b border-wuxia-gold/10 pb-2">
                                         <span className="w-1.5 h-1.5 rotate-45 bg-wuxia-gold/50"></span>
-                                        <div className="text-sm text-wuxia-gold/80 uppercase tracking-widest font-serif font-bold">基本属性</div>
+                                        <div className="text-base text-wuxia-gold uppercase tracking-[0.16em] font-serif font-bold">基本属性</div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 md:gap-4">
-                                        <div className="bg-gradient-to-br from-black/60 to-black/30 border border-gray-800/80 rounded-xl p-3 md:p-4 flex flex-col items-center justify-center hover:border-wuxia-gold/30 transition-colors shadow-inner">
-                                            <span className="text-[10px] text-gray-500 font-serif tracking-widest mb-1.5">万钧之重</span>
-                                            <span className="text-lg md:text-xl font-mono text-gray-200">{selectedItem.重量} <span className="text-xs text-gray-500 font-serif">斤</span></span>
+                                        <div className="bg-gradient-to-br from-black/60 to-black/30 border border-gray-700/80 rounded-xl p-3 md:p-4 flex flex-col items-center justify-center hover:border-wuxia-gold/30 transition-colors shadow-inner">
+                                            <span className="text-xs text-gray-300 font-serif tracking-[0.16em] mb-1.5">万钧之重</span>
+                                            <span className="text-xl md:text-2xl font-mono text-gray-50">{selectedItem.重量} <span className="text-sm text-gray-300 font-serif">斤</span></span>
                                         </div>
-                                        <div className="bg-gradient-to-br from-black/60 to-black/30 border border-gray-800/80 rounded-xl p-3 md:p-4 flex flex-col items-center justify-center hover:border-amber-500/30 transition-colors shadow-inner">
-                                            <span className="text-[10px] text-gray-500 font-serif tracking-widest mb-1.5">坊市估值</span>
-                                            <span className="text-lg md:text-xl font-mono text-amber-500">{selectedItem.价值} <span className="text-xs text-amber-700 font-serif">铜</span></span>
+                                        <div className="bg-gradient-to-br from-black/60 to-black/30 border border-gray-700/80 rounded-xl p-3 md:p-4 flex flex-col items-center justify-center hover:border-amber-500/30 transition-colors shadow-inner">
+                                            <span className="text-xs text-gray-300 font-serif tracking-[0.16em] mb-1.5">坊市估值</span>
+                                            <span className="text-xl md:text-2xl font-mono text-amber-300">{selectedItem.价值} <span className="text-sm text-amber-300 font-serif">铜</span></span>
                                         </div>
-                                        <div className="bg-gradient-to-br from-black/60 to-black/30 border border-gray-800/80 rounded-xl p-3 md:p-4 flex flex-col items-center justify-center hover:border-blue-400/30 transition-colors shadow-inner col-span-2">
-                                            <span className="text-[10px] text-gray-500 font-serif tracking-widest mb-2">品相耐久</span>
+                                        <div className="bg-gradient-to-br from-black/60 to-black/30 border border-gray-700/80 rounded-xl p-3 md:p-4 flex flex-col items-center justify-center hover:border-blue-400/30 transition-colors shadow-inner col-span-2">
+                                            <span className="text-xs text-gray-300 font-serif tracking-[0.16em] mb-2">品相耐久</span>
                                             <div className="w-full h-1.5 bg-black rounded-full overflow-hidden border border-white/5">
                                                 <div 
                                                     className="h-full bg-blue-500 shadow-[0_0_5px_currentColor]" 
                                                     style={{ width: `${(selectedItem.当前耐久 / Math.max(selectedItem.最大耐久, 1)) * 100}%` }}
                                                 ></div>
                                             </div>
-                                            <span className="mt-2 text-sm font-mono text-blue-300">{selectedItem.当前耐久} / {selectedItem.最大耐久}</span>
+                                            <span className="mt-2 text-base font-mono text-blue-200">{selectedItem.当前耐久} / {selectedItem.最大耐久}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -370,35 +370,35 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                     <div>
                                         <div className="flex items-center gap-2 mb-4 border-b border-red-900/40 pb-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-red-600/70 shadow-[0_0_5px_currentColor]"></span>
-                                            <div className="text-sm text-red-500/90 uppercase tracking-widest font-serif font-bold">武道参数</div>
+                                            <div className="text-base text-red-300 uppercase tracking-[0.16em] font-serif font-bold">武道参数</div>
                                         </div>
-                                        <div className="space-y-3 bg-red-950/10 border border-red-900/20 p-5 rounded-xl shadow-inner">
+                                        <div className="space-y-3 bg-red-950/10 border border-red-800/30 p-5 rounded-xl shadow-inner">
                                             {selectedItem.类型 === '武器' && (
                                                 <>
-                                                    <div className="flex justify-between items-center text-sm">
-                                                        <span className="text-gray-400 font-serif">兵刃杀力</span>
+                                                    <div className="flex justify-between items-center text-base">
+                                                        <span className="text-gray-100 font-serif">兵刃杀力</span>
                                                         <span className="text-2xl font-black font-mono text-red-400 drop-shadow-[0_0_5px_rgba(248,113,113,0.5)]">
                                                             {(selectedItem as any).最小攻击}-{(selectedItem as any).最大攻击}
                                                         </span>
                                                     </div>
                                                     <div className="h-px w-full bg-gradient-to-r from-red-900/30 via-red-900/10 to-transparent my-1"></div>
-                                                    <div className="flex justify-between items-center text-sm">
-                                                        <span className="text-gray-400 font-serif">身法干涉</span>
-                                                        <span className="text-base font-mono text-emerald-400">{(selectedItem as any).攻速修正}</span>
+                                                    <div className="flex justify-between items-center text-base">
+                                                        <span className="text-gray-100 font-serif">身法干涉</span>
+                                                        <span className="text-lg font-mono text-emerald-300">{(selectedItem as any).攻速修正}</span>
                                                     </div>
                                                 </>
                                             )}
                                             {selectedItem.类型 === '防具' && (
                                                 <>
-                                                    <div className="flex justify-between items-center text-sm">
-                                                        <span className="text-gray-400 font-serif">外家护体</span>
+                                                    <div className="flex justify-between items-center text-base">
+                                                        <span className="text-gray-100 font-serif">外家护体</span>
                                                         <span className="text-2xl font-black font-mono text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]">
                                                             +{(selectedItem as any).物理防御}
                                                         </span>
                                                     </div>
                                                     <div className="h-px w-full bg-gradient-to-r from-blue-900/30 via-blue-900/10 to-transparent my-1"></div>
-                                                    <div className="flex justify-between items-center text-sm">
-                                                        <span className="text-gray-400 font-serif">内劲消解</span>
+                                                    <div className="flex justify-between items-center text-base">
+                                                        <span className="text-gray-100 font-serif">内劲消解</span>
                                                         <span className="text-xl font-bold font-mono text-purple-400">
                                                             +{(selectedItem as any).内功防御}
                                                         </span>
@@ -413,14 +413,14 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                     <div>
                                         <div className="flex items-center gap-2 mb-4 border-b border-cyan-900/40 pb-2">
                                             <span className="w-1.5 h-1.5 rotate-45 border border-cyan-500 bg-cyan-950 shadow-[0_0_5px_currentColor]"></span>
-                                            <div className="text-sm text-cyan-500/90 uppercase tracking-widest font-serif font-bold">天启词条</div>
+                                            <div className="text-base text-cyan-300 uppercase tracking-[0.16em] font-serif font-bold">天启词条</div>
                                         </div>
                                         <div className="space-y-3">
                                             {selectedItem.词条列表.map((mod, i) => (
-                                                <div key={`mod_${i}`} className="bg-gradient-to-r from-cyan-950/20 to-black border border-cyan-900/30 p-4 rounded-xl flex justify-between items-center hover:border-cyan-700/50 transition-colors shadow-sm group">
-                                                    <span className="text-gray-200 font-serif flex items-center gap-2">
+                                                <div key={`mod_${i}`} className="bg-gradient-to-r from-cyan-950/20 to-black border border-cyan-800/35 p-4 rounded-xl flex justify-between items-center hover:border-cyan-600/60 transition-colors shadow-sm group">
+                                                    <span className="text-gray-50 font-serif flex items-center gap-2 text-base">
                                                         <span className="text-cyan-600 group-hover:text-cyan-400 transition-colors">◈</span>
-                                                        {mod.名称} <span className="text-[10px] text-gray-500 font-mono tracking-widest ml-2">({mod.属性})</span>
+                                                        {mod.名称} <span className="text-xs text-gray-300 font-mono tracking-widest ml-2">({mod.属性})</span>
                                                     </span>
                                                     <span className="text-cyan-300 font-mono font-bold bg-cyan-950/40 border border-cyan-900/30 px-3 py-1 rounded shadow-inner">
                                                         {mod.数值 > 0 ? '+' : ''}{mod.数值}

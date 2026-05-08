@@ -234,14 +234,14 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
     };
 
     return (
-        <div className="fixed inset-0 z-[200] hidden items-center justify-center bg-black/90 p-4 backdrop-blur-sm animate-fadeIn md:flex">
-            <div className="relative flex h-[90vh] max-h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-wuxia-gold/20 bg-ink-black/95 shadow-[0_0_80px_rgba(0,0,0,0.9)] shadow-wuxia-gold/10">
-                <div className="relative z-50 flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-gradient-to-r from-black/80 to-black/40 px-6">
+        <div className="fixed inset-0 z-[200] hidden items-center justify-center bg-black/90 p-3 backdrop-blur-sm animate-fadeIn md:flex">
+            <div className="relative flex h-[92vh] max-h-[92vh] w-full max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-wuxia-gold/20 bg-ink-black/95 shadow-[0_0_80px_rgba(0,0,0,0.9)] shadow-wuxia-gold/10 2xl:max-w-[1780px]">
+                <div className="relative z-50 flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-gradient-to-r from-black/80 to-black/40 px-6">
                     <div className="flex items-center gap-3">
                         <div className="h-2 w-2 rounded-full bg-wuxia-gold shadow-[0_0_10px_rgba(212,175,55,0.8)] animate-pulse" />
-                        <h3 className="font-serif text-xl font-bold tracking-[0.4em] text-wuxia-gold drop-shadow-md">
+                        <h3 className="font-serif text-2xl font-bold tracking-[0.32em] text-wuxia-gold drop-shadow-md">
                             仙途行囊
-                            <span className="ml-2 rounded-full border border-wuxia-gold/20 px-2 py-0.5 font-mono text-[10px] tracking-widest text-wuxia-gold/50">
+                            <span className="ml-3 rounded-full border border-wuxia-gold/25 px-2.5 py-1 font-mono text-[11px] tracking-widest text-wuxia-gold/70">
                                 INVENTORY
                             </span>
                         </h3>
@@ -249,7 +249,7 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
 
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-3 rounded border border-wuxia-gold/20 bg-black/40 px-4 py-1.5 shadow-inner">
-                            <span className="text-[10px] uppercase tracking-widest text-wuxia-gold/70">负重</span>
+                            <span className="text-xs uppercase tracking-widest text-wuxia-gold/80">负重</span>
                             <div className="h-1.5 w-32 overflow-hidden rounded-full border border-white/5 bg-gray-900">
                                 <div
                                     className={`h-full transition-all duration-300 ${
@@ -262,7 +262,7 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                     style={{ width: `${weightPercent}%` }}
                                 />
                             </div>
-                            <span className={`text-[10px] font-mono ${isOverloaded ? 'text-red-400' : 'text-gray-300'}`}>
+                            <span className={`text-xs font-mono ${isOverloaded ? 'text-red-300' : 'text-gray-100'}`}>
                                 {totalWeight.toFixed(1)} / {maxWeight}
                             </span>
                         </div>
@@ -286,8 +286,8 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                         <div className="absolute inset-0 bg-gradient-to-br from-wuxia-gold/5 via-transparent to-black" />
                     </div>
 
-                    <div className="relative z-10 flex w-56 shrink-0 flex-col gap-2 overflow-y-auto border-r border-wuxia-gold/10 bg-black/40 p-4 backdrop-blur-sm custom-scrollbar">
-                        <div className="mb-4 flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-wuxia-gold/50">
+                    <div className="relative z-10 flex w-60 shrink-0 flex-col gap-2 overflow-y-auto border-r border-wuxia-gold/10 bg-black/40 p-4 backdrop-blur-sm custom-scrollbar">
+                        <div className="mb-4 flex items-center gap-2 text-xs uppercase tracking-[0.26em] text-wuxia-gold/70">
                             <span className="h-3 w-1 rounded-full bg-wuxia-gold/50" />
                             行囊格位
                         </div>
@@ -309,8 +309,8 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                 {activeCategory === category ? (
                                     <div className="absolute inset-y-0 left-0 z-10 w-1 bg-wuxia-gold shadow-[0_0_10px_rgba(212,175,55,0.8)]" />
                                 ) : null}
-                                <span className={`flex items-center gap-3 font-serif ${
-                                    activeCategory === category ? 'font-bold text-wuxia-gold drop-shadow-sm' : 'text-gray-300 group-hover:text-gray-200'
+                                <span className={`flex items-center gap-3 font-serif text-base ${
+                                    activeCategory === category ? 'font-bold text-wuxia-gold drop-shadow-sm' : 'text-gray-200 group-hover:text-white'
                                 }`}>
                                     <span className={`flex h-5 w-5 items-center justify-center ${
                                         activeCategory === category ? 'text-wuxia-gold' : CATEGORY_COLORS[category]
@@ -319,10 +319,10 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                     </span>
                                     <span>{category}</span>
                                 </span>
-                                <span className={`rounded border px-1.5 py-0.5 font-mono text-[10px] ${
+                                <span className={`rounded border px-1.5 py-0.5 font-mono text-xs ${
                                     activeCategory === category
                                         ? 'border-wuxia-gold/30 bg-wuxia-gold/20 text-wuxia-gold'
-                                        : 'border-gray-800 bg-black/60 text-gray-500'
+                                        : 'border-gray-700 bg-black/60 text-gray-300'
                                 }`}>
                                     {getCategoryCount(items, category)}
                                 </span>
@@ -334,13 +334,13 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                 type="button"
                                 onClick={handleEquipBest}
                                 disabled={!onCharacterChange}
-                                className="w-full rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold tracking-[0.12em] text-amber-200 transition hover:border-amber-300/60 hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="w-full rounded-lg border border-amber-400/35 bg-amber-500/10 px-3 py-2.5 text-sm font-semibold tracking-[0.08em] text-amber-100 transition hover:border-amber-300/60 hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 自动穿戴最佳
                             </button>
                             <div className="rounded-lg border border-wuxia-gold/5 bg-black/40 p-3">
-                                <div className="mb-1 font-mono text-[9px] uppercase tracking-widest text-gray-500">Total Value</div>
-                                <div className="flex items-center gap-1.5 font-serif text-sm text-wuxia-gold">
+                                <div className="mb-1 font-mono text-[11px] uppercase tracking-widest text-gray-400">Total Value</div>
+                                <div className="flex items-center gap-1.5 font-serif text-base text-wuxia-gold">
                                     <svg className="h-3.5 w-3.5 opacity-80" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 100-16 8 8 0 000 16zm-1-8H9v-2h2V8h2v2h2v2h-2v2h-2v-2z" />
                                     </svg>
@@ -353,7 +353,7 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                     <div className="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden">
                         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                             {displayItems.length > 0 ? (
-                                <div className="grid grid-cols-5 gap-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-9">
+                                <div className="grid grid-cols-5 gap-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-9 2xl:grid-cols-10">
                                     {displayItems.map((item, index) => {
                                         const count = getSafeNumber(item?.堆叠数量, 1);
                                         const styles = getRarityStyles(getSafeText(item?.品质));
@@ -390,12 +390,12 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                                     </div>
                                                 </div>
 
-                                                <div className="absolute bottom-1.5 left-0 right-0 px-1 text-center">
-                                                    <div className={`truncate text-[10px] font-medium tracking-wide drop-shadow-sm ${getRarityNameClass(getSafeText(item?.品质))}`}>
+                                                <div className="absolute bottom-2 left-0 right-0 px-1.5 text-center">
+                                                    <div className={`truncate text-xs font-semibold tracking-wide drop-shadow-sm ${getRarityNameClass(getSafeText(item?.品质))}`}>
                                                         {name}
                                                     </div>
                                                     {count > 1 ? (
-                                                        <div className="mt-0.5 font-mono text-[10px] text-gray-400">x{count}</div>
+                                                        <div className="mt-0.5 font-mono text-xs text-gray-200">x{count}</div>
                                                     ) : null}
                                                 </div>
                                             </button>
@@ -412,8 +412,8 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
 
                         {selectedItem ? (
                             <div className="shrink-0 border-t border-wuxia-gold/20 bg-gradient-to-r from-black/95 via-[#08090b]/95 to-black/95 p-4 shadow-[0_-18px_45px_rgba(0,0,0,0.65)] backdrop-blur-md animate-fadeIn">
-                                <div className="grid gap-4 lg:grid-cols-[minmax(220px,0.85fr)_minmax(260px,1fr)_minmax(220px,0.8fr)_minmax(300px,1fr)]">
-                                    <div className="relative flex min-w-0 gap-4 overflow-hidden rounded-xl border border-white/5 bg-black/25 p-3">
+                                <div className="grid min-w-0 grid-cols-[minmax(220px,0.82fr)_minmax(280px,1fr)] gap-3">
+                                    <div className="relative flex min-w-0 gap-4 overflow-hidden rounded-xl border border-white/10 bg-black/30 p-3.5">
                                         <div className={`absolute right-0 top-0 h-24 w-24 rounded-full opacity-20 blur-3xl ${getRarityStyles(getSafeText(selectedItem?.品质)).bg}`} />
                                         <div className={`relative z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border bg-opacity-20 shadow-lg ${
                                             getRarityStyles(getSafeText(selectedItem?.品质)).border
@@ -421,14 +421,14 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                             {renderItemIcon(getSafeText(selectedItem?.类型), `h-7 w-7 drop-shadow-md ${getRarityStyles(getSafeText(selectedItem?.品质)).text}`)}
                                         </div>
                                         <div className="relative z-10 min-w-0 flex-1">
-                                            <div className={`truncate text-lg font-semibold ${getRarityNameClass(getSafeText(selectedItem?.品质))}`}>
+                                            <div className={`truncate text-xl font-bold ${getRarityNameClass(getSafeText(selectedItem?.品质))}`}>
                                                 {getSafeText(selectedItem?.名称, '未命名物品')}
                                             </div>
-                                            <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                                                <span className="rounded-full border border-white/10 bg-black/30 px-2 py-1 text-gray-300">
+                                            <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                                                <span className="rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-gray-100">
                                                     {getSafeText(selectedItem?.类型, '未知')}
                                                 </span>
-                                                <span className="rounded-full border border-white/10 bg-black/30 px-2 py-1 text-gray-300">
+                                                <span className="rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-gray-100">
                                                     {getSafeText(selectedItem?.品质, '未知')}
                                                 </span>
                                                 {selectedItem?.当前装备部位 ? (
@@ -450,15 +450,15 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                         </button>
                                     </div>
 
-                                    <div className="min-h-[96px] max-h-40 overflow-y-auto rounded-xl border border-white/5 bg-black/25 p-3 text-sm leading-relaxed text-gray-200/85 custom-scrollbar">
+                                    <div className="min-h-[112px] overflow-y-auto rounded-xl border border-white/10 bg-black/30 p-4 text-base leading-7 text-gray-100 custom-scrollbar">
                                         {getSafeText(selectedItem?.描述, '暂无描述')}
                                     </div>
 
                                     {selectedCanEquip ? (
-                                        <div className="rounded-xl border border-amber-400/15 bg-amber-500/5 p-3">
+                                        <div className="rounded-xl border border-amber-400/20 bg-amber-500/5 p-4">
                                             <div className="mb-3 flex items-center justify-between gap-3">
-                                                <span className="text-xs font-semibold tracking-[0.16em] text-amber-200">装备操作</span>
-                                                <span className="truncate text-[10px] text-gray-500">
+                                                <span className="text-sm font-bold tracking-[0.12em] text-amber-100">装备操作</span>
+                                                <span className="truncate text-xs text-gray-300">
                                                     {selectedItem?.当前装备部位 ? `当前：${selectedItem.当前装备部位}` : `可装备：${selectedEquipSlots.map(获取装备槽位标签).join(' / ')}`}
                                                 </span>
                                             </div>
@@ -467,7 +467,7 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                                     type="button"
                                                     onClick={handleEquipSelected}
                                                     disabled={!onCharacterChange}
-                                                    className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:border-emerald-300/60 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    className="rounded-lg border border-emerald-400/35 bg-emerald-500/10 px-3 py-2.5 text-sm font-semibold text-emerald-50 transition hover:border-emerald-300/60 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                                                 >
                                                     装备
                                                 </button>
@@ -475,46 +475,46 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                                     type="button"
                                                     onClick={handleUnequipSelected}
                                                     disabled={!onCharacterChange || !selectedItem?.当前装备部位}
-                                                    className="rounded-lg border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-100 transition hover:border-sky-300/60 hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    className="rounded-lg border border-sky-400/35 bg-sky-500/10 px-3 py-2.5 text-sm font-semibold text-sky-50 transition hover:border-sky-300/60 hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                                                 >
                                                     卸下
                                                 </button>
                                             </div>
                                             {actionMessage ? (
-                                                <div className="mt-2 truncate text-[10px] text-amber-200/80">{actionMessage}</div>
+                                                <div className="mt-2 truncate text-xs text-amber-100">{actionMessage}</div>
                                             ) : null}
                                         </div>
                                     ) : selectedCanUse ? (
-                                        <div className="rounded-xl border border-emerald-400/15 bg-emerald-500/5 p-3">
+                                        <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/5 p-4">
                                             <div className="mb-3 flex items-center justify-between gap-3">
-                                                <span className="text-xs font-semibold tracking-[0.16em] text-emerald-200">消耗操作</span>
-                                                <span className="truncate text-[10px] text-gray-500">持有：{getSafeNumber(selectedItem?.堆叠数量, 1)}</span>
+                                                <span className="text-sm font-bold tracking-[0.12em] text-emerald-100">消耗操作</span>
+                                                <span className="truncate text-xs text-gray-300">持有：{getSafeNumber(selectedItem?.堆叠数量, 1)}</span>
                                             </div>
                                             <button
                                                 type="button"
                                                 onClick={handleUseSelected}
                                                 disabled={!onCharacterChange}
-                                                className="w-full rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:border-emerald-300/60 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                                className="w-full rounded-lg border border-emerald-400/35 bg-emerald-500/10 px-3 py-2.5 text-sm font-semibold text-emerald-50 transition hover:border-emerald-300/60 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                                             >
                                                 使用
                                             </button>
                                             {actionMessage ? (
-                                                <div className="mt-2 truncate text-[10px] text-emerald-200/80">{actionMessage}</div>
+                                                <div className="mt-2 truncate text-xs text-emerald-100">{actionMessage}</div>
                                             ) : null}
                                         </div>
                                     ) : (
-                                        <div className="flex items-center justify-center rounded-xl border border-white/5 bg-black/20 text-xs text-gray-500">
+                                        <div className="flex items-center justify-center rounded-xl border border-white/10 bg-black/25 text-sm text-gray-300">
                                             此物品不可操作
                                         </div>
                                     )}
 
-                                    <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/5 bg-black/25 p-3 text-xs text-gray-300">
-                                        <div className="flex justify-between gap-3"><span className="text-gray-500">类型</span><span>{getSafeText(selectedItem?.类型, '未知')}</span></div>
-                                        <div className="flex justify-between gap-3"><span className="text-gray-500">品质</span><span>{getSafeText(selectedItem?.品质, '未知')}</span></div>
-                                        <div className="flex justify-between gap-3"><span className="text-gray-500">单件重量</span><span className="font-mono">{getSafeNumber(selectedItem?.重量)}</span></div>
-                                        <div className="flex justify-between gap-3"><span className="text-gray-500">持有数量</span><span className="font-mono">{getSafeNumber(selectedItem?.堆叠数量, 1)}</span></div>
-                                        <div className="flex justify-between gap-3"><span className="text-gray-500">总价值</span><span className="font-mono text-amber-400">{getSafeNumber(selectedItem?.价值) * getSafeNumber(selectedItem?.堆叠数量, 1)}</span></div>
-                                        <div className="flex justify-between gap-3"><span className="text-gray-500">耐久度</span><span className="font-mono">{getSafeNumber(selectedItem?.当前耐久)}/{getSafeNumber(selectedItem?.最大耐久)}</span></div>
+                                    <div className="grid min-w-0 grid-cols-2 gap-2 rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-gray-100 md:grid-cols-3">
+                                        <div className="flex justify-between gap-3"><span className="text-gray-300">类型</span><span>{getSafeText(selectedItem?.类型, '未知')}</span></div>
+                                        <div className="flex justify-between gap-3"><span className="text-gray-300">品质</span><span>{getSafeText(selectedItem?.品质, '未知')}</span></div>
+                                        <div className="flex justify-between gap-3"><span className="text-gray-300">单件重量</span><span className="font-mono">{getSafeNumber(selectedItem?.重量)}</span></div>
+                                        <div className="flex justify-between gap-3"><span className="text-gray-300">持有数量</span><span className="font-mono">{getSafeNumber(selectedItem?.堆叠数量, 1)}</span></div>
+                                        <div className="flex justify-between gap-3"><span className="text-gray-300">总价值</span><span className="font-mono text-amber-300">{getSafeNumber(selectedItem?.价值) * getSafeNumber(selectedItem?.堆叠数量, 1)}</span></div>
+                                        <div className="flex justify-between gap-3"><span className="text-gray-300">耐久度</span><span className="font-mono">{getSafeNumber(selectedItem?.当前耐久)}/{getSafeNumber(selectedItem?.最大耐久)}</span></div>
                                     </div>
                                 </div>
                             </div>
