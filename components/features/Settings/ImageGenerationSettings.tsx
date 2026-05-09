@@ -179,6 +179,7 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
     const transformerImportRef = React.useRef<HTMLInputElement | null>(null);
     const comfyWorkflowImportRef = React.useRef<HTMLInputElement | null>(null);
     const sceneComfyWorkflowImportRef = React.useRef<HTMLInputElement | null>(null);
+    const nsfwComfyWorkflowImportRef = React.useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         const normalized = 规范化接口设置(settings);
@@ -282,6 +283,10 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
         () => discoveredBackends.find((item) => item.id === form.功能模型占位.当前场景图片后端发现ID) || null,
         [discoveredBackends, form.功能模型占位.当前场景图片后端发现ID]
     );
+    const selectedNSFWDiscoveredBackend = useMemo(
+        () => discoveredBackends.find((item) => item.id === form.功能模型占位.当前NSFW图片后端发现ID) || null,
+        [discoveredBackends, form.功能模型占位.当前NSFW图片后端发现ID]
+    );
     const imageProfiles = useMemo<生图配置档结构[]>(
         () => Array.isArray((form.功能模型占位 as any).生图配置档列表) ? (form.功能模型占位 as any).生图配置档列表 : [],
         [form.功能模型占位]
@@ -297,7 +302,11 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
             : ((form.功能模型占位 as any).当前NPC生图配置档ID || '');
 
     const refreshDiscoveredBackends = React.useCallback(async () => {
-        if (当前后端 !== 'comfyui' && 当前场景后端 !== 'comfyui') {
+        if (
+            当前后端 !== 'comfyui'
+            && 当前场景后端 !== 'comfyui'
+            && !(form.功能模型占位.NSFW生图独立接口启用 && 当前NSFW后端 === 'comfyui')
+        ) {
             setDiscoveredBackends([]);
             setDiscoveryError('');
             return;
@@ -314,7 +323,7 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
         } finally {
             setDiscoveryLoading(false);
         }
-    }, [form.功能模型占位.图片后端注册表地址, 当前后端, 当前场景后端]);
+    }, [form.功能模型占位.图片后端注册表地址, form.功能模型占位.NSFW生图独立接口启用, 当前后端, 当前场景后端, 当前NSFW后端]);
 
     useEffect(() => {
         void refreshDiscoveredBackends();
@@ -330,7 +339,7 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
         }));
     };
 
-    const handleApplyDiscoveredBackend = (target: 'main' | 'scene', backendId: string) => {
+    const handleApplyDiscoveredBackend = (target: 'main' | 'scene' | 'nsfw', backendId: string) => {
         const matched = discoveredBackends.find((item) => item.id === backendId) || null;
         if (target === 'main') {
             updatePlaceholder('当前图片后端发现ID', backendId);
@@ -340,9 +349,17 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
             return;
         }
 
-        updatePlaceholder('当前场景图片后端发现ID', backendId);
+        if (target === 'scene') {
+            updatePlaceholder('当前场景图片后端发现ID', backendId);
+            if (matched) {
+                updatePlaceholder('场景生图模型API地址', matched.url);
+            }
+            return;
+        }
+
+        updatePlaceholder('当前NSFW图片后端发现ID', backendId);
         if (matched) {
-            updatePlaceholder('场景生图模型API地址', matched.url);
+            updatePlaceholder('NSFW生图模型API地址', matched.url);
         }
     };
 
@@ -588,7 +605,7 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
 
     const handleImportComfyWorkflow = async (
         event: React.ChangeEvent<HTMLInputElement>,
-        target: 'main' | 'scene'
+        target: 'main' | 'scene' | 'nsfw'
     ) => {
         const file = event.target.files?.[0];
         event.target.value = '';
@@ -596,13 +613,54 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
         try {
             const parsed = await 读取JSON文件(file);
             const normalized = 规范化ComfyUI工作流JSON(parsed);
-            updatePlaceholder(target === 'scene' ? '场景ComfyUI工作流JSON' : 'ComfyUI工作流JSON', normalized);
+            updatePlaceholder(
+                target === 'scene'
+                    ? '场景ComfyUI工作流JSON'
+                    : target === 'nsfw'
+                        ? 'NSFWComfyUI工作流JSON'
+                        : 'ComfyUI工作流JSON',
+                normalized
+            );
             setMessage(`已导入 ${file.name}，并自动写入 ComfyUI 占位符`);
             setShowSuccess(true);
         } catch (error: any) {
             setMessage(error?.message || 'ComfyUI workflow 导入失败，请确认上传的是 API workflow JSON');
             setShowSuccess(false);
         }
+    };
+
+    const 主文生图后端可直接套用到NSFW = 当前后端 === 'novelai' || 当前后端 === 'sd_webui' || 当前后端 === 'comfyui';
+
+    const NSFW独立接口已有专用配置 = (feature: 功能模型占位配置结构): boolean => {
+        return [
+            feature.NSFW生图模型使用模型,
+            feature.NSFW生图模型API地址,
+            feature.NSFW生图模型API密钥,
+            feature.NSFWComfyUI工作流JSON,
+            feature.当前NSFW图片后端发现ID
+        ].some((value) => (value || '').trim().length > 0);
+    };
+
+    const 构建NSFW沿用主接口配置 = (
+        feature: 功能模型占位配置结构,
+        options?: { overwrite?: boolean }
+    ): Partial<功能模型占位配置结构> => {
+        if (!(feature.文生图后端类型 === 'novelai' || feature.文生图后端类型 === 'sd_webui' || feature.文生图后端类型 === 'comfyui')) {
+            return {};
+        }
+        const overwrite = options?.overwrite === true;
+        const pick = (current: string, fallback: string) => overwrite ? fallback : ((current || '').trim() || fallback);
+
+        return {
+            NSFW生图后端类型: feature.文生图后端类型,
+            NSFW生图模型使用模型: pick(feature.NSFW生图模型使用模型, feature.文生图模型使用模型),
+            NSFW生图模型API地址: pick(feature.NSFW生图模型API地址, feature.文生图模型API地址),
+            NSFW生图模型API密钥: pick(feature.NSFW生图模型API密钥, feature.文生图模型API密钥),
+            当前NSFW图片后端发现ID: overwrite
+                ? feature.当前图片后端发现ID
+                : ((feature.当前NSFW图片后端发现ID || '').trim() || feature.当前图片后端发现ID),
+            NSFWComfyUI工作流JSON: pick(feature.NSFWComfyUI工作流JSON, feature.ComfyUI工作流JSON)
+        };
     };
 
     const handleBackendChange = (value: 功能模型占位配置结构['文生图后端类型']) => {
@@ -678,25 +736,32 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
     };
 
     const handleToggleNSFWIndependentImageApi = (checked: boolean) => {
+        setForm((prev) => {
+            const feature = prev.功能模型占位;
+            const shouldAutoReuseMain = checked && 主文生图后端可直接套用到NSFW && !NSFW独立接口已有专用配置(feature);
+            return {
+                ...prev,
+                功能模型占位: {
+                    ...feature,
+                    NSFW生图独立接口启用: checked,
+                    ...(shouldAutoReuseMain ? 构建NSFW沿用主接口配置(feature, { overwrite: true }) : {})
+                }
+            };
+        });
+    };
+
+    const handleApplyMainImageBackendToNSFW = () => {
         setForm((prev) => ({
             ...prev,
             功能模型占位: {
                 ...prev.功能模型占位,
-                NSFW生图独立接口启用: checked,
-                NSFW生图后端类型: checked
-                    ? prev.功能模型占位.NSFW生图后端类型
-                    : prev.功能模型占位.NSFW生图后端类型,
-                NSFW生图模型使用模型: checked
-                    ? ((prev.功能模型占位.NSFW生图模型使用模型 || '').trim() || (prev.功能模型占位.文生图模型使用模型 || '').trim())
-                    : prev.功能模型占位.NSFW生图模型使用模型,
-                NSFW生图模型API地址: checked
-                    ? ((prev.功能模型占位.NSFW生图模型API地址 || '').trim() || (prev.功能模型占位.文生图模型API地址 || '').trim())
-                    : prev.功能模型占位.NSFW生图模型API地址,
-                NSFW生图模型API密钥: checked
-                    ? ((prev.功能模型占位.NSFW生图模型API密钥 || '').trim() || (prev.功能模型占位.文生图模型API密钥 || '').trim())
-                    : prev.功能模型占位.NSFW生图模型API密钥
+                NSFW生图独立接口启用: true,
+                ...构建NSFW沿用主接口配置(prev.功能模型占位, { overwrite: true })
             }
         }));
+        setMessage(`已套用主${文生图后端选项.find((item) => item.value === 当前后端)?.label || '文生图'}接口到 NSFW 生图。`);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 2000);
     };
 
     const handleTestImageConnection = async () => {
@@ -915,6 +980,184 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
         setTimeout(() => setShowSuccess(false), 2000);
     };
 
+    const renderNSFWIndependentImageApiCard = () => (
+        <div className="rounded-2xl border border-rose-500/25 bg-[radial-gradient(circle_at_top,_rgba(244,63,94,0.14),_transparent_55%),rgba(20,8,14,0.72)] p-5 space-y-5">
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <div className="text-base font-bold text-rose-200">NSFW 独立生图接口</div>
+                    <div className="mt-1 text-xs leading-6 text-rose-100/70">
+                        开启后香闺秘档等成人向生图只走这里。OpenAI/GPT、Gemini、Nano Banana 会被自动视为不支持 NSFW，不会用于该类请求。
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    {主文生图后端可直接套用到NSFW && (
+                        <GameButton
+                            onClick={handleApplyMainImageBackendToNSFW}
+                            variant="secondary"
+                            className="px-3 py-2 text-xs"
+                        >
+                            套用主接口
+                        </GameButton>
+                    )}
+                    <ToggleSwitch
+                        checked={form.功能模型占位.NSFW生图独立接口启用}
+                        onChange={handleToggleNSFWIndependentImageApi}
+                        ariaLabel="切换 NSFW 独立生图接口"
+                    />
+                </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-rose-200">NSFW 后端</label>
+                    <InlineSelect
+                        value={当前NSFW后端}
+                        options={文生图后端选项}
+                        onChange={(value) => updatePlaceholder('NSFW生图后端类型', value as 功能模型占位配置结构['NSFW生图后端类型'])}
+                        disabled={!form.功能模型占位.NSFW生图独立接口启用}
+                        buttonClassName="bg-black/50 border-gray-600 py-2.5"
+                    />
+                </div>
+                <div className="rounded-xl border border-rose-500/20 bg-black/25 px-4 py-3 text-xs leading-6 text-rose-100/80">
+                    成人向过滤规则：后端为 OpenAI 兼容，或模型/地址含 gpt、openai、gemini、banana、nano 时，系统会返回不可用，避免误发到不支持的接口。
+                </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-rose-200">NSFW 接口地址</label>
+                    <input
+                        type="text"
+                        value={form.功能模型占位.NSFW生图模型API地址}
+                        onChange={(e) => updatePlaceholder('NSFW生图模型API地址', e.target.value)}
+                        placeholder={当前NSFW后端 === 'comfyui'
+                            ? '留空可沿用主 ComfyUI，或填写专用 8188 地址'
+                            : '留空则尝试沿用同类型主文生图接口'}
+                        disabled={!form.功能模型占位.NSFW生图独立接口启用}
+                        className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 text-white outline-none transition-all focus:border-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-rose-200">NSFW API Key / Token</label>
+                    <input
+                        type="password"
+                        value={form.功能模型占位.NSFW生图模型API密钥}
+                        onChange={(e) => updatePlaceholder('NSFW生图模型API密钥', e.target.value)}
+                        placeholder={当前NSFW后端 === 'sd_webui' || 当前NSFW后端 === 'comfyui' ? '可留空' : '填写专用 Key / Token'}
+                        disabled={!form.功能模型占位.NSFW生图独立接口启用}
+                        className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 text-white outline-none transition-all focus:border-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                </div>
+            </div>
+
+            {form.功能模型占位.NSFW生图独立接口启用 && 当前NSFW后端 === 'comfyui' && (
+                <div className="rounded-xl border border-rose-500/20 bg-rose-950/10 p-4 space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <div className="text-base font-bold text-rose-200">NSFW 自动发现后端</div>
+                            <div className="mt-1 text-xs leading-6 text-rose-100/70">
+                                可以从同一个注册表里挑一个在线 8188 后端；如果主接口本身就是 ComfyUI，也可以直接点上方“套用主接口”。
+                            </div>
+                        </div>
+                        <GameButton
+                            onClick={() => void refreshDiscoveredBackends()}
+                            variant="secondary"
+                            className="px-4 py-2 text-xs"
+                            disabled={discoveryLoading}
+                        >
+                            {discoveryLoading ? '刷新中...' : '刷新列表'}
+                        </GameButton>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-rose-200">在线后端</label>
+                        <InlineSelect
+                            value={form.功能模型占位.当前NSFW图片后端发现ID}
+                            options={discoveredBackends.map((item) => ({
+                                value: item.id,
+                                label: buildDiscoveredBackendLabel(item)
+                            }))}
+                            onChange={(value) => handleApplyDiscoveredBackend('nsfw', value)}
+                            placeholder={discoveryLoading ? '正在拉取在线后端...' : '选择 NSFW 使用的 ComfyUI 后端'}
+                            buttonClassName="bg-black/50 border-gray-600 py-2.5"
+                            panelClassName="max-w-full"
+                        />
+                    </div>
+                    {selectedNSFWDiscoveredBackend && (
+                        <div className="rounded-xl border border-rose-500/20 bg-black/20 px-4 py-3 text-xs leading-6 text-rose-100">
+                            当前已选：<code>{selectedNSFWDiscoveredBackend.url}</code>
+                            {selectedNSFWDiscoveredBackend.workspace ? <> · 工作区：<code>{selectedNSFWDiscoveredBackend.workspace}</code></> : null}
+                            {selectedNSFWDiscoveredBackend.lastHeartbeatAt ? <> · 最近心跳：<code>{selectedNSFWDiscoveredBackend.lastHeartbeatAt}</code></> : null}
+                        </div>
+                    )}
+                    {discoveryError && (
+                        <div className="rounded-xl border border-red-500/20 bg-red-950/20 px-4 py-3 text-xs leading-6 text-red-200">
+                            {discoveryError}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {图片后端需要模型选择(当前NSFW后端) ? (
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-rose-200">NSFW 模型名称</label>
+                    <input
+                        type="text"
+                        value={form.功能模型占位.NSFW生图模型使用模型}
+                        onChange={(e) => updatePlaceholder('NSFW生图模型使用模型', e.target.value)}
+                        placeholder={当前NSFW后端 === 'novelai' ? '例如：nai-diffusion-4-5-full' : '请选择支持成人向的专用模型'}
+                        disabled={!form.功能模型占位.NSFW生图独立接口启用}
+                        className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 text-white outline-none transition-all focus:border-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                </div>
+            ) : null}
+
+            {当前NSFW后端 === 'comfyui' ? (
+                <div className="space-y-2">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <label className="text-sm font-bold text-rose-200">NSFW ComfyUI Workflow JSON</label>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                onClick={() => { void openExternalUrl(CNB_GUIDE_URL); }}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-rose-400/30 bg-black/20 text-sm font-bold text-rose-100 transition-colors hover:border-rose-300 hover:text-white"
+                                aria-label="查看 ComfyUI API 文件导出教程"
+                                title="查看 ComfyUI API 文件导出教程"
+                            >
+                                ?
+                            </button>
+                            <GameButton
+                                onClick={() => nsfwComfyWorkflowImportRef.current?.click()}
+                                variant="secondary"
+                                className="px-4 py-2 text-xs"
+                                disabled={!form.功能模型占位.NSFW生图独立接口启用}
+                            >
+                                上传 API 文件
+                            </GameButton>
+                            <input
+                                ref={nsfwComfyWorkflowImportRef}
+                                type="file"
+                                accept="application/json,.json"
+                                onChange={(event) => void handleImportComfyWorkflow(event, 'nsfw')}
+                                className="hidden"
+                            />
+                        </div>
+                    </div>
+                    <textarea
+                        value={form.功能模型占位.NSFWComfyUI工作流JSON}
+                        onChange={(e) => updatePlaceholder('NSFWComfyUI工作流JSON', e.target.value)}
+                        rows={10}
+                        placeholder={'可留空以沿用主 ComfyUI workflow。\n可用占位符：__PROMPT__、__NEGATIVE_PROMPT__、__WIDTH__、__HEIGHT__'}
+                        disabled={!form.功能模型占位.NSFW生图独立接口启用}
+                        className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 font-mono text-white outline-none transition-all focus:border-rose-400 resize-y disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                    <div className="rounded-xl border border-rose-500/20 bg-black/20 px-4 py-3 text-xs leading-6 text-rose-100/80">
+                        留空时，如果主文生图后端同为 ComfyUI，会自动沿用主 workflow。支持占位符：{ComfyUI工作流占位提示}。
+                    </div>
+                </div>
+            ) : null}
+        </div>
+    );
+
     const renderBasicPage = () => (
         <div className={页面容器样式}>
             <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
@@ -1070,6 +1313,8 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                         )}
                     </div>
                 )}
+
+                {renderNSFWIndependentImageApiCard()}
             </div>
 
         </div>
@@ -1293,88 +1538,6 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                 </div>
             )}
 
-            <div className="rounded-2xl border border-rose-500/25 bg-[radial-gradient(circle_at_top,_rgba(244,63,94,0.14),_transparent_55%),rgba(20,8,14,0.72)] p-5 space-y-5">
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <div className="text-base font-bold text-rose-200">NSFW 独立生图接口</div>
-                        <div className="mt-1 text-xs leading-6 text-rose-100/70">开启后香闺秘档等成人向生图只走这里。OpenAI/GPT、Gemini、Nano Banana 会被自动视为不支持 NSFW，不会用于该类请求。</div>
-                    </div>
-                    <ToggleSwitch
-                        checked={form.功能模型占位.NSFW生图独立接口启用}
-                        onChange={handleToggleNSFWIndependentImageApi}
-                        ariaLabel="切换 NSFW 独立生图接口"
-                    />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-rose-200">NSFW 后端</label>
-                        <InlineSelect
-                            value={当前NSFW后端}
-                            options={文生图后端选项}
-                            onChange={(value) => updatePlaceholder('NSFW生图后端类型', value as 功能模型占位配置结构['NSFW生图后端类型'])}
-                            disabled={!form.功能模型占位.NSFW生图独立接口启用}
-                            buttonClassName="bg-black/50 border-gray-600 py-2.5"
-                        />
-                    </div>
-                    <div className="rounded-xl border border-rose-500/20 bg-black/25 px-4 py-3 text-xs leading-6 text-rose-100/80">
-                        成人向过滤规则：后端为 OpenAI 兼容，或模型/地址含 gpt、openai、gemini、banana、nano 时，系统会返回不可用，避免误发到不支持的接口。
-                    </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-rose-200">NSFW 接口地址</label>
-                        <input
-                            type="text"
-                            value={form.功能模型占位.NSFW生图模型API地址}
-                            onChange={(e) => updatePlaceholder('NSFW生图模型API地址', e.target.value)}
-                            placeholder={当前NSFW后端 === 'comfyui' ? '例如：http://127.0.0.1:8188' : '留空则尝试沿用同类型主文生图接口'}
-                            disabled={!form.功能模型占位.NSFW生图独立接口启用}
-                            className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 text-white outline-none transition-all focus:border-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-rose-200">NSFW API Key / Token</label>
-                        <input
-                            type="password"
-                            value={form.功能模型占位.NSFW生图模型API密钥}
-                            onChange={(e) => updatePlaceholder('NSFW生图模型API密钥', e.target.value)}
-                            placeholder={当前NSFW后端 === 'sd_webui' || 当前NSFW后端 === 'comfyui' ? '可留空' : '填写专用 Key / Token'}
-                            disabled={!form.功能模型占位.NSFW生图独立接口启用}
-                            className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 text-white outline-none transition-all focus:border-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
-                        />
-                    </div>
-                </div>
-
-                {图片后端需要模型选择(当前NSFW后端) ? (
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-rose-200">NSFW 模型名称</label>
-                        <input
-                            type="text"
-                            value={form.功能模型占位.NSFW生图模型使用模型}
-                            onChange={(e) => updatePlaceholder('NSFW生图模型使用模型', e.target.value)}
-                            placeholder={当前NSFW后端 === 'novelai' ? '例如：nai-diffusion-4-5-full' : '请选择支持成人向的专用模型'}
-                            disabled={!form.功能模型占位.NSFW生图独立接口启用}
-                            className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 text-white outline-none transition-all focus:border-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
-                        />
-                    </div>
-                ) : null}
-
-                {当前NSFW后端 === 'comfyui' ? (
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-rose-200">NSFW ComfyUI Workflow JSON</label>
-                        <textarea
-                            value={form.功能模型占位.NSFWComfyUI工作流JSON}
-                            onChange={(e) => updatePlaceholder('NSFWComfyUI工作流JSON', e.target.value)}
-                            rows={10}
-                            placeholder={'可留空以沿用同类型主 ComfyUI workflow。\n可用占位符：__PROMPT__、__NEGATIVE_PROMPT__、__WIDTH__、__HEIGHT__'}
-                            disabled={!form.功能模型占位.NSFW生图独立接口启用}
-                            className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 font-mono text-white outline-none transition-all focus:border-rose-400 resize-y disabled:cursor-not-allowed disabled:opacity-50"
-                        />
-                    </div>
-                ) : null}
-            </div>
         </div>
     );
 
