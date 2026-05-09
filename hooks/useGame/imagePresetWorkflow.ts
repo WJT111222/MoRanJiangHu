@@ -390,6 +390,72 @@ export const 创建图片预设工作流 = (deps: 图片预设工作流依赖) =
         ));
     };
 
+    const 自动角色锚点已启用 = (): boolean => (
+        规范化接口设置(deps.获取接口配置()).功能模型占位.自动角色锚点启用 !== false
+    );
+
+    const 压缩场景锚点提示词 = (text: string, maxTokens: number, maxChars: number): string => {
+        const deny = /(portrait|close-?up|upper body|waist-?up|full body|cowboy shot|wide shot|mid shot|low angle|high angle|standing|sitting|kneeling|running|jumping|walking|looking at viewer|looking away|from side|from behind|facing viewer|dynamic pose|action pose|background|scenery|environment|landscape|indoors|outdoors|rim light|lighting|sunlight|moonlight|fog|mist|rain|snow|depth of field|composition|framing|rule of thirds|atmospheric haze)/i;
+        const tokens = (text || '')
+            .split(/[,，;；\n]+/u)
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0 && /[\p{L}\p{N}]/u.test(item))
+            .filter((item, index, list) => list.findIndex((candidate) => candidate.toLowerCase() === item.toLowerCase()) === index)
+            .filter((item) => !deny.test(item))
+            .slice(0, Math.max(0, maxTokens));
+        const joined = tokens.join(', ');
+        return joined.length > maxChars ? `${joined.slice(0, maxChars).replace(/[,，;；\s]+$/u, '')}` : joined;
+    };
+
+    const 精简场景锚点结构化特征 = (
+        features?: 角色锚点结构['结构化特征']
+    ): 角色锚点结构['结构化特征'] | undefined => {
+        if (!features || typeof features !== 'object') return undefined;
+        const keys: Array<keyof NonNullable<角色锚点结构['结构化特征']>> = [
+            '外貌标签',
+            '身材标签',
+            '发型标签',
+            '发色标签',
+            '眼睛标签',
+            '肤色标签',
+            '年龄感标签',
+            '服装基底标签',
+            '特殊特征标签'
+        ];
+        const next: 角色锚点结构['结构化特征'] = {};
+        let total = 0;
+        keys.forEach((key) => {
+            if (total >= 14) return;
+            const values = Array.isArray(features[key]) ? features[key] : [];
+            const picked = values
+                .map((item) => String(item || '').trim())
+                .filter(Boolean)
+                .filter((item, index, list) => list.findIndex((candidate) => candidate.toLowerCase() === item.toLowerCase()) === index)
+                .slice(0, Math.min(3, 14 - total));
+            if (picked.length > 0) {
+                (next as any)[key] = picked;
+                total += picked.length;
+            }
+        });
+        return total > 0 ? next : undefined;
+    };
+
+    const 构建轻量场景角色锚点 = (
+        anchor: 角色锚点结构,
+        index: number
+    ): Pick<角色锚点结构, '名称' | '正面提示词' | '负面提示词' | '结构化特征'> | null => {
+        const 结构化特征 = 精简场景锚点结构化特征(anchor.结构化特征);
+        const 正面提示词 = 压缩场景锚点提示词(anchor.正面提示词, 18, 240);
+        const 负面提示词 = 压缩场景锚点提示词(anchor.负面提示词, 8, 120);
+        if (!正面提示词 && !结构化特征) return null;
+        return {
+            名称: `角色${index + 1}`,
+            正面提示词,
+            负面提示词,
+            结构化特征
+        };
+    };
+
     const 保存角色锚点 = async (
         anchor: 角色锚点结构,
         options?: { 设为当前?: boolean }
@@ -483,23 +549,22 @@ export const 创建图片预设工作流 = (deps: 图片预设工作流依赖) =
     );
 
     const 提取场景角色锚点 = (sceneContext: unknown): Array<Pick<角色锚点结构, '名称' | '正面提示词' | '负面提示词' | '结构化特征'>> => {
+        if (!自动角色锚点已启用()) return [];
         const overview = Array.isArray((sceneContext as any)?.人物快照?.场景人物总览)
             ? (sceneContext as any).人物快照.场景人物总览
             : [];
         const seen = new Set<string>();
         const anchors: Array<Pick<角色锚点结构, '名称' | '正面提示词' | '负面提示词' | '结构化特征'>> = [];
         overview.forEach((item: any) => {
+            if (anchors.length >= 2) return;
             const npcId = typeof item?.id === 'string' ? item.id.trim() : '';
             if (!npcId) return;
             const anchor = 按NPC读取角色锚点(npcId);
             if (!anchor || seen.has(anchor.id) || anchor.场景生图自动注入 !== true) return;
+            const lightAnchor = 构建轻量场景角色锚点(anchor, anchors.length);
+            if (!lightAnchor) return;
             seen.add(anchor.id);
-            anchors.push({
-                名称: `角色${anchors.length + 1}`,
-                正面提示词: anchor.正面提示词,
-                负面提示词: anchor.负面提示词,
-                结构化特征: anchor.结构化特征
-            });
+            anchors.push(lightAnchor);
         });
         return anchors;
     };

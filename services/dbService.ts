@@ -1160,6 +1160,7 @@ export const 清除图片相关提示词与预设 = async (): Promise<void> => {
             当前NPC词组转化器提示词预设ID: defaultFeature.当前NPC词组转化器提示词预设ID,
             当前场景词组转化器提示词预设ID: defaultFeature.当前场景词组转化器提示词预设ID,
             当前场景判定提示词预设ID: defaultFeature.当前场景判定提示词预设ID,
+            自动角色锚点启用: defaultFeature.自动角色锚点启用,
             角色锚点列表: defaultFeature.角色锚点列表,
             当前角色锚点ID: defaultFeature.当前角色锚点ID,
             PNG画风预设列表: defaultFeature.PNG画风预设列表,

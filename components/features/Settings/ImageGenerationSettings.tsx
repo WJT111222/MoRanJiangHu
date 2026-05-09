@@ -414,6 +414,7 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
             '词组转化器API地址',
             '词组转化器API密钥',
             '当前NAI词组转化器提示词预设ID',
+            '自动角色锚点启用',
         ];
         const scopeKeys: Record<生图配置档适用范围, Array<keyof 功能模型占位配置结构>> = {
             npc: ['NPC生图启用', '自动NPC生图画风', '当前NPC画师串预设ID', '当前NPCPNG画风预设ID', '当前NPC词组转化器提示词预设ID', 'NPC生图性别筛选', 'NPC生图重要性筛选'],
@@ -1553,6 +1554,20 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                         onChange={(next) => updatePlaceholder('NPC生图使用词组转化器', next)}
                         disabled={是否强制启用词组转化器}
                         ariaLabel="切换 NPC 生图词组转化器"
+                    />
+                </div>
+            </div>
+
+            <div className={卡片样式}>
+                <div className="flex items-center justify-between gap-3">
+                    <div>
+                        <div className="text-base font-bold text-cyan-200">自动角色锚点</div>
+                        <div className="mt-1 text-xs leading-6 text-cyan-100/75">关闭后不再自动提取角色锚点，也不把角色锚点自动注入背景/场景生图；已保存的手动锚点仍可单独管理。</div>
+                    </div>
+                    <ToggleSwitch
+                        checked={form.功能模型占位.自动角色锚点启用 !== false}
+                        onChange={(next) => updatePlaceholder('自动角色锚点启用', next)}
+                        ariaLabel="切换自动角色锚点"
                     />
                 </div>
             </div>

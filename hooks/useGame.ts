@@ -1760,7 +1760,12 @@ export const useGame = () => {
         return records.slice(-safeLimit);
     };
 
+    const 自动角色锚点已启用 = (): boolean => (
+        规范化接口设置(apiConfigRef.current).功能模型占位.自动角色锚点启用 !== false
+    );
+
     const 确保NPC生图前角色锚点 = async (npc: any) => {
+        if (!自动角色锚点已启用()) return;
         const npcId = typeof npc?.id === 'string' ? npc.id.trim() : '';
         if (!npcId || 按NPC读取角色锚点(npcId) || 角色锚点补全进行中Ref.current.has(npcId)) return;
         角色锚点补全进行中Ref.current.add(npcId);
@@ -2014,7 +2019,7 @@ export const useGame = () => {
             .map((npc) => {
                 const npcId = npc.id.trim();
                 const missingParts: string[] = [];
-                if (!按NPC读取角色锚点(npcId)) {
+                if (自动角色锚点已启用() && !按NPC读取角色锚点(npcId)) {
                     missingParts.push('anchor');
                 }
                 if (!NPC是否已有成功构图(npc, ['头像'])) {
@@ -3212,6 +3217,7 @@ export const useGame = () => {
         获取当前PNG画风预设: (presetId?: string) => 获取当前PNG画风预设摘要(presetId, 'npc'),
         读取主角角色锚点,
         提取主角角色锚点,
+        自动角色锚点已启用,
         获取词组转化器预设提示词,
         接口配置是否可用,
         读取文生图功能配置,

@@ -333,6 +333,7 @@ export interface 功能模型占位配置结构 {
     当前NPC词组转化器提示词预设ID: string;
     当前场景词组转化器提示词预设ID: string;
     当前场景判定提示词预设ID: string;
+    自动角色锚点启用: boolean;
     角色锚点列表: 角色锚点结构[];
     当前角色锚点ID: string;
     PNG画风预设列表: PNG画风预设结构[];

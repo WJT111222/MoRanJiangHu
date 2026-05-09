@@ -29,6 +29,7 @@ type 主角图片工作流依赖 = {
     获取当前PNG画风预设: (presetId?: string) => any;
     读取主角角色锚点: () => any;
     提取主角角色锚点: (options?: { 名称?: string; 额外要求?: string }) => Promise<any>;
+    自动角色锚点已启用?: () => boolean;
     获取词组转化器预设提示词: (config: any, scope: 'npc' | 'scene', mode?: 'default' | 'anchor') => string;
     接口配置是否可用: (config: 当前可用接口结构) => boolean;
     读取文生图功能配置: () => any;
@@ -169,7 +170,7 @@ export const 创建主角图片工作流 = (deps: 主角图片工作流依赖) =
         const playerSnapshot = meta?.playerSnapshot || deps.获取角色();
         const playerName = typeof playerSnapshot?.姓名 === 'string' && playerSnapshot.姓名.trim() ? playerSnapshot.姓名.trim() : '主角';
         const existingAnchor = deps.读取主角角色锚点();
-        if (!existingAnchor || !主角锚点是否匹配当前角色(existingAnchor, playerSnapshot)) {
+        if (deps.自动角色锚点已启用?.() !== false && (!existingAnchor || !主角锚点是否匹配当前角色(existingAnchor, playerSnapshot))) {
             try {
                 await deps.提取主角角色锚点({
                     名称: `${playerName} 角色锚点`
