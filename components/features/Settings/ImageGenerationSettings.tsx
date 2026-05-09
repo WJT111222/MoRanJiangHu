@@ -1218,12 +1218,12 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                         value={form.功能模型占位.NSFWComfyUI工作流JSON}
                         onChange={(e) => updatePlaceholder('NSFWComfyUI工作流JSON', e.target.value)}
                         rows={10}
-                        placeholder={'可留空以沿用主 ComfyUI workflow。\n可用占位符：__PROMPT__、__NEGATIVE_PROMPT__、__WIDTH__、__HEIGHT__'}
+                        placeholder={'默认会使用私密部位专用的旧版 mix ComfyUI workflow。\n可用占位符：__PROMPT__、__NEGATIVE_PROMPT__、__WIDTH__、__HEIGHT__'}
                         disabled={!form.功能模型占位.NSFW生图独立接口启用}
                         className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 font-mono text-white outline-none transition-all focus:border-rose-400 resize-y disabled:cursor-not-allowed disabled:opacity-50"
                     />
                     <div className="rounded-xl border border-rose-500/20 bg-black/20 px-4 py-3 text-xs leading-6 text-rose-100/80">
-                        留空时，如果主文生图后端同为 ComfyUI，会自动沿用主 workflow。支持占位符：{ComfyUI工作流占位提示}。
+                        留空时会自动使用私密部位专用的旧版 mix ComfyUI workflow，不再默认沿用主 workflow。支持占位符：{ComfyUI工作流占位提示}。
                     </div>
                 </div>
             ) : null}

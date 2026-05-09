@@ -590,7 +590,7 @@ export const 默认功能模型占位: 功能模型占位配置结构 = {
     NSFW生图模型API地址: '',
     NSFW生图模型API密钥: '',
     当前NSFW图片后端发现ID: '',
-    NSFWComfyUI工作流JSON: '',
+    NSFWComfyUI工作流JSON: 默认ComfyUI工作流JSON,
     文生图接口路径模式: 'preset',
     文生图预设接口路径: 'openai_images',
     文生图接口路径: '',
@@ -1221,7 +1221,7 @@ const 标准化功能模型占位 = (raw: any): 功能模型占位配置结构 =
         NSFW生图模型API地址: 读取字符串(raw?.NSFW生图模型API地址),
         NSFW生图模型API密钥: 读取字符串(raw?.NSFW生图模型API密钥),
         当前NSFW图片后端发现ID: 读取字符串(raw?.当前NSFW图片后端发现ID),
-        NSFWComfyUI工作流JSON: 读取字符串(raw?.NSFWComfyUI工作流JSON),
+        NSFWComfyUI工作流JSON: 读取字符串(raw?.NSFWComfyUI工作流JSON) || 默认ComfyUI工作流JSON,
         文生图接口路径模式: raw?.文生图接口路径模式 === 'custom' ? 'custom' : 'preset',
         文生图预设接口路径: raw?.文生图预设接口路径 === 'openai_chat'
             || raw?.文生图预设接口路径 === 'novelai_generate'
