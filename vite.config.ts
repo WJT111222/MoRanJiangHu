@@ -160,26 +160,6 @@ export default defineConfig(({ mode }) => {
               return 'prompts-misc';
             }
  
-            if (normalizedId.includes('/components/features/Social/ImageManagerModal')) {
-              return 'image-manager-desktop';
-            }
- 
-            if (normalizedId.includes('/components/features/Social/mobile/MobileImageManagerModal')) {
-              return 'image-manager-mobile';
-            }
- 
-            if (normalizedId.includes('/components/features/Settings/mobile/MobileSettingsModal')) {
-              return 'settings-mobile-entry';
-            }
- 
-            if (normalizedId.includes('/components/features/Settings/SettingsModal')) {
-              return 'settings-desktop-entry';
-            }
- 
-            if (normalizedId.includes('/components/features/Settings/')) {
-              return 'settings-panels';
-            }
- 
             if (
               normalizedId.includes('/services/ai/') ||
               normalizedId.includes('/hooks/useGame/') ||

@@ -1,15 +1,26 @@
 {
-  "versionCode": 73,
-  "versionName": "1.0.72",
+  "versionCode": 74,
+  "versionName": "1.0.73",
   "releaseChannel": "stable",
-  "releasePublishedAt": "2026-05-09T23:59:00.000+08:00",
+  "releasePublishedAt": "2026-05-10T01:15:00.000+08:00",
   "releaseNotes": [
-    "正式发布 1.0.72，修复 NSFW 生图接口识别 bug，ComfyUI 和 SD WebUI 后端现可正确判定为支持 NSFW。",
-    "修复生图接口支持 NSFW 检测函数误将供应商字段（openai_compatible）纳入黑名单导致 SD WebUI / ComfyUI 后端被错误过滤的问题。",
-    "新增 37 个 NSFW 生图端到端单元测试，覆盖接口配置解析、NSFW 支持检测、提示词生成和各种兜底场景。",
-    "网页端、APK 包和更新清单同步提升到 v1.0.72 / CODE 73。"
+    "正式发布 1.0.73，修复网页端首页会预加载设置与图册等大资源，导致部分网络环境下长时间白屏或打不开的问题。",
+    "调整前端打包分块策略，让设置面板和图册回到真正按需加载，明显减少首页首次请求体积与阻塞资源。",
+    "收紧进入游戏后的弹窗预热策略，慢网或省流量环境不再主动拉取重模块，首页与进游戏都更稳。",
+    "网页端、APK 包和更新清单同步提升到 v1.0.73 / CODE 74。"
   ],
   "releaseHistory": [
+    {
+      "versionCode": 73,
+      "versionName": "1.0.72",
+      "publishedAt": "2026-05-09T23:59:00.000+08:00",
+      "changes": [
+        "正式发布 1.0.72，修复 NSFW 生图接口识别 bug，ComfyUI 和 SD WebUI 后端现可正确判定为支持 NSFW。",
+        "修复生图接口支持 NSFW 检测函数误将供应商字段（openai_compatible）纳入黑名单导致 SD WebUI / ComfyUI 后端被错误过滤的问题。",
+        "新增 37 个 NSFW 生图端到端单元测试，覆盖接口配置解析、NSFW 支持检测、提示词生成和各种兜底场景。",
+        "网页端、APK 包和更新清单同步提升到 v1.0.72 / CODE 73。"
+      ]
+    },
     {
       "versionCode": 71,
       "versionName": "1.0.70",

@@ -135,6 +135,40 @@ const MobileMusicPlayer = 创建可预加载懒组件('mobile-music-player', () 
 const NovelDecompositionWorkbenchModal = 创建可预加载懒组件('novel-decomposition-workbench-modal', () => import('./components/features/NovelDecomposition/NovelDecompositionWorkbenchModal'));
 const AuctionHouseModal = 创建可预加载懒组件('auction-house-modal', () => import('./components/features/AuctionHouse/AuctionHouseModal'));
 
+
+type 可选网络信息 = {
+    downlink?: number;
+    effectiveType?: string;
+    saveData?: boolean;
+};
+
+const 桌面轻量预热目标 = [
+    CharacterModal,
+    InventoryModal,
+    TaskModal,
+    StoryModal,
+    SaveLoadModal
+] as const;
+
+const 移动端轻量预热目标 = [
+    MobileCharacter,
+    MobileInventoryModal,
+    MobileTask,
+    MobileStory
+] as const;
+
+const 网络较慢或节省流量 = (connection?: 可选网络信息 | null): boolean => {
+    if (!connection) return false;
+    if (connection.saveData) return true;
+    const effectiveType = typeof connection.effectiveType === 'string'
+        ? connection.effectiveType.toLowerCase()
+        : '';
+    if (effectiveType === 'slow-2g' || effectiveType === '2g') return true;
+    if (typeof connection.downlink === 'number' && Number.isFinite(connection.downlink) && connection.downlink < 1.5) {
+        return true;
+    }
+    return false;
+};
 const 懒加载占位: React.FC = () => (
     <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/45 px-6 py-10 text-center backdrop-blur-[2px]">
         <div
@@ -595,37 +629,20 @@ const App: React.FC = () => {
     React.useEffect(() => {
         if (state.view !== 'game' || typeof window === 'undefined') return;
 
-        const preloadTargets = isMobile
-            ? [
-                MobileCharacter,
-                MobileInventoryModal,
-                MobileSocial,
-                MobileTask,
-                MobileStory,
-                NovelExportModal,
-                AuctionHouseModal,
-                MobileSettingsModal,
-                MobileMemory,
-                MobileWorldModal,
-                MobileMapModal,
-                MobileMusicPlayer
-            ]
-            : [
-                CharacterModal,
-                InventoryModal,
-                SocialModal,
-                TaskModal,
-                StoryModal,
-                NovelExportModal,
-                AuctionHouseModal,
-                SettingsModal,
-                MemoryModal,
-                WorldModal,
-                MapModal,
-                SaveLoadModal
-            ];
-
         let cancelled = false;
+        const connection = (
+            navigator as Navigator & {
+                connection?: 可选网络信息;
+                mozConnection?: 可选网络信息;
+                webkitConnection?: 可选网络信息;
+            }
+        ).connection
+            || (navigator as Navigator & { mozConnection?: 可选网络信息 }).mozConnection
+            || (navigator as Navigator & { webkitConnection?: 可选网络信息 }).webkitConnection
+            || null;
+        const preloadTargets = 网络较慢或节省流量(connection)
+            ? []
+            : (isMobile ? 移动端轻量预热目标 : 桌面轻量预热目标);
         const idleWindow = window as typeof window & {
             requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
             cancelIdleCallback?: (id: number) => void;
@@ -635,19 +652,19 @@ const App: React.FC = () => {
         let timerId: number | null = null;
 
         const warmup = () => {
-            if (cancelled) return;
+            if (cancelled || preloadTargets.length === 0) return;
             preloadTargets.forEach((target, index) => {
                 window.setTimeout(() => {
                     if (cancelled) return;
                     void target.preload?.();
-                }, index * 160);
+                }, 1200 + index * 360);
             });
         };
 
         if (typeof idleWindow.requestIdleCallback === 'function') {
-            idleId = idleWindow.requestIdleCallback(() => warmup(), { timeout: 1200 });
+            idleId = idleWindow.requestIdleCallback(() => warmup(), { timeout: 2400 });
         } else {
-            timerId = window.setTimeout(warmup, 600);
+            timerId = window.setTimeout(warmup, 1800);
         }
 
         return () => {
