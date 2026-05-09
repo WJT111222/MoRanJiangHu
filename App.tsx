@@ -2299,6 +2299,7 @@ const App: React.FC = () => {
                                 onNotify={(title, message, tone) => actions.pushNotification({ title, message, tone })}
                                 onClose={() => setShowAuctionHouse(false)}
                                 isMobile={isMobile}
+                                apiConfig={state.apiConfig}
                             />
                         </懒加载边界>
                     )}
