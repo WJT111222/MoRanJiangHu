@@ -12,6 +12,7 @@ import {
     同人女主剧情规划结构
 } from '../../types';
 import { applyStateCommand } from '../../utils/stateHelpers';
+import { 规范化任务列表自动结算 } from '../../utils/taskCompat';
 
 export type 响应命令处理状态 = {
     角色: 角色数据结构;
@@ -129,7 +130,7 @@ export const 执行响应命令处理 = (
             世界: deps.规范化世界状态(worldBuffer),
             战斗: battleBuffer,
             玩家门派: deps.规范化门派状态(sectBuffer),
-            任务列表: Array.isArray(tasksBuffer) ? tasksBuffer : [],
+            任务列表: 规范化任务列表自动结算(Array.isArray(tasksBuffer) ? tasksBuffer : []),
             约定列表: Array.isArray(agreementsBuffer) ? agreementsBuffer : [],
             剧情: storyBuffer,
             剧情规划: deps.规范化剧情规划状态(storyPlanBuffer),
@@ -168,7 +169,7 @@ export const 执行响应命令处理 = (
         世界: deps.规范化世界状态(worldBuffer),
         战斗: battleBuffer,
         玩家门派: deps.规范化门派状态(sectBuffer),
-        任务列表: Array.isArray(tasksBuffer) ? tasksBuffer : [],
+        任务列表: 规范化任务列表自动结算(Array.isArray(tasksBuffer) ? tasksBuffer : []),
         约定列表: Array.isArray(agreementsBuffer) ? agreementsBuffer : [],
         剧情: deps.规范化剧情状态(storyBuffer),
         剧情规划: deps.规范化剧情规划状态(storyPlanBuffer),

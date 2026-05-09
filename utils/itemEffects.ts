@@ -39,6 +39,10 @@ const 推断基础数值 = (item: any): number => {
     return Math.max(10, Math.min(300, Math.max(byQuality, byValue)));
 };
 
+const 是否攻杀消耗品 = (text: string): boolean => (
+    /毒箭|毒羽箭|箭簇|羽箭|毒镖|毒针|毒刃|暗器|毒粉|迷烟|断肠|见血封喉|淬毒|涂毒|麻痹|致盲|控场/.test(text)
+);
+
 export const 规范化消耗品使用效果 = (item: any): 标准使用效果[] => {
     if (!item || 取文本(item?.类型) !== '消耗品') return [];
 
@@ -56,8 +60,6 @@ export const 规范化消耗品使用效果 = (item: any): 标准使用效果[] 
             && effect.数值 !== 0
         ));
 
-    if (effects.length > 0) return 合并同类效果(effects);
-
     const text = `${取文本(item?.名称)} ${取文本(item?.描述)} ${取文本(item?.视觉描述)}`;
     const base = 推断基础数值(item);
     const inferred: 标准使用效果[] = [];
@@ -65,14 +67,28 @@ export const 规范化消耗品使用效果 = (item: any): 标准使用效果[] 
         inferred.push({ 目标属性, 数值: Math.round(数值), 依据 });
     };
 
+    if (是否攻杀消耗品(text)) {
+        const toxicity = Math.max(取数字(item?.毒性), Math.round(base * 0.6));
+        const attackEffects = effects.filter((effect) => /杀伤|敌方|中毒|命中|防御|身法|迟滞|麻痹|致盲/.test(effect.目标属性));
+        if (!attackEffects.some((effect) => !/^敌方/.test(effect.目标属性) && effect.数值 > 0)) {
+            add('杀伤力', Math.max(10, Math.round(base * 0.9)), '根据名称/描述中的毒箭、箭簇、淬毒或暗器特征补全为攻杀效能。');
+        }
+        if (!attackEffects.some((effect) => /^敌方/.test(effect.目标属性) || effect.数值 < 0)) {
+            add('敌方中毒', -toxicity, '根据名称/描述中的毒性、断肠、见血封喉等词补全为对敌减益。');
+        }
+        return 合并同类效果([...attackEffects, ...inferred]);
+    }
+
+    if (effects.length > 0) return 合并同类效果(effects);
+
     if (/内力|真气|灵力|回气|补气|补内|元气/.test(text)) {
         add('当前内力', base, '根据名称/描述中的内力、真气、回气等词补全。');
     }
     if (/精力|体力|耐力|醒神|续航|疲劳|提神/.test(text)) {
         add('当前精力', base, '根据名称/描述中的精力、体力、醒神等词补全。');
     }
-    if (/气血|生命|疗伤|活血|止血|接骨|续筋|回春|伤势|创伤|化瘀/.test(text)) {
-        add('全身血量', Math.round(base * 0.75), '根据名称/描述中的疗伤、活血、接骨、化瘀等词补全。');
+    if (/气血|生命|疗伤|活血|止血|接骨|续筋|回春|伤势|创伤|化瘀|绷带|包扎|防感染|防止感染/.test(text)) {
+        add('全身血量', Math.round(base * 0.75), '根据名称/描述中的疗伤、止血、绷带、包扎或化瘀等词补全。');
     }
     if (/饱腹|干粮|食物|饭|肉|糕|饼|酒|茶/.test(text)) {
         add('当前饱腹', Math.round(base * 0.8), '根据名称/描述中的食物、干粮、酒茶等词补全。');

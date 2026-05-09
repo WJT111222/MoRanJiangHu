@@ -7,11 +7,12 @@ interface Props {
     sectData: 详细门派结构;
     currentTime: 游戏时间格式; // "YYYY:MM:DD:HH:MM"
     onClose: () => void;
+    onOpenNpc?: (npc: any) => void;
 }
 
 type Tab = 'hall' | 'missions' | 'exchange' | 'library' | 'members';
 
-const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
+const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc }) => {
     const [activeTab, setActiveTab] = useState<Tab>('hall');
     const [missionFilter, setMissionFilter] = useState<'all' | 'active' | 'available'>('all');
 
@@ -54,6 +55,32 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
         副掌门: 6500,
         掌门: 12000
     };
+    const 职位折扣: Record<string, number> = {
+        杂役弟子: 0,
+        外门弟子: 0.05,
+        内门弟子: 0.1,
+        真传弟子: 0.15,
+        执事: 0.18,
+        长老: 0.22,
+        副掌门: 0.26,
+        掌门: 0.3
+    };
+    const 职位特权: Record<string, string[]> = {
+        杂役弟子: ['基础任务', '入门补给'],
+        外门弟子: ['藏经阁入门典籍', '聚宝阁九五折'],
+        内门弟子: ['进阶典籍', '聚宝阁九折'],
+        真传弟子: ['真传典籍优先', '聚宝阁八五折'],
+        执事: ['执事任务', '聚宝阁八二折'],
+        长老: ['高阶典籍调阅', '聚宝阁七八折'],
+        副掌门: ['门派要务', '聚宝阁七四折'],
+        掌门: ['全阁调阅', '聚宝阁七折']
+    };
+    const 当前折扣 = 职位折扣[sectData.玩家职位] || 0;
+    const 当前折扣文本 = 当前折扣 > 0 ? `${Math.round((1 - 当前折扣) * 100)}折` : '无折扣';
+    const 计算折后贡献 = (price: number) => Math.max(1, Math.ceil(price * (1 - 当前折扣)));
+    const 职位可达 = (requiredRank?: string) => (
+        (职位等级排序[sectData.玩家职位] || 0) >= (职位等级排序[requiredRank || '杂役弟子'] || 0)
+    );
 
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[200] hidden md:flex items-center justify-center p-4 animate-fadeIn">
@@ -169,6 +196,9 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
                                                         <div className="flex-1">
                                                             <div className={`font-bold ${isCurrent ? 'text-wuxia-gold' : 'text-gray-200'}`}>{rank}</div>
                                                             <div className="mt-1 text-xs text-gray-300">累计贡献 {累计贡献} / {required}</div>
+                                                            <div className="mt-1 text-[11px] text-gray-500">
+                                                                {(职位特权[rank] || []).join(' · ') || '暂无特权'}
+                                                            </div>
                                                         </div>
                                                         {isCurrent && <span className="text-xs text-wuxia-gold border border-wuxia-gold px-2 rounded">当前</span>}
                                                         {!isCurrent && contributionReady && <span className="text-xs text-emerald-200 border border-emerald-400/50 px-2 rounded">贡献达标</span>}
@@ -190,6 +220,15 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
                                              </div>
                                          </div>
                                          <p className="mt-4 text-sm leading-6 text-gray-300">晋升只看累计生成过的贡献点，聚宝阁兑换只消耗当前可用贡献。</p>
+                                         <div className="mt-4 rounded border border-wuxia-gold/20 bg-black/25 p-3">
+                                             <div className="text-xs tracking-widest text-wuxia-gold/70">当前身份特权</div>
+                                             <div className="mt-2 text-sm text-gray-200">{sectData.玩家职位} · 聚宝阁{当前折扣文本}</div>
+                                             <div className="mt-2 flex flex-wrap gap-2">
+                                                 {(职位特权[sectData.玩家职位] || ['基础门派事务']).map(item => (
+                                                     <span key={item} className="rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-gray-300">{item}</span>
+                                                 ))}
+                                             </div>
+                                         </div>
                                      </div>
                                 </div>
                             </div>
@@ -297,7 +336,8 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
                                  </div>
                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                                      {sectData.兑换列表.map(good => {
-                                         const canExchange = sectData.玩家贡献 >= good.兑换价格 && good.库存 > 0;
+                                         const discountedPrice = 计算折后贡献(good.兑换价格);
+                                         const canExchange = 职位可达(good.要求职位) && sectData.玩家贡献 >= discountedPrice && good.库存 > 0;
                                          return (
                                              <div key={good.id} className="bg-black/40 border border-gray-700 p-4 rounded-lg flex flex-col gap-3 group hover:border-wuxia-gold/50 transition-colors">
                                                  <div className="flex justify-between items-start">
@@ -308,11 +348,17 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
                                                      要求: <span className="text-gray-100">{good.要求职位}</span>
                                                  </div>
                                                  <div className="mt-auto pt-2 border-t border-gray-800 flex justify-between items-center">
-                                                     <div className="text-wuxia-gold font-mono font-bold">{good.兑换价格} 贡献</div>
+                                                     <div className="text-wuxia-gold font-mono font-bold">
+                                                         {discountedPrice} 贡献
+                                                         {discountedPrice !== good.兑换价格 && (
+                                                             <span className="ml-2 text-xs text-gray-500 line-through">{good.兑换价格}</span>
+                                                         )}
+                                                     </div>
                                                      <div className="text-xs text-gray-300">库存: {good.库存}</div>
                                                  </div>
+                                                 {当前折扣 > 0 && <div className="text-[11px] text-emerald-300">身份折扣：{当前折扣文本}</div>}
                                                  <button className={`rounded px-3 py-2 text-sm font-bold transition-colors ${canExchange ? 'border border-wuxia-gold bg-wuxia-gold/15 text-wuxia-gold hover:bg-wuxia-gold hover:text-black' : 'border border-gray-700 bg-gray-900 text-gray-400 cursor-not-allowed'}`}>
-                                                     {canExchange ? '可兑换' : '贡献不足'}
+                                                     {canExchange ? '可兑换' : !职位可达(good.要求职位) ? '身份不足' : '贡献不足'}
                                                  </button>
                                              </div>
                                          );
@@ -325,7 +371,7 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
                         {activeTab === 'library' && (
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-slide-in">
                                  {(sectData.藏经阁列表 || []).map(book => {
-                                     const canRead = 累计贡献 >= book.要求累计贡献;
+                                     const canRead = 职位可达(book.要求职位) && 累计贡献 >= book.要求累计贡献;
                                      return (
                                          <div key={book.id} className="bg-black/40 border border-gray-700 p-5 rounded-lg transition-colors hover:border-wuxia-gold/50">
                                              <div className="flex items-start justify-between gap-4">
@@ -336,17 +382,24 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
                                                          <span className="rounded border border-white/15 px-2 py-0.5 text-gray-200">{book.品阶}</span>
                                                      </div>
                                                  </div>
-                                                 <span className={`rounded border px-2 py-1 text-xs ${canRead ? 'border-emerald-400/50 text-emerald-200' : 'border-gray-700 text-gray-300'}`}>
-                                                     {canRead ? '可阅' : '贡献未足'}
-                                                 </span>
+                                                  <span className={`rounded border px-2 py-1 text-xs ${canRead ? 'border-emerald-400/50 text-emerald-200' : 'border-gray-700 text-gray-300'}`}>
+                                                      {canRead ? '可学' : !职位可达(book.要求职位) ? '身份未足' : '贡献未足'}
+                                                  </span>
                                              </div>
                                              <p className="mt-4 text-sm leading-6 text-gray-300">{book.简介}</p>
-                                             <div className="mt-4 grid grid-cols-2 gap-2 text-sm text-gray-300">
-                                                 <div className="rounded border border-white/10 bg-black/20 px-3 py-2">职位 {book.要求职位}</div>
-                                                 <div className="rounded border border-white/10 bg-black/20 px-3 py-2">累计贡献 {book.要求累计贡献}</div>
-                                             </div>
-                                         </div>
-                                     );
+                                              <div className="mt-4 grid grid-cols-2 gap-2 text-sm text-gray-300">
+                                                  <div className="rounded border border-white/10 bg-black/20 px-3 py-2">职位 {book.要求职位}</div>
+                                                  <div className="rounded border border-white/10 bg-black/20 px-3 py-2">累计贡献 {book.要求累计贡献}</div>
+                                              </div>
+                                              <button
+                                                  type="button"
+                                                  disabled={!canRead}
+                                                  className={`mt-4 w-full rounded px-3 py-2 text-sm font-bold transition-colors ${canRead ? 'border border-wuxia-gold bg-wuxia-gold/15 text-wuxia-gold hover:bg-wuxia-gold hover:text-black' : 'border border-gray-700 bg-gray-900 text-gray-400 cursor-not-allowed'}`}
+                                              >
+                                                  学习
+                                              </button>
+                                          </div>
+                                      );
                                  })}
                              </div>
                         )}
@@ -355,7 +408,12 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
                         {activeTab === 'members' && (
                             <div className="space-y-4 animate-slide-in">
                                 {sectData.重要成员.map(mem => (
-                                    <div key={mem.id} className="bg-black/40 border border-gray-700 p-4 rounded-lg flex flex-col gap-3 relative overflow-hidden group hover:bg-black/60 transition-colors">
+                                    <button
+                                        key={mem.id}
+                                        type="button"
+                                        onClick={() => onOpenNpc?.(mem)}
+                                        className="w-full text-left bg-black/40 border border-gray-700 p-4 rounded-lg flex flex-col gap-3 relative overflow-hidden group hover:bg-black/60 hover:border-wuxia-gold/40 transition-colors"
+                                    >
                                         <div className="flex items-start gap-4 z-10">
                                             <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg border shrink-0 ${mem.性别 === '女' ? 'border-pink-900 bg-pink-900/10 text-pink-500' : 'border-blue-900 bg-blue-900/10 text-blue-500'}`}>
                                                 {mem.姓名[0]}
@@ -375,7 +433,7 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
                                                 </p>
                                             </div>
                                         </div>
-                                    </div>
+                                    </button>
                                 ))}
                             </div>
                         )}

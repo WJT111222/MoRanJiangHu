@@ -9,9 +9,10 @@ interface Props {
     socialList?: any[];
     debugEnabled?: boolean;
     onClose: () => void;
+    onOpenPerson?: (person: any) => void;
 }
 
-const MobileMapModal: React.FC<Props> = ({ world, env, socialList = [], debugEnabled = false, onClose }) => (
+const MobileMapModal: React.FC<Props> = ({ world, env, socialList = [], debugEnabled = false, onClose, onOpenPerson }) => (
     <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/95 p-2 backdrop-blur-sm md:hidden animate-fadeIn">
         <div className="relative flex h-[92vh] w-full flex-col overflow-hidden rounded-xl border border-wuxia-gold/20 bg-[#0b0907]/95 shadow-[0_0_80px_rgba(0,0,0,0.9)]">
             <div className="flex h-14 shrink-0 items-center justify-between border-b border-wuxia-gold/10 bg-black/70 px-4">
@@ -34,6 +35,7 @@ const MobileMapModal: React.FC<Props> = ({ world, env, socialList = [], debugEna
                     env={env}
                     socialList={socialList}
                     debugEnabled={debugEnabled}
+                    onOpenPerson={onOpenPerson}
                     compact
                 />
             </div>

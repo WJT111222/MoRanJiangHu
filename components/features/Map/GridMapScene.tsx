@@ -13,6 +13,7 @@ interface Props {
     socialList?: any[];
     debugEnabled?: boolean;
     compact?: boolean;
+    onOpenPerson?: (person: any) => void;
 }
 
 type 选中对象类型 =
@@ -93,6 +94,7 @@ const GridMapScene: React.FC<Props> = ({
     socialList = [],
     debugEnabled = false,
     compact = false,
+    onOpenPerson,
 }) => {
     const normalizedWorld = useMemo(() => 补齐世界地图空间字段(world, { env }), [world, env]);
     const defaultScene = useMemo(() => 构建地图空间场景(world, env, socialList), [world, env, socialList]);
@@ -180,6 +182,13 @@ const GridMapScene: React.FC<Props> = ({
 
     const mapWidth = Math.max(12, Number(selectedLayer?.网格宽度) || 24);
     const mapHeight = Math.max(12, Number(selectedLayer?.网格高度) || 24);
+    const 约束标签X = (x: number, width: number) => Math.max(0.25, Math.min(mapWidth - width - 0.25, x - width / 2));
+    const 打开人物 = (person: any) => {
+        setSelectedFeatureId(`person:${person.ID}`);
+        if (!person?.是否当前玩家) {
+            onOpenPerson?.(person);
+        }
+    };
     const currentPlace = 取文本(env?.具体地点, 取文本(env?.小地点, '未知地点'));
     const contourLines = useMemo(
         () => 生成等高线(selectedLayer, currentLayerBuildings, mapWidth, mapHeight),
@@ -427,16 +436,21 @@ const GridMapScene: React.FC<Props> = ({
 
                             {currentLayerPeople.map((person) => {
                                 const active = selectedFeatureId === `person:${person.ID}`;
+                                const showLabel = active || person.是否当前玩家;
+                                const labelText = person.名称.slice(0, 6);
+                                const labelWidth = Math.max(2.8, labelText.length * 0.68 + 0.7);
+                                const labelX = 约束标签X(person.坐标.x, labelWidth);
+                                const labelY = Math.max(0.25, person.坐标.y - 0.52);
                                 return (
                                     <g
                                         key={person.ID}
                                         role="button"
                                         tabIndex={0}
-                                        onClick={() => setSelectedFeatureId(`person:${person.ID}`)}
+                                        onClick={() => 打开人物(person)}
                                         onKeyDown={(event) => {
                                             if (event.key === 'Enter' || event.key === ' ') {
                                                 event.preventDefault();
-                                                setSelectedFeatureId(`person:${person.ID}`);
+                                                打开人物(person);
                                             }
                                         }}
                                         className="cursor-pointer"
@@ -448,18 +462,34 @@ const GridMapScene: React.FC<Props> = ({
                                             fill={person.是否当前玩家 ? 'rgba(249, 217, 118, 0.96)' : active ? 'rgba(147, 197, 253, 0.95)' : 'rgba(196, 181, 253, 0.85)'}
                                             stroke={person.是否当前玩家 ? 'rgba(255, 244, 183, 1)' : 'rgba(10,10,10,0.7)'}
                                             strokeWidth={0.16}
-                                            pointerEvents="none"
+                                            pointerEvents="auto"
                                         />
-                                        <text
-                                            x={person.坐标.x}
-                                            y={person.坐标.y - 1.4}
-                                            textAnchor="middle"
-                                            fill={person.是否当前玩家 ? '#fde68a' : 'rgba(229,231,235,0.86)'}
-                                            fontSize="0.95"
-                                            pointerEvents="none"
-                                        >
-                                            {person.名称.slice(0, 6)}
-                                        </text>
+                                        {showLabel && (
+                                            <>
+                                                <rect
+                                                    x={labelX}
+                                                    y={labelY}
+                                                    width={labelWidth}
+                                                    height={1.05}
+                                                    rx={0.24}
+                                                    fill={person.是否当前玩家 ? 'rgba(63, 49, 12, 0.92)' : 'rgba(5, 8, 14, 0.92)'}
+                                                    stroke={active ? 'rgba(249, 217, 118, 0.86)' : 'rgba(255,255,255,0.28)'}
+                                                    strokeWidth={0.08}
+                                                    pointerEvents="none"
+                                                />
+                                                <text
+                                                    x={labelX + labelWidth / 2}
+                                                    y={labelY + 0.54}
+                                                    textAnchor="middle"
+                                                    dominantBaseline="middle"
+                                                    fill={person.是否当前玩家 ? '#fde68a' : 'rgba(229,231,235,0.92)'}
+                                                    fontSize="0.72"
+                                                    pointerEvents="none"
+                                                >
+                                                    {labelText}
+                                                </text>
+                                            </>
+                                        )}
                                     </g>
                                 );
                             })}
@@ -479,6 +509,15 @@ const GridMapScene: React.FC<Props> = ({
                             )}
                         </div>
                         <p className="mt-3 whitespace-pre-line text-sm leading-7 text-gray-300">{detailBody}</p>
+                        {selectedFeature?.kind === 'person' && !selectedFeature.data?.是否当前玩家 && onOpenPerson && (
+                            <button
+                                type="button"
+                                onClick={() => onOpenPerson(selectedFeature.data)}
+                                className="mt-3 rounded-lg border border-wuxia-gold/30 bg-wuxia-gold/10 px-3 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold hover:text-black"
+                            >
+                                查看角色
+                            </button>
+                        )}
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-black/30 p-4">

@@ -252,7 +252,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                 ?
             </button>
         </div>
-        <div className="pointer-events-none absolute bottom-[calc(100%+8px)] left-0 z-50 hidden w-80 max-w-[min(80vw,22rem)] rounded-lg border border-wuxia-gold/45 bg-[#14110a] p-3 text-sm leading-6 text-amber-50 shadow-[0_16px_42px_rgba(0,0,0,0.78)] group-hover:block group-focus-within:block">
+        <div className="pointer-events-none absolute bottom-[calc(100%+8px)] right-0 z-50 hidden w-80 max-w-[min(80vw,22rem)] rounded-lg border border-wuxia-gold/45 bg-[#14110a] p-3 text-sm leading-6 text-amber-50 shadow-[0_16px_42px_rgba(0,0,0,0.78)] group-hover:block group-focus-within:block">
             <div className="mb-1 text-xs font-bold tracking-[0.16em] text-wuxia-gold">{groupTitle} · {entry.标签}</div>
             <div>{entry.依据}</div>
         </div>
@@ -537,7 +537,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                 return (
                             <div className="shrink-0 border-t border-wuxia-gold/20 bg-gradient-to-r from-black/95 via-[#08090b]/95 to-black/95 p-3 shadow-[0_-18px_45px_rgba(0,0,0,0.65)] backdrop-blur-md animate-fadeIn">
                                 <div className="grid min-w-0 items-start grid-cols-[minmax(220px,0.82fr)_minmax(280px,1fr)] gap-3">
-                                    <div className="relative flex min-w-0 gap-4 overflow-hidden rounded-xl border border-white/10 bg-black/30 p-3">
+                                    <div className="relative col-start-1 row-start-1 flex min-w-0 gap-4 overflow-hidden rounded-xl border border-white/10 bg-black/30 p-3">
                                         <div className={`absolute right-0 top-0 h-24 w-24 rounded-full opacity-20 blur-3xl ${getRarityStyles(getSafeText(selectedItem?.品质)).bg}`} />
                                         <div className={`relative z-10 flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-opacity-20 shadow-lg ${
                                             getRarityStyles(getSafeText(selectedItem?.品质)).border
@@ -578,11 +578,11 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                         </button>
                                     </div>
 
-                                    <div className="max-h-28 overflow-y-auto rounded-xl border border-white/10 bg-black/30 p-3 text-[15px] leading-7 text-gray-100 custom-scrollbar">
+                                    <div className="col-start-1 row-start-4 max-h-28 overflow-y-auto rounded-xl border border-white/10 bg-black/30 p-3 text-[15px] leading-7 text-gray-100 custom-scrollbar">
                                         {getSafeText(selectedItem?.描述, '暂无描述')}
                                     </div>
 
-                                    <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/5 p-3">
+                                    <div className="col-start-1 row-start-2 rounded-xl border border-emerald-400/20 bg-emerald-500/5 p-3">
                                         <div className="mb-2 flex items-center justify-between gap-3">
                                             <span className="text-sm font-bold tracking-[0.12em] text-emerald-100">拍卖行出售</span>
                                             <span className="truncate text-xs text-gray-300">按市场价寄售，下回合入账</span>
@@ -597,7 +597,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                         </button>
                                     </div>
 
-                                    <div className="rounded-xl border border-red-400/20 bg-red-500/5 p-3">
+                                    <div className="col-start-1 row-start-5 rounded-xl border border-red-400/20 bg-red-500/5 p-3">
                                         <div className="mb-2 flex items-center justify-between gap-3">
                                             <span className="text-sm font-bold tracking-[0.12em] text-red-100">直接丢弃</span>
                                             <span className="truncate text-xs text-gray-300">从背包移除当前物品</span>
@@ -613,7 +613,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                     </div>
 
                                     {selectedCanEquip ? (
-                                        <div className="rounded-xl border border-amber-400/20 bg-amber-500/5 p-3">
+                                        <div className="col-start-1 row-start-3 rounded-xl border border-amber-400/20 bg-amber-500/5 p-3">
                                             <div className="mb-2 flex items-center justify-between gap-3">
                                                 <span className="text-sm font-bold tracking-[0.12em] text-amber-100">装备操作</span>
                                                 <span className="truncate text-xs text-gray-300">
@@ -643,7 +643,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                             ) : null}
                                         </div>
                                     ) : selectedCanUse ? (
-                                        <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/5 p-3">
+                                        <div className="col-start-1 row-start-3 rounded-xl border border-emerald-400/20 bg-emerald-500/5 p-3">
                                             <div className="mb-2 flex items-center justify-between gap-3">
                                                 <span className="text-sm font-bold tracking-[0.12em] text-emerald-100">消耗操作</span>
                                                 <span className="truncate text-xs text-gray-300">持有：{getSafeNumber(selectedItem?.堆叠数量, 1)}</span>
@@ -661,12 +661,12 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                             ) : null}
                                         </div>
                                     ) : (
-                                        <div className="flex items-center justify-center rounded-xl border border-white/10 bg-black/25 text-sm text-gray-300">
+                                        <div className="col-start-1 row-start-3 flex items-center justify-center rounded-xl border border-white/10 bg-black/25 text-sm text-gray-300">
                                             此物品不可操作
                                         </div>
                                     )}
 
-                                    <div className="min-w-0 space-y-3 rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-gray-100">
+                                    <div className="col-start-2 row-start-1 row-span-5 min-w-0 space-y-3 overflow-y-auto rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-gray-100 custom-scrollbar">
                                         <div className="flex items-center justify-between gap-3">
                                             <div className="text-sm font-bold tracking-[0.18em] text-wuxia-gold">属性与判定依据</div>
                                             <div className="text-xs text-gray-300">悬停或聚焦 ? 查看说明</div>

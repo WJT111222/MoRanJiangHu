@@ -344,15 +344,48 @@
     transform: translateY(-50%);
   }
 
+  .desktop-detail-collapse-toggle {
+    position: fixed;
+    right: calc(12px + var(--desktop-right-detail-width) - 0.95rem);
+    top: calc(var(--desktop-game-top) + (100vh - var(--desktop-game-top) - var(--desktop-game-bottom)) / 2 + 2.35rem);
+    z-index: 520;
+    display: inline-flex;
+    height: 1.9rem;
+    width: 1.9rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid rgba(230, 200, 110, 0.34);
+    background: rgba(4, 4, 4, 0.72);
+    padding: 0;
+    color: rgb(var(--c-wuxia-gold));
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(12px);
+    line-height: 1;
+    transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+    transform: translateY(-50%);
+  }
+
   .desktop-detail-expand-toggle:hover {
     border-color: rgba(230, 200, 110, 0.72);
     background: rgba(20, 15, 8, 0.88);
     transform: translateY(-50%) translateX(-1px);
   }
 
+  .desktop-detail-collapse-toggle:hover {
+    border-color: rgba(230, 200, 110, 0.72);
+    background: rgba(20, 15, 8, 0.88);
+    transform: translateY(-50%) translateX(1px);
+  }
+
   .desktop-detail-expand-toggle--fullscreen {
     right: 1.4rem;
     top: 50%;
+  }
+
+  .desktop-detail-collapse-toggle--fullscreen {
+    right: 1.4rem;
+    top: calc(50% + 2.35rem);
   }
 
   .desktop-detail-expand-toggle--fullscreen:hover {
@@ -763,29 +796,6 @@
     grid-template-columns: repeat(auto-fill, minmax(13rem, 15rem)) !important;
     justify-content: start !important;
     padding-bottom: 0.5rem !important;
-  }
-
-  .desktop-right-detail-modal--auction_house:not(.desktop-right-detail-modal--fullscreen) .auction-house-trade-panel {
-    display: block !important;
-    flex: 0 0 auto !important;
-    max-height: none !important;
-    overflow-y: hidden !important;
-    overflow-x: hidden !important;
-    border-left-width: 0 !important;
-    border-top: 1px solid rgba(212, 175, 55, 0.12) !important;
-    padding: 0.75rem !important;
-  }
-
-  .desktop-right-detail-modal--auction_house:not(.desktop-right-detail-modal--fullscreen) .auction-house-trade-panel > div {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr)) !important;
-    align-items: start !important;
-    gap: 0.75rem !important;
-  }
-
-  .desktop-right-detail-modal--auction_house:not(.desktop-right-detail-modal--fullscreen) .auction-house-trade-panel section {
-    margin-top: 0 !important;
-    min-width: 0 !important;
   }
 
   .desktop-right-detail-modal--fullscreen .fixed {

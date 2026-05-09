@@ -81,7 +81,7 @@ const MobileDetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ 
                 ?
             </button>
         </div>
-        <div className="pointer-events-none absolute bottom-[calc(100%+6px)] left-0 z-40 hidden w-72 rounded border border-wuxia-gold/45 bg-[#14110a] p-3 text-xs leading-5 text-amber-50 shadow-2xl group-hover:block group-focus-within:block">
+        <div className="pointer-events-none absolute bottom-[calc(100%+6px)] right-0 z-40 hidden w-72 max-w-[calc(100vw-3rem)] rounded border border-wuxia-gold/45 bg-[#14110a] p-3 text-xs leading-5 text-amber-50 shadow-2xl group-hover:block group-focus-within:block">
             <div className="mb-1 text-[10px] font-bold tracking-[0.14em] text-wuxia-gold">{groupTitle} · {entry.标签}</div>
             {entry.依据}
         </div>

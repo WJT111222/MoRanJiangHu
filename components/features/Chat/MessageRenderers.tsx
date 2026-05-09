@@ -14,6 +14,18 @@ type JudgmentModifier = {
     description?: string;
 };
 
+type JudgmentBreakdownItem = {
+    label: string;
+    value: number | null;
+    valueText: string;
+    raw: string;
+    description?: string;
+};
+
+type JudgmentBreakdownKind = 'score' | 'difficulty';
+
+type JudgmentBreakdownSections = Record<JudgmentBreakdownKind, JudgmentBreakdownItem[]>;
+
 type ParsedJudgment = {
     category: string;
     eventName: string;
@@ -69,6 +81,63 @@ const parseNumericValue = (value: string): number | null => {
     return match ? Number(match[0]) : null;
 };
 
+const parseBreakdownItem = (line: string): JudgmentBreakdownItem | null => {
+    const normalized = line.trim().replace(/^[\-•·]\s*/, '').trim();
+    const match = normalized.match(/^([^：:]+)[：:]\s*([+\-]?\d+(?:\.\d+)?)(?:\s*[(（](.*?)[)）])?/);
+    if (!match) return null;
+    const [, rawLabel, rawValue, rawDescription] = match;
+    return {
+        label: rawLabel.trim(),
+        value: Number(rawValue),
+        valueText: rawValue.trim(),
+        raw: normalized,
+        description: rawDescription?.trim() || undefined
+    };
+};
+
+const parseJudgmentBreakdownSections = (lines: string[]): JudgmentBreakdownSections => {
+    const sections: JudgmentBreakdownSections = { score: [], difficulty: [] };
+    let activeSection: JudgmentBreakdownKind | null = null;
+
+    for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        if (/判定值拆解/.test(line)) {
+            activeSection = 'score';
+            continue;
+        }
+        if (/难度拆解/.test(line)) {
+            activeSection = 'difficulty';
+            continue;
+        }
+        if (/^(合计判定值|合计难度|结果|代价)[：:]/.test(line)) {
+            activeSection = null;
+            continue;
+        }
+        if (!activeSection) continue;
+
+        const item = parseBreakdownItem(line);
+        if (item) sections[activeSection].push(item);
+    }
+
+    return sections;
+};
+
+const modifierToBreakdownItem = (modifier: JudgmentModifier): JudgmentBreakdownItem => ({
+    label: modifier.label,
+    value: modifier.value,
+    valueText: typeof modifier.value === 'number' ? `${modifier.value >= 0 ? '+' : ''}${modifier.value}` : modifier.raw,
+    raw: modifier.raw,
+    description: modifier.description
+});
+
+const formatBreakdownValue = (item: JudgmentBreakdownItem, kind: JudgmentBreakdownKind): string => {
+    if (typeof item.value !== 'number' || !Number.isFinite(item.value)) return item.valueText || item.raw;
+    if (/^[+\-]/.test(item.valueText)) return item.valueText;
+    if (kind === 'score' && item.label !== '基础' && item.value > 0) return `+${item.value}`;
+    return `${item.value}`;
+};
+
 const JUDGMENT_RESULT_PATTERN = /^(?:结果=)?(成功|失败|大成功|大失败|极成功|极失败|胜利|落败|锁定|偏离|致残|重创|肢残|骨折|破防|截脉|格挡|僵持)$/;
 const JUDGMENT_FIELD_NAMES = new Set(['触发对象', '对象', '判定值', '难度', '胜方', '败方', '差值', '伤害值', '消耗', '剩余', '后果', '发现度']);
 
@@ -115,7 +184,7 @@ const parseJudgmentText = (text: string): ParsedJudgment => {
 
     if (parsed.result === '未知' && parts.length > 1) {
         const fallbackResult = parts[1];
-        const isFieldToken = /^(?:触发对象|对象|判定值|胜方|败方|差值|伤害值|消耗|剩余|后果|发现度)[:：\s]/.test(fallbackResult)
+        const isFieldToken = /^(?:触发对象|对象|判定值|难度|胜方|败方|差值|伤害值|消耗|剩余|后果|发现度)[:：\s]/.test(fallbackResult)
             || /^(基础|境界|环境|状态|幸运|装备)\s*[+\-]?\d/.test(fallbackResult) || fallbackResult.startsWith('结果=');
         if (!isFieldToken) {
             parsed.result = fallbackResult;
@@ -366,11 +435,13 @@ export const JudgmentRenderer: React.FC<{ text: string; thoughtBlock?: JudgmentT
     const parsed = parseJudgmentText(text);
     const [isExpanded, setIsExpanded] = useState(false);
     const [showThought, setShowThought] = useState(false);
+    const [activeBreakdown, setActiveBreakdown] = useState<JudgmentBreakdownKind>('score');
     const thoughtLines = useMemo(() => (thoughtBlock?.text || thoughtBlock?.raw || '')
         .replace(/^【\s*(?:NSFW)?判定\s*】.*$/gmi, '')
         .split('\n')
         .map(line => line.trim())
         .filter(Boolean), [thoughtBlock?.raw, thoughtBlock?.text]);
+    const thoughtBreakdowns = useMemo(() => parseJudgmentBreakdownSections(thoughtLines), [thoughtLines]);
     
     const scoreValue = parsed.score;
     const difficultyValue = parsed.difficulty;
@@ -381,6 +452,12 @@ export const JudgmentRenderer: React.FC<{ text: string; thoughtBlock?: JudgmentT
         ? parsed.category
         : (提取判定前缀名称(prefix) || parsed.category);
     const scoreDelta = hasScorePair ? scoreValue - difficultyValue : null;
+    const scoreBreakdownItems = thoughtBreakdowns.score.length > 0
+        ? thoughtBreakdowns.score
+        : parsed.modifiers.map(modifierToBreakdownItem);
+    const difficultyBreakdownItems = thoughtBreakdowns.difficulty;
+    const activeBreakdownItems = activeBreakdown === 'difficulty' ? difficultyBreakdownItems : scoreBreakdownItems;
+    const activeBreakdownTitle = activeBreakdown === 'difficulty' ? '难度拆解' : '判定值拆解';
     const summaryItems = [
         parsed.winner ? `胜方：${parsed.winner}` : '',
         parsed.loser ? `败方：${parsed.loser}` : '',
@@ -476,12 +553,12 @@ export const JudgmentRenderer: React.FC<{ text: string; thoughtBlock?: JudgmentT
                 >
                     <div className="flex items-center gap-1 sm:gap-2 min-w-0 pr-1 sm:pr-4 flex-1">
                         <span className="shrink-0 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">{theme.icon}</span>
-                        <span className="text-[10px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-300 shrink-0">{displayCategory}</span>
-                        <span className={`font-black text-xs sm:text-base tracking-[0.1em] sm:tracking-[0.2em] ${theme.accent} truncate`} style={{ fontFamily: style.fontFamily, fontStyle: style.fontStyle }}>{parsed.eventName}</span>
+                        <span className="text-[11px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-200 shrink-0">{displayCategory}</span>
+                        <span className={`font-black text-sm sm:text-lg tracking-[0.08em] sm:tracking-[0.16em] ${theme.accent} truncate`} style={{ fontFamily: style.fontFamily, fontStyle: style.fontStyle }}>{parsed.eventName}</span>
                     </div>
 
                     {!isExpanded && (
-                        <div className={`text-sm sm:text-lg font-black italic tracking-widest sm:tracking-[0.2em] ${theme.successColor} drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] shrink-0 px-1 sm:px-2`} style={{ fontFamily: style.fontFamily }}>
+                        <div className={`text-base sm:text-xl font-black italic tracking-widest sm:tracking-[0.16em] ${theme.successColor} drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] shrink-0 px-1 sm:px-2`} style={{ fontFamily: style.fontFamily }}>
                             {result}
                         </div>
                     )}
@@ -498,7 +575,7 @@ export const JudgmentRenderer: React.FC<{ text: string; thoughtBlock?: JudgmentT
                 </button>
 
                 {isExpanded && (
-                <div className="p-5 flex flex-col items-center relative">
+                <div className="p-4 sm:p-6 flex flex-col items-center relative">
                     {/* 暴击/大成功时的背景扫光 */}
                     {isCrit && (
                         <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
@@ -507,26 +584,70 @@ export const JudgmentRenderer: React.FC<{ text: string; thoughtBlock?: JudgmentT
                     )}
 
                     {hasScorePair && (
-                        <div className="flex items-center gap-5 sm:gap-8 mb-4 sm:mb-6 relative mt-1 sm:mt-2">
-                            <div className="flex flex-col items-center">
-                                <span className="text-[8px] sm:text-[9px] text-gray-500 tracking-[0.2em] sm:tracking-[0.3em] mb-1.5 opacity-60">难度值</span>
-                                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-black/60 border border-white/10 flex items-center justify-center text-gray-500 font-mono font-black text-lg sm:text-xl shadow-[inset_0_2px_10px_rgba(0,0,0,0.8)]">{difficultyValue}</div>
+                        <div className="w-full flex flex-col items-center mb-4 sm:mb-6 relative mt-1 sm:mt-2">
+                            <div className="flex items-center gap-5 sm:gap-8">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveBreakdown('difficulty')}
+                                    title={difficultyBreakdownItems.length > 0 ? '点击查看难度值拆解' : '暂无难度拆解'}
+                                    className={`flex flex-col items-center rounded-2xl px-2 py-1 transition-all duration-300 ${activeBreakdown === 'difficulty' ? 'bg-white/10 ring-1 ring-white/25' : 'hover:bg-white/5'}`}
+                                >
+                                    <span className={`text-[10px] sm:text-[11px] tracking-[0.18em] sm:tracking-[0.22em] mb-1.5 font-bold ${activeBreakdown === 'difficulty' ? 'text-gray-200' : 'text-gray-400'}`}>难度值</span>
+                                    <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-black/70 border flex items-center justify-center font-mono font-black text-2xl sm:text-3xl shadow-[inset_0_2px_10px_rgba(0,0,0,0.8)] ${activeBreakdown === 'difficulty' ? 'border-white/30 text-gray-100' : 'border-white/10 text-gray-400'}`}>
+                                        {difficultyValue}
+                                    </div>
+                                </button>
+
+                                <div className="text-white/15 font-thin text-3xl sm:text-4xl select-none">/</div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveBreakdown('score')}
+                                    title={scoreBreakdownItems.length > 0 ? '点击查看判定值拆解' : '暂无判定值拆解'}
+                                    className={`flex flex-col items-center group/score rounded-2xl px-2 py-1 transition-all duration-300 ${activeBreakdown === 'score' ? 'bg-white/10 ring-1 ring-white/25' : 'hover:bg-white/5'}`}
+                                >
+                                    <span className={`text-[10px] sm:text-[11px] ${theme.accent} tracking-[0.18em] sm:tracking-[0.22em] mb-1.5 opacity-95 font-bold`}>判定值</span>
+                                    <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 ${isSuccess ? theme.border : 'border-gray-700'} ${isSuccess ? 'bg-white/5' : 'bg-black/60'} flex items-center justify-center font-black text-3xl sm:text-4xl shadow-[0_10px_30px_rgba(0,0,0,0.6)] ${theme.successColor} relative overflow-hidden transition-all duration-700 group-hover/score:scale-105`} style={{ fontFamily: style.fontFamily, fontStyle: style.fontStyle }}>
+                                        {scoreValue}
+                                        {isSuccess && (
+                                            <>
+                                                <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-white/50 to-transparent"></div>
+                                                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent"></div>
+                                            </>
+                                        )}
+                                    </div>
+                                </button>
                             </div>
 
-                            <div className="text-white/10 font-thin text-3xl sm:text-4xl select-none">/</div>
-
-                            <div className="flex flex-col items-center group/score">
-                                <span className={`text-[8px] sm:text-[9px] ${theme.accent} tracking-[0.2em] sm:tracking-[0.3em] mb-1.5 opacity-80 font-bold`}>判定值</span>
-                                <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 ${isSuccess ? theme.border : 'border-gray-800'} ${isSuccess ? 'bg-white/5' : 'bg-black/60'} flex items-center justify-center font-black text-3xl sm:text-4xl shadow-[0_10px_30px_rgba(0,0,0,0.6)] ${theme.successColor} relative overflow-hidden transition-all duration-700 group-hover/score:scale-110`} style={{ fontFamily: style.fontFamily, fontStyle: style.fontStyle }}>
-                                    {scoreValue}
-                                    {isSuccess && (
-                                        <>
-                                            <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-white/50 to-transparent"></div>
-                                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent"></div>
-                                        </>
-                                    )}
+                            {activeBreakdownItems.length > 0 && (
+                                <div className="mt-4 w-full max-w-3xl rounded-xl border border-white/10 bg-black/45 px-3 sm:px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                                    <div className="mb-2 text-[11px] sm:text-xs font-black tracking-[0.18em] text-wuxia-gold/90">{activeBreakdownTitle}</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {activeBreakdownItems.map((item, index) => {
+                                            const isPositive = typeof item.value === 'number' && item.value > 0;
+                                            const isNegative = typeof item.value === 'number' && item.value < 0;
+                                            const title = `${item.label}：${formatBreakdownValue(item, activeBreakdown)}${item.description ? `（${item.description}）` : ''}`;
+                                            return (
+                                                <div
+                                                    key={`${activeBreakdown}-${item.label}-${index}`}
+                                                    title={title}
+                                                    className={`min-w-0 max-w-full rounded-lg border px-2.5 sm:px-3 py-1.5 text-[12px] sm:text-[13px] leading-relaxed transition-colors ${
+                                                        isPositive ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-200' :
+                                                        isNegative ? 'border-rose-500/40 bg-rose-500/10 text-rose-200' :
+                                                        'border-white/10 bg-white/5 text-gray-200'
+                                                    }`}
+                                                >
+                                                    <span className="mr-1.5 font-bold text-gray-100">{item.label}</span>
+                                                    <span className="mr-1.5 font-mono font-black">{formatBreakdownValue(item, activeBreakdown)}</span>
+                                                    {item.description && (
+                                                        <span className="text-gray-300">{item.description}</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
 
@@ -619,12 +740,12 @@ export const JudgmentRenderer: React.FC<{ text: string; thoughtBlock?: JudgmentT
                                 >
                                     <div className="flex items-center gap-2">
                                         <div className={`w-1.5 h-1.5 rounded-full ${theme.bar} ${showThought ? 'animate-pulse' : ''}`}></div>
-                                        <span className="text-[10px] font-bold tracking-[0.2em] opacity-80">判定思考</span>
+                                        <span className="text-[12px] font-bold tracking-[0.16em] opacity-90">判定思考</span>
                                     </div>
                                     <span className="text-[9px] font-mono opacity-50">{showThought ? '收起' : '展开'}</span>
                                 </button>
                                 {showThought && (
-                                    <div className="mt-3 rounded-xl border border-white/5 bg-black/60 p-4 text-[13px] leading-relaxed text-gray-300 whitespace-pre-wrap break-words font-sans animate-in fade-in slide-in-from-top-2">
+                                    <div className="mt-3 rounded-xl border border-white/10 bg-black/70 p-4 text-sm sm:text-[15px] leading-7 sm:leading-8 text-gray-200 whitespace-pre-wrap break-words font-sans animate-in fade-in slide-in-from-top-2">
                                         {thoughtLines.join('\n')}
                                     </div>
                                 )}

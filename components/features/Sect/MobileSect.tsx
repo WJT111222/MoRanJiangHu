@@ -6,11 +6,12 @@ interface Props {
     sectData: 详细门派结构;
     currentTime: 游戏时间格式;
     onClose: () => void;
+    onOpenNpc?: (npc: any) => void;
 }
 
-type Tab = 'hall' | 'missions' | 'exchange' | 'members';
+type Tab = 'hall' | 'missions' | 'exchange' | 'library' | 'members';
 
-const MobileSect: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
+const MobileSect: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc }) => {
     const [activeTab, setActiveTab] = useState<Tab>('hall');
     const [missionFilter, setMissionFilter] = useState<'all' | 'active' | 'available'>('all');
 
@@ -32,6 +33,32 @@ const MobileSect: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
         if (missionFilter === 'available') return m.当前状态 === '可接取';
         return true;
     });
+    const 累计贡献 = Math.max(sectData.玩家贡献 || 0, sectData.累计贡献 || 0);
+    const 职位折扣: Record<string, number> = {
+        杂役弟子: 0,
+        外门弟子: 0.05,
+        内门弟子: 0.1,
+        真传弟子: 0.15,
+        执事: 0.18,
+        长老: 0.22,
+        副掌门: 0.26,
+        掌门: 0.3
+    };
+    const 职位特权: Record<string, string[]> = {
+        杂役弟子: ['基础任务', '入门补给'],
+        外门弟子: ['藏经阁入门典籍', '聚宝阁九五折'],
+        内门弟子: ['进阶典籍', '聚宝阁九折'],
+        真传弟子: ['真传典籍优先', '聚宝阁八五折'],
+        执事: ['执事任务', '聚宝阁八二折'],
+        长老: ['高阶典籍调阅', '聚宝阁七八折'],
+        副掌门: ['门派要务', '聚宝阁七四折'],
+        掌门: ['全阁调阅', '聚宝阁七折']
+    };
+    const 当前折扣 = 职位折扣[sectData.玩家职位] || 0;
+    const 计算折后贡献 = (price: number) => Math.max(1, Math.ceil(price * (1 - 当前折扣)));
+    const 职位可达 = (requiredRank?: string) => (
+        (职位等级排序[sectData.玩家职位] || 0) >= (职位等级排序[requiredRank || '杂役弟子'] || 0)
+    );
 
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-3 md:hidden animate-fadeIn">
@@ -61,7 +88,8 @@ const MobileSect: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
                         {[
                             { id: 'hall', label: '宗门' },
                             { id: 'missions', label: '任务' },
-                            { id: 'exchange', label: '藏经' },
+                            { id: 'exchange', label: '兑换' },
+                            { id: 'library', label: '藏经' },
                             { id: 'members', label: '同门' },
                         ].map(tab => (
                             <button
@@ -91,6 +119,11 @@ const MobileSect: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
                                 <div className="mt-3 flex items-center justify-between">
                                     <div className="text-[10px] text-gray-500">贡献点</div>
                                     <div className="text-wuxia-gold font-mono font-bold">{sectData.玩家贡献}</div>
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {(职位特权[sectData.玩家职位] || []).map(item => (
+                                        <span key={item} className="rounded border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-gray-300">{item}</span>
+                                    ))}
                                 </div>
                             </div>
 
@@ -186,23 +219,55 @@ const MobileSect: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
 
                     {activeTab === 'exchange' && (
                         <div className="grid grid-cols-2 gap-3">
-                            {sectData.兑换列表.map(good => (
-                                <div key={good.id} className="bg-black/40 border border-gray-800 rounded-xl p-3 space-y-2">
-                                    <div className="text-sm text-gray-200 font-bold">{good.物品名称}</div>
-                                    <div className="text-[10px] text-gray-500">要求 {good.要求职位}</div>
-                                    <div className="flex items-center justify-between text-[10px]">
-                                        <span className="text-wuxia-gold font-mono">{good.兑换价格} 贡献</span>
-                                        <span className="text-gray-500">库存 {good.库存}</span>
+                            {sectData.兑换列表.map(good => {
+                                const discountedPrice = 计算折后贡献(good.兑换价格);
+                                return (
+                                    <div key={good.id} className="bg-black/40 border border-gray-800 rounded-xl p-3 space-y-2">
+                                        <div className="text-sm text-gray-200 font-bold">{good.物品名称}</div>
+                                        <div className="text-[10px] text-gray-500">要求 {good.要求职位}</div>
+                                        <div className="flex items-center justify-between text-[10px]">
+                                            <span className="text-wuxia-gold font-mono">{discountedPrice} 贡献</span>
+                                            <span className="text-gray-500">库存 {good.库存}</span>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {activeTab === 'library' && (
+                        <div className="space-y-3">
+                            {(sectData.藏经阁列表 || []).map(book => {
+                                const canRead = 职位可达(book.要求职位) && 累计贡献 >= book.要求累计贡献;
+                                return (
+                                    <div key={book.id} className="bg-black/40 border border-gray-800 rounded-xl p-4 space-y-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div className="text-sm text-gray-200 font-bold">{book.名称}</div>
+                                                <div className="text-[10px] text-gray-500 mt-1">{book.类型} · {book.品阶}</div>
+                                            </div>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded border ${canRead ? 'border-emerald-400/40 text-emerald-200' : 'border-gray-700 text-gray-400'}`}>
+                                                {canRead ? '可学' : '未达标'}
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] text-gray-400 leading-5">{book.简介}</p>
+                                        <button
+                                            type="button"
+                                            disabled={!canRead}
+                                            className={`w-full rounded px-3 py-2 text-[11px] font-bold ${canRead ? 'border border-wuxia-gold bg-wuxia-gold/15 text-wuxia-gold' : 'border border-gray-700 bg-gray-900 text-gray-400'}`}
+                                        >
+                                            学习
+                                        </button>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
 
                     {activeTab === 'members' && (
                         <div className="space-y-3">
                             {sectData.重要成员.map(mem => (
-                                <div key={mem.id} className="bg-black/40 border border-gray-800 rounded-xl p-4 flex items-start gap-3">
+                                <button key={mem.id} type="button" onClick={() => onOpenNpc?.(mem)} className="w-full text-left bg-black/40 border border-gray-800 rounded-xl p-4 flex items-start gap-3 hover:border-wuxia-gold/40">
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-base border shrink-0 ${
                                         mem.性别 === '女' ? 'border-pink-900 bg-pink-900/10 text-pink-500' : 'border-blue-900 bg-blue-900/10 text-blue-500'
                                     }`}>
@@ -216,7 +281,7 @@ const MobileSect: React.FC<Props> = ({ sectData, currentTime, onClose }) => {
                                         <div className="text-[10px] text-gray-500 mt-1">{mem.性别} · {mem.年龄}岁 · {mem.境界}</div>
                                         <p className="text-[11px] text-gray-400 mt-2">“{mem.简介}”</p>
                                     </div>
-                                </div>
+                                </button>
                             ))}
                         </div>
                     )}

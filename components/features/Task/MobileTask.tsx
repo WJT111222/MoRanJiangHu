@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { 任务结构, 任务类型 } from '../../../models/task';
+import { 规范化任务列表自动结算 } from '../../../utils/taskCompat';
 
 interface Props {
     tasks: 任务结构[];
@@ -10,7 +11,7 @@ interface Props {
 const MobileTask: React.FC<Props> = ({ tasks, onDeleteTask, onClose }) => {
     const [filter, setFilter] = useState<任务类型 | '全部'>('全部');
     const [selectedIdx, setSelectedIdx] = useState<number>(0);
-    const safeTasks = Array.isArray(tasks) ? tasks : [];
+    const safeTasks = 规范化任务列表自动结算(Array.isArray(tasks) ? tasks : []) as 任务结构[];
 
     const filteredTaskEntries = safeTasks
         .map((task, index) => ({ task, originalIndex: index }))

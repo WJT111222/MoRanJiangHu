@@ -32,6 +32,7 @@ import {
     构建拍卖行存储作用域,
     type 拍卖行状态
 } from '../../services/auctionHouse';
+import { 规范化任务列表自动结算 } from '../../utils/taskCompat';
 
 export type 自动存档快照结构 = {
     history?: 聊天记录结构[];
@@ -474,7 +475,7 @@ export const 执行读取存档 = async (
     deps.设置世界(deps.规范化世界状态(save.世界 || deps.创建开场空白世界()));
     deps.设置战斗(deps.规范化战斗状态(save.战斗 || deps.创建开场空白战斗()));
     deps.设置玩家门派(deps.规范化门派状态(save.玩家门派 || deps.创建空门派状态()));
-    deps.设置任务列表(save.任务列表 || []);
+    deps.设置任务列表(规范化任务列表自动结算(save.任务列表 || []));
     deps.设置约定列表(save.约定列表 || []);
     deps.设置剧情(deps.规范化剧情状态(save.剧情 || deps.创建开场空白剧情()));
     deps.设置剧情规划(deps.规范化剧情规划状态((save as any).剧情规划));

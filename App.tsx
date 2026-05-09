@@ -1066,6 +1066,11 @@ const App: React.FC = () => {
         });
     }, [desktopRightDetailId]);
 
+    const shrinkDesktopDetailWidth = React.useCallback(() => {
+        setDesktopDetailFullscreen(false);
+        setDesktopDetailWidths(prev => ({ ...prev, [desktopRightDetailId]: DESKTOP_DETAIL_MIN_WIDTH }));
+    }, [desktopRightDetailId]);
+
     const startDesktopDetailResize = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
         if (desktopDetailFullscreen) return;
         event.preventDefault();
@@ -1146,6 +1151,34 @@ const App: React.FC = () => {
         setSelectedSocialNpcId(npcId);
         setters.setShowSocial(true);
     }, [closeAllPanels, setters]);
+    const openNpcDetailFromRecord = React.useCallback((record: any) => {
+        const candidateTexts = [
+            record?.id,
+            record?.ID,
+            record?.关联NPC,
+            record?.关联人物,
+            record?.姓名,
+            record?.名称,
+        ].map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean);
+        if (candidateTexts.length === 0) return;
+        const normalized = (value: string) => value.replace(/\s+/g, '').toLowerCase();
+        const npc = (Array.isArray(state.社交) ? state.社交 : []).find((item: any) => {
+            const npcTexts = [item?.id, item?.ID, item?.姓名, item?.名称]
+                .map((value) => (typeof value === 'string' ? value.trim() : ''))
+                .filter(Boolean);
+            return candidateTexts.some((candidate) => npcTexts.some((npcText) => (
+                normalized(candidate) === normalized(npcText)
+                || normalized(candidate).includes(normalized(npcText))
+                || normalized(npcText).includes(normalized(candidate))
+            )));
+        });
+        closeAllPanels();
+        setSelectedSocialNpcId(npc?.id || npc?.ID || null);
+        setters.setShowSocial(true);
+        if (!npc) {
+            actions.pushNotification?.('未在同门名录里找到对应角色档案，已打开角色列表。', 'info');
+        }
+    }, [actions, closeAllPanels, setters, state.社交]);
     const openKungfu = React.useCallback(() => {
         if (!启用修炼体系) return;
         closeAllPanels();
@@ -2714,6 +2747,7 @@ const App: React.FC = () => {
                                     env={state.环境}
                                     socialList={state.社交}
                                     debugEnabled={(state.gameConfig as any)?.启用研发诊断模式 === true}
+                                    onOpenPerson={openNpcDetailFromRecord}
                                     onClose={() => setters.setShowMap(false)}
                                 />
                             ) : (
@@ -2722,6 +2756,7 @@ const App: React.FC = () => {
                                     env={state.环境}
                                     socialList={state.社交}
                                     debugEnabled={(state.gameConfig as any)?.启用研发诊断模式 === true}
+                                    onOpenPerson={openNpcDetailFromRecord}
                                     onClose={() => setters.setShowMap(false)}
                                 />
                             )}
@@ -2734,12 +2769,14 @@ const App: React.FC = () => {
                                 <MobileSect
                                     sectData={state.玩家门派}
                                     currentTime={currentEnvTime}
+                                    onOpenNpc={openNpcDetailFromRecord}
                                     onClose={() => setters.setShowSect(false)}
                                 />
                             ) : (
                                 <SectModal
                                     sectData={state.玩家门派}
                                     currentTime={currentEnvTime}
+                                    onOpenNpc={openNpcDetailFromRecord}
                                     onClose={() => setters.setShowSect(false)}
                                 />
                             )}
@@ -2882,6 +2919,17 @@ const App: React.FC = () => {
                             ) : (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="m15 6-6 6 6 6" />
                             )}
+                        </svg>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={shrinkDesktopDetailWidth}
+                        className={`desktop-detail-collapse-toggle${desktopDetailFullscreen ? ' desktop-detail-collapse-toggle--fullscreen' : ''}`}
+                        aria-label="向右收缩详情"
+                        title="向右收缩详情"
+                    >
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m9 6 6 6-6 6" />
                         </svg>
                     </button>
                 </>
