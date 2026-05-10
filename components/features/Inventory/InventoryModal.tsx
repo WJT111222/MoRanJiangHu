@@ -491,17 +491,17 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                                     </div>
                                                 ) : null}
 
-                                                <div className="absolute inset-0 flex items-center justify-center pb-5 transition-transform duration-300 group-hover:-translate-y-1">
-                                                    <div className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/45 shadow-inner ${styles.text}`}>
+                                                <div className="absolute inset-x-2 top-2 bottom-10 flex items-center justify-center overflow-hidden rounded-md border border-white/10 bg-black/30 shadow-inner transition-transform duration-300 group-hover:-translate-y-0.5">
+                                                    <div className={`flex h-full w-full items-center justify-center overflow-hidden ${styles.text}`}>
                                                         {itemIconImage ? (
                                                             <img src={itemIconImage} alt={name} className="h-full w-full object-cover" loading="lazy" />
                                                         ) : (
-                                                            renderItemIcon(getSafeText(item?.类型), 'h-5 w-5 opacity-90 drop-shadow-md group-hover:opacity-100')
+                                                            renderItemIcon(getSafeText(item?.类型), 'h-8 w-8 opacity-90 drop-shadow-md group-hover:opacity-100')
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                <div className="absolute bottom-1.5 left-0 right-0 px-1.5 text-center">
+                                                <div className="absolute bottom-2 left-0 right-0 px-1.5 text-center">
                                                     <div className={`line-clamp-2 break-words text-[13px] font-bold leading-[1.1] tracking-wide drop-shadow-sm ${getRarityNameClass(getSafeText(item?.品质))}`}>
                                                         {name}
                                                     </div>

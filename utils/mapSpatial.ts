@@ -1275,6 +1275,8 @@ const 按层级补齐道路 = (
 ): 地图道路结构[] => {
     const roads = [...seedRoads];
     const roadLookup = new Map<string, string>();
+    const optimizerLayerIds = new Set(优化器道路列表.filter(({ roads: optimizerRoads }) => optimizerRoads.length > 0).map(({ layer }) => layer.ID));
+    const optimizerRoadIds = new Set<string>();
     roads.forEach((road) => {
         roadLookup.set(`${road.所在层级ID}|${归一化地图文本(road.名称)}`, road.ID);
     });
@@ -1296,6 +1298,7 @@ const 按层级补齐道路 = (
             
             roads.push(road);
             roadLookup.set(key, road.ID);
+            optimizerRoadIds.add(road.ID);
             追加唯一值(layer.道路ID列表, road.ID);
         });
     });
@@ -1318,6 +1321,11 @@ const 按层级补齐道路 = (
             for (let index = roads.length - 1; index >= 0; index -= 1) {
                 const road = roads[index];
                 if (road.所在层级ID !== layer.ID) continue;
+                if (optimizerLayerIds.has(layer.ID) && 是否聚落层级(layer) && !optimizerRoadIds.has(road.ID)) {
+                    roadLookup.delete(`${road.所在层级ID}|${归一化地图文本(road.名称)}`);
+                    roads.splice(index, 1);
+                    continue;
+                }
                 if (是否聚落层级(layer) && (/沿建筑|接入路/u.test(road.名称) || road.路径点.length > 6)) {
                     roadLookup.delete(`${road.所在层级ID}|${归一化地图文本(road.名称)}`);
                     roads.splice(index, 1);
@@ -1344,7 +1352,7 @@ const 按层级补齐道路 = (
             entrance: 计算建筑入口坐标(building, layer),
         }));
 
-        if (是否聚落层级(layer) && buildingAnchors.length >= 4) {
+        if (是否聚落层级(layer) && buildingAnchors.length >= 4 && !optimizerLayerIds.has(layer.ID)) {
             const xs = buildingAnchors.map((item) => item.center.x);
             const ys = buildingAnchors.map((item) => item.center.y);
             const minX = Math.max(1.2, Math.min(...xs) - 2.2);

@@ -943,23 +943,23 @@ const SocialModal: React.FC<Props> = ({
 
             {imageViewer && (
                 <div
-                    className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-sm flex items-center justify-center animate-fadeIn cursor-pointer"
+                    className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-sm flex items-center justify-end p-4 pr-8 animate-fadeIn cursor-pointer"
                     onClick={() => setImageViewer(null)}
                 >
-                    <button
-                        className="fixed right-8 top-8 z-[310] flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/80 bg-red-600/95 text-white shadow-[0_0_24px_rgba(220,38,38,1)] backdrop-blur-md transition-all hover:scale-110 hover:bg-red-500 hover:shadow-[0_0_32px_rgba(220,38,38,1)]"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setImageViewer(null);
-                        }}
-                        aria-label="关闭图片预览"
-                        title="关闭图片预览"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-7 h-7">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
                     <div className="relative inline-flex w-fit max-w-[85vw] max-h-[90vh] rounded-lg shadow-[0_0_50px_rgba(212,175,55,0.15)] overflow-hidden cursor-default" onClick={e => e.stopPropagation()}>
+                        <button
+                            className="absolute right-3 top-3 z-[310] flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-red-600/95 text-white shadow-[0_0_24px_rgba(220,38,38,1)] backdrop-blur-md transition-all hover:scale-110 hover:bg-red-500 hover:shadow-[0_0_32px_rgba(220,38,38,1)]"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setImageViewer(null);
+                            }}
+                            aria-label="关闭图片预览"
+                            title="关闭图片预览"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-7 h-7">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                         <img
                             src={imageViewer.src}
                             alt={imageViewer.alt}

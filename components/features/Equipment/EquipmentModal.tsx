@@ -257,16 +257,15 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
 
                                 {/* Center Character Display */}
                                 <div className="flex flex-col w-[128px] md:w-64 shrink-0 items-center justify-start relative z-20 pt-0 md:pt-2">
-                                    <div className="w-[108px] h-[216px] md:w-56 md:h-[450px] border border-wuxia-gold/30 bg-gradient-to-b from-black/80 to-black/40 rounded-[120px] md:rounded-[200px] overflow-hidden relative shadow-[0_0_50px_rgba(212,175,55,0.1)] group">
+                                    <div className="w-[108px] h-[216px] md:w-56 md:h-[450px] border border-wuxia-gold/30 bg-gradient-to-b from-wuxia-gold/10 to-transparent rounded-[120px] md:rounded-[200px] overflow-hidden relative shadow-[0_0_50px_rgba(212,175,55,0.1)] group">
                                         <div className="absolute inset-0 bg-[url('/assets/images/ui/paper-texture.png')] opacity-10 mix-blend-overlay"></div>
                                         {主角披挂像地址 ? (
                                             <>
                                                 <img
                                                     src={主角披挂像地址}
                                                     alt={`${character.姓名 || '主角'}披挂像`}
-                                                    className="absolute inset-0 h-full w-full object-contain"
+                                                    className="absolute inset-0 z-10 h-full w-full object-contain"
                                                 />
-                                                <div className="absolute inset-x-0 bottom-0 h-16 md:h-28 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none"></div>
                                             </>
                                         ) : (
                                             <div className="absolute inset-0 flex flex-col items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">

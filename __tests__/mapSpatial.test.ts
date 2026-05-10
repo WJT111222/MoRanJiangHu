@@ -91,4 +91,75 @@ describe('地图空间道路规划', () => {
         expect(buildings[0].分类).toBe('居所');
         expect(world.地图道路.some((item: any) => item.所在层级ID === specificLayer?.ID && item.名称 === '野径')).toBe(false);
     });
+
+    it('聚落布局使用优化道路并丢弃模型给出的无意义旧道路', () => {
+        const world = 补齐世界地图空间字段({
+            地图层级: [{
+                ID: 'layer_town',
+                名称: '杨府',
+                层级: '具体地点',
+                网格宽度: 40,
+                网格高度: 30,
+                锚点坐标: { x: 0, y: 0 }
+            }],
+            地图建筑: Array.from({ length: 8 }).map((_, index) => ({
+                ID: `building_${index}`,
+                名称: `院落${index + 1}`,
+                所在层级ID: 'layer_town',
+                四角坐标: [
+                    { x: 2 + index * 3, y: 2 },
+                    { x: 4 + index * 3, y: 2 },
+                    { x: 4 + index * 3, y: 4 },
+                    { x: 2 + index * 3, y: 4 }
+                ]
+            })),
+            地图道路: [{
+                ID: 'stray_diagonal',
+                名称: '莫名斜线',
+                所在层级ID: 'layer_town',
+                路径点: [
+                    { x: 1, y: 1 },
+                    { x: 39, y: 29 }
+                ]
+            }]
+        } as any);
+        const roads = world.地图道路.filter((item: any) => item.所在层级ID === 'layer_town');
+        const buildings = world.地图建筑.filter((item: any) => item.所在层级ID === 'layer_town');
+        const buildingRects = buildings.map((building: any) => {
+            const xs = building.四角坐标.map((point: any) => point.x);
+            const ys = building.四角坐标.map((point: any) => point.y);
+            return {
+                minX: Math.min(...xs) - 0.1,
+                maxX: Math.max(...xs) + 0.1,
+                minY: Math.min(...ys) - 0.1,
+                maxY: Math.max(...ys) + 0.1
+            };
+        });
+        const clusterXs = buildings.flatMap((building: any) => building.四角坐标.map((point: any) => point.x));
+        const clusterYs = buildings.flatMap((building: any) => building.四角坐标.map((point: any) => point.y));
+        const clusterBounds = {
+            minX: Math.min(...clusterXs) - 4,
+            maxX: Math.max(...clusterXs) + 4,
+            minY: Math.min(...clusterYs) - 4,
+            maxY: Math.max(...clusterYs) + 4,
+        };
+
+        expect(roads.some((road: any) => road.ID === 'stray_diagonal')).toBe(false);
+        expect(roads.some((road: any) => /接入路/u.test(road.名称))).toBe(false);
+        expect(roads.length).toBeLessThanOrEqual(6);
+        roads.forEach((road: any) => {
+            road.路径点.forEach((point: any, index: number) => {
+                expect(point.x).toBeGreaterThanOrEqual(clusterBounds.minX);
+                expect(point.x).toBeLessThanOrEqual(clusterBounds.maxX);
+                expect(point.y).toBeGreaterThanOrEqual(clusterBounds.minY);
+                expect(point.y).toBeLessThanOrEqual(clusterBounds.maxY);
+                const next = road.路径点[index + 1];
+                if (!next) return;
+                expect(point.x === next.x || point.y === next.y).toBe(true);
+                buildingRects.forEach((rect: any) => {
+                    expect(正交线段穿过矩形(point, next, rect)).toBe(false);
+                });
+            });
+        });
+    });
 });

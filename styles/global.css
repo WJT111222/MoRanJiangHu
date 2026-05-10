@@ -491,6 +491,7 @@ html[data-theme="day"] {
 html[data-theme="day"] .left-panel-body,
 html[data-theme="day"] .equipment-modal-body,
 html[data-theme="day"] .inventory-modal-body,
+html[data-theme="day"] .sect-modal-body,
 html[data-theme="day"] .auction-house-modal,
 html[data-theme="day"] .narrator-renderer {
   color: var(--day-ink-strong) !important;
@@ -498,6 +499,7 @@ html[data-theme="day"] .narrator-renderer {
 
 html[data-theme="day"] .left-panel-body [style*="color"],
 html[data-theme="day"] .inventory-modal-body [style*="color"],
+html[data-theme="day"] .sect-modal-body [style*="color"],
 html[data-theme="day"] .narrator-renderer[style*="color"],
 html[data-theme="day"] .narrator-renderer [style*="color"],
 html[data-theme="day"] [style*="color: rgb(209, 213, 219"],
@@ -572,6 +574,11 @@ html[data-theme="day"] .inventory-modal-body [class*="text-slate-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-zinc-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-neutral-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-stone-"],
+html[data-theme="day"] .sect-modal-body [class*="text-gray-"],
+html[data-theme="day"] .sect-modal-body [class*="text-slate-"],
+html[data-theme="day"] .sect-modal-body [class*="text-zinc-"],
+html[data-theme="day"] .sect-modal-body [class*="text-neutral-"],
+html[data-theme="day"] .sect-modal-body [class*="text-stone-"],
 html[data-theme="day"] .auction-house-modal [class*="text-gray-"],
 html[data-theme="day"] .auction-house-modal [class*="text-slate-"],
 html[data-theme="day"] .auction-house-modal [class*="text-zinc-"],
@@ -596,6 +603,10 @@ html[data-theme="day"] .inventory-modal-body [class*="text-wuxia-gold"],
 html[data-theme="day"] .inventory-modal-body [class*="text-amber-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-yellow-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-orange-"],
+html[data-theme="day"] .sect-modal-body [class*="text-wuxia-gold"],
+html[data-theme="day"] .sect-modal-body [class*="text-amber-"],
+html[data-theme="day"] .sect-modal-body [class*="text-yellow-"],
+html[data-theme="day"] .sect-modal-body [class*="text-orange-"],
 html[data-theme="day"] .auction-house-modal [class*="text-wuxia-gold"],
 html[data-theme="day"] .auction-house-modal [class*="text-amber-"],
 html[data-theme="day"] .auction-house-modal [class*="text-yellow-"],
@@ -610,6 +621,8 @@ html[data-theme="day"] .equipment-modal-body [class*="text-emerald-"],
 html[data-theme="day"] .equipment-modal-body [class*="text-green-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-emerald-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-green-"],
+html[data-theme="day"] .sect-modal-body [class*="text-emerald-"],
+html[data-theme="day"] .sect-modal-body [class*="text-green-"],
 html[data-theme="day"] .auction-house-modal [class*="text-emerald-"],
 html[data-theme="day"] .auction-house-modal [class*="text-green-"] {
   color: #166534 !important;
@@ -621,6 +634,9 @@ html[data-theme="day"] .equipment-modal-body [class*="text-blue-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-sky-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-cyan-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-blue-"],
+html[data-theme="day"] .sect-modal-body [class*="text-sky-"],
+html[data-theme="day"] .sect-modal-body [class*="text-cyan-"],
+html[data-theme="day"] .sect-modal-body [class*="text-blue-"],
 html[data-theme="day"] .auction-house-modal [class*="text-sky-"],
 html[data-theme="day"] .auction-house-modal [class*="text-cyan-"],
 html[data-theme="day"] .auction-house-modal [class*="text-blue-"] {
@@ -631,6 +647,8 @@ html[data-theme="day"] .equipment-modal-body [class*="text-red-"],
 html[data-theme="day"] .equipment-modal-body [class*="text-rose-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-red-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-rose-"],
+html[data-theme="day"] .sect-modal-body [class*="text-red-"],
+html[data-theme="day"] .sect-modal-body [class*="text-rose-"],
 html[data-theme="day"] .auction-house-modal [class*="text-red-"],
 html[data-theme="day"] .auction-house-modal [class*="text-rose-"] {
   color: #b91c1c !important;
@@ -640,6 +658,8 @@ html[data-theme="day"] .equipment-modal-body [class*="text-purple-"],
 html[data-theme="day"] .equipment-modal-body [class*="text-violet-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-purple-"],
 html[data-theme="day"] .inventory-modal-body [class*="text-violet-"],
+html[data-theme="day"] .sect-modal-body [class*="text-purple-"],
+html[data-theme="day"] .sect-modal-body [class*="text-violet-"],
 html[data-theme="day"] .auction-house-modal [class*="text-purple-"],
 html[data-theme="day"] .auction-house-modal [class*="text-violet-"] {
   color: #7e22ce !important;
@@ -659,6 +679,14 @@ html[data-theme="day"] .inventory-modal-body [class*="bg-gray-8"],
 html[data-theme="day"] .inventory-modal-body [class*="bg-gray-9"],
 html[data-theme="day"] .inventory-modal-body [class*="bg-neutral-9"],
 html[data-theme="day"] .inventory-modal-body [class*="bg-[#"],
+html[data-theme="day"] .sect-modal-body [class*="bg-black"],
+html[data-theme="day"] .sect-modal-body [class*="bg-ink-black"],
+html[data-theme="day"] .sect-modal-body [class*="bg-ink-wash"],
+html[data-theme="day"] .sect-modal-body [class*="bg-gray-7"],
+html[data-theme="day"] .sect-modal-body [class*="bg-gray-8"],
+html[data-theme="day"] .sect-modal-body [class*="bg-gray-9"],
+html[data-theme="day"] .sect-modal-body [class*="bg-neutral-9"],
+html[data-theme="day"] .sect-modal-body [class*="bg-[#"],
 html[data-theme="day"] .auction-house-modal [class*="bg-black"],
 html[data-theme="day"] .auction-house-modal [class*="bg-gray-9"],
 html[data-theme="day"] .auction-house-modal [class*="bg-neutral-9"],
@@ -696,7 +724,8 @@ html[data-theme="day"] .auction-house-modal select,
 html[data-theme="day"] .auction-house-modal label,
 html[data-theme="day"] .auction-house-modal button,
 html[data-theme="day"] .equipment-modal-body button,
-html[data-theme="day"] .inventory-modal-body button {
+html[data-theme="day"] .inventory-modal-body button,
+html[data-theme="day"] .sect-modal-body button {
   color: var(--day-ink-strong) !important;
   background-color: rgba(255, 252, 244, 0.92) !important;
   border-color: var(--day-border) !important;
@@ -704,7 +733,8 @@ html[data-theme="day"] .inventory-modal-body button {
 
 html[data-theme="day"] .auction-house-modal button:disabled,
 html[data-theme="day"] .equipment-modal-body button:disabled,
-html[data-theme="day"] .inventory-modal-body button:disabled {
+html[data-theme="day"] .inventory-modal-body button:disabled,
+html[data-theme="day"] .sect-modal-body button:disabled {
   color: var(--day-ink-soft) !important;
   background-color: rgba(238, 231, 214, 0.82) !important;
   opacity: 0.72 !important;
@@ -717,6 +747,9 @@ html[data-theme="day"] .equipment-modal-body [class*="border-white/"],
 html[data-theme="day"] .inventory-modal-body [class*="border-gray-"],
 html[data-theme="day"] .inventory-modal-body [class*="border-white/"],
 html[data-theme="day"] .inventory-modal-body [class*="border-wuxia-gold/"],
+html[data-theme="day"] .sect-modal-body [class*="border-gray-"],
+html[data-theme="day"] .sect-modal-body [class*="border-white/"],
+html[data-theme="day"] .sect-modal-body [class*="border-wuxia-gold/"],
 html[data-theme="day"] .auction-house-modal [class*="border-gray-"],
 html[data-theme="day"] .auction-house-modal [class*="border-white/"],
 html[data-theme="day"] .auction-house-modal [class*="border-wuxia-gold/"],
@@ -738,7 +771,12 @@ html[data-theme="day"] .equipment-modal-body [class*="opacity-60"],
 html[data-theme="day"] .inventory-modal-body [class*="opacity-30"],
 html[data-theme="day"] .inventory-modal-body [class*="opacity-40"],
 html[data-theme="day"] .inventory-modal-body [class*="opacity-50"],
-html[data-theme="day"] .inventory-modal-body [class*="opacity-60"] {
+html[data-theme="day"] .inventory-modal-body [class*="opacity-60"],
+html[data-theme="day"] .sect-modal-body [class*="opacity-20"],
+html[data-theme="day"] .sect-modal-body [class*="opacity-30"],
+html[data-theme="day"] .sect-modal-body [class*="opacity-40"],
+html[data-theme="day"] .sect-modal-body [class*="opacity-50"],
+html[data-theme="day"] .sect-modal-body [class*="opacity-60"] {
   opacity: 0.9 !important;
 }
 
@@ -746,9 +784,25 @@ html[data-theme="day"] .inventory-modal-body .drop-shadow-sm,
 html[data-theme="day"] .inventory-modal-body .drop-shadow-md,
 html[data-theme="day"] .equipment-modal-body .drop-shadow-sm,
 html[data-theme="day"] .equipment-modal-body .drop-shadow-md,
+html[data-theme="day"] .sect-modal-body .drop-shadow-sm,
+html[data-theme="day"] .sect-modal-body .drop-shadow-md,
 html[data-theme="day"] .auction-house-modal .drop-shadow-sm,
 html[data-theme="day"] .auction-house-modal .drop-shadow-md {
   filter: none !important;
+}
+
+html[data-theme="day"] .sect-modal-body > div,
+html[data-theme="day"] .sect-modal-body [class*="from-black"],
+html[data-theme="day"] .sect-modal-body [class*="to-black"] {
+  background: var(--day-paper-solid) !important;
+  background-color: var(--day-paper-solid) !important;
+  background-image: none !important;
+  color: var(--day-ink-strong) !important;
+}
+
+html[data-theme="day"] .sect-modal-body {
+  background: rgba(255, 252, 244, 0.78) !important;
+  background-color: rgba(255, 252, 244, 0.78) !important;
 }
 
 /* Day mode: preserve decorative chrome that should never become opaque paper blocks. */

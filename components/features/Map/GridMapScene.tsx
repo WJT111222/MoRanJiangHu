@@ -187,6 +187,7 @@ const GridMapScene: React.FC<Props> = ({
         () => roads.filter((item) => item.所在层级ID === currentLayerId),
         [roads, currentLayerId]
     );
+    const shouldShowContourLines = currentLayerBuildings.length < 4;
     const currentLayerPeople = useMemo(() => {
         const basePeople = persistentPeople.filter((item) => item.所在层级ID === currentLayerId);
         if (defaultScene.当前层级?.ID !== currentLayerId) {
@@ -531,7 +532,7 @@ const GridMapScene: React.FC<Props> = ({
                                 />
                             ))}
 
-                            {contourLines.map((points, index) => (
+                            {shouldShowContourLines && contourLines.map((points, index) => (
                                 <polyline
                                     key={`contour-${index}`}
                                     points={points.map((point) => `${point.x},${point.y}`).join(' ')}
