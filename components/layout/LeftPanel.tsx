@@ -3,6 +3,7 @@ import { 角色数据结构, 游戏设置结构, 视觉设置结构 } from '../.
 import { use图片资源回源预取 } from '../../hooks/useImageAssetPrefetch';
 import { 构建区域文字样式 } from '../../utils/visualSettings';
 import { 获取图片资源文本地址 } from '../../utils/imageAssets';
+import { 计算角色总气血 } from '../../utils/characterVitals';
 
 interface Props {
     角色: 角色数据结构;
@@ -10,6 +11,7 @@ interface Props {
     onUploadAvatar?: (imageUrl: string) => void;
     visualConfig?: 视觉设置结构;
     gameConfig?: 游戏设置结构;
+    latestCommands?: any[];
 }
 
 const use数值变化提示 = (value: number | string | undefined) => {
@@ -96,7 +98,7 @@ const WuxiaProgressBar: React.FC<{
   );
 };
 
-const FlatBar: React.FC<{ label: string; current: number; max: number; type: 'stamina' | 'inner' | 'food' | 'water' | 'load' | 'exp'; visualConfig?: 视觉设置结构 }> = ({ label, current, max, type, visualConfig }) => {
+const FlatBar: React.FC<{ label: string; current: number; max: number; type: 'stamina' | 'inner' | 'food' | 'water' | 'load' | 'exp' | 'hp'; visualConfig?: 视觉设置结构; commandDelta?: number | null }> = ({ label, current, max, type, visualConfig, commandDelta = null }) => {
     let baseColor = '#666'; // 默认灰色
     if (type === 'food') baseColor = '#d97706'; // amber-600
     if (type === 'stamina') baseColor = '#0d9488'; // teal-600
@@ -104,13 +106,15 @@ const FlatBar: React.FC<{ label: string; current: number; max: number; type: 'st
     if (type === 'water') baseColor = '#2563eb'; // blue-600
     if (type === 'load') baseColor = '#6b7280'; // gray-500
     if (type === 'exp') baseColor = '#d4af37'; // wuxia-gold (近似值)
+    if (type === 'hp') baseColor = '#b91c1c';
     
     const pct = Math.min((current / (max || 1)) * 100, 100);
     const areaStyle = 构建区域文字样式(visualConfig, '左侧栏');
     const 基础字号 = Number(areaStyle.fontSize) || 13;
     const 标题字号 = Math.max(14, Math.round(基础字号 * 1.02));
     const 数值字号 = Math.max(13, Math.round(基础字号 * 0.98));
-    const delta = use数值变化提示(current);
+    const liveDelta = use数值变化提示(current);
+    const delta = commandDelta ?? liveDelta;
 
     return (
         <div className={`mb-2 group last:mb-0 rounded px-1 py-0.5 transition-all duration-300 ${delta !== null ? (delta >= 0 ? 'bg-emerald-400/10 ring-1 ring-emerald-300/40' : 'bg-red-500/10 ring-1 ring-red-400/45') : ''}`}>
@@ -156,7 +160,20 @@ const MiniBodyPart: React.FC<{ name: string; current: number; max: number; statu
     );
 };
 
-const LeftPanel: React.FC<Props> = ({ 角色, onOpenCharacter, onUploadAvatar, visualConfig, gameConfig }) => {
+const 读取本回合数值变化 = (commands: any[], path: string): number | null => {
+    const total = commands.reduce((sum, cmd) => {
+        const key = String(cmd?.key || '').replace(/^gameState\./, '');
+        if (key !== path) return sum;
+        const value = Number(cmd?.value);
+        if (!Number.isFinite(value)) return sum;
+        if (cmd?.action === 'add') return sum + value;
+        if (cmd?.action === 'sub') return sum - value;
+        return sum;
+    }, 0);
+    return total === 0 ? null : total;
+};
+
+const LeftPanel: React.FC<Props> = ({ 角色, onOpenCharacter, onUploadAvatar, visualConfig, gameConfig, latestCommands = [] }) => {
     use图片资源回源预取(角色);
     const 金钱 = 角色.金钱 || { 金元宝: 0, 银子: 0, 铜钱: 0 };
     const 玩家BUFF列表 = Array.isArray(角色.玩家BUFF) ? 角色.玩家BUFF : [];
@@ -183,6 +200,24 @@ const LeftPanel: React.FC<Props> = ({ 角色, onOpenCharacter, onUploadAvatar, v
         { name: '左腿', current: 角色.左腿当前血量, max: 角色.左腿最大血量, status: 角色.左腿状态 },
         { name: '右腿', current: 角色.右腿当前血量, max: 角色.右腿最大血量, status: 角色.右腿状态 },
     ];
+    const 总气血 = React.useMemo(() => 计算角色总气血(角色), [角色]);
+    const 总气血变化 = React.useMemo(() => {
+        const weighted = [
+            ['角色.头部当前血量', 2.4],
+            ['角色.胸部当前血量', 2],
+            ['角色.腹部当前血量', 1.5],
+            ['角色.左手当前血量', 0.65],
+            ['角色.右手当前血量', 0.65],
+            ['角色.左腿当前血量', 0.9],
+            ['角色.右腿当前血量', 0.9]
+        ].reduce((sum, [path, weight]) => sum + (读取本回合数值变化(latestCommands, String(path)) || 0) * Number(weight), 0);
+        return weighted === 0 ? null : Math.round(weighted);
+    }, [latestCommands]);
+    const 金钱变化 = {
+        金元宝: 读取本回合数值变化(latestCommands, '角色.金钱.金元宝'),
+        银子: 读取本回合数值变化(latestCommands, '角色.金钱.银子'),
+        铜钱: 读取本回合数值变化(latestCommands, '角色.金钱.铜钱')
+    };
 
     const equipmentOrder: { key: keyof typeof 角色.装备; label: string }[] = [
         { key: '头部', label: '头部' },
@@ -285,21 +320,26 @@ const LeftPanel: React.FC<Props> = ({ 角色, onOpenCharacter, onUploadAvatar, v
             </div>
 
             <div className="mb-3 shrink-0 flex flex-col gap-1">
-                <FlatBar label="精力" current={角色.当前精力} max={角色.最大精力} type="stamina" visualConfig={visualConfig} />
+                <FlatBar label="总气血" current={总气血.当前} max={总气血.最大} type="hp" visualConfig={visualConfig} commandDelta={总气血变化} />
+                <FlatBar label="精力" current={角色.当前精力} max={角色.最大精力} type="stamina" visualConfig={visualConfig} commandDelta={读取本回合数值变化(latestCommands, '角色.当前精力')} />
                 {启用修炼体系 && (
-                    <FlatBar label="内力" current={角色.当前内力} max={角色.最大内力} type="inner" visualConfig={visualConfig} />
+                    <FlatBar label="内力" current={角色.当前内力} max={角色.最大内力} type="inner" visualConfig={visualConfig} commandDelta={读取本回合数值变化(latestCommands, '角色.当前内力')} />
                 )}
                 {启用饱腹口渴系统 && (
                     <>
-                        <FlatBar label="饱腹" current={角色.当前饱腹} max={角色.最大饱腹} type="food" visualConfig={visualConfig} />
-                        <FlatBar label="水分" current={角色.当前口渴} max={角色.最大口渴} type="water" visualConfig={visualConfig} />
+                        <FlatBar label="饱腹" current={角色.当前饱腹} max={角色.最大饱腹} type="food" visualConfig={visualConfig} commandDelta={读取本回合数值变化(latestCommands, '角色.当前饱腹')} />
+                        <FlatBar label="水分" current={角色.当前口渴} max={角色.最大口渴} type="water" visualConfig={visualConfig} commandDelta={读取本回合数值变化(latestCommands, '角色.当前口渴')} />
                     </>
                 )}
-                <FlatBar label="经验" current={角色.当前经验} max={角色.升级经验} type="exp" visualConfig={visualConfig} />
+                <FlatBar label="经验" current={角色.当前经验} max={角色.升级经验} type="exp" visualConfig={visualConfig} commandDelta={读取本回合数值变化(latestCommands, '角色.当前经验')} />
             </div>
             <div className="mb-3 shrink-0 border border-gray-800/60 bg-black/30 px-2 py-1.5 flex items-center justify-between font-mono" style={{ color: 'rgba(209,213,219,1)', fontSize: 缩放字号(1, 14) }}>
                 <span className="text-gray-500">钱财</span>
-                <span>元宝 {金钱.金元宝} / 银 {金钱.银子} / 铜 {金钱.铜钱}</span>
+                <span className="text-right">
+                    元宝 {金钱变化.金元宝 !== null && <span className={金钱变化.金元宝 >= 0 ? 'text-emerald-200' : 'text-red-200'}>({金钱变化.金元宝 > 0 ? '+' : ''}{金钱变化.金元宝})</span>} {金钱.金元宝}
+                    {' / '}银 {金钱变化.银子 !== null && <span className={金钱变化.银子 >= 0 ? 'text-emerald-200' : 'text-red-200'}>({金钱变化.银子 > 0 ? '+' : ''}{金钱变化.银子})</span>} {金钱.银子}
+                    {' / '}铜 {金钱变化.铜钱 !== null && <span className={金钱变化.铜钱 >= 0 ? 'text-emerald-200' : 'text-red-200'}>({金钱变化.铜钱 > 0 ? '+' : ''}{金钱变化.铜钱})</span>} {金钱.铜钱}
+                </span>
             </div>
 
             <div className="shrink-0 flex flex-col mb-2">

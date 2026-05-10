@@ -407,6 +407,26 @@
     touch-action: none;
   }
 
+  .desktop-detail-turn-changes {
+    position: fixed;
+    right: 1.35rem;
+    top: calc(var(--desktop-game-top) + 0.85rem);
+    z-index: 525;
+    display: flex;
+    max-width: min(420px, calc(var(--desktop-right-detail-width) - 2rem));
+    gap: 0.5rem;
+    align-items: center;
+    border: 1px solid rgba(230, 200, 110, 0.24);
+    border-radius: 0.55rem;
+    background: rgba(4, 4, 4, 0.68);
+    padding: 0.35rem 0.6rem;
+    font-size: 12px;
+    line-height: 1.2;
+    pointer-events: none;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+  }
+
   .desktop-detail-resize-handle::before {
     content: "";
     position: absolute;

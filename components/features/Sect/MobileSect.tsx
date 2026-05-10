@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { 详细门派结构, 职位等级排序 } from '../../../models/sect';
+import { 详细门派结构, 门派任务, 职位等级排序 } from '../../../models/sect';
 import { 游戏时间格式 } from '../../../models/world';
 
 interface Props {
@@ -8,11 +8,13 @@ interface Props {
     onClose: () => void;
     onOpenNpc?: (npc: any) => void;
     onLearnBook?: (book: any) => void;
+    learnedBookIds?: string[];
+    onAcceptMission?: (mission: 门派任务) => void;
 }
 
 type Tab = 'hall' | 'missions' | 'exchange' | 'library' | 'members';
 
-const MobileSect: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc, onLearnBook }) => {
+const MobileSect: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc, onLearnBook, learnedBookIds = [], onAcceptMission }) => {
     const [activeTab, setActiveTab] = useState<Tab>('hall');
     const [missionFilter, setMissionFilter] = useState<'all' | 'active' | 'available'>('all');
 
@@ -206,7 +208,11 @@ const MobileSect: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc
                                             <div className="mt-3 flex items-center justify-between text-[11px]">
                                                 <span className="text-wuxia-gold font-mono">+{mission.奖励贡献} 贡献</span>
                                                 {mission.当前状态 === '可接取' && !isExpired && (
-                                                    <button className="px-3 py-1 text-[10px] rounded border border-wuxia-gold text-wuxia-gold hover:bg-wuxia-gold/10">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onAcceptMission?.(mission)}
+                                                        className="px-3 py-1 text-[10px] rounded border border-wuxia-gold text-wuxia-gold hover:bg-wuxia-gold/10"
+                                                    >
                                                         接取任务
                                                     </button>
                                                 )}
@@ -240,6 +246,8 @@ const MobileSect: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc
                         <div className="space-y-3">
                             {(sectData.藏经阁列表 || []).map(book => {
                                 const canRead = 职位可达(book.要求职位) && 累计贡献 >= book.要求累计贡献;
+                                const alreadyLearned = learnedBookIds.includes(book.id);
+                                const canLearn = canRead && !alreadyLearned;
                                 return (
                                     <div key={book.id} className="bg-black/40 border border-gray-800 rounded-xl p-4 space-y-3">
                                         <div className="flex items-start justify-between gap-3">
@@ -247,18 +255,18 @@ const MobileSect: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc
                                                 <div className="text-sm text-gray-200 font-bold">{book.名称}</div>
                                                 <div className="text-[10px] text-gray-500 mt-1">{book.类型} · {book.品阶}</div>
                                             </div>
-                                            <span className={`text-[10px] px-2 py-0.5 rounded border ${canRead ? 'border-emerald-400/40 text-emerald-200' : 'border-gray-700 text-gray-400'}`}>
-                                                {canRead ? '可学' : '未达标'}
+                                            <span className={`text-[10px] px-2 py-0.5 rounded border ${alreadyLearned ? 'border-gray-600 text-gray-300' : canRead ? 'border-emerald-400/40 text-emerald-200' : 'border-gray-700 text-gray-400'}`}>
+                                                {alreadyLearned ? '已学习' : canRead ? '可学' : '未达标'}
                                             </span>
                                         </div>
                                         <p className="text-[11px] text-gray-400 leading-5">{book.简介}</p>
                                         <button
                                             type="button"
-                                            disabled={!canRead}
+                                            disabled={!canLearn}
                                             onClick={() => onLearnBook?.(book)}
-                                            className={`w-full rounded px-3 py-2 text-[11px] font-bold ${canRead ? 'border border-wuxia-gold bg-wuxia-gold/15 text-wuxia-gold' : 'border border-gray-700 bg-gray-900 text-gray-400'}`}
+                                            className={`w-full rounded px-3 py-2 text-[11px] font-bold ${canLearn ? 'border border-wuxia-gold bg-wuxia-gold/15 text-wuxia-gold' : 'border border-gray-700 bg-gray-900 text-gray-400'}`}
                                         >
-                                            学习
+                                            {alreadyLearned ? '已学习' : '学习'}
                                         </button>
                                     </div>
                                 );

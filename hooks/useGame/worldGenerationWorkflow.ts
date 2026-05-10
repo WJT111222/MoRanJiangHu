@@ -29,7 +29,7 @@ type 世界生成工作流依赖 = {
     设置最近开局配置: (value: any) => void;
     清空重Roll快照: () => void;
     重置自动存档状态: () => void;
-    创建开场基础状态: (charData: 角色数据结构, worldConfig: WorldGenConfig) => any;
+    创建开场基础状态: (charData: 角色数据结构, worldConfig: WorldGenConfig, openingConfig?: OpeningConfig) => any;
     构建前端清空开场状态: (baseState: any) => any;
     应用开场基态: (baseState: any) => void;
     创建开场命令基态: (charData?: 角色数据结构) => any;
@@ -93,7 +93,7 @@ export const 执行世界生成工作流 = async (
     deps.清空重Roll快照();
     deps.重置自动存档状态();
 
-    const openingBase = deps.创建开场基础状态(charData, worldConfig);
+    const openingBase = deps.创建开场基础状态(charData, worldConfig, openingConfig);
     const clearedOpeningBase = options?.清空前端变量
         ? deps.构建前端清空开场状态(openingBase)
         : null;

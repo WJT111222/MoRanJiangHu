@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { 角色数据结构, 视觉设置结构 } from '../../../types';
 import { 构建区域文字样式 } from '../../../utils/visualSettings';
+import { 格式化月日, 计算角色总气血 } from '../../../utils/characterVitals';
 interface Props {
     character: 角色数据结构;
     visualConfig?: 视觉设置结构;
@@ -9,6 +10,7 @@ interface Props {
 const CharacterProfileCard: React.FC<Props> = ({ character, visualConfig }) => {
     const 天赋列表 = Array.isArray(character.天赋列表) ? character.天赋列表 : [];
     const areaStyle = 构建区域文字样式(visualConfig, '角色档案');
+    const 总气血 = useMemo(() => 计算角色总气血(character), [character]);
 
     const attributes = [
         { key: '力', val: character.力量 },
@@ -51,7 +53,11 @@ const CharacterProfileCard: React.FC<Props> = ({ character, visualConfig }) => {
                             </div>
                             <div className="border border-gray-800/80 bg-white/[0.03] px-3 py-2">
                                 <div className="text-[10px] tracking-[0.25em] text-gray-500">生辰</div>
-                                <div className="mt-1">{character.出生日期 || '未知'}</div>
+                                <div className="mt-1">{格式化月日(character.出生日期) || '未知'}</div>
+                            </div>
+                            <div className="border border-gray-800/80 bg-white/[0.03] px-3 py-2">
+                                <div className="text-[10px] tracking-[0.25em] text-gray-500">总气血</div>
+                                <div className={`mt-1 font-mono ${总气血.已死亡 ? 'text-red-300' : 'text-wuxia-gold'}`}>{总气血.当前}/{总气血.最大}</div>
                             </div>
                             <div className="border border-gray-800/80 bg-white/[0.03] px-3 py-2 sm:col-span-2">
                                 <div className="text-[10px] tracking-[0.25em] text-gray-500">性格</div>

@@ -28,6 +28,15 @@ interface Props {
     socialList: NPC结构[];
     playerCharacter?: 角色数据结构 | null;
     cultivationSystemEnabled?: boolean;
+    itemImageSequence?: Array<{
+        id: string;
+        物品名称: string;
+        物品类型?: string;
+        物品品质?: string;
+        生成时间?: number;
+        状态?: 图片生成状态类型;
+        构图?: string;
+    }>;
     queue: NPC生图任务记录[];
     sceneArchive: 场景图片档案;
     sceneQueue: 场景生图任务记录[];
@@ -292,6 +301,7 @@ const ImageManagerModal: React.FC<Props> = ({
     socialList,
     playerCharacter,
     cultivationSystemEnabled = true,
+    itemImageSequence = [],
     queue,
     sceneArchive,
     sceneQueue,
@@ -916,6 +926,12 @@ const ImageManagerModal: React.FC<Props> = ({
         }));
         return [...npcRecords, ...sceneRecords].sort((a, b) => b.创建时间 - a.创建时间);
     }, [queueList, sceneQueue]);
+
+    const itemSequenceList = React.useMemo(() => (
+        Array.isArray(itemImageSequence)
+            ? itemImageSequence.slice().sort((a, b) => (b.生成时间 || 0) - (a.生成时间 || 0))
+            : []
+    ), [itemImageSequence]);
 
     const filteredCombinedQueue = React.useMemo(() => {
         const keyword = (filters.角色姓名 || '').trim().toLowerCase();
@@ -2871,6 +2887,33 @@ const ImageManagerModal: React.FC<Props> = ({
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
+                    {itemSequenceList.length > 0 && (
+                        <div className="rounded border border-cyan-500/20 bg-cyan-950/10 p-4">
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                                <div>
+                                    <div className="text-cyan-200 font-serif text-base tracking-wider">物品生图序列</div>
+                                    <div className="mt-1 text-[10px] text-cyan-100/50">按最近生成时间展示背包物品图标、特写与展示图。</div>
+                                </div>
+                                <div className="text-[11px] text-cyan-100/70">{itemSequenceList.length} 条</div>
+                            </div>
+                            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                                {itemSequenceList.map((item) => (
+                                    <div key={item.id} className="rounded border border-cyan-400/15 bg-black/35 px-3 py-2 text-[11px]">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="truncate font-serif text-cyan-100" title={item.物品名称}>{item.物品名称}</span>
+                                            <span className={`shrink-0 rounded border px-1.5 py-0.5 ${状态样式[item.状态 || 'success']}`}>{状态文案[item.状态 || 'success']}</span>
+                                        </div>
+                                        <div className="mt-1 flex flex-wrap gap-2 text-cyan-100/55">
+                                            <span>{item.构图 || '物品图'}</span>
+                                            <span>{item.物品类型 || '未分类'}</span>
+                                            <span>{item.物品品质 || '未知品质'}</span>
+                                        </div>
+                                        <div className="mt-1 font-mono text-[10px] text-gray-500">{格式化时间(item.生成时间)}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     {filteredCombinedQueue.length > 0 ? (
                         filteredCombinedQueue.map((entry) => {
                             if (entry.类型 === 'scene') {
@@ -4794,7 +4837,7 @@ const ImageManagerModal: React.FC<Props> = ({
                     onClick={() => setImageViewer(null)}
                 >
                     <div
-                        className="relative max-w-[92vw] max-h-[94vh] rounded-lg overflow-hidden border border-wuxia-gold/20 shadow-[0_0_50px_rgba(212,175,55,0.16)]"
+                        className="relative inline-flex w-fit max-w-[92vw] max-h-[94vh] rounded-lg overflow-hidden border border-wuxia-gold/20 shadow-[0_0_50px_rgba(212,175,55,0.16)]"
                         onClick={(event) => event.stopPropagation()}
                     >
                         <img src={imageViewer.src} alt={imageViewer.alt} className="max-w-[92vw] max-h-[94vh] object-contain bg-black" />

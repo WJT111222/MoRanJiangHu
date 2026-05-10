@@ -11,6 +11,7 @@ import { 构建角色身份摘要 } from './identitySummary';
 import { 规范化接口设置 } from '../../../utils/apiConfig';
 import { 获取图片展示地址 } from '../../../utils/imageAssets';
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
+import { 计算角色总气血 } from '../../../utils/characterVitals';
 
 interface Props {
     character: 角色数据结构;
@@ -103,6 +104,7 @@ const MobileCharacter: React.FC<Props> = ({
     onClose
 }) => {
     use图片资源回源预取(character);
+    const 总气血 = useMemo(() => 计算角色总气血(character), [character]);
     const [activeView, setActiveView] = useState<MobileCharacterView>('profile');
     const [busyAction, setBusyAction] = useState('');
     const [generateOptions, setGenerateOptions] = useState<主角生图选项>({
@@ -416,6 +418,7 @@ const MobileCharacter: React.FC<Props> = ({
 
                             <div className="rounded-2xl border border-gray-800 bg-black/30 p-4 space-y-3">
                                 <div className="text-[10px] tracking-[0.3em] text-wuxia-gold/70">状态</div>
+                                <VitalBar label="总气血" current={总气血.当前} max={总气血.最大} color="bg-red-700" />
                                 <VitalBar label="精力" current={character.当前精力} max={character.最大精力} color="bg-teal-500" />
                                 {启用修炼体系 && (
                                     <VitalBar label="内力" current={character.当前内力} max={character.最大内力} color="bg-indigo-500" />

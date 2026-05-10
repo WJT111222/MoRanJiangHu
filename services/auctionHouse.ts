@@ -309,7 +309,16 @@ export const 清理并补货 = (state: 拍卖行状态): 拍卖行状态 => {
         return { ...state, 拍卖品列表: cleaned, 行情列表: 行情.行情列表, 最近行情时间: 行情.最近行情时间 };
     }
     const need = Math.max(0, 16 - active.length);
-    const restocked = Array.from({ length: need }, () => 生成系统拍卖品(行情.行情列表));
+    const seenNames = new Set(active.map((entry) => entry.物品?.名称).filter(Boolean));
+    const restocked: 拍卖品记录[] = [];
+    for (let i = 0; i < need; i += 1) {
+        let next = 生成系统拍卖品(行情.行情列表);
+        for (let retry = 0; retry < 6 && seenNames.has(next.物品?.名称); retry += 1) {
+            next = 生成系统拍卖品(行情.行情列表);
+        }
+        seenNames.add(next.物品?.名称);
+        restocked.push(next);
+    }
     return {
         ...state,
         拍卖品列表: [...restocked, ...cleaned].slice(0, 90),

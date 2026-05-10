@@ -1,11 +1,13 @@
 import React from 'react';
-import { 角色数据结构, 战斗状态结构 } from '../../../types';
+import { NPC结构, 角色数据结构, 战斗状态结构 } from '../../../types';
 import { IconSwords, IconYinYang } from '../../ui/Icons';
 import { 生成战斗可视化数据, 逻辑判断知识库 } from '../../../utils/rulebook';
+import { 计算角色总气血 } from '../../../utils/characterVitals';
 
 interface Props {
     character: 角色数据结构;
     battle: 战斗状态结构;
+    teammates?: NPC结构[];
     contextText?: string;
     onClose: () => void;
 }
@@ -48,10 +50,12 @@ const 资源条: React.FC<{
     );
 };
 
-const BattleModal: React.FC<Props> = ({ character, battle, contextText = '', onClose }) => {
+const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], contextText = '', onClose }) => {
     const 敌方列表 = (Array.isArray(battle?.敌方) ? battle.敌方 : []) as 扩展敌方[];
+    const 队友列表 = React.useMemo(() => (Array.isArray(teammates) ? teammates : []).filter((npc) => npc?.是否队友 === true), [teammates]);
     const 存活敌人数 = 敌方列表.filter((enemy) => (enemy?.当前血量 || 0) > 0).length;
     const 可视化 = 生成战斗可视化数据(character, battle, contextText);
+    const 主角总气血 = React.useMemo(() => 计算角色总气血(character), [character]);
 
     const 部位列表 = [
         ['头部', character.头部当前血量, character.头部最大血量, character.头部状态],
@@ -152,6 +156,72 @@ const BattleModal: React.FC<Props> = ({ character, battle, contextText = '', onC
                                 </div>
                             </section>
                         </div>
+                        <div className="mb-4 grid gap-4 xl:grid-cols-2">
+                            <section className="rounded-xl border border-emerald-500/20 bg-emerald-950/10 p-4">
+                                <div className="mb-3 flex items-center justify-between">
+                                    <div className="text-xs font-bold tracking-[0.22em] text-emerald-200">我方队伍</div>
+                                    <div className="text-[11px] text-emerald-100/65">含主角与已入队成员</div>
+                                </div>
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <div className="rounded-lg border border-emerald-400/20 bg-black/35 p-3">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="font-serif text-base font-bold text-wuxia-gold">{character.姓名 || '主角'}</div>
+                                            <div className="text-[11px] text-gray-400">{character.境界 || '未明境界'}</div>
+                                        </div>
+                                        <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+                                            <div className="rounded border border-red-500/20 bg-red-950/20 px-2 py-1 text-red-100">气血 <b>{主角总气血.当前}/{主角总气血.最大}</b></div>
+                                            <div className="rounded border border-cyan-500/20 bg-cyan-950/20 px-2 py-1 text-cyan-100">精力 <b>{character.当前精力}/{character.最大精力}</b></div>
+                                            <div className="rounded border border-indigo-500/20 bg-indigo-950/20 px-2 py-1 text-indigo-100">内力 <b>{character.当前内力}/{character.最大内力}</b></div>
+                                            <div className="rounded border border-white/10 bg-black/25 px-2 py-1 text-gray-200">力 {character.力量}</div>
+                                            <div className="rounded border border-white/10 bg-black/25 px-2 py-1 text-gray-200">敏 {character.敏捷}</div>
+                                            <div className="rounded border border-white/10 bg-black/25 px-2 py-1 text-gray-200">体 {character.体质}</div>
+                                        </div>
+                                    </div>
+                                    {队友列表.map((npc, index) => (
+                                        <div key={npc.id || `${npc.姓名}-${index}`} className="rounded-lg border border-emerald-400/15 bg-black/30 p-3">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="font-serif text-sm font-bold text-emerald-100">{npc.姓名 || `队友${index + 1}`}</div>
+                                                <div className="text-[10px] text-gray-500">{npc.境界 || '未明'}</div>
+                                            </div>
+                                            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-200">
+                                                <div>气血 {npc.当前血量 || 0}/{npc.最大血量 || 0}</div>
+                                                <div>精力 {npc.当前精力 || 0}/{npc.最大精力 || 0}</div>
+                                                <div>攻击 {npc.攻击力 || 0}</div>
+                                                <div>防御 {npc.防御力 || 0}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                            <section className="rounded-xl border border-red-500/20 bg-red-950/10 p-4">
+                                <div className="mb-3 flex items-center justify-between">
+                                    <div className="text-xs font-bold tracking-[0.22em] text-red-200">敌方阵列</div>
+                                    <div className="text-[11px] text-red-100/65">存活 {存活敌人数} / {敌方列表.length}</div>
+                                </div>
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    {敌方列表.length > 0 ? 敌方列表.map((enemy, index) => (
+                                        <div key={`${enemy?.名字 || 'enemy'}-${index}-summary`} className="rounded-lg border border-red-400/15 bg-black/30 p-3">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="font-serif text-sm font-bold text-red-100">{enemy.名字 || `敌人${index + 1}`}</div>
+                                                <div className="text-[10px] text-gray-500">{enemy.境界 || '未明'}</div>
+                                            </div>
+                                            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-200">
+                                                <div>气血 {enemy.当前血量 || 0}/{enemy.最大血量 || 0}</div>
+                                                <div>精力 {enemy.当前精力 || 0}/{enemy.最大精力 || 0}</div>
+                                                <div>攻击 {enemy.战斗力 || 0}</div>
+                                                <div>防御 {enemy.防御力 || 0}</div>
+                                            </div>
+                                        </div>
+                                    )) : <div className="rounded border border-dashed border-red-400/20 p-6 text-center text-sm text-red-100/45">暂无敌方</div>}
+                                </div>
+                            </section>
+                        </div>
+                        {contextText.trim() && (
+                            <div className="mb-4 rounded-xl border border-wuxia-gold/20 bg-black/35 p-4">
+                                <div className="mb-2 text-xs font-bold tracking-[0.22em] text-wuxia-gold/80">本回合战斗变化</div>
+                                <div className="max-h-32 overflow-y-auto whitespace-pre-wrap text-xs leading-6 text-gray-200">{contextText.trim()}</div>
+                            </div>
+                        )}
                         {敌方列表.length === 0 ? (
                             <div className="h-full rounded-2xl border border-dashed border-wuxia-gold/20 bg-black/20 flex flex-col items-center justify-center text-wuxia-gold/40 gap-4 font-serif">
                                 <IconYinYang size={64} className="opacity-30 drop-shadow-lg" />

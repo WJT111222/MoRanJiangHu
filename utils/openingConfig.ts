@@ -67,6 +67,8 @@ export const 默认开局配置 = (): OpeningConfig => ({
     初始关系模板: '师门牵引',
     关系侧重: ['师门', '友情'],
     开局切入偏好: '日常低压',
+    开局生成门派: true,
+    开局生成同门: true,
     同人融合: {
         enabled: false,
         作品名: '',
@@ -185,6 +187,8 @@ export const 规范化开局配置 = (raw?: any): OpeningConfig => {
         初始关系模板,
         关系侧重: 关系侧重.length > 0 ? 关系侧重 : fallback.关系侧重,
         开局切入偏好,
+        开局生成门派: raw?.开局生成门派 !== false,
+        开局生成同门: raw?.开局生成同门 !== false,
         同人融合: {
             enabled: raw?.同人融合?.enabled === true,
             作品名: 读取文本(raw?.同人融合?.作品名),

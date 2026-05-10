@@ -3285,7 +3285,8 @@ export const useGame = () => {
             setShowSettings, setShowInventory, setShowEquipment, setShowBattle, setShowSocial, setShowTeam, setShowKungfu, setShowWorld, setShowMap, setShowSect, setShowTask, setShowAgreement, setShowStory, setShowHeroinePlan, setShowMemory, setShowSaveLoad,
             setActiveTab, setCurrentTheme,
             setApiConfig, setVisualConfig, setImageManagerConfig, setPrompts,
-            setCharacter: 设置角色
+            setCharacter: 设置角色,
+            setPlayerSect: 设置玩家门派
         },
         actions: {
             handleSend,
@@ -3347,6 +3348,7 @@ export const useGame = () => {
             clearSceneImageQueue: 清空场景生图任务队列,
             saveSceneImageLocally: 保存场景图片本地副本,
             dismissNotification: 关闭右下角提示,
+            appendSystemMessage: 追加系统消息,
             handleForceWorldEvolutionUpdate,
             getContextSnapshot: buildContextSnapshot,
             handleStartMemorySummary,

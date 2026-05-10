@@ -1710,6 +1710,31 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, request
                                     </div>
                                     <div className="mt-2 text-[11px] text-gray-500">已选 {openingConfig.关系侧重.length}/2。会优先影响初始社交网的情绪结构。</div>
                                 </div>
+
+                                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="flex items-center justify-between rounded-2xl border border-gray-800 bg-black/25 px-4 py-4">
+                                        <div>
+                                            <div className="text-sm text-gray-200">开局生成门派</div>
+                                            <div className="text-[11px] text-gray-500 mt-1">开启后第0回合会直接拥有可用门派，而不是只靠旧存档兜底。</div>
+                                        </div>
+                                        <开关按钮
+                                            checked={openingConfig.开局生成门派 !== false}
+                                            label={openingConfig.开局生成门派 !== false ? '生成' : '不生成'}
+                                            onToggle={() => setOpeningConfig((prev) => ({ ...prev, 开局生成门派: prev.开局生成门派 === false }))}
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between rounded-2xl border border-gray-800 bg-black/25 px-4 py-4">
+                                        <div>
+                                            <div className="text-sm text-gray-200">开局生成同门</div>
+                                            <div className="text-[11px] text-gray-500 mt-1">开启后会生成多层次同门名录，少数主要角色加若干普通同门。</div>
+                                        </div>
+                                        <开关按钮
+                                            checked={openingConfig.开局生成同门 !== false}
+                                            label={openingConfig.开局生成同门 !== false ? '生成' : '不生成'}
+                                            onToggle={() => setOpeningConfig((prev) => ({ ...prev, 开局生成同门: prev.开局生成同门 === false }))}
+                                        />
+                                    </div>
+                                </div>
                             </OrnateBorder>
 
                             <OrnateBorder className="p-6 md:p-7">

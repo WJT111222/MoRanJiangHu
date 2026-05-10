@@ -458,6 +458,8 @@ export interface OpeningConfig {
     初始关系模板: 初始关系模板类型;
     关系侧重: 关系侧重类型[];
     开局切入偏好: 开局切入偏好类型;
+    开局生成门派: boolean;
+    开局生成同门: boolean;
     同人融合: 同人融合配置结构;
 }
 

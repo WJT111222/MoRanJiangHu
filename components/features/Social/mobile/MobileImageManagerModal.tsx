@@ -1620,7 +1620,7 @@ const SceneTabContent: React.FC<TabProps> = ({
                     onClick={() => setImageViewer(null)}
                 >
                     <div
-                        className="relative max-w-[94vw] max-h-[92vh] rounded-lg overflow-hidden border border-[#d4af37]/20 shadow-[0_0_40px_rgba(212,175,55,0.18)]"
+                        className="relative inline-flex w-fit max-w-[94vw] max-h-[92vh] rounded-lg overflow-hidden border border-[#d4af37]/20 shadow-[0_0_40px_rgba(212,175,55,0.18)]"
                         onClick={(event) => event.stopPropagation()}
                     >
                         <img src={imageViewer.src} alt={imageViewer.alt} className="max-w-[94vw] max-h-[92vh] object-contain bg-black" />
@@ -1849,7 +1849,7 @@ const HistoryTabContent: React.FC<TabProps> = ({
                     onClick={() => setImageViewer(null)}
                 >
                     <div
-                        className="relative max-w-[94vw] max-h-[92vh] rounded-lg overflow-hidden border border-[#d4af37]/20 shadow-[0_0_40px_rgba(212,175,55,0.18)]"
+                        className="relative inline-flex w-fit max-w-[94vw] max-h-[92vh] rounded-lg overflow-hidden border border-[#d4af37]/20 shadow-[0_0_40px_rgba(212,175,55,0.18)]"
                         onClick={(event) => event.stopPropagation()}
                     >
                         <img src={imageViewer.src} alt={imageViewer.alt} className="max-w-[94vw] max-h-[92vh] object-contain bg-black" />

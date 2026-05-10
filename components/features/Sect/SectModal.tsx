@@ -9,11 +9,13 @@ interface Props {
     onClose: () => void;
     onOpenNpc?: (npc: any) => void;
     onLearnBook?: (book: any) => void;
+    learnedBookIds?: string[];
+    onAcceptMission?: (mission: 门派任务) => void;
 }
 
 type Tab = 'hall' | 'missions' | 'exchange' | 'library' | 'members';
 
-const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc, onLearnBook }) => {
+const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc, onLearnBook, learnedBookIds = [], onAcceptMission }) => {
     const [activeTab, setActiveTab] = useState<Tab>('hall');
     const [missionFilter, setMissionFilter] = useState<'all' | 'active' | 'available'>('all');
 
@@ -311,7 +313,11 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc,
                                                 {/* Action Button */}
                                                 <div className="absolute right-5 bottom-4">
                                                     {mission.当前状态 === '可接取' && !isExpired && (
-                                                        <button className="bg-wuxia-gold/10 hover:bg-wuxia-gold text-wuxia-gold hover:text-black border border-wuxia-gold px-4 py-1.5 rounded text-xs font-bold transition-all">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onAcceptMission?.(mission)}
+                                                            className="bg-wuxia-gold/10 hover:bg-wuxia-gold text-wuxia-gold hover:text-black border border-wuxia-gold px-4 py-1.5 rounded text-xs font-bold transition-all"
+                                                        >
                                                             接取任务
                                                         </button>
                                                     )}
@@ -373,6 +379,8 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc,
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-slide-in">
                                  {(sectData.藏经阁列表 || []).map(book => {
                                      const canRead = 职位可达(book.要求职位) && 累计贡献 >= book.要求累计贡献;
+                                     const alreadyLearned = learnedBookIds.includes(book.id);
+                                     const canLearn = canRead && !alreadyLearned;
                                      return (
                                          <div key={book.id} className="bg-black/40 border border-gray-700 p-5 rounded-lg transition-colors hover:border-wuxia-gold/50">
                                              <div className="flex items-start justify-between gap-4">
@@ -383,8 +391,8 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc,
                                                          <span className="rounded border border-white/15 px-2 py-0.5 text-gray-200">{book.品阶}</span>
                                                      </div>
                                                  </div>
-                                                  <span className={`rounded border px-2 py-1 text-xs ${canRead ? 'border-emerald-400/50 text-emerald-200' : 'border-gray-700 text-gray-300'}`}>
-                                                      {canRead ? '可学' : !职位可达(book.要求职位) ? '身份未足' : '贡献未足'}
+                                                  <span className={`rounded border px-2 py-1 text-xs ${alreadyLearned ? 'border-gray-600 text-gray-300' : canRead ? 'border-emerald-400/50 text-emerald-200' : 'border-gray-700 text-gray-300'}`}>
+                                                      {alreadyLearned ? '已学习' : canRead ? '可学' : !职位可达(book.要求职位) ? '身份未足' : '贡献未足'}
                                                   </span>
                                              </div>
                                              <p className="mt-4 text-sm leading-6 text-gray-300">{book.简介}</p>
@@ -394,11 +402,11 @@ const SectModal: React.FC<Props> = ({ sectData, currentTime, onClose, onOpenNpc,
                                               </div>
                                                <button
                                                    type="button"
-                                                   disabled={!canRead}
+                                                   disabled={!canLearn}
                                                    onClick={() => onLearnBook?.(book)}
-                                                   className={`mt-4 w-full rounded px-3 py-2 text-sm font-bold transition-colors ${canRead ? 'border border-wuxia-gold bg-wuxia-gold/15 text-wuxia-gold hover:bg-wuxia-gold hover:text-black' : 'border border-gray-700 bg-gray-900 text-gray-400 cursor-not-allowed'}`}
+                                                   className={`mt-4 w-full rounded px-3 py-2 text-sm font-bold transition-colors ${canLearn ? 'border border-wuxia-gold bg-wuxia-gold/15 text-wuxia-gold hover:bg-wuxia-gold hover:text-black' : 'border border-gray-700 bg-gray-900 text-gray-400 cursor-not-allowed'}`}
                                                >
-                                                  学习
+                                                  {alreadyLearned ? '已学习' : '学习'}
                                               </button>
                                           </div>
                                       );

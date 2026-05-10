@@ -4,6 +4,7 @@ import type { 香闺秘档部位类型 } from '../../../models/imageGeneration';
 import { 构建NPC记忆展示结果 } from '../../../hooks/useGame/npcMemorySummary';
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
 import { 获取图片展示地址 } from '../../../utils/imageAssets';
+import { 格式化月日 } from '../../../utils/characterVitals';
 import { IconBeads, IconHeart, IconMars, IconScroll } from '../../ui/Icons';
 
 interface Props {
@@ -81,19 +82,7 @@ const MobileSocial: React.FC<Props> = ({
         }
         return '';
     };
-    const 格式化生日 = (value: string): string => {
-        const text = value.trim();
-        if (!text) return '';
-        const monthDayText = text.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日?/);
-        const separatedText = text.match(/^(?:\d{2,4}\s*[-/.年]\s*)?0?(\d{1,2})\s*[-/.:\s]\s*0?(\d{1,2})\s*(?:日)?$/);
-        const compactText = text.match(/^0?(\d{1,2})(\d{2})$/);
-        const match = monthDayText || separatedText || compactText;
-        if (!match) return text;
-        const month = Number(match[1]);
-        const day = Number(match[2]);
-        if (!Number.isInteger(month) || !Number.isInteger(day) || month < 1 || month > 12 || day < 1 || day > 31) return text;
-        return `${month}月${day}日`;
-    };
+    const 格式化生日 = (value: string): string => 格式化月日(value);
     const 读取外貌 = (npc: NPC结构): string => 取首个非空文本(
         (npc as any).外貌描写,
         (npc as any).外貌,
