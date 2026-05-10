@@ -943,12 +943,12 @@ const SocialModal: React.FC<Props> = ({
 
             {imageViewer && (
                 <div
-                    className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn cursor-pointer"
+                    className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-sm flex items-center justify-end pr-8 animate-fadeIn cursor-pointer"
                     onClick={() => setImageViewer(null)}
                 >
-                    <div className="relative inline-flex w-fit max-w-[90vw] max-h-[95vh] rounded-lg shadow-[0_0_50px_rgba(212,175,55,0.15)] overflow-hidden cursor-default" onClick={e => e.stopPropagation()}>
+                    <div className="relative inline-flex w-fit max-w-[85vw] max-h-[95vh] rounded-lg shadow-[0_0_50px_rgba(212,175,55,0.15)] overflow-hidden cursor-default" onClick={e => e.stopPropagation()}>
                         <button
-                            className="absolute left-2 top-2 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-gray-600 bg-black/75 text-gray-200 shadow-[0_0_24px_rgba(0,0,0,0.65)] backdrop-blur-md transition-all hover:border-red-400 hover:bg-red-400/10 hover:text-red-300"
+                            className="absolute right-2 top-2 z-20 flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/30 bg-red-600/90 text-white shadow-[0_0_20px_rgba(220,38,38,0.8)] backdrop-blur-md transition-all hover:scale-110 hover:bg-red-500 hover:shadow-[0_0_30px_rgba(220,38,38,1)]"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setImageViewer(null);
@@ -956,7 +956,7 @@ const SocialModal: React.FC<Props> = ({
                             aria-label="关闭图片预览"
                             title="关闭图片预览"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
