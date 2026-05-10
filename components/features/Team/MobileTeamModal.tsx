@@ -7,7 +7,7 @@ interface Props {
     onClose: () => void;
 }
 
-const ProgressBar: React.FC<{ label: string; cur: number; max: number; color: string }> = ({ label, cur, max, color }) => {
+const ProgressBar: React.FC<{ label: string; cur: number; max: number; color: string }> = ({ label, cur, max, color: _color }) => {
     const safeCur = Math.max(0, Number.isFinite(Number(cur)) ? Math.ceil(Number(cur)) : 0);
     const safeMax = Math.max(1, Number.isFinite(Number(max)) ? Math.ceil(Number(max)) : 0, safeCur);
     const pct = Math.max(0, Math.min(100, (safeCur / safeMax) * 100));
@@ -18,7 +18,7 @@ const ProgressBar: React.FC<{ label: string; cur: number; max: number; color: st
                 <span className="font-mono text-gray-300">{safeCur}/{safeMax}</span>
             </div>
             <div className="h-1.5 bg-gray-900 rounded-full border border-gray-800 overflow-hidden">
-                <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+                <div className="h-full bg-gradient-to-r from-wuxia-gold/70 via-wuxia-gold to-wuxia-gold/80" style={{ width: `${pct}%` }} />
             </div>
         </div>
     );

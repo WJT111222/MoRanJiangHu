@@ -22,7 +22,7 @@ import type {
 import { use图片资源回源预取 } from '../../../../hooks/useImageAssetPrefetch';
 import { 获取图片展示地址, 获取图片资源文本地址, 是否存在本地图片副本, 格式化本地图片描述 } from '../../../../utils/imageAssets';
 import ToggleSwitch from '../../../ui/ToggleSwitch';
-import { 规范化接口设置 } from '../../../../utils/apiConfig';
+import { 获取命中模型词组转化器预设, 规范化接口设置 } from '../../../../utils/apiConfig';
 import { 自动场景横屏尺寸选项, 自动场景竖屏尺寸选项 } from '../../../../utils/imageSizeOptions';
 
 interface Props {
@@ -2287,8 +2287,8 @@ const PresetsTabContent: React.FC<TabProps> = ({
         [feature?.画师串预设列表]
     );
     const activeModelTransformerPreset = React.useMemo(
-        () => (feature?.模型词组转化器预设列表 || []).find((preset) => preset?.是否启用 === true) || null,
-        [feature?.模型词组转化器预设列表]
+        () => 获取命中模型词组转化器预设(presetConfig, 'scene_judge') || (feature?.模型词组转化器预设列表 || []).find((preset) => preset?.是否启用 === true) || null,
+        [feature?.模型词组转化器预设列表, presetConfig]
     );
     const sceneJudgePresets = React.useMemo(
         () => (feature?.词组转化器提示词预设列表 || []).filter((preset) => preset?.类型 === 'scene_judge'),
@@ -2935,8 +2935,8 @@ const RulesTabContent: React.FC<TabProps> = ({
     const presetConfig = React.useMemo(() => 规范化接口设置(apiConfig), [apiConfig]);
     const feature = presetConfig.功能模型占位;
     const activeModelTransformerPreset = React.useMemo(
-        () => (feature?.模型词组转化器预设列表 || []).find((preset) => preset?.是否启用 === true) || null,
-        [feature?.模型词组转化器预设列表]
+        () => 获取命中模型词组转化器预设(presetConfig, 'scene_judge') || (feature?.模型词组转化器预设列表 || []).find((preset) => preset?.是否启用 === true) || null,
+        [feature?.模型词组转化器预设列表, presetConfig]
     );
     const sceneJudgePresets = React.useMemo(
         () => (feature?.词组转化器提示词预设列表 || []).filter((preset) => preset?.类型 === 'scene_judge'),

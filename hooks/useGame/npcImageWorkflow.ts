@@ -211,7 +211,7 @@ const 角色锚点是否匹配NPC性别 = (anchor: 角色锚点摘要, gender: '
 
 export const 执行NPC生图工作流 = async (
     npc: any,
-    options: { force?: boolean; source?: 生图任务来源类型; 构图?: '头像' | '半身' | '立绘'; 画风?: 当前可用接口结构['画风']; 画师串?: string; 画师串预设ID?: string; PNG画风预设ID?: string; 额外要求?: string; 尺寸?: string } | undefined,
+    options: { force?: boolean; source?: 生图任务来源类型; 构图?: '头像' | '半身' | '立绘'; 画风?: 当前可用接口结构['画风']; 画师串?: string; 画师串预设ID?: string; PNG画风预设ID?: string; 额外要求?: string; 尺寸?: string; signal?: AbortSignal } | undefined,
     deps: NPC生图工作流依赖
 ): Promise<void> => {
     const npcKey = deps.获取NPC唯一标识(npc);
@@ -450,7 +450,7 @@ export const 执行NPC生图工作流 = async (
                 }
             };
         });
-        const imageResult = await imageAIService.generateImageByPrompt(生图词组, imageApiForTask, undefined, {
+        const imageResult = await imageAIService.generateImageByPrompt(生图词组, imageApiForTask, options?.signal, {
             构图,
             尺寸: 尺寸 || undefined,
             附加正向提示词: 前置正向提示词,

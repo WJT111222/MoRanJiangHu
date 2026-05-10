@@ -20,7 +20,7 @@ import type {
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
 import { 获取图片展示地址, 获取图片资源文本地址, 是否存在本地图片副本, 格式化本地图片描述 } from '../../../utils/imageAssets';
 import ToggleSwitch from '../../ui/ToggleSwitch';
-import { 规范化接口设置 } from '../../../utils/apiConfig';
+import { 获取命中模型词组转化器预设, 规范化接口设置 } from '../../../utils/apiConfig';
 import { 自动场景横屏尺寸选项, 自动场景竖屏尺寸选项 } from '../../../utils/imageSizeOptions';
 import { IconScroll } from '../../ui/Icons';
 
@@ -773,9 +773,14 @@ const ImageManagerModal: React.FC<Props> = ({
         [editorModelTransformerPresets, modelTransformerPresetEditorId]
     );
     const activeModelTransformerPreset = React.useMemo(
-        () => editorModelTransformerPresets.find((item) => item.是否启用 === true) || null,
-        [editorModelTransformerPresets]
+        () => 获取命中模型词组转化器预设(presetConfig, activeRuleSection) || editorModelTransformerPresets.find((item) => item.是否启用 === true) || null,
+        [activeRuleSection, editorModelTransformerPresets, presetConfig]
     );
+    React.useEffect(() => {
+        const matched = 获取命中模型词组转化器预设(presetConfig, activeRuleSection);
+        if (!matched?.id || modelTransformerPresetEditorId === matched.id) return;
+        setModelTransformerPresetEditorId(matched.id);
+    }, [activeRuleSection, modelTransformerPresetEditorId, presetConfig]);
     const 当前生效NPC预设ID = activeModelTransformerPreset?.NPC词组转化器提示词预设ID || presetFeature?.当前NPC词组转化器提示词预设ID || '';
     const 当前生效场景预设ID = activeModelTransformerPreset?.场景词组转化器提示词预设ID || presetFeature?.当前场景词组转化器提示词预设ID || '';
     const 当前生效场景判定预设ID = activeModelTransformerPreset?.场景判定提示词预设ID || presetFeature?.当前场景判定提示词预设ID || '';

@@ -496,12 +496,12 @@ const StorageManager: React.FC<Props> = ({ requestConfirm }) => {
                 </div>
 
                 <div className="w-full h-4 bg-gray-900 rounded-full overflow-hidden flex mb-4 border border-gray-800">
-                    <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${getPercent(info.details.saves)}%` }} title="存档"></div>
-                    <div className="h-full bg-purple-500 transition-all duration-500" style={{ width: `${getPercent(info.details.prompts)}%` }} title="提示词"></div>
-                    <div className="h-full bg-green-600 transition-all duration-500" style={{ width: `${getPercent(info.details.settings)}%` }} title="其他设置"></div>
-                    <div className="h-full bg-yellow-600 transition-all duration-500" style={{ width: `${getPercent(info.details.api)}%` }} title="API配置"></div>
-                    <div className="h-full bg-pink-600 transition-all duration-500" style={{ width: `${getPercent(info.details.imageAssets)}%` }} title="图片资源"></div>
-                    <div className="h-full bg-gray-600 transition-all duration-500" style={{ width: `${getPercent(info.details.cache)}%` }} title="系统缓存"></div>
+                    <div className="h-full bg-wuxia-gold transition-all duration-500" style={{ width: `${getPercent(info.details.saves)}%` }} title="存档"></div>
+                    <div className="h-full bg-wuxia-gold/90 transition-all duration-500" style={{ width: `${getPercent(info.details.prompts)}%` }} title="提示词"></div>
+                    <div className="h-full bg-wuxia-gold/80 transition-all duration-500" style={{ width: `${getPercent(info.details.settings)}%` }} title="其他设置"></div>
+                    <div className="h-full bg-wuxia-gold/70 transition-all duration-500" style={{ width: `${getPercent(info.details.api)}%` }} title="API配置"></div>
+                    <div className="h-full bg-wuxia-gold/60 transition-all duration-500" style={{ width: `${getPercent(info.details.imageAssets)}%` }} title="图片资源"></div>
+                    <div className="h-full bg-wuxia-gold/50 transition-all duration-500" style={{ width: `${getPercent(info.details.cache)}%` }} title="系统缓存"></div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 text-center sm:grid-cols-6">

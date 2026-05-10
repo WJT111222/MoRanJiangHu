@@ -129,7 +129,7 @@ const MobileTask: React.FC<Props> = ({ tasks, onDeleteTask, onClose }) => {
                                         </div>
                                         <div className="mt-1 h-1.5 w-full bg-gray-900 rounded-full overflow-hidden">
                                             <div
-                                                className={`h-full transition-all duration-500 ${obj.完成状态 ? 'bg-green-500' : 'bg-wuxia-gold'}`}
+                                                className="h-full bg-gradient-to-r from-wuxia-gold/70 via-wuxia-gold to-wuxia-gold/80 transition-all duration-500"
                                                 style={{ width: `${Math.min((obj.当前进度 / (obj.总需进度 || 1)) * 100, 100)}%` }}
                                             ></div>
                                         </div>

@@ -37,6 +37,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import * as dbService from '../services/dbService';
 import * as textAIService from '../services/ai/text';
+import { 终止全部ComfyUI生图任务 } from '../services/ai/image';
 import { useGameState } from './useGameState';
 import { 规范化接口设置, 获取当前接口配置, 获取主剧情接口配置, 获取剧情回忆接口配置, 获取记忆总结接口配置, 获取文章优化接口配置, 获取变量计算接口配置, 获取世界演变接口配置, 获取文生图接口配置, 获取场景文生图接口配置, 获取NSFW文生图接口配置, 获取生图词组转化器接口配置, 获取生图画师串预设, 获取词组转化器预设提示词, 接口配置是否可用, 刷新已发现ComfyUI后端缓存, 变量校准功能已启用 as 变量生成功能已启用 } from '../utils/apiConfig';
 import type { 当前可用接口结构 } from '../utils/apiConfig';
@@ -407,6 +408,7 @@ export const useGame = () => {
     const 角色锚点补全进行中Ref = useRef<Set<string>>(new Set());
     const 主要角色资源补全签名Ref = useRef('');
     const 生图存档作用域Ref = useRef(`image_scope_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+    const 生图存档AbortControllerRef = useRef<AbortController>(new AbortController());
     const [NPC生图任务队列, setNPC生图任务队列] = useState<NPC生图任务记录[]>([]);
     const 场景生图自动应用任务Ref = useRef('');
     const 场景图片档案Ref = useRef<场景图片档案>({});
@@ -419,6 +421,9 @@ export const useGame = () => {
     const 后台场景生图监控Ref = useRef<Array<{ since: number; 摘要: string }>>([]);
     const 已提示后台场景生图任务Ref = useRef<Set<string>>(new Set());
     const 切换生图存档作用域 = () => {
+        生图存档AbortControllerRef.current.abort();
+        void 终止全部ComfyUI生图任务();
+        生图存档AbortControllerRef.current = new AbortController();
         生图存档作用域Ref.current = `image_scope_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         场景生图自动应用任务Ref.current = '';
         NPC生图进行中Ref.current.clear();
@@ -1654,6 +1659,7 @@ export const useGame = () => {
         },
         获取当前生图存档作用域: () => 生图存档作用域Ref.current,
         生图存档作用域仍然有效: (scope) => Boolean(scope) && scope === 生图存档作用域Ref.current,
+        获取生图AbortSignal: () => 生图存档AbortControllerRef.current.signal,
         记录后台场景监控: (item) => {
             后台场景生图监控Ref.current.push(item);
         },
@@ -1787,6 +1793,7 @@ export const useGame = () => {
         const { 执行NPC生图工作流 } = await 加载NPC生图工作流();
         return 执行NPC生图工作流(npc, {
             ...options,
+            signal: 生图存档AbortControllerRef.current.signal,
             额外要求: 构建文生图额外要求(options?.额外要求)
         }, {
             apiConfig,
@@ -1826,6 +1833,7 @@ export const useGame = () => {
         const { 执行NPC香闺秘档部位生图工作流 } = await 加载NPC香闺秘档生图工作流();
         return 执行NPC香闺秘档部位生图工作流(npc, part, {
             ...options,
+            signal: 生图存档AbortControllerRef.current.signal,
             额外要求: 构建文生图额外要求(options?.额外要求)
         }, {
             apiConfig,

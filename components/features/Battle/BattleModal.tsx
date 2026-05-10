@@ -23,16 +23,11 @@ const 资源条: React.FC<{
     max: number;
     tone: 'red' | 'cyan' | 'indigo';
     icon?: React.ReactNode;
-}> = ({ label, current, max, tone, icon }) => {
+}> = ({ label, current, max, tone: _tone, icon }) => {
     const safeMax = Math.max(1, Number(max) || 0);
     const safeCur = Math.max(0, Number(current) || 0);
     const pct = Math.max(0, Math.min(100, (safeCur / safeMax) * 100));
-    const fillClass =
-        tone === 'red'
-            ? 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_10px_rgba(220,38,38,0.5)]'
-            : tone === 'indigo'
-                ? 'bg-gradient-to-r from-indigo-500 to-indigo-300 shadow-[0_0_10px_rgba(99,102,241,0.5)]'
-                : 'bg-gradient-to-r from-cyan-600 to-cyan-400 shadow-[0_0_10px_rgba(8,145,178,0.5)]';
+    const fillClass = 'bg-gradient-to-r from-wuxia-gold/70 via-wuxia-gold to-wuxia-gold/80 shadow-[0_0_10px_rgba(212,175,55,0.45)]';
 
     return (
         <div className="space-y-1.5">

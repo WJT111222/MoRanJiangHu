@@ -2,6 +2,7 @@ export {
     buildNpcDirectImagePrompt,
     buildNpcSecretPartDirectImagePrompt,
     generateImageByPrompt,
+    终止全部ComfyUI生图任务,
     generateNpcImagePrompt,
     generateNpcSecretPartImagePrompt,
     generateSceneImagePrompt,

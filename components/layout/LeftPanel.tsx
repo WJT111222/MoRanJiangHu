@@ -8,6 +8,7 @@ import { 计算角色总气血 } from '../../utils/characterVitals';
 interface Props {
     角色: 角色数据结构;
     onOpenCharacter?: () => void;
+    onOpenVariableManager?: () => void;
     onUploadAvatar?: (imageUrl: string) => void;
     visualConfig?: 视觉设置结构;
     gameConfig?: 游戏设置结构;
@@ -37,7 +38,8 @@ const WuxiaProgressBar: React.FC<{
     showGlow?: boolean;
     delta?: number | null;
     max?: number;
-}> = ({ pct, baseColor, height = '6px', showGlow = true, delta = null, max = 0 }) => {
+}> = ({ pct, baseColor: _baseColor, height = '6px', showGlow = true, delta = null, max = 0 }) => {
+    const baseColor = '#d4af37';
     // 定义颜色的变体以模拟质感
     const style = {
         '--wuxia-base': baseColor,
@@ -99,14 +101,7 @@ const WuxiaProgressBar: React.FC<{
 };
 
 const FlatBar: React.FC<{ label: string; current: number; max: number; type: 'stamina' | 'inner' | 'food' | 'water' | 'load' | 'exp' | 'hp'; visualConfig?: 视觉设置结构; commandDelta?: number | null }> = ({ label, current, max, type, visualConfig, commandDelta = null }) => {
-    let baseColor = '#666'; // 默认灰色
-    if (type === 'food') baseColor = '#d97706'; // amber-600
-    if (type === 'stamina') baseColor = '#0d9488'; // teal-600
-    if (type === 'inner') baseColor = '#4f46e5'; // indigo-600
-    if (type === 'water') baseColor = '#2563eb'; // blue-600
-    if (type === 'load') baseColor = '#6b7280'; // gray-500
-    if (type === 'exp') baseColor = '#d4af37'; // wuxia-gold (近似值)
-    if (type === 'hp') baseColor = '#b91c1c';
+    const baseColor = '#d4af37';
     
     const pct = Math.min((current / (max || 1)) * 100, 100);
     const areaStyle = 构建区域文字样式(visualConfig, '左侧栏');
@@ -139,7 +134,7 @@ const FlatBar: React.FC<{ label: string; current: number; max: number; type: 'st
 
 const MiniBodyPart: React.FC<{ name: string; current: number; max: number; status: string; visualConfig?: 视觉设置结构 }> = ({ name, current, max, visualConfig }) => {
     const pct = (current / (max || 1)) * 100;
-    const color = '#b91c1c'; // wuxia-red (red-700)
+    const color = '#d4af37';
     const areaStyle = 构建区域文字样式(visualConfig, '左侧栏');
     const 基础字号 = Number(areaStyle.fontSize) || 13;
     const 名称字号 = Math.max(13, Math.round(基础字号 * 0.96));
@@ -173,7 +168,7 @@ const 读取本回合数值变化 = (commands: any[], path: string): number | nu
     return total === 0 ? null : total;
 };
 
-const LeftPanel: React.FC<Props> = ({ 角色, onOpenCharacter, onUploadAvatar, visualConfig, gameConfig, latestCommands = [] }) => {
+const LeftPanel: React.FC<Props> = ({ 角色, onOpenCharacter, onOpenVariableManager, onUploadAvatar, visualConfig, gameConfig, latestCommands = [] }) => {
     use图片资源回源预取(角色);
     const 金钱 = 角色.金钱 || { 金元宝: 0, 银子: 0, 铜钱: 0 };
     const 玩家BUFF列表 = Array.isArray(角色.玩家BUFF) ? 角色.玩家BUFF : [];
@@ -341,6 +336,17 @@ const LeftPanel: React.FC<Props> = ({ 角色, onOpenCharacter, onUploadAvatar, v
                     {' / '}铜 {金钱变化.铜钱 !== null && <span className={金钱变化.铜钱 >= 0 ? 'text-emerald-200' : 'text-red-200'}>({金钱变化.铜钱 > 0 ? '+' : ''}{金钱变化.铜钱})</span>} {金钱.铜钱}
                 </span>
             </div>
+
+            {onOpenVariableManager && (
+                <button
+                    type="button"
+                    onClick={onOpenVariableManager}
+                    className="mb-2 shrink-0 w-full border border-wuxia-cyan/40 bg-wuxia-cyan/10 px-2 py-1.5 text-center font-bold tracking-[0.22em] text-wuxia-cyan transition-colors hover:border-wuxia-gold hover:text-wuxia-gold"
+                    style={{ fontSize: 缩放字号(0.98, 13) }}
+                >
+                    变量管理
+                </button>
+            )}
 
             <div className="shrink-0 flex flex-col mb-2">
                 <div className="border border-gray-800 bg-white/5 p-2 flex flex-col relative group hover:border-gray-700 transition-colors">

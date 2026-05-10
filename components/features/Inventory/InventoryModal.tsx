@@ -347,13 +347,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                             <span className="text-xs uppercase tracking-widest text-wuxia-gold/80">负重</span>
                             <div className="h-1.5 w-32 overflow-hidden rounded-full border border-white/5 bg-gray-900">
                                 <div
-                                    className={`h-full transition-all duration-300 ${
-                                        isOverloaded
-                                            ? 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.8)]'
-                                            : weightPercent > 80
-                                                ? 'bg-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.8)]'
-                                                : 'bg-wuxia-gold shadow-[0_0_5px_rgba(212,175,55,0.8)]'
-                                    }`}
+                                    className="h-full bg-gradient-to-r from-wuxia-gold/70 via-wuxia-gold to-wuxia-gold/80 shadow-[0_0_5px_rgba(212,175,55,0.65)] transition-all duration-300"
                                     style={{ width: `${weightPercent}%` }}
                                 />
                             </div>

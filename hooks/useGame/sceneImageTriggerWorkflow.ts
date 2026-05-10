@@ -62,6 +62,7 @@ type 场景生图触发工作流依赖 = {
     设置当前自动应用任务ID: (requestId: string) => void;
     获取当前生图存档作用域: () => string;
     生图存档作用域仍然有效: (scope: string) => boolean;
+    获取生图AbortSignal: () => AbortSignal;
     记录后台场景监控: (item: { since: number; 摘要: string }) => void;
     推送右下角提示: (toast: { title: string; message: string; tone?: 'info' | 'success' | 'error' }) => void;
 };
@@ -218,7 +219,8 @@ export const 创建场景生图触发工作流 = (deps: 场景生图触发工作
                     构图要求: effectiveComposition,
                     尺寸: params.尺寸 || imageFeature.场景尺寸,
                     额外要求: deps.构建文生图额外要求(params.额外要求),
-                    强制执行: params.强制执行
+                    强制执行: params.强制执行,
+                    signal: deps.获取生图AbortSignal()
                 },
                 {
                     apiConfig: deps.获取接口配置(),

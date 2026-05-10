@@ -19,7 +19,7 @@ const 条形值: React.FC<{
     current: number;
     max: number;
     color: string;
-}> = ({ label, current, max, color }) => {
+}> = ({ label, current, max, color: _color }) => {
     const safeMax = Math.max(1, Number(max) || 0);
     const safeCur = Math.max(0, Number(current) || 0);
     const pct = Math.max(0, Math.min(100, (safeCur / safeMax) * 100));
@@ -30,7 +30,7 @@ const 条形值: React.FC<{
                 <span className="font-mono text-gray-300">{safeCur}/{safeMax}</span>
             </div>
             <div className="h-1.5 rounded-full border border-gray-800 bg-black/40 overflow-hidden">
-                <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+                <div className="h-full bg-gradient-to-r from-wuxia-gold/70 via-wuxia-gold to-wuxia-gold/80" style={{ width: `${pct}%` }} />
             </div>
         </div>
     );

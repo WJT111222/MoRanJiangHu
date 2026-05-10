@@ -256,7 +256,7 @@ const TaskModal: React.FC<Props> = ({ tasks, onDeleteTask, onClose }) => {
                                                         <div className="flex items-center gap-3">
                                                             <div className="h-1.5 flex-1 bg-black rounded-full overflow-hidden border border-white/5">
                                                                 <div 
-                                                                    className={`h-full transition-all duration-1000 ease-out ${isComplete ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]' : 'bg-wuxia-gold shadow-[0_0_5px_rgba(212,175,55,0.8)]'}`} 
+                                                                    className="h-full bg-gradient-to-r from-wuxia-gold/70 via-wuxia-gold to-wuxia-gold/80 shadow-[0_0_5px_rgba(212,175,55,0.65)] transition-all duration-1000 ease-out" 
                                                                     style={{ width: `${progressPct}%` }}
                                                                 ></div>
                                                             </div>

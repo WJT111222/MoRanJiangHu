@@ -252,16 +252,24 @@ const 规范化拍卖行状态 = (parsed: Partial<拍卖行状态> | null | unde
     最近行情时间: 读数(parsed?.最近行情时间),
 });
 
+const 创建空拍卖行状态 = (): 拍卖行状态 => ({
+    拍卖品列表: [],
+    交易记录: [],
+    最近补货时间: 0,
+    行情列表: [],
+    最近行情时间: 0,
+});
+
 export const 读取拍卖行状态 = (scope?: string): 拍卖行状态 => {
-    if (typeof window === 'undefined') return 创建默认拍卖行状态();
+    if (typeof window === 'undefined') return 创建空拍卖行状态();
     try {
         const scopedKey = 获取拍卖行存储键(scope);
         const raw = window.localStorage.getItem(scopedKey);
-        if (!raw) return 创建默认拍卖行状态();
+        if (!raw) return 创建空拍卖行状态();
         const parsed = JSON.parse(raw) as Partial<拍卖行状态>;
         return 规范化拍卖行状态(parsed);
     } catch {
-        return 创建默认拍卖行状态();
+        return 创建空拍卖行状态();
     }
 };
 
@@ -270,7 +278,7 @@ export const 保存拍卖行状态 = (state: 拍卖行状态, scope?: string) =>
     window.localStorage.setItem(获取拍卖行存储键(scope), JSON.stringify(state));
 };
 
-export const 创建默认拍卖行状态 = (): 拍卖行状态 => 清理并补货({
+export const 创建默认拍卖行状态 = (): 拍卖行状态 => ({
     拍卖品列表: [],
     交易记录: [],
     最近补货时间: 0,
@@ -305,6 +313,10 @@ export const 清理并补货 = (state: 拍卖行状态): 拍卖行状态 => {
             : entry
     ));
     const active = cleaned.filter((entry) => entry.状态 === '上架中');
+    const hasLegacyMarket = 读数(state.最近补货时间) > 0;
+    if (!hasLegacyMarket) {
+        return { ...state, 拍卖品列表: cleaned, 行情列表: 行情.行情列表, 最近行情时间: 行情.最近行情时间 };
+    }
     if (active.length >= 10 && now - state.最近补货时间 < 2 * HOUR_MS) {
         return { ...state, 拍卖品列表: cleaned, 行情列表: 行情.行情列表, 最近行情时间: 行情.最近行情时间 };
     }

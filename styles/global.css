@@ -319,7 +319,7 @@
     --desktop-game-top: 75px;
     --desktop-game-bottom: 57px;
     --desktop-side-menu-width: clamp(132px, 9vw, 164px);
-    --desktop-right-detail-width: 980px;
+    --desktop-right-detail-width: 1120px;
   }
 
   .desktop-detail-expand-toggle {
@@ -687,10 +687,10 @@
   }
 
   .desktop-right-detail-modal--social .fixed > div .w-\[300px\] {
-    width: 100% !important;
-    max-height: 13rem !important;
-    border-right-width: 0 !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    width: clamp(260px, 30%, 340px) !important;
+    max-height: none !important;
+    border-right-width: 1px !important;
+    border-bottom-width: 0 !important;
   }
 
   .desktop-right-detail-modal--social .fixed > div .w-\[340px\] {
@@ -698,25 +698,25 @@
   }
 
   .desktop-right-detail-modal--social .fixed > div > .flex-1.flex.overflow-hidden.relative {
-    flex-direction: column !important;
+    flex-direction: row !important;
   }
 
   .desktop-right-detail-modal--social .fixed > div > .flex-1.flex.overflow-hidden.relative > .w-0 {
-    width: 100% !important;
+    width: auto !important;
     min-width: 0 !important;
     min-height: 0 !important;
-    flex: 1 1 auto !important;
+    flex: 1 1 0% !important;
   }
 
   .desktop-right-detail-modal--social:not(.desktop-right-detail-modal--fullscreen) .social-modal-body {
-    flex-direction: column !important;
+    flex-direction: row !important;
   }
 
   .desktop-right-detail-modal--social:not(.desktop-right-detail-modal--fullscreen) .social-detail-pane {
-    width: 100% !important;
+    width: auto !important;
     min-width: 0 !important;
     min-height: 0 !important;
-    flex: 1 1 auto !important;
+    flex: 1 1 0% !important;
   }
 
   .desktop-right-detail-modal--social:not(.desktop-right-detail-modal--fullscreen) .social-background-toggle {
@@ -761,19 +761,19 @@
 
   .desktop-right-detail-modal--auction_house:not(.desktop-right-detail-modal--fullscreen) .auction-house-body {
     display: flex !important;
-    flex-direction: column !important;
+    flex-direction: row !important;
     overflow: hidden !important;
   }
 
   .desktop-right-detail-modal--auction_house:not(.desktop-right-detail-modal--fullscreen) .auction-house-filter-panel {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1.25fr) minmax(14rem, 0.75fr) !important;
+    display: flex !important;
+    flex-direction: column !important;
     align-items: start !important;
     gap: 0.75rem !important;
-    border-right-width: 0 !important;
-    border-bottom: 1px solid rgba(212, 175, 55, 0.12) !important;
-    flex: 0 0 auto !important;
-    max-height: 11rem !important;
+    border-right-width: 1px !important;
+    border-bottom-width: 0 !important;
+    flex: 0 0 clamp(230px, 25%, 300px) !important;
+    max-height: none !important;
     overflow-y: auto !important;
   }
 
@@ -799,17 +799,17 @@
   }
 
   .desktop-right-detail-modal--auction_house:not(.desktop-right-detail-modal--fullscreen) .auction-house-market-list {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)) !important;
+    display: flex !important;
+    flex-direction: column !important;
     gap: 0.5rem !important;
   }
 
   .desktop-right-detail-modal--auction_house:not(.desktop-right-detail-modal--fullscreen) .auction-house-list-panel {
-    flex: 1 1 20rem !important;
+    flex: 1 1 0% !important;
     min-height: 12rem !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    border-bottom: 1px solid rgba(212, 175, 55, 0.12) !important;
+    border-bottom-width: 0 !important;
   }
 
   .desktop-right-detail-modal--auction_house:not(.desktop-right-detail-modal--fullscreen) .auction-house-list-panel > .mb-3 {
@@ -817,7 +817,7 @@
   }
 
   .desktop-right-detail-modal--auction_house:not(.desktop-right-detail-modal--fullscreen) .auction-house-item-grid {
-    grid-template-columns: repeat(auto-fill, minmax(13rem, 15rem)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(14.5rem, 1fr)) !important;
     justify-content: start !important;
     padding-bottom: 0.5rem !important;
   }

@@ -96,7 +96,7 @@ const 获取图片后端显示名 = (apiConfig: 当前可用接口结构): strin
 export const 执行NPC香闺秘档部位生图工作流 = async (
     npc: any,
     part: 香闺秘档部位类型,
-    options: { source?: 生图任务来源类型; 画风?: 当前可用接口结构['画风']; 画师串?: string; 画师串预设ID?: string; PNG画风预设ID?: string; 额外要求?: string; 尺寸?: string } | undefined,
+    options: { source?: 生图任务来源类型; 画风?: 当前可用接口结构['画风']; 画师串?: string; 画师串预设ID?: string; PNG画风预设ID?: string; 额外要求?: string; 尺寸?: string; signal?: AbortSignal } | undefined,
     deps: NPC秘档部位生图工作流依赖
 ): Promise<void> => {
     const npcKey = deps.获取NPC唯一标识(npc);
@@ -343,7 +343,7 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
             状态: 'pending' as const,
             错误信息: undefined
         }, { 同步最近结果: false });
-        const imageResult = await imageAIService.generateImageByPrompt(生图词组, imageApi!, undefined, {
+        const imageResult = await imageAIService.generateImageByPrompt(生图词组, imageApi!, options?.signal, {
             构图: '部位特写',
             尺寸: 尺寸 || '1024x1024',
             附加正向提示词: 特写附加正向提示词,

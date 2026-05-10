@@ -398,7 +398,7 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                             <span className="text-xs text-gray-300 font-serif tracking-[0.16em] mb-2">品相耐久</span>
                                             <div className="w-full h-1.5 bg-black rounded-full overflow-hidden border border-white/5">
                                                 <div 
-                                                    className="h-full bg-blue-500 shadow-[0_0_5px_currentColor]" 
+                                                    className="h-full bg-wuxia-gold shadow-[0_0_5px_rgba(212,175,55,0.45)]" 
                                                     style={{ width: `${(selectedItem.当前耐久 / Math.max(selectedItem.最大耐久, 1)) * 100}%` }}
                                                 ></div>
                                             </div>

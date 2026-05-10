@@ -2882,11 +2882,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                             </div>
                                             <div className="h-1.5 rounded-full bg-black/50 overflow-hidden border border-white/5">
                                                 <div
-                                                    className={`h-full transition-all duration-500 ${
-                                                        task.状态 === 'failed' ? 'bg-red-500' :
-                                                        task.状态 === 'completed' ? 'bg-emerald-500' :
-                                                        task.状态 === 'running' ? 'bg-blue-500' : 'bg-gray-500'
-                                                    }`}
+                                                    className="h-full bg-gradient-to-r from-wuxia-gold/70 via-wuxia-gold to-wuxia-gold/80 transition-all duration-500"
                                                     style={{ width: `${Math.max(0, Math.min(100, task.进度.百分比))}%` }}
                                                 />
                                             </div>

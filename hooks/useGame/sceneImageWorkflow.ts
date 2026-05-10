@@ -84,6 +84,7 @@ export const 执行场景生图工作流 = async (
         额外要求?: string;
         尺寸?: string;
         构图要求?: '纯场景' | '故事快照';
+        signal?: AbortSignal;
     },
     deps: 场景生图依赖
 ): Promise<void> => {
@@ -265,7 +266,7 @@ export const 执行场景生图工作流 = async (
                 摘要: params.摘要
             }
         }));
-        const imageResult = await imageAIService.generateImageByPrompt(生图词组, imageApiForTask, undefined, {
+        const imageResult = await imageAIService.generateImageByPrompt(生图词组, imageApiForTask, params.signal, {
             构图: '场景',
             场景类型,
             附加正向提示词: 前置正向提示词,

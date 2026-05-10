@@ -28,8 +28,8 @@ import './services/diagnosticLog';
 
 const RELEASE_NOTES_SUPPRESS_DATE_KEY = 'moranjianghu.releaseNotesSuppressDate';
 const DESKTOP_DETAIL_WIDTHS_STORAGE_KEY = 'moranjianghu.desktopRightDetailWidths.v3';
-const DESKTOP_DETAIL_MIN_WIDTH = 420;
-const DESKTOP_DETAIL_MAX_WIDTH = 980;
+const DESKTOP_DETAIL_MIN_WIDTH = 520;
+const DESKTOP_DETAIL_MAX_WIDTH = 1160;
 const DESKTOP_DETAIL_RIGHT_GAP = 12;
 const ITEM_AUTO_IMAGE_RETRY_INTERVAL = 10 * 60 * 1000;
 
@@ -989,6 +989,7 @@ const App: React.FC = () => {
         if (!candidate) return;
 
         let cancelled = false;
+        const controller = new AbortController();
         autoItemImageRunningRef.current.add(candidate.key);
         actions.pushNotification({
             title: '物品自动生图',
@@ -1000,7 +1001,8 @@ const App: React.FC = () => {
                 const result = await 生成物品图标(candidate.item, state.apiConfig, {
                     source: 'auto',
                     sourceLocation: candidate.sourceLocation,
-                    imageApi
+                    imageApi,
+                    signal: controller.signal
                 });
                 if (cancelled) return;
                 if (candidate.sourceLocation === '背包') {
@@ -1039,6 +1041,7 @@ const App: React.FC = () => {
 
         return () => {
             cancelled = true;
+            controller.abort();
         };
     }, [state.view, state.apiConfig, state.角色, auctionHouseState, auctionHouseScope, setters, actions, latestAssistantMessage]);
 
@@ -1202,6 +1205,11 @@ const App: React.FC = () => {
     }, [closeAllPanels]);
     const openSettings = React.useCallback(() => {
         closeAllPanels();
+        setters.setShowSettings(true);
+    }, [closeAllPanels, setters]);
+    const openVariableManager = React.useCallback(() => {
+        closeAllPanels();
+        setters.setActiveTab('variable_manager');
         setters.setShowSettings(true);
     }, [closeAllPanels, setters]);
     const openInventory = React.useCallback(() => {
@@ -1972,6 +1980,7 @@ const App: React.FC = () => {
                             <LeftPanel
                                 角色={state.角色}
                                 onOpenCharacter={openCharacter}
+                                onOpenVariableManager={openVariableManager}
                                 onUploadAvatar={actions.updatePlayerAvatar}
                                 visualConfig={effectiveVisualConfig}
                                 gameConfig={state.gameConfig}

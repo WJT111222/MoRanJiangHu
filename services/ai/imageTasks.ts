@@ -1685,6 +1685,43 @@ const 提取ComfyUI图片地址 = (
     return null;
 };
 
+type ComfyUI队列任务 = {
+    baseUrl: string;
+    apiConfig: 当前可用接口结构;
+    promptId: string;
+};
+
+const ComfyUI进行中队列 = new Map<string, ComfyUI队列任务>();
+
+const 构建ComfyUI队列Key = (baseUrl: string, promptId: string) => `${baseUrl}::${promptId}`;
+
+const 尝试终止ComfyUI任务 = async (task: ComfyUI队列任务): Promise<void> => {
+    try {
+        await fetch(`${task.baseUrl}/queue`, {
+            method: 'DELETE',
+            headers: 构建生图请求头(task.apiConfig),
+            body: JSON.stringify({ delete: [task.promptId] })
+        });
+    } catch {
+        // ComfyUI 的队列删除接口在不同代理下可能不可用，继续尝试 interrupt。
+    }
+    try {
+        await fetch(`${task.baseUrl}/interrupt`, {
+            method: 'POST',
+            headers: 构建生图请求头(task.apiConfig),
+            body: JSON.stringify({ client_id: 'wuxia-web' })
+        });
+    } catch {
+        // 用户关闭存档时这是尽力清理，失败不应阻断正常切档。
+    }
+};
+
+export const 终止全部ComfyUI生图任务 = async (): Promise<void> => {
+    const tasks = Array.from(ComfyUI进行中队列.values());
+    ComfyUI进行中队列.clear();
+    await Promise.allSettled(tasks.map((task) => 尝试终止ComfyUI任务(task)));
+};
+
 const 执行ComfyUI生图 = async (
     prompt: string,
     apiConfig: 当前可用接口结构,
@@ -1722,46 +1759,59 @@ const 执行ComfyUI生图 = async (
     if (!promptId) {
         throw new Error('ComfyUI 未返回 prompt_id，无法轮询结果');
     }
+    const queueKey = 构建ComfyUI队列Key(baseUrl, promptId);
+    const trackedTask: ComfyUI队列任务 = { baseUrl, apiConfig, promptId };
+    ComfyUI进行中队列.set(queueKey, trackedTask);
+    const handleAbort = () => {
+        ComfyUI进行中队列.delete(queueKey);
+        void 尝试终止ComfyUI任务(trackedTask);
+    };
+    signal?.addEventListener('abort', handleAbort, { once: true });
 
-    const historyEndpoint = `${baseUrl}/history/${encodeURIComponent(promptId)}`;
-    while (true) {
-        let historyResponse: Response;
-        try {
-            historyResponse = await fetch(historyEndpoint, {
-                method: 'GET',
-                headers: 构建生图请求头(apiConfig),
-                signal
-            });
-        } catch (error: any) {
-            throw new Error(await 构建ComfyUI精确连接失败提示(apiConfig.baseUrl, error));
-        }
-        if (historyResponse.ok) {
-            const historyText = await historyResponse.text();
-            const historyPayload = 解析可能是JSON字符串(historyText);
-            const imageUrl = 提取ComfyUI图片地址(historyPayload, baseUrl);
-            if (imageUrl) {
-                if (responseFormat === 'b64_json') {
-                    let imageResponse: Response;
-                    try {
-                        imageResponse = await fetch(imageUrl, { signal });
-                    } catch (error: any) {
-                        throw new Error(await 构建ComfyUI精确连接失败提示(apiConfig.baseUrl, error));
-                    }
-                    if (!imageResponse.ok) {
-                        throw new Error(`ComfyUI 图片下载失败: ${imageResponse.status}`);
+    try {
+        const historyEndpoint = `${baseUrl}/history/${encodeURIComponent(promptId)}`;
+        while (true) {
+            let historyResponse: Response;
+            try {
+                historyResponse = await fetch(historyEndpoint, {
+                    method: 'GET',
+                    headers: 构建生图请求头(apiConfig),
+                    signal
+                });
+            } catch (error: any) {
+                throw new Error(await 构建ComfyUI精确连接失败提示(apiConfig.baseUrl, error));
+            }
+            if (historyResponse.ok) {
+                const historyText = await historyResponse.text();
+                const historyPayload = 解析可能是JSON字符串(historyText);
+                const imageUrl = 提取ComfyUI图片地址(historyPayload, baseUrl);
+                if (imageUrl) {
+                    if (responseFormat === 'b64_json') {
+                        let imageResponse: Response;
+                        try {
+                            imageResponse = await fetch(imageUrl, { signal });
+                        } catch (error: any) {
+                            throw new Error(await 构建ComfyUI精确连接失败提示(apiConfig.baseUrl, error));
+                        }
+                        if (!imageResponse.ok) {
+                            throw new Error(`ComfyUI 图片下载失败: ${imageResponse.status}`);
+                        }
+                        return {
+                            图片URL: await blob转DataUrl(await imageResponse.blob()),
+                            原始响应: historyText
+                        };
                     }
                     return {
-                        图片URL: await blob转DataUrl(await imageResponse.blob()),
+                        图片URL: imageUrl,
                         原始响应: historyText
                     };
                 }
-                return {
-                    图片URL: imageUrl,
-                    原始响应: historyText
-                };
             }
+            await 等待(1000, signal);
         }
-        await 等待(1000, signal);
+    } finally {
+        signal?.removeEventListener('abort', handleAbort);
+        ComfyUI进行中队列.delete(queueKey);
     }
 };
 

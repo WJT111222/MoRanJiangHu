@@ -13,6 +13,7 @@ export interface 物品图标生成选项 {
     force?: boolean;
     size?: string;
     imageApi?: 当前可用接口结构 | null;
+    signal?: AbortSignal;
 }
 
 export interface 物品图标生成结果 {
@@ -95,7 +96,7 @@ export const 生成物品图标 = async (
         渲染风格: renderStyle,
         来源位置: sourceLocation
     });
-    const rawResult = await generateImageByPrompt(prompt, imageApi, undefined, {
+    const rawResult = await generateImageByPrompt(prompt, imageApi, options?.signal, {
         构图: '头像',
         尺寸: size,
         附加正向提示词: 'single object, item icon, centered composition, dark wuxia UI background, clean silhouette',
