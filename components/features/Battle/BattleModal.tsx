@@ -17,6 +17,29 @@ type 扩展敌方 = 战斗状态结构['敌方'][number] & {
     最大内力?: number;
 };
 
+type 战场单位 = {
+    id: string;
+    side: 'ally' | 'enemy';
+    名称: string;
+    境界: string;
+    x: number;
+    y: number;
+    height: number;
+    row: '前排' | '后排';
+    攻势: number;
+    近战伤害: number;
+    远程物理伤害: number;
+    法术伤害: number;
+    近战守势: number;
+    远程物理守势: number;
+    法术守势: number;
+    身法: number;
+    续航: number;
+    掩体: number;
+    毒性影响: number;
+    技能文本: string;
+};
+
 const 资源条: React.FC<{
     label: string;
     current: number;
@@ -50,30 +73,89 @@ const 取数 = (value: unknown, fallback = 0) => {
     return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const 计算NPC战斗指标 = (unit: any) => {
-    const hpRatio = Math.max(0, Math.min(1, 取数(unit?.当前血量) / Math.max(1, 取数(unit?.最大血量, 1))));
-    const spRatio = Math.max(0, Math.min(1, 取数(unit?.当前精力) / Math.max(1, 取数(unit?.最大精力, 1))));
-    const baseAttack = 取数(unit?.攻击力 ?? unit?.战斗力);
-    const baseDefense = 取数(unit?.防御力);
+const 取文本 = (value: unknown, fallback = '') => (
+    typeof value === 'string' && value.trim() ? value.trim() : fallback
+);
+
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+const hashText = (value: string) => {
+    let hash = 0;
+    for (let index = 0; index < value.length; index += 1) {
+        hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+    }
+    return hash;
+};
+
+const 读取装备防护 = (unit: any) => {
+    const items = Array.isArray(unit?.物品列表) ? unit.物品列表 : [];
+    return items.filter((item: any) => item?.当前装备部位).reduce((acc, item: any) => {
+        const durabilityMax = Math.max(1, 取数(item?.最大耐久, 100));
+        const durabilityRatio = item?.最大耐久 === 0 ? 1 : clamp(取数(item?.当前耐久, durabilityMax) / durabilityMax, 0.15, 1);
+        acc.物理 += 取数(item?.物理防御) * durabilityRatio;
+        acc.法术 += 取数(item?.内功防御) * durabilityRatio;
+        if (/盾|甲|铠|护/.test(`${item?.名称 || ''}${item?.描述 || ''}`)) acc.掩体 += 6 * durabilityRatio;
+        if (/格挡|招架/.test(`${item?.名称 || ''}${item?.描述 || ''}`)) acc.近战 += 4 * durabilityRatio;
+        return acc;
+    }, { 物理: 0, 法术: 0, 掩体: 0, 近战: 0 });
+};
+
+const 读取毒性影响 = (unit: any) => {
+    const source = `${unit?.状态 || ''} ${unit?.异常状态 || ''} ${unit?.简介 || ''} ${Array.isArray(unit?.技能) ? unit.技能.join(' ') : ''}`;
+    const poisonText = /毒|中毒|淬毒|麻痹|致盲|腐蚀|毒雾|毒粉/.test(source);
+    const explicit = 取数(unit?.毒性影响 ?? unit?.中毒层数 ?? unit?.毒伤);
+    return clamp(explicit || (poisonText ? 8 : 0), 0, 30);
+};
+
+const 读取技能文本 = (unit: any) => `${Array.isArray(unit?.技能) ? unit.技能.join(' ') : ''} ${unit?.简介 || ''} ${unit?.身份 || ''}`;
+
+const 计算战斗指标 = (unit: any, fallbackAttack = 0, fallbackDefense = 0) => {
+    const hpRatio = clamp(取数(unit?.当前血量 ?? unit?.当前气血, 1) / Math.max(1, 取数(unit?.最大血量 ?? unit?.最大气血, 1)), 0, 1);
+    const spRatio = clamp(取数(unit?.当前精力, 1) / Math.max(1, 取数(unit?.最大精力, 1)), 0, 1);
+    const baseAttack = 取数(unit?.攻击力 ?? unit?.战斗力, fallbackAttack);
+    const baseDefense = 取数(unit?.防御力, fallbackDefense);
     const agility = 取数(unit?.敏捷, Math.round(baseAttack * 0.35 + spRatio * 12));
+    const physique = 取数(unit?.体质);
+    const root = 取数(unit?.根骨);
     const inner = 取数(unit?.当前内力);
-    const 攻势 = Math.round(baseAttack + inner * 0.08 + spRatio * 10);
+    const equip = 读取装备防护(unit);
+    const skillText = 读取技能文本(unit);
+    const realm = Math.max(1, 取数(unit?.境界层级, 1));
+    const poison = 读取毒性影响(unit);
+    const 攻势 = Math.max(1, Math.round(baseAttack + 取数(unit?.力量) * 1.2 + inner * 0.08 + realm * 3 + spRatio * 10 - poison * 0.35));
+    const 身法 = Math.max(1, Math.round(agility * 1.2 + spRatio * 16 - poison * 0.45));
+    const 近战守势 = Math.max(0, Math.round(baseDefense + physique * 0.7 + root * 0.5 + equip.物理 * 0.9 + equip.近战 + hpRatio * 8 - poison * 0.25));
+    const 远程物理守势 = Math.max(0, Math.round(baseDefense * 0.85 + physique * 0.45 + equip.物理 * 0.75 + equip.掩体 + hpRatio * 6 - poison * 0.2));
+    const 法术守势 = Math.max(0, Math.round(root * 0.9 + inner * 0.08 + equip.法术 + realm * 2 + hpRatio * 5 - poison * 0.15));
+    const remoteFactor = /弓|弩|暗器|飞刀|飞剑|远程|投掷|箭/.test(skillText) ? 0.9 : 0.55;
+    const spellFactor = /法术|术法|咒|符|雷|火|冰|风|毒雾|AOE|范围/.test(skillText) ? 0.95 : 0.42;
     return {
         攻势,
         近战伤害: 攻势,
-        远程伤害: Math.max(1, Math.round(攻势 * (/弓|弩|暗器|飞刀|飞剑|远程/.test(`${unit?.技能?.join?.(' ') || ''}${unit?.简介 || ''}`) ? 0.9 : 0.55))),
-        守势: Math.round(baseDefense + hpRatio * 8),
-        身法: Math.round(agility * 1.2 + spRatio * 16),
-        续航: Math.round(hpRatio * 45 + spRatio * 45 + Math.min(10, inner / 10)),
+        远程物理伤害: Math.max(1, Math.round(攻势 * remoteFactor)),
+        法术伤害: Math.max(1, Math.round((攻势 + inner * 0.12) * spellFactor)),
+        近战守势,
+        远程物理守势,
+        法术守势,
+        守势: Math.round((近战守势 + 远程物理守势 + 法术守势) / 3),
+        身法,
+        续航: Math.round(hpRatio * 45 + spRatio * 45 + Math.min(10, inner / 10) - poison * 0.25),
+        掩体: Math.round(equip.掩体),
+        毒性影响: poison,
+        技能文本: skillText,
     };
+};
+
+const 计算NPC战斗指标 = (unit: any) => {
+    return 计算战斗指标(unit, 取数(unit?.战斗力), 取数(unit?.防御力));
 };
 
 const 指标说明 = {
     攻势: '每回合可形成的伤害压力；近战看贴身输出，远程看暗器、弓弩、飞剑等可越位输出。',
-    守势: '敌方攻势先扣除守势，剩余部分才更容易打进气血；前排存在时，后排通常不会直接承伤。',
-    身法: '影响出手顺序、追击、撤退和移动速度；先手击倒目标时，对方本回合不再反击。',
+    守势: '拆分为近战物理、远程物理、法术守势；远程物理守势会吃掩体加成，法术守势主要看内力、根骨和内功防御。',
+    身法: '身法是一回合最大移动预算；水平移动消耗距离，上坡额外消耗，下坡降低消耗，行动可夹在移动中。',
     续航: '持续作战能力，由气血余量、精力余量、内力余量和消耗压力综合估算；低续航代表容易失速、被迫防守或撤退。',
-    目标: '本回合默认攻击目标。敌方会优先压迫我方前排；没有前排时才直指主角。'
+    目标: '本回合默认攻击目标。越过前排直打后排时，会比较身法差、距离和前排借机攻击风险。'
 };
 
 const 战斗指标条: React.FC<{ label: keyof typeof 指标说明; value: React.ReactNode; tone?: string }> = ({ label, value, tone = 'text-gray-100' }) => (
@@ -82,6 +164,79 @@ const 战斗指标条: React.FC<{ label: keyof typeof 指标说明; value: React
         <div className={`mt-0.5 font-mono text-sm ${tone}`}>{value}</div>
     </div>
 );
+
+const 全境界速查 = '凡人/普通人/未入境；开脉一至四重；聚息一至四重；归元一至四重；御劲一至四重；化罡一至四重；通玄初期/中期/圆满；神照境；返真境；天人境';
+
+const 构建战场单位 = (
+    params: {
+        unit: any;
+        side: 'ally' | 'enemy';
+        index: number;
+        total: number;
+        name: string;
+        realm: string;
+        metrics: ReturnType<typeof 计算战斗指标>;
+        contextText: string;
+    }
+): 战场单位 => {
+    const { unit, side, index, total, name, realm, metrics, contextText } = params;
+    const key = `${side}-${name}-${index}`;
+    const hash = hashText(key);
+    const step = total <= 1 ? 0 : index / Math.max(1, total - 1);
+    const baseX = side === 'ally'
+        ? 10 + step * 24
+        : 90 - step * 24;
+    const ySpread = ((hash % 21) - 10) / 10;
+    const terrainBias = /高处|坡|崖|台|楼|墙|屋脊/.test(contextText) ? 1.2 : /水|泥|谷|坑|低洼/.test(contextText) ? -0.8 : 0;
+    const height = clamp(取数(unit?.高度 ?? unit?.地势高度, terrainBias + ((hash >> 4) % 7 - 3) * 0.45), -3, 5);
+    const x = clamp(Math.round(baseX + (((hash >> 8) % 9) - 4)), 4, 96);
+    const y = clamp(Math.round(ySpread * 10 + height * 2), -24, 24);
+    return {
+        id: key,
+        side,
+        名称: name,
+        境界: realm,
+        x,
+        y,
+        height,
+        row: '前排',
+        攻势: metrics.攻势,
+        近战伤害: metrics.近战伤害,
+        远程物理伤害: metrics.远程物理伤害,
+        法术伤害: metrics.法术伤害,
+        近战守势: metrics.近战守势,
+        远程物理守势: metrics.远程物理守势,
+        法术守势: metrics.法术守势,
+        身法: metrics.身法,
+        续航: metrics.续航,
+        掩体: metrics.掩体,
+        毒性影响: metrics.毒性影响,
+        技能文本: metrics.技能文本,
+    };
+};
+
+const 自动划分前后排 = (units: 战场单位[]) => {
+    const allies = units.filter((unit) => unit.side === 'ally');
+    const enemies = units.filter((unit) => unit.side === 'enemy');
+    const allyFrontX = allies.length ? Math.max(...allies.map((unit) => unit.x)) : 0;
+    const enemyFrontX = enemies.length ? Math.min(...enemies.map((unit) => unit.x)) : 100;
+    return units.map((unit) => {
+        const frontLine = unit.side === 'ally' ? allyFrontX : enemyFrontX;
+        const distanceToFront = Math.abs(unit.x - frontLine);
+        return { ...unit, row: distanceToFront <= 7 ? '前排' : '后排' };
+    });
+};
+
+const 计算两点距离 = (a: 战场单位, b: 战场单位) => Math.hypot(a.x - b.x, a.y - b.y);
+
+const 计算高度修正 = (attacker: 战场单位, target: 战场单位) => {
+    const diff = attacker.height - target.height;
+    return {
+        高度差: diff,
+        远程倍率: clamp(1 + Math.max(0, diff) * 0.18 - Math.max(0, -diff) * 0.08, 0.65, 1.9),
+        近战倍率: clamp(1 + Math.max(0, diff) * 0.06 - Math.max(0, -diff) * 0.04, 0.78, 1.35),
+    };
+};
 
 const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], contextText = '', onClose }) => {
     const 敌方列表 = (Array.isArray(battle?.敌方) ? battle.敌方 : []) as 扩展敌方[];
@@ -112,25 +267,68 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
     const 玩家总血量当前 = 部位列表.reduce((sum, [, cur]) => sum + Math.max(0, Number(cur) || 0), 0);
     const 境界值 = Math.max(1, Number(character.境界层级) || 1);
     const 玩家境界展示 = (character.境界 || '').trim() || `境界值 ${境界值}`;
+    const 玩家战斗指标 = 计算战斗指标({
+        ...character,
+        当前血量: 玩家总血量当前,
+        最大血量: 玩家总血量上限,
+        攻击力: 取数(character.力量) * 2 + 取数(character.敏捷) * 0.8 + 境界值 * 8,
+        防御力: 取数(character.体质) * 1.4 + 取数(character.根骨) * 1.2 + 境界值 * 4,
+    });
     const 首个存活敌方 = 敌方列表.find((enemy) => (enemy?.当前血量 || 0) > 0);
     const 前排队友 = 队友列表.find((npc) => (npc?.当前血量 || 0) > 0);
     const 敌方默认目标 = 前排队友?.姓名 || character.姓名 || '主角';
-    const 玩家远程伤害 = Math.max(1, Math.round(可视化.玩家.攻势 * 0.55));
-    const 我方参战者 = [
-        { id: 'player', 名称: character.姓名 || '主角', 境界: 玩家境界展示, 位置: '前排' },
-        ...队友列表.map((npc, index) => ({
-            id: String(npc.id || npc.姓名 || `ally-${index}`),
-            名称: npc.姓名 || `队友${index + 1}`,
-            境界: npc.境界 || '未明境界',
-            位置: index === 0 ? '前排' : '后排',
-        })),
-    ];
-    const 敌方参战者 = 敌方列表.map((enemy, index) => ({
-        id: `${enemy?.名字 || 'enemy'}-${index}`,
-        名称: enemy?.名字 || `敌人${index + 1}`,
-        境界: enemy?.境界 || '未明境界',
-        位置: index === 0 ? '前排' : '后排',
-    }));
+    const 玩家远程伤害 = 玩家战斗指标.远程物理伤害;
+    const 战场单位列表 = React.useMemo(() => {
+        const allies = [
+            构建战场单位({
+                unit: {
+                    ...character,
+                    当前血量: 玩家总血量当前,
+                    最大血量: 玩家总血量上限,
+                    攻击力: 取数(character.力量) * 2 + 取数(character.敏捷) * 0.8 + 境界值 * 8,
+                    防御力: 取数(character.体质) * 1.4 + 取数(character.根骨) * 1.2 + 境界值 * 4,
+                },
+                side: 'ally',
+                index: 0,
+                total: 队友列表.length + 1,
+                name: character.姓名 || '主角',
+                realm: 玩家境界展示,
+                metrics: 玩家战斗指标,
+                contextText,
+            }),
+            ...队友列表.map((npc, index) => 构建战场单位({
+                unit: npc,
+                side: 'ally',
+                index: index + 1,
+                total: 队友列表.length + 1,
+                name: npc.姓名 || `队友${index + 1}`,
+                realm: npc.境界 || '未明境界',
+                metrics: 计算NPC战斗指标(npc),
+                contextText,
+            })),
+        ];
+        const enemies = 敌方列表.map((enemy, index) => 构建战场单位({
+            unit: enemy,
+            side: 'enemy',
+            index,
+            total: Math.max(1, 敌方列表.length),
+            name: enemy?.名字 || `敌人${index + 1}`,
+            realm: enemy?.境界 || '未明境界',
+            metrics: 计算NPC战斗指标(enemy),
+            contextText,
+        }));
+        return 自动划分前后排([...allies, ...enemies]);
+    }, [character, contextText, 敌方列表, 境界值, 玩家境界展示, 玩家战斗指标, 玩家总血量上限, 玩家总血量当前, 队友列表]);
+    const 我方参战者 = 战场单位列表.filter((unit) => unit.side === 'ally');
+    const 敌方参战者 = 战场单位列表.filter((unit) => unit.side === 'enemy');
+    const 默认攻击者 = 我方参战者[0];
+    const 默认目标 = 敌方参战者[0] || 我方参战者[0];
+    const 默认距离 = 默认攻击者 && 默认目标 && 默认攻击者 !== 默认目标 ? 计算两点距离(默认攻击者, 默认目标) : 0;
+    const 默认高度 = 默认攻击者 && 默认目标 ? 计算高度修正(默认攻击者, 默认目标) : { 高度差: 0, 远程倍率: 1, 近战倍率: 1 };
+    const 敌方前排数量 = 敌方参战者.filter((unit) => unit.row === '前排').length;
+    const 突后风险 = 敌方前排数量 > 0
+        ? `越过前排追后排：借机攻击风险 = 敌方前排数(${敌方前排数量}) * 18 + 距离差(${Math.round(默认距离)})；若 身法差 < 距离差，则追击失败。`
+        : '当前敌方无有效前排，后排保护不成立。';
 
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[210] flex items-center justify-center p-4 animate-fadeIn">
@@ -177,6 +375,9 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                     {/* 敌方单位列表（全宽版） */}
                     <div className="flex-1 p-6 overflow-y-auto custom-scrollbar relative">
                         <section className="mb-4 rounded-xl border border-wuxia-gold/20 bg-black/35 p-4">
+                            <div className="mb-3 rounded-lg border border-wuxia-gold/15 bg-wuxia-gold/5 px-3 py-2 text-[11px] leading-5 text-wuxia-gold/80">
+                                <span className="font-bold text-wuxia-gold">本存档境界划分：</span>{全境界速查}
+                            </div>
                             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                                 <div className="text-xs font-bold tracking-[0.22em] text-wuxia-gold/80">本存档境界与站位</div>
                                 <div className="text-[11px] text-wuxia-gold/70">主角境界：{玩家境界展示} · 境界层级 {境界值}</div>
@@ -189,9 +390,9 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                                             <div key={unit.id} className="rounded border border-white/10 bg-black/30 px-3 py-2 text-xs">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="font-serif font-bold text-gray-100">{unit.名称}</span>
-                                                    <span className="rounded border border-emerald-400/25 bg-emerald-950/20 px-2 py-0.5 text-[10px] text-emerald-100">{unit.位置}</span>
+                                                    <span className="rounded border border-emerald-400/25 bg-emerald-950/20 px-2 py-0.5 text-[10px] text-emerald-100">{unit.row}</span>
                                                 </div>
-                                                <div className="mt-1 text-[11px] text-wuxia-gold/75">{unit.境界}</div>
+                                                <div className="mt-1 text-[11px] text-wuxia-gold/75">{unit.境界} · 坐标({unit.x}, {unit.y}) · 高度{unit.height.toFixed(1)}</div>
                                             </div>
                                         ))}
                                     </div>
@@ -203,23 +404,58 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                                             <div key={unit.id} className="rounded border border-white/10 bg-black/30 px-3 py-2 text-xs">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="font-serif font-bold text-gray-100">{unit.名称}</span>
-                                                    <span className="rounded border border-red-400/25 bg-red-950/20 px-2 py-0.5 text-[10px] text-red-100">{unit.位置}</span>
+                                                    <span className="rounded border border-red-400/25 bg-red-950/20 px-2 py-0.5 text-[10px] text-red-100">{unit.row}</span>
                                                 </div>
-                                                <div className="mt-1 text-[11px] text-wuxia-gold/75">{unit.境界}</div>
+                                                <div className="mt-1 text-[11px] text-wuxia-gold/75">{unit.境界} · 坐标({unit.x}, {unit.y}) · 高度{unit.height.toFixed(1)}</div>
                                             </div>
                                         )) : <div className="rounded border border-dashed border-red-400/20 p-3 text-center text-xs text-red-100/45">暂无敌方</div>}
                                     </div>
                                 </div>
                             </div>
                         </section>
+                        <section className="mb-4 rounded-xl border border-cyan-400/15 bg-cyan-950/10 p-4">
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                                <div className="text-xs font-bold tracking-[0.22em] text-cyan-100">战场小人模型</div>
+                                <div className="text-[11px] text-cyan-100/70">同一横线为地面，纵向偏移代表剧情高度差</div>
+                            </div>
+                            <div className="relative h-52 overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(16,185,129,0.06),rgba(0,0,0,0.28))]">
+                                <div className="absolute left-4 right-4 top-1/2 h-px bg-wuxia-gold/45 shadow-[0_0_14px_rgba(212,175,55,0.4)]" />
+                                <div className="absolute left-4 top-3 text-[10px] tracking-[0.16em] text-emerald-200/70">我方</div>
+                                <div className="absolute right-4 top-3 text-[10px] tracking-[0.16em] text-red-200/70">敌方</div>
+                                {战场单位列表.map((unit) => {
+                                    const color = unit.side === 'ally' ? 'border-emerald-300/50 bg-emerald-950 text-emerald-50' : 'border-red-300/50 bg-red-950 text-red-50';
+                                    const top = clamp(50 - unit.y - unit.height * 5, 14, 82);
+                                    return (
+                                        <div
+                                            key={unit.id}
+                                            className="absolute -translate-x-1/2 -translate-y-1/2"
+                                            style={{ left: `${unit.x}%`, top: `${top}%` }}
+                                            title={`${unit.名称}：${unit.row}，坐标(${unit.x}, ${unit.y})，高度${unit.height.toFixed(1)}，身法${unit.身法}`}
+                                        >
+                                            <div className={`flex h-11 w-8 items-center justify-center rounded-t-full rounded-b-md border shadow-[0_10px_24px_rgba(0,0,0,0.45)] ${color}`}>
+                                                <span className="text-sm font-black">{unit.名称.slice(0, 1)}</span>
+                                            </div>
+                                            <div className="mt-1 max-w-[84px] truncate text-center text-[10px] text-gray-200">{unit.名称}</div>
+                                            <div className="text-center text-[9px] text-wuxia-gold/70">{unit.row}</div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="mt-3 grid gap-2 text-[11px] md:grid-cols-2 xl:grid-cols-4">
+                                <div className="rounded border border-white/10 bg-black/25 px-3 py-2 text-gray-300">距离 = sqrt((x1-x2)^2 + (y1-y2)^2)，当前默认距离 {Math.round(默认距离)}</div>
+                                <div className="rounded border border-white/10 bg-black/25 px-3 py-2 text-gray-300">远程高低差倍率 = 1 + 高度优势*0.18 - 高度劣势*0.08，当前 x{默认高度.远程倍率.toFixed(2)}</div>
+                                <div className="rounded border border-white/10 bg-black/25 px-3 py-2 text-gray-300">近战高低差倍率 = 1 + 高度优势*0.06 - 高度劣势*0.04，当前 x{默认高度.近战倍率.toFixed(2)}</div>
+                                <div className="rounded border border-white/10 bg-black/25 px-3 py-2 text-gray-300">移动消耗 = 水平距离 + 上坡高度*1.6 - 下坡高度*0.45，预算 = 身法</div>
+                            </div>
+                        </section>
                         <section className="mb-4 rounded-xl border border-white/10 bg-black/30 p-4">
                             <div className="mb-3 text-xs font-bold tracking-[0.22em] text-gray-300">计算规则</div>
                             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
                                 {[
-                                    ['攻势', `攻势 = 力量 * 2 + 敏捷 * 0.8 + 境界层级 * 8 + 装备攻势；近战 = 攻势；远程 = max(1, round(攻势 * 0.55))`],
-                                    ['守势', '守势 = 体质 * 1.4 + 根骨 * 1.2 + 境界层级 * 4 + 装备守势'],
-                                    ['身法', '身法 = 敏捷 * 1.5 + 当前精力 / 最大精力 * 20 + 装备身法修正'],
-                                    ['续航', '续航 = 当前总气血 / 最大总气血 * 50 + 当前精力 / 最大精力 * 50'],
+                                    ['攻势', `基础攻势 = 攻击力 + 力量*1.2 + 当前内力*0.08 + 境界层级*3 + 精力比例*10 - 毒性影响*0.35；近战伤害 = 攻势；远程物理伤害 = 攻势*远程系数*高低差倍率；法术伤害 = (攻势 + 当前内力*0.12)*法术系数`],
+                                    ['守势', '近战物理守势 = 防御力 + 体质*0.7 + 根骨*0.5 + 装备物防*0.9 + 招架 + 气血比例*8 - 毒性*0.25；远程物理守势 = 防御力*0.85 + 体质*0.45 + 装备物防*0.75 + 掩体 + 气血比例*6 - 毒性*0.2；法术守势 = 根骨*0.9 + 当前内力*0.08 + 装备内防 + 境界层级*2 + 气血比例*5 - 毒性*0.15'],
+                                    ['身法', '身法 = 敏捷*1.2 + 精力比例*16 + 装备身法 - 毒性影响*0.45；移动消耗 = 平面距离 + 上坡高度*1.6 - 下坡高度*0.45；一回合可先前进、行动、再后撤，只要总消耗 <= 身法'],
+                                    ['脱战/突后', `逃跑脱战：若 追杀者身法 - 逃跑者身法 < 双方距离，则脱战；突后排：${突后风险}`],
                                 ].map(([name, formula]) => (
                                     <div key={name} className="rounded border border-white/8 bg-black/25 px-3 py-2 text-xs">
                                         <div className="font-semibold text-gray-100">{name}</div>
@@ -250,9 +486,9 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                                         </div>
                                         <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
                                             <战斗指标条 label="攻势" value={`${可视化.玩家.攻势} / 近${可视化.玩家.攻势} 远${玩家远程伤害}`} tone="text-red-100" />
-                                            <战斗指标条 label="守势" value={可视化.玩家.守势} tone="text-sky-100" />
-                                            <战斗指标条 label="身法" value={可视化.玩家.身法} tone="text-emerald-100" />
-                                            <战斗指标条 label="续航" value={可视化.玩家.续航} tone="text-amber-100" />
+                                            <战斗指标条 label="守势" value={`近${玩家战斗指标.近战守势} 远${玩家战斗指标.远程物理守势} 法${玩家战斗指标.法术守势}`} tone="text-sky-100" />
+                                            <战斗指标条 label="身法" value={玩家战斗指标.身法} tone="text-emerald-100" />
+                                            <战斗指标条 label="续航" value={玩家战斗指标.续航} tone="text-amber-100" />
                                             <div title={指标说明.目标} className="col-span-2 rounded border border-wuxia-gold/20 bg-wuxia-gold/10 px-2 py-1 text-wuxia-gold">目标：{首个存活敌方?.名字 || '无'}</div>
                                         </div>
                                     </div>
@@ -271,8 +507,8 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                                                 <div>防御 {npc.防御力 || 0}</div>
                                             </div>
                                             <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-                                                <战斗指标条 label="攻势" value={`${指标.攻势} / 近${指标.近战伤害} 远${指标.远程伤害}`} tone="text-red-100" />
-                                                <战斗指标条 label="守势" value={指标.守势} tone="text-sky-100" />
+                                                <战斗指标条 label="攻势" value={`${指标.攻势} / 近${指标.近战伤害} 远${指标.远程物理伤害} 法${指标.法术伤害}`} tone="text-red-100" />
+                                                <战斗指标条 label="守势" value={`近${指标.近战守势} 远${指标.远程物理守势} 法${指标.法术守势}`} tone="text-sky-100" />
                                                 <战斗指标条 label="身法" value={指标.身法} tone="text-emerald-100" />
                                                 <战斗指标条 label="续航" value={指标.续航} tone="text-amber-100" />
                                                 <div title={指标说明.目标} className="col-span-2 rounded border border-wuxia-gold/20 bg-wuxia-gold/10 px-2 py-1 text-wuxia-gold">目标：{首个存活敌方?.名字 || '无'}</div>
@@ -303,8 +539,8 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                                                 <div>防御 {enemy.防御力 || 0}</div>
                                             </div>
                                             <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-                                                <战斗指标条 label="攻势" value={`${指标.攻势} / 近${指标.攻势} 远${npc指标.远程伤害}`} tone="text-red-100" />
-                                                <战斗指标条 label="守势" value={指标.守势} tone="text-sky-100" />
+                                                <战斗指标条 label="攻势" value={`${指标.攻势} / 近${npc指标.近战伤害} 远${npc指标.远程物理伤害} 法${npc指标.法术伤害}`} tone="text-red-100" />
+                                                <战斗指标条 label="守势" value={`近${npc指标.近战守势} 远${npc指标.远程物理守势} 法${npc指标.法术守势}`} tone="text-sky-100" />
                                                 <战斗指标条 label="身法" value={npc指标.身法} tone="text-emerald-100" />
                                                 <战斗指标条 label="续航" value={npc指标.续航} tone="text-amber-100" />
                                                 <div title={指标说明.目标} className="col-span-2 rounded border border-red-500/25 bg-red-950/20 px-2 py-1 text-red-100">目标：{敌方默认目标}</div>

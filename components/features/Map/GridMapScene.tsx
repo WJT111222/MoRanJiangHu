@@ -11,6 +11,7 @@ interface Props {
     world: 世界数据结构;
     env: 环境信息结构;
     socialList?: any[];
+    playerName?: string;
     debugEnabled?: boolean;
     compact?: boolean;
     onOpenPerson?: (person: any) => void;
@@ -108,12 +109,13 @@ const GridMapScene: React.FC<Props> = ({
     world,
     env,
     socialList = [],
+    playerName = '',
     debugEnabled = false,
     compact = false,
     onOpenPerson,
 }) => {
     const normalizedWorld = useMemo(() => 补齐世界地图空间字段(world, { env }), [world, env]);
-    const defaultScene = useMemo(() => 构建地图空间场景(world, env, socialList), [world, env, socialList]);
+    const defaultScene = useMemo(() => 构建地图空间场景(world, env, socialList, playerName), [world, env, socialList, playerName]);
 
     const layers = Array.isArray(normalizedWorld.地图层级) ? normalizedWorld.地图层级 : [];
     const buildings = Array.isArray(normalizedWorld.地图建筑) ? normalizedWorld.地图建筑 : [];
@@ -166,17 +168,26 @@ const GridMapScene: React.FC<Props> = ({
             return basePeople;
         }
         const extraPeople = Array.isArray(defaultScene.当前层人物) ? defaultScene.当前层人物 : [];
+        const normalizedPlayerName = 归一化地图文本(playerName);
+        const hasPlayerPoint = basePeople.some((item) => (
+            item?.是否当前玩家 === true
+            || (normalizedPlayerName && 归一化地图文本(item?.名称) === normalizedPlayerName)
+        ));
         const taken = new Set(basePeople.map((item) => `${item.所在层级ID}|${归一化地图文本(item.名称)}`));
         return [
             ...basePeople,
             ...extraPeople.filter((item) => {
-                const key = `${item.所在层级ID}|${归一化地图文本(item.名称)}`;
+                const normalizedName = 归一化地图文本(item?.名称);
+                if (hasPlayerPoint && (item?.是否当前玩家 === true || normalizedName === '主角' || (normalizedPlayerName && normalizedName === normalizedPlayerName))) {
+                    return false;
+                }
+                const key = `${item.所在层级ID}|${normalizedName}`;
                 if (taken.has(key)) return false;
                 taken.add(key);
                 return true;
             }),
         ];
-    }, [persistentPeople, defaultScene.当前层级?.ID, defaultScene.当前层人物, currentLayerId]);
+    }, [persistentPeople, defaultScene.当前层级?.ID, defaultScene.当前层人物, currentLayerId, playerName]);
 
     const layerChain = useMemo(
         () => (selectedLayer ? 构建层级链(layers, selectedLayer.ID) : []),
@@ -356,7 +367,7 @@ const GridMapScene: React.FC<Props> = ({
                 ? '人物点'
                 : '层级';
     const detailBody = selectedFeature?.kind === 'building'
-        ? `${selectedFeature.data?.描述 || '暂无描述。'}\n四角坐标：${selectedFeature.data?.四角坐标?.map((point: any) => 点位文本(point)).join(' / ') || '无'}`
+        ? `名称：${selectedFeature.data?.名称 || '未命名建筑'}\n分类：${selectedFeature.data?.分类 || '建筑'}\n${selectedFeature.data?.描述 || '暂无描述。'}\n四角坐标：${selectedFeature.data?.四角坐标?.map((point: any) => 点位文本(point)).join(' / ') || '无'}`
         : selectedFeature?.kind === 'road'
             ? `${selectedFeature.data?.描述 || '暂无描述。'}\n路径：${路径文本(selectedFeature.data?.路径点 || [])}`
             : selectedFeature?.kind === 'person'

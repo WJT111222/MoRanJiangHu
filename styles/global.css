@@ -712,6 +712,25 @@
     flex-direction: row !important;
   }
 
+  .desktop-right-detail-modal--social:not(.desktop-right-detail-modal--fullscreen) .social-roster-panel {
+    width: clamp(230px, 28%, 300px) !important;
+    height: auto !important;
+    flex: 0 0 clamp(230px, 28%, 300px) !important;
+    border-right-width: 1px !important;
+    border-bottom-width: 0 !important;
+    overflow-y: auto !important;
+  }
+
+  .desktop-right-detail-modal--social:not(.desktop-right-detail-modal--fullscreen) .social-roster-panel > div:last-child {
+    flex-direction: column !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .desktop-right-detail-modal--social:not(.desktop-right-detail-modal--fullscreen) .social-roster-panel button {
+    width: 100% !important;
+  }
+
   .desktop-right-detail-modal--social:not(.desktop-right-detail-modal--fullscreen) .social-detail-pane {
     width: auto !important;
     min-width: 0 !important;
@@ -823,7 +842,7 @@
   }
 
   .desktop-right-detail-modal--fullscreen .fixed {
-    inset: 1.25rem !important;
+    inset: var(--desktop-game-top) 12px var(--desktop-game-bottom) 12px !important;
     z-index: 260 !important;
     width: auto !important;
     max-height: none !important;
@@ -836,10 +855,10 @@
   }
 
   .desktop-right-detail-modal--fullscreen .fixed > div {
-    width: min(1480px, calc(100vw - 3rem)) !important;
-    max-width: min(1480px, calc(100vw - 3rem)) !important;
-    height: calc(100vh - 2.5rem) !important;
-    max-height: calc(100vh - 2.5rem) !important;
+    width: min(1480px, calc(100vw - 24px)) !important;
+    max-width: min(1480px, calc(100vw - 24px)) !important;
+    height: calc(100vh - var(--desktop-game-top) - var(--desktop-game-bottom)) !important;
+    max-height: calc(100vh - var(--desktop-game-top) - var(--desktop-game-bottom)) !important;
     border-radius: 18px !important;
     border-right-width: 1px !important;
     box-shadow: 0 22px 80px rgba(0, 0, 0, 0.72) !important;

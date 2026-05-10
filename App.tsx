@@ -2909,6 +2909,7 @@ const App: React.FC = () => {
                                     world={state.世界}
                                     env={state.环境}
                                     socialList={state.社交}
+                                    playerName={safeCharacter?.姓名 || ''}
                                     debugEnabled={(state.gameConfig as any)?.启用研发诊断模式 === true}
                                     onOpenPerson={openNpcDetailFromRecord}
                                     onClose={() => setters.setShowMap(false)}
@@ -2918,6 +2919,7 @@ const App: React.FC = () => {
                                     world={state.世界}
                                     env={state.环境}
                                     socialList={state.社交}
+                                    playerName={safeCharacter?.姓名 || ''}
                                     debugEnabled={(state.gameConfig as any)?.启用研发诊断模式 === true}
                                     onOpenPerson={openNpcDetailFromRecord}
                                     onClose={() => setters.setShowMap(false)}

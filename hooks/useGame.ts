@@ -2252,6 +2252,48 @@ export const useGame = () => {
         return 规范化社交列表(list, options);
     }
 
+    const 构建门派同门社交档案 = (member: any, index: number) => ({
+        id: typeof member?.id === 'string' && member.id.trim()
+            ? member.id.trim()
+            : `sect_member_${玩家门派?.ID || 'unknown'}_${index}`,
+        姓名: typeof member?.姓名 === 'string' && member.姓名.trim() ? member.姓名.trim() : `同门${index + 1}`,
+        性别: typeof member?.性别 === 'string' ? member.性别 : '未知',
+        年龄: Number.isFinite(Number(member?.年龄)) ? Number(member.年龄) : undefined,
+        境界: typeof member?.境界 === 'string' && member.境界.trim() ? member.境界.trim() : '未知境界',
+        身份: typeof member?.身份 === 'string' && member.身份.trim()
+            ? `${玩家门派?.名称 || '门派'} · ${member.身份.trim()}`
+            : `${玩家门派?.名称 || '门派'}同门`,
+        是否在场: typeof member?.是否在场 === 'boolean' ? member.是否在场 : false,
+        是否队友: false,
+        是否主要角色: false,
+        好感度: Number.isFinite(Number(member?.好感度)) ? Number(member.好感度) : 0,
+        关系状态: typeof member?.关系状态 === 'string' && member.关系状态.trim() ? member.关系状态.trim() : '同门',
+        简介: typeof member?.简介 === 'string' && member.简介.trim()
+            ? member.简介.trim()
+            : `${玩家门派?.名称 || '门派'}名录中的同门。`,
+        记忆: Array.isArray(member?.记忆) ? member.记忆 : [],
+        来源: '玩家门派.重要成员',
+        自动生图禁用: true
+    });
+
+    useEffect(() => {
+        const members = Array.isArray(玩家门派?.重要成员) ? 玩家门派.重要成员 : [];
+        if (!玩家门派 || 玩家门派.ID === 'none' || 玩家门派.名称 === '无门无派' || members.length === 0) return;
+        const currentSocial = Array.isArray(社交) ? 社交 : [];
+        const normalizedKey = (value: unknown) => (typeof value === 'string' ? value.trim().replace(/\s+/g, '').toLowerCase() : '');
+        const known = new Set(currentSocial.flatMap((npc: any) => [npc?.id, npc?.ID, npc?.姓名, npc?.名称].map(normalizedKey)).filter(Boolean));
+        const missing = members
+            .map((member: any, index: number) => 构建门派同门社交档案(member, index))
+            .filter((npc: any) => {
+                const keys = [npc?.id, npc?.姓名].map(normalizedKey).filter(Boolean);
+                return keys.length > 0 && keys.every((key) => !known.has(key));
+            });
+        if (missing.length === 0) return;
+        const normalized = 规范化社交列表安全([...currentSocial, ...missing], { 合并同名: false });
+        设置社交(normalized);
+        void performAutoSave({ social: normalized, history: 历史记录, force: true });
+    }, [玩家门派, 社交, 历史记录]);
+
     const 应用开场基态 = (openingBase: ReturnType<typeof 创建开场基础状态>) => {
         设置角色(规范化角色物品容器映射(openingBase.角色));
         设置环境(规范化环境信息(openingBase.环境));

@@ -246,13 +246,13 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
             </div>
             <button
                 type="button"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-wuxia-gold/35 bg-wuxia-gold/10 text-sm font-bold text-wuxia-gold outline-none transition hover:border-wuxia-gold hover:bg-wuxia-gold/20 focus:border-wuxia-gold focus:bg-wuxia-gold/20"
+                className="relative z-[1001] flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-wuxia-gold/35 bg-wuxia-gold/10 text-sm font-bold text-wuxia-gold outline-none transition hover:border-wuxia-gold hover:bg-wuxia-gold/20 focus:border-wuxia-gold focus:bg-wuxia-gold/20"
                 aria-label={`${entry.标签}说明`}
             >
                 ?
             </button>
         </div>
-        <div className="pointer-events-none absolute bottom-[calc(100%+8px)] right-0 z-50 hidden w-80 max-w-[min(80vw,22rem)] rounded-lg border border-wuxia-gold/45 bg-[#14110a] p-3 text-sm leading-6 text-amber-50 shadow-[0_16px_42px_rgba(0,0,0,0.78)] group-hover:block group-focus-within:block">
+        <div className="pointer-events-none fixed right-6 top-20 z-[1000] hidden w-96 max-w-[min(88vw,26rem)] rounded-lg border border-wuxia-gold/45 bg-[#14110a] p-3 text-sm leading-6 text-amber-50 shadow-[0_16px_42px_rgba(0,0,0,0.78)] group-hover:block group-focus-within:block" style={{ pointerEvents: 'none' }}>
             <div className="mb-1 text-xs font-bold tracking-[0.16em] text-wuxia-gold">{groupTitle} · {entry.标签}</div>
             <div>{entry.依据}</div>
         </div>
@@ -463,7 +463,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                     <div className="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden">
                         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                             {displayItems.length > 0 ? (
-                                <div className="grid grid-cols-5 gap-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-9 2xl:grid-cols-10">
+                                <div className="grid grid-cols-6 gap-2.5 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-[repeat(14,minmax(0,1fr))]">
                                     {displayItems.map((item, index) => {
                                         const count = getSafeNumber(item?.堆叠数量, 1);
                                         const styles = getRarityStyles(getSafeText(item?.品质));
@@ -478,14 +478,14 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                                 key={key}
                                                 type="button"
                                                 onClick={() => setSelectedItem(item)}
-                                                className={`group relative aspect-square cursor-pointer rounded-xl text-left transition-all active:scale-95 ${
+                                                className={`group relative aspect-square cursor-pointer rounded-lg text-left transition-all active:scale-95 ${
                                                     isSelected
                                                         ? 'scale-[1.02] ring-2 ring-wuxia-gold/60 shadow-[0_0_15px_rgba(212,175,55,0.3)]'
                                                         : 'hover:scale-[1.02]'
                                                 }`}
                                             >
-                                                <div className="absolute inset-0 rounded-xl border border-white/5 bg-gradient-to-br from-black/80 to-black opacity-80 transition-opacity group-hover:opacity-100" />
-                                                <div className={`absolute inset-0 rounded-xl border ${styles.border} ${styles.bg} ${
+                                                <div className="absolute inset-0 rounded-lg border border-white/5 bg-gradient-to-br from-black/80 to-black opacity-80 transition-opacity group-hover:opacity-100" />
+                                                <div className={`absolute inset-0 rounded-lg border ${styles.border} ${styles.bg} ${
                                                     isSelected ? 'border-opacity-80 bg-opacity-30' : 'border-opacity-30 bg-opacity-10'
                                                 } shadow-inner transition-all group-hover:border-opacity-50 group-hover:bg-opacity-20`} />
 
@@ -495,8 +495,8 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                                     </div>
                                                 ) : null}
 
-                                                <div className="absolute inset-0 flex items-center justify-center pb-4 transition-transform duration-300 group-hover:-translate-y-1">
-                                                    <div className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/45 shadow-inner ${styles.text}`}>
+                                                <div className="absolute inset-0 flex items-center justify-center pb-5 transition-transform duration-300 group-hover:-translate-y-1">
+                                                    <div className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/45 shadow-inner ${styles.text}`}>
                                                         {itemIconImage ? (
                                                             <img src={itemIconImage} alt={name} className="h-full w-full object-cover" loading="lazy" />
                                                         ) : (
@@ -505,8 +505,8 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                                     </div>
                                                 </div>
 
-                                                <div className="absolute bottom-2 left-0 right-0 px-1.5 text-center">
-                                                    <div className={`truncate text-xs font-semibold tracking-wide drop-shadow-sm ${getRarityNameClass(getSafeText(item?.品质))}`}>
+                                                <div className="absolute bottom-1.5 left-0 right-0 px-1 text-center">
+                                                    <div className={`truncate text-sm font-bold leading-tight tracking-wide drop-shadow-sm ${getRarityNameClass(getSafeText(item?.品质))}`}>
                                                         {name}
                                                     </div>
                                                     {count > 1 ? (

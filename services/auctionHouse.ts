@@ -312,29 +312,10 @@ export const 清理并补货 = (state: 拍卖行状态): 拍卖行状态 => {
             ? { ...entry, 状态: '已下架' as const }
             : entry
     ));
-    const active = cleaned.filter((entry) => entry.状态 === '上架中');
-    const hasLegacyMarket = 读数(state.最近补货时间) > 0;
-    if (!hasLegacyMarket) {
-        return { ...state, 拍卖品列表: cleaned, 行情列表: 行情.行情列表, 最近行情时间: 行情.最近行情时间 };
-    }
-    if (active.length >= 10 && now - state.最近补货时间 < 2 * HOUR_MS) {
-        return { ...state, 拍卖品列表: cleaned, 行情列表: 行情.行情列表, 最近行情时间: 行情.最近行情时间 };
-    }
-    const need = Math.max(0, 16 - active.length);
-    const seenNames = new Set(active.map((entry) => entry.物品?.名称).filter(Boolean));
-    const restocked: 拍卖品记录[] = [];
-    for (let i = 0; i < need; i += 1) {
-        let next = 生成系统拍卖品(行情.行情列表);
-        for (let retry = 0; retry < 6 && seenNames.has(next.物品?.名称); retry += 1) {
-            next = 生成系统拍卖品(行情.行情列表);
-        }
-        seenNames.add(next.物品?.名称);
-        restocked.push(next);
-    }
     return {
         ...state,
-        拍卖品列表: [...restocked, ...cleaned].slice(0, 90),
-        最近补货时间: now,
+        拍卖品列表: cleaned.slice(0, 90),
+        最近补货时间: 0,
         行情列表: 行情.行情列表,
         最近行情时间: 行情.最近行情时间,
     };
@@ -527,9 +508,6 @@ export const 从剧情响应构建拍卖行投放参数 = (response: GameRespons
     if (!text) return { shouldDispatch: false, reason: '本回合无可分析文本' };
     const auctionIntent = /拍卖行|牙行|黑市|寄售|流入市面|市面流通|有人出货|暗中兜售|悬赏流出|任务奖励|稀有物|秘宝|残卷/u.test(text);
     const rareIntent = /传说|绝世|极品|稀世|孤本|镇派|秘藏|神兵|残卷|宝库|遗迹/u.test(text);
-    if (!auctionIntent && !rareIntent) {
-        return { shouldDispatch: false, reason: '未命中拍卖行或稀有物投放关键词' };
-    }
 
     const mainline = 猜测主线类型(text);
     const type = 猜测物品类型(text);
@@ -543,6 +521,11 @@ export const 从剧情响应构建拍卖行投放参数 = (response: GameRespons
         : mainline === '官府线' ? '悬赏旧物'
             : mainline === '宗门线' ? '宗门旧藏'
                 : '江湖暗货';
+    const locationPrefix = 读文本(context?.place, '本地');
+    const clueName = (text.match(/「([^」]{2,14})」/u)?.[1] || text.match(/“([^”]{2,14})”/u)?.[1] || '').trim();
+    const itemName = clueName
+        ? `${locationPrefix}·${clueName}`
+        : `${locationPrefix}·${namePrefix}`;
     const priceBase = quality === '传说' ? 88000
         : quality === '绝世' ? 52000
             : quality === '极品' ? 24000
@@ -551,21 +534,21 @@ export const 从剧情响应构建拍卖行投放参数 = (response: GameRespons
 
     return {
         shouldDispatch: true,
-        reason: auctionIntent ? '命中拍卖行/市场投放语义' : '命中稀有物语义',
+        reason: auctionIntent ? '命中拍卖行/市场投放语义' : rareIntent ? '命中稀有物语义' : '按本回合剧情变量生成市场货品',
         params: {
             事件名称: eventName,
             来源描述: `由本回合剧情线索自然流入市场：${text.slice(0, 120)}`,
             主线类型: mainline,
             卖家名称: mainline === '官府线' ? '悬赏牙人' : mainline === '宗门线' ? '宗门掮客' : '江湖掮客',
             物品: {
-                名称: `${namePrefix}·${quality}`,
+                名称: itemName,
                 类型: type,
                 品质: quality,
-                描述: `受本回合事件牵动而流入拍卖行的${quality}${type}，来路未明，仍带着刚出江湖的风声。`,
+                描述: `受本回合剧情、地点与人物动向牵动而流入拍卖行的${quality}${type}，线索来自：${text.slice(0, 80)}。`,
                 价值: priceBase
             },
             市场标签: ['剧情流入', context?.place || '', mainline || '', quality].filter(Boolean),
-            价格倍率: auctionIntent ? 1.12 : 1.28,
+            价格倍率: auctionIntent ? 1.12 : rareIntent ? 1.28 : 1.04,
             是否限时热点: rareIntent,
             有效天数: rareIntent ? 2 : 4
         }

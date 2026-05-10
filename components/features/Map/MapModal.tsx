@@ -7,12 +7,13 @@ interface Props {
     world: 世界数据结构;
     env: 环境信息结构;
     socialList?: any[];
+    playerName?: string;
     debugEnabled?: boolean;
     onClose: () => void;
     onOpenPerson?: (person: any) => void;
 }
 
-const MapModal: React.FC<Props> = ({ world, env, socialList = [], debugEnabled = false, onClose, onOpenPerson }) => (
+const MapModal: React.FC<Props> = ({ world, env, socialList = [], playerName = '', debugEnabled = false, onClose, onOpenPerson }) => (
     <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm animate-fadeIn">
         <div className="relative flex h-[92vh] max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-wuxia-gold/20 bg-ink-black/95 shadow-[0_0_80px_rgba(0,0,0,0.9)]">
             <div className="pointer-events-none absolute inset-0 z-0">
@@ -48,6 +49,7 @@ const MapModal: React.FC<Props> = ({ world, env, socialList = [], debugEnabled =
                     world={world}
                     env={env}
                     socialList={socialList}
+                    playerName={playerName}
                     debugEnabled={debugEnabled}
                     onOpenPerson={onOpenPerson}
                 />
