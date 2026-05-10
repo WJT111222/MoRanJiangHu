@@ -38,6 +38,30 @@ describe('门派状态规范化', () => {
         expect(是否无门派标识(normalized.ID)).toBe(false);
     });
 
+    it('家族门派默认同门使用家族姓氏', () => {
+        const normalized = 规范化门派状态({
+            ID: 'Org001',
+            名称: '杨家堡',
+            玩家职位: '少主'
+        });
+
+        expect(normalized.重要成员.length).toBeGreaterThanOrEqual(6);
+        expect(normalized.重要成员.every((member: any) => String(member?.姓名 || '').startsWith('杨'))).toBe(true);
+    });
+
+    it('已有少量门派成员时仍补齐默认同门', () => {
+        const normalized = 规范化门派状态({
+            ID: 'Org001',
+            名称: '杨家堡',
+            玩家职位: '少主',
+            重要成员: [{ id: 'NPC002', 姓名: '杨震', 性别: '男', 年龄: 48, 身份: '堡主' }]
+        });
+
+        expect(normalized.重要成员.length).toBeGreaterThanOrEqual(6);
+        expect(normalized.重要成员.filter((member: any) => member?.姓名 === '杨震')).toHaveLength(1);
+        expect(normalized.重要成员.every((member: any) => String(member?.姓名 || '').startsWith('杨'))).toBe(true);
+    });
+
     it('开局命令基态会保留已选择生成的门派和同门', () => {
         const openingBase = 创建开场基础状态(
             {
@@ -73,6 +97,77 @@ describe('门派状态规范化', () => {
         expect(commandBase.玩家门派.名称).toBe('玄墨派');
         expect(commandBase.玩家门派.玩家职位).toBe('外门弟子');
         expect(commandBase.玩家门派.重要成员.length).toBeGreaterThanOrEqual(6);
+    });
+
+    it('开局门派贡献足够时自动学习当前最好的可学功法', () => {
+        const openingBase = 创建开场基础状态(
+            {
+                姓名: '杨培强',
+                所属门派ID: '杨家堡',
+                门派职位: '少主',
+                门派贡献: 500,
+                当前内力: 30,
+                最大内力: 30,
+                境界: '开脉境三重',
+                境界层级: 3,
+                功法列表: []
+            } as any,
+            {} as any,
+            {
+                开局生成门派: true,
+                开局生成同门: true
+            } as any
+        );
+
+        expect(openingBase.角色.功法列表[0]?.名称).toBe('踏云步');
+        expect(openingBase.角色.功法列表[0]?.来源).toBe('杨家堡藏经阁');
+    });
+
+    it('无门派但已有修炼事实时补基础功法', () => {
+        const openingBase = 创建开场基础状态(
+            {
+                姓名: '散修',
+                所属门派ID: 'none',
+                门派职位: '无',
+                门派贡献: 0,
+                当前内力: 12,
+                最大内力: 12,
+                境界: '开脉境一重',
+                境界层级: 1,
+                功法列表: []
+            } as any,
+            {} as any,
+            {
+                开局生成门派: false,
+                开局生成同门: false
+            } as any
+        );
+
+        expect(openingBase.玩家门派.名称).toBe('无门无派');
+        expect(openingBase.角色.功法列表[0]?.名称).toBe('基础吐纳诀');
+    });
+
+    it('明确凡人无门派时不开局补功法', () => {
+        const openingBase = 创建开场基础状态(
+            {
+                姓名: '凡人',
+                所属门派ID: 'none',
+                门派职位: '无',
+                门派贡献: 0,
+                当前内力: 0,
+                最大内力: 0,
+                境界: '未入境',
+                境界层级: 0,
+                功法列表: []
+            } as any,
+            {} as any,
+            {
+                开局生成门派: false,
+                开局生成同门: false
+            } as any
+        );
+
+        expect(openingBase.角色.功法列表).toEqual([]);
     });
 
     it('开局生成门派不会被模型命令覆盖回无门无派', () => {

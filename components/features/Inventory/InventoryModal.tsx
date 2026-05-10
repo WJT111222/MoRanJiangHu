@@ -238,22 +238,19 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
 };
 
 const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupTitle, entry }) => (
-    <div className="min-w-0 rounded-lg border border-white/12 bg-black/35 px-3 py-2.5 transition hover:border-wuxia-gold/45 hover:bg-wuxia-gold/5">
+    <div className="min-w-0 rounded-lg border border-white/12 bg-black/35 px-2.5 py-2 transition hover:border-wuxia-gold/45 hover:bg-wuxia-gold/5">
         <div className="flex min-w-0 items-start justify-between gap-2">
             <div className="min-w-0">
-                <div className="break-words text-[13px] font-semibold leading-5 text-gray-100">{entry.标签}</div>
-                <div className="mt-1 break-words font-mono text-base font-bold leading-5 text-amber-100">{entry.数值}</div>
+                <div className="break-words text-[12px] font-semibold leading-4 text-gray-100">{entry.标签}</div>
+                <div className="mt-1 break-words font-mono text-[15px] font-bold leading-5 text-amber-100">{entry.数值}</div>
             </div>
             <span
-                className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-wuxia-gold/25 bg-wuxia-gold/10 text-xs font-bold text-wuxia-gold/85"
+                className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-wuxia-gold/25 bg-wuxia-gold/10 text-[10px] font-bold text-wuxia-gold/85"
                 title={`${groupTitle} · ${entry.标签}：${entry.依据}`}
                 aria-label={`${entry.标签}说明`}
             >
                 ?
             </span>
-        </div>
-        <div className="mt-2 line-clamp-2 break-words border-t border-white/8 pt-2 text-[11px] leading-5 text-gray-300">
-            {entry.依据}
         </div>
     </div>
 );
@@ -462,7 +459,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                     <div className="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden">
                         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                             {displayItems.length > 0 ? (
-                                <div className="grid grid-cols-4 gap-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-[repeat(11,minmax(0,1fr))]">
+                                <div className="grid grid-cols-[repeat(auto-fill,minmax(7.4rem,1fr))] gap-2.5">
                                     {displayItems.map((item, index) => {
                                         const count = getSafeNumber(item?.堆叠数量, 1);
                                         const styles = getRarityStyles(getSafeText(item?.品质));
@@ -495,17 +492,17 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                                 ) : null}
 
                                                 <div className="absolute inset-0 flex items-center justify-center pb-5 transition-transform duration-300 group-hover:-translate-y-1">
-                                                    <div className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/45 shadow-inner ${styles.text}`}>
+                                                    <div className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/45 shadow-inner ${styles.text}`}>
                                                         {itemIconImage ? (
                                                             <img src={itemIconImage} alt={name} className="h-full w-full object-cover" loading="lazy" />
                                                         ) : (
-                                                            renderItemIcon(getSafeText(item?.类型), 'h-6 w-6 opacity-90 drop-shadow-md group-hover:opacity-100')
+                                                            renderItemIcon(getSafeText(item?.类型), 'h-5 w-5 opacity-90 drop-shadow-md group-hover:opacity-100')
                                                         )}
                                                     </div>
                                                 </div>
 
                                                 <div className="absolute bottom-1.5 left-0 right-0 px-1.5 text-center">
-                                                    <div className={`line-clamp-2 break-words text-[15px] font-bold leading-[1.05] tracking-wide drop-shadow-sm ${getRarityNameClass(getSafeText(item?.品质))}`}>
+                                                    <div className={`line-clamp-2 break-words text-[13px] font-bold leading-[1.1] tracking-wide drop-shadow-sm ${getRarityNameClass(getSafeText(item?.品质))}`}>
                                                         {name}
                                                     </div>
                                                     {count > 1 ? (
@@ -532,13 +529,13 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                 <div className="grid min-w-0 items-start grid-cols-[minmax(300px,0.9fr)_minmax(460px,1.35fr)] gap-3">
                                     <div className="relative col-start-1 row-start-1 flex min-w-0 gap-4 overflow-hidden rounded-xl border border-white/10 bg-black/30 p-3">
                                         <div className={`absolute right-0 top-0 h-24 w-24 rounded-full opacity-20 blur-3xl ${getRarityStyles(getSafeText(selectedItem?.品质)).bg}`} />
-                                        <div className={`relative z-10 flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-opacity-20 shadow-lg ${
+                                        <div className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-opacity-20 shadow-lg ${
                                             getRarityStyles(getSafeText(selectedItem?.品质)).border
                                         } ${getRarityStyles(getSafeText(selectedItem?.品质)).bg}`}>
                                             {selectedIconImage ? (
                                                 <img src={selectedIconImage} alt={getSafeText(selectedItem?.名称, '物品图标')} className="h-full w-full object-cover" />
                                             ) : (
-                                                renderItemIcon(getSafeText(selectedItem?.类型), `h-7 w-7 drop-shadow-md ${getRarityStyles(getSafeText(selectedItem?.品质)).text}`)
+                                                renderItemIcon(getSafeText(selectedItem?.类型), `h-6 w-6 drop-shadow-md ${getRarityStyles(getSafeText(selectedItem?.品质)).text}`)
                                             )}
                                         </div>
                                         <div className="relative z-10 min-w-0 flex-1">
@@ -662,12 +659,12 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                     <div className="col-start-2 row-start-1 row-span-5 min-h-[22rem] min-w-0 space-y-3 overflow-y-auto rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-gray-100 custom-scrollbar">
                                         <div className="flex items-center justify-between gap-3">
                                             <div className="text-sm font-bold tracking-[0.18em] text-wuxia-gold">属性与判定依据</div>
-                                            <div className="text-xs text-gray-300">依据已折行显示</div>
+                                            <div className="text-xs text-gray-300">依据悬停查看</div>
                                         </div>
                                         {selectedDetailGroups.map((group) => (
                                             <div key={group.标题}>
                                                 <div className="mb-2 text-xs font-bold tracking-[0.16em] text-wuxia-gold/85">{group.标题}</div>
-                                                <div className="grid grid-cols-2 gap-2">
+                                                <div className="grid grid-cols-3 gap-2 xl:grid-cols-2 2xl:grid-cols-3">
                                                     {group.条目.map((entry) => (
                                                         <DetailMetricCard key={`${group.标题}-${entry.标签}`} groupTitle={group.标题} entry={entry} />
                                                     ))}

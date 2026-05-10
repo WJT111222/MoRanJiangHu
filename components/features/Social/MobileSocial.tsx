@@ -862,24 +862,24 @@ const MobileSocial: React.FC<Props> = ({
                     className="fixed inset-0 z-[260] bg-black/95 backdrop-blur-sm flex items-center justify-center p-3 animate-fadeIn"
                     onClick={() => setImageViewer(null)}
                 >
-                    <button
-                        type="button"
-                        className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-gray-600 bg-black/75 text-gray-200 shadow-[0_0_24px_rgba(0,0,0,0.65)] backdrop-blur-md"
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            setImageViewer(null);
-                        }}
-                        aria-label="关闭图片预览"
-                        title="关闭图片预览"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                        </svg>
-                    </button>
                     <div
                         className="relative inline-flex w-fit max-w-[94vw] max-h-[92vh] rounded-lg overflow-hidden border border-wuxia-gold/20 shadow-[0_0_40px_rgba(212,175,55,0.18)]"
                         onClick={(event) => event.stopPropagation()}
                     >
+                        <button
+                            type="button"
+                            className="absolute left-2 top-2 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-gray-600 bg-black/75 text-gray-200 shadow-[0_0_24px_rgba(0,0,0,0.65)] backdrop-blur-md"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                setImageViewer(null);
+                            }}
+                            aria-label="关闭图片预览"
+                            title="关闭图片预览"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                         <img src={imageViewer.src} alt={imageViewer.alt} className="max-w-[94vw] max-h-[92vh] object-contain bg-black" />
                     </div>
                 </div>

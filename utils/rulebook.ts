@@ -85,6 +85,18 @@ const 格式数值 = (value: unknown, fallback = 0) => 读数(value, fallback).t
 
 const 百分比 = (value: number) => `${Math.round(value * 100)}%`;
 
+const 规范化部位列表 = (value: unknown): string[] => {
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => 读文本(item))
+            .filter(Boolean);
+    }
+    const text = 读文本(value);
+    return text
+        ? text.split(/[、/，,\s]+/).map((item) => item.trim()).filter(Boolean)
+        : [];
+};
+
 const 词条转条目 = (词条列表: unknown, context: string): 属性明细条目[] => {
     if (!Array.isArray(词条列表)) return [];
     return 词条列表
@@ -122,8 +134,6 @@ export const 获取物品明细分组 = (item: 游戏物品 | any): 物品明细
         {
             标题: '基础',
             条目: [
-                { 标签: '类型', 数值: type, 依据: '物品.类型 决定分类、可用操作和战斗映射。' },
-                { 标签: '品质', 数值: 读文本(item?.品质, '未知'), 依据: '物品.品质 影响市场价、装备评分和稀有度显示。' },
                 { 标签: '单件价值', 数值: `${格式数值(item?.价值)} 铜`, 依据: '物品.价值 是市场寄售与拍卖标价的基础铜钱值。' },
                 { 标签: '重量', 数值: `${格式数值(item?.重量)} 斤`, 依据: '物品.重量 * 堆叠数量 计入当前负重。' },
                 { 标签: '堆叠', 数值: `${格式数值(stackCount, 1)} / ${格式数值(stackMax, 1)}`, 依据: '堆叠数量决定出售、使用和总价值的数量基数。' },
@@ -141,9 +151,16 @@ export const 获取物品明细分组 = (item: 游戏物品 | any): 物品明细
         );
     }
     if (type === '防具') {
+        const equipPosition = 读文本(item?.装备位置, 读文本(item?.当前装备部位, '未知'));
+        const coveredParts = 规范化部位列表(item?.覆盖部位);
+        const hasUsefulCoveredParts = coveredParts.length > 0
+            && !coveredParts.some((part) => /未标注|未知|无/.test(part))
+            && coveredParts.join(' / ') !== equipPosition;
         equipEntries.push(
-            { 标签: '装备位置', 数值: 读文本(item?.装备位置, 读文本(item?.当前装备部位, '未知')), 依据: '防具.装备位置 决定覆盖身体区域。' },
-            { 标签: '覆盖部位', 数值: Array.isArray(item?.覆盖部位) ? item.覆盖部位.join(' / ') : '未标注', 依据: '覆盖部位决定战斗受击时优先抵消的部位。' },
+            { 标签: '装备位置', 数值: equipPosition, 依据: '防具.装备位置 决定装备槽位与基础承伤区域。' },
+            ...(hasUsefulCoveredParts
+                ? [{ 标签: '覆盖部位', 数值: coveredParts.join(' / '), 依据: '覆盖部位仅在区别于装备位置时补充说明受击抵消范围。' }]
+                : []),
             { 标签: '物理防御', 数值: 格式数值(item?.物理防御), 依据: '防具.物理防御 进入装备守势。' },
             { 标签: '内功防御', 数值: 格式数值(item?.内功防御), 依据: '防具.内功防御 进入内力/真气类伤害减免解释。' },
         );

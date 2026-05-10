@@ -130,11 +130,28 @@ const 读取目标性别 = (source: any): '男' | '女' | '' => {
     return '';
 };
 
+const 构建年龄正向提示词 = (age?: number): string => {
+    if (typeof age !== 'number' || !Number.isFinite(age) || age <= 0) return '';
+    const normalizedAge = Math.max(1, Math.floor(age));
+    if (normalizedAge >= 18) return `${normalizedAge} years old, adult, age-accurate face`;
+    if (normalizedAge >= 15) return `${normalizedAge} years old, teenage adolescent, age-accurate teen face, not a child`;
+    if (normalizedAge >= 13) return `${normalizedAge} years old, early teen, age-accurate teen face`;
+    return `${normalizedAge} years old, child, age-accurate child face`;
+};
+
+const 构建年龄负向提示词 = (age?: number): string => {
+    if (typeof age !== 'number' || !Number.isFinite(age) || age <= 0) return '';
+    if (age >= 18) return 'teen, child, little girl, little boy, toddler, prepubescent, baby face';
+    if (age >= 15) return 'child, little girl, little boy, toddler, preschooler, prepubescent, baby face,幼童,小女孩,小男孩';
+    return '';
+};
+
 const 构建性别正向提示词 = (gender: '男' | '女' | '', age?: number): string => {
     const isAdult = typeof age === 'number' && age >= 18;
-    if (gender === '女') return isAdult ? '1woman, female, adult woman, feminine face, female body' : '1girl, female, girl, feminine face, female body';
-    if (gender === '男') return isAdult ? '1man, male, adult man, masculine face, male body' : '1boy, male, boy, masculine face, male body';
-    return '';
+    const agePrompt = 构建年龄正向提示词(age);
+    if (gender === '女') return [isAdult ? '1woman, female, adult woman, feminine face, female body' : '1girl, female, teenage girl, feminine face, female body', agePrompt].filter(Boolean).join(', ');
+    if (gender === '男') return [isAdult ? '1man, male, adult man, masculine face, male body' : '1boy, male, teenage boy, masculine face, male body', agePrompt].filter(Boolean).join(', ');
+    return agePrompt;
 };
 
 const 构建性别负向提示词 = (gender: '男' | '女' | ''): string => {
@@ -182,17 +199,21 @@ const 强制性别词组 = (prompt: string, gender: '男' | '女' | '', age?: nu
 };
 
 const 构建词组转化性别硬约束 = (gender: '男' | '女' | '', age?: number): string => {
-    if (!gender) return '';
+    if (!gender && !(typeof age === 'number' && Number.isFinite(age))) return '';
     const positive = 构建性别正向提示词(gender, age);
     const negative = 构建性别负向提示词(gender);
+    const ageNegative = 构建年龄负向提示词(age);
     return [
         '【角色性别硬约束】',
-        `输入资料中的性别是“${gender}”，最终英文 tags 必须保持这个性别，禁止改写成相反性别或更换性别模板。`,
-        `最终 <提示词> 开头必须包含：${positive}`,
-        negative ? `最终 <提示词> 不得包含这些相反性别词或同义短语：${negative}` : '',
+        gender ? `输入资料中的性别是“${gender}”，最终英文 tags 必须保持这个性别，禁止改写成相反性别或更换性别模板。` : '',
+        typeof age === 'number' && Number.isFinite(age) ? `输入资料中的年龄是“${Math.floor(age)}岁”，最终英文 tags 必须体现这个年龄段，禁止画成明显更小的幼童或明显更老的成年人。` : '',
+        positive ? `最终 <提示词> 开头必须包含：${positive}` : '',
+        negative || ageNegative ? `最终 <提示词> 不得包含这些冲突词或同义短语：${[negative, ageNegative].filter(Boolean).join(', ')}` : '',
         gender === '男'
             ? '男性角色禁止输出 lady、woman、girl、female、feminine face、female body、noble lady 等女性描述。'
-            : '女性角色禁止输出 man、boy、male、masculine face、male body、old man、elderly man 等男性描述。'
+            : gender === '女'
+                ? '女性角色禁止输出 man、boy、male、masculine face、male body、old man、elderly man 等男性描述。'
+                : ''
     ].filter(Boolean).join('\n');
 };
 
@@ -291,7 +312,8 @@ export const 执行NPC生图工作流 = async (
         词组转化兼容模式 ? '' : 非画师风格正面提示词,
         角色锚点前置注入提示词
     ].filter(Boolean).join(', ');
-    const 合并负向画师串 = [性别负向提示词, (画师串预设?.负面提示词 || '').trim(), (角色锚点?.负面提示词 || '').trim(), (PNG画风预设?.负面提示词 || '').trim()].filter(Boolean).join(', ');
+    const 年龄负向提示词 = 构建年龄负向提示词(目标年龄);
+    const 合并负向画师串 = [性别负向提示词, 年龄负向提示词, (画师串预设?.负面提示词 || '').trim(), (角色锚点?.负面提示词 || '').trim(), (PNG画风预设?.负面提示词 || '').trim()].filter(Boolean).join(', ');
     const PNG参数 = PNG画风预设?.优先复刻原参数 === true ? PNG画风预设?.参数 : undefined;
     const 额外要求 = (options?.额外要求 || '').trim();
     const 尺寸 = (options?.尺寸 || '').trim();

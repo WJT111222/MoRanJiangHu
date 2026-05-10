@@ -339,7 +339,7 @@ const 清理正文残留协议内容 = (body: string): string => {
     return 清理正文初始化泄露内容(lines.join('\n')).trim();
 };
 
-const 初始化泄露标题规则 = /^(?:#{1,6}\s*)?\d+[.、]\s*(角色初始化|环境初始化|社交初始化|门派与任务初始化)(?:\s*[（(][^）)]*[）)])?\s*$/;
+const 初始化泄露标题规则 = /^(?:#{1,6}\s*)?\d+[.、]\s*(角色初始化|环境初始化|社交初始化|门派与任务初始化)(?:\s*[（(][^）)]*[）)])?\s*[:：]?\s*$/;
 const 初始化泄露行规则 = /^(?:[-*]\s*)?(?:\*\*)?(基础信息|基础属性|境界系统|属性数值|六维|天赋列表|身体状态|资产|资产与物品|装备与物品|装备中|物品列表|坐标|时间|地点层级|天气|玩家门派|任务列表|NPC\d+|Item\d+|Task\d+)(?:\*\*)?\s*[：:]/;
 const 初始化泄露列表行规则 = /^(?:[-*]\s*)?(?:\*\*[^*]+?\*\*|(?:姓名|年龄|性别|身份|称号|境界|境界层级|内力|精力|饱腹|口渴|头部|胸部|腹部|左手|右手|左腿|右腿|金钱|装备中|物品列表|地点层级|天气|玩家门派)\b|[\[\{]?(?:NPC|Item|Task)\d+|\[\d+\]\s*名称[：:])/;
 
@@ -1137,7 +1137,7 @@ const 解析标签协议响应 = (content: string): GameResponse | null => {
     let logs = 解析正文日志(bodyJudgeExtraction.cleanBody);
     if (logs.length === 0) {
         const fallbackBody = titleSections.正文 || 提取候选正文文本(textWithoutThinking);
-        const stripped = 提取正文中的Judge区块(fallbackBody).cleanBody
+        const stripped = 提取正文中的Judge区块(清理正文初始化泄露内容(fallbackBody)).cleanBody
             .replace(/<[^>]+>/g, '\n');
         if (/【[^】]+】/.test(stripped)) {
             logs = 解析正文日志(stripped);

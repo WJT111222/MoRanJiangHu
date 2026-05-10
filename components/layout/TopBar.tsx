@@ -564,7 +564,7 @@ const TopBar: React.FC<Props> = ({ 环境, 游戏初始时间, timeFormat, festi
     ];
 
     return (
-        <div className="w-full relative overflow-visible z-50 bg-[#000] pt-[var(--app-safe-top,env(safe-area-inset-top,0px))] md:h-[58px] md:min-h-[58px] md:pt-0" style={{ color: topBarStyle.color, fontFamily: topBarStyle.fontFamily, fontStyle: topBarStyle.fontStyle }}>
+        <div className="w-full relative overflow-visible z-[230] bg-[#000] pt-[var(--app-safe-top,env(safe-area-inset-top,0px))] md:h-[58px] md:min-h-[58px] md:pt-0" style={{ color: topBarStyle.color, fontFamily: topBarStyle.fontFamily, fontStyle: topBarStyle.fontStyle }}>
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-ink-black via-wuxia-gold/40 to-ink-black"></div>
 
             <div className="md:hidden fixed left-2 top-[calc(var(--app-safe-top,env(safe-area-inset-top,0px))+60px)] z-[88] flex items-start gap-2 pointer-events-auto">
@@ -677,17 +677,17 @@ const TopBar: React.FC<Props> = ({ 环境, 游戏初始时间, timeFormat, festi
                     </div>
                 </div>
 
-                <div className="absolute left-1/2 top-0 transform -translate-x-1/2 h-full flex flex-col items-center justify-center pt-0 z-20">
+                <div className="absolute left-1/2 top-[-8px] transform -translate-x-1/2 h-full flex flex-col items-center justify-start pt-0 z-[240]">
                     <div className="hidden md:flex gap-8 md:gap-16 w-full justify-center absolute top-0">
                         <div className="w-[2px] h-7 md:h-8 bg-gradient-to-b from-wuxia-gold/40 to-black"></div>
                         <div className="w-[2px] h-7 md:h-8 bg-gradient-to-b from-wuxia-gold/40 to-black"></div>
                     </div>
-                    <div onClick={toggleFullScreen} className="mt-0 md:mt-4 bg-[#111]/95 border border-wuxia-gold/25 md:border-2 md:border-double md:border-wuxia-gold/50 px-2 md:px-10 py-0.5 md:py-3 rounded-md md:rounded-lg shadow-[0_8px_18px_rgba(0,0,0,0.55)] relative flex flex-col items-center min-w-[104px] md:min-w-[240px] max-w-[118px] md:max-w-none transform md:hover:scale-105 transition-transform duration-500 pointer-events-none md:pointer-events-auto cursor-default md:cursor-pointer">
+                    <div onClick={toggleFullScreen} className="mt-0 md:mt-2 bg-[#111]/95 border border-wuxia-gold/25 md:border-2 md:border-double md:border-wuxia-gold/50 px-2 md:px-8 py-0.5 md:py-2 rounded-md md:rounded-lg shadow-[0_8px_18px_rgba(0,0,0,0.55)] relative flex flex-col items-center min-w-[104px] md:min-w-[240px] max-w-[118px] md:max-w-none transform md:hover:scale-105 transition-transform duration-500 pointer-events-none md:pointer-events-auto cursor-default md:cursor-pointer">
                         <div className="hidden md:block absolute top-1 left-1 w-2 h-2 border-t border-l border-wuxia-gold/50"></div>
                         <div className="hidden md:block absolute top-1 right-1 w-2 h-2 border-t border-r border-wuxia-gold/50"></div>
                         <div className="hidden md:block absolute bottom-1 left-1 w-2 h-2 border-b border-l border-wuxia-gold/50"></div>
                         <div className="hidden md:block absolute bottom-1 right-1 w-2 h-2 border-b border-r border-wuxia-gold/50"></div>
-                        <div className="hidden md:block tracking-[0.08em] md:tracking-[0.1em] text-shadow" style={{ ...topBarStyle, fontWeight: 700, fontSize: 顶栏字号(1.24, 20), lineHeight: 1.3 }}>
+                        <div className="hidden md:block tracking-[0.08em] md:tracking-[0.1em] text-shadow" style={{ ...topBarStyle, fontWeight: 700, fontSize: 顶栏字号(1.16, 18), lineHeight: 1.2 }}>
                             {fullDateStr}
                         </div>
                         <div className="md:hidden text-shadow text-center leading-tight scale-[0.8]" style={{ color: topBarStyle.color }}>
@@ -695,8 +695,8 @@ const TopBar: React.FC<Props> = ({ 环境, 游戏初始时间, timeFormat, festi
                             <div style={{ ...topBarStyle, fontSize: 顶栏字号(0.94, 13), fontWeight: 700, letterSpacing: '0.08em', lineHeight: 1.05 }}>{mobileClockStr}</div>
                         </div>
                         <div
-                            className="absolute -bottom-2.5 md:-bottom-3 hidden md:flex bg-wuxia-red px-2 md:px-3 py-[1px] md:py-[2px] rounded border border-wuxia-gold/30 shadow-md items-center gap-1 z-30 font-bold tracking-widest max-w-[220px] md:max-w-[460px]"
-                            style={{ color: topBarStyle.color, fontFamily: topBarStyle.fontFamily, fontStyle: topBarStyle.fontStyle, fontSize: 顶栏字号(0.96, 13), lineHeight: 1.15 }}
+                            className="absolute -bottom-2 hidden md:flex bg-wuxia-red px-2 md:px-3 py-[1px] rounded border border-wuxia-gold/30 shadow-md items-center gap-1 z-30 font-bold tracking-widest max-w-[220px] md:max-w-[460px]"
+                            style={{ color: topBarStyle.color, fontFamily: topBarStyle.fontFamily, fontStyle: topBarStyle.fontStyle, fontSize: 顶栏字号(0.88, 12), lineHeight: 1.05 }}
                         >
                             <span className="hidden md:inline opacity-90 truncate" title={locationBadge}>{locationBadge}</span>
                         </div>

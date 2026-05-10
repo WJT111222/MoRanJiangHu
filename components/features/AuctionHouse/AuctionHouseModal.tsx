@@ -260,7 +260,7 @@ const AuctionHouseModal: React.FC<Props> = ({
 
                 <div className="auction-house-body flex min-h-0 flex-1 flex-col bg-[#0b0907]">
                     <section className={`shrink-0 border-b border-wuxia-gold/10 bg-[#0e0b08] ${isMobile ? 'p-2' : 'p-3'}`}>
-                        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
+                        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)]">
                             <div>
                                 <div className="mb-2 flex items-center justify-between text-xs text-wuxia-gold/70">
                                     <span>分类</span>
@@ -275,22 +275,22 @@ const AuctionHouseModal: React.FC<Props> = ({
                                 </div>
                             </div>
 
-                            <div className={`${isMobile ? 'hidden' : ''} grid gap-3 rounded-xl border border-wuxia-gold/15 bg-[#11100d] p-2.5 lg:grid-cols-[1.05fr_0.95fr]`}>
+                            <div className={`${isMobile ? 'hidden' : ''} grid min-w-0 gap-3 rounded-xl border border-wuxia-gold/15 bg-[#11100d] p-2.5 lg:grid-cols-2`}>
                                 <div className="min-w-0">
                                     <div className="mb-2 flex items-center justify-between text-xs font-semibold text-wuxia-gold/80">
                                         <span>今日行情</span>
                                         <span className="font-normal text-wuxia-gold/45">{marketList.length} 条</span>
                                     </div>
-                                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                                    <div className="grid min-w-0 gap-2 sm:grid-cols-3 lg:grid-cols-1">
                                         {marketList.slice(0, 3).map((market) => (
-                                            <div key={market.ID} className="min-w-0 rounded-lg border border-amber-400/20 bg-[#2c1c08] px-3 py-2">
+                                            <div key={market.ID} className="min-w-0 overflow-hidden rounded-lg border border-amber-400/20 bg-[#2c1c08] px-3 py-2">
                                                 <div className="flex items-center justify-between gap-2 text-xs">
                                                     <span className="truncate font-semibold text-amber-100">{market.标题}</span>
                                                     <span className={`shrink-0 font-mono ${market.价格倍率 >= 1 ? 'text-emerald-300' : 'text-sky-300'}`}>
                                                         ×{market.价格倍率.toFixed(2)}
                                                     </span>
                                                 </div>
-                                                <div className="mt-1 truncate text-[11px] text-gray-300">{market.描述}</div>
+                                                <div className="mt-1 line-clamp-1 break-words text-[11px] text-gray-300">{market.描述}</div>
                                             </div>
                                         ))}
                                     </div>
