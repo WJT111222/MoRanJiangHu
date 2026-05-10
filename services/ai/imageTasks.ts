@@ -1,5 +1,9 @@
 import { decompressSync, unzlibSync, unzipSync } from 'fflate';
-import type { 当前可用接口结构 } from '../../utils/apiConfig';
+import {
+    获取已发现ComfyUI后端候选,
+    用已发现ComfyUI后端替换地址,
+    type 当前可用接口结构
+} from '../../utils/apiConfig';
 import type { 香闺秘档部位类型 } from '../../models/imageGeneration';
 import type { PNG解析参数结构, PNG画风预设来源类型, 角色锚点结构, 图片词组序列化策略类型 } from '../../models/system';
 import { 角色图片分词COT伪装历史消息提示词 } from '../../prompts/runtime/imageTokenizerCharacterCot';
@@ -35,6 +39,7 @@ export interface 图片生成结果 {
     原始响应?: string;
     最终正向提示词?: string;
     最终负向提示词?: string;
+    客户提示?: string;
 }
 
 export type 图片提示词装配结果 = {
@@ -1815,6 +1820,64 @@ const 执行ComfyUI生图 = async (
     }
 };
 
+const 是ComfyUI后端不可用错误 = (error: any): boolean => {
+    if (error?.name === 'AbortError') return false;
+    if (error instanceof 协议请求错误) {
+        return error.status === 408 || error.status === 429 || error.status >= 500;
+    }
+    const message = typeof error?.message === 'string' ? error.message : String(error || '');
+    return /ComfyUI\s*连接失败|Failed to fetch|NetworkError|Load failed|timeout|超时|连接失败|跨域|CORS|服务器未启动|地址失效|工作区休眠/i.test(message);
+};
+
+const 构建ComfyUI自动切换候选 = (apiConfig: 当前可用接口结构): 当前可用接口结构[] => {
+    const currentBaseUrl = 获取ComfyUI基础地址(apiConfig.baseUrl || '').toLowerCase();
+    const seen = new Set<string>(currentBaseUrl ? [currentBaseUrl] : []);
+    return 获取已发现ComfyUI后端候选()
+        .map((backend) => 用已发现ComfyUI后端替换地址(apiConfig, backend))
+        .filter((item): item is 当前可用接口结构 => Boolean(item))
+        .filter((item) => {
+            const baseUrl = 获取ComfyUI基础地址(item.baseUrl || '').toLowerCase();
+            if (!baseUrl || seen.has(baseUrl)) return false;
+            seen.add(baseUrl);
+            return true;
+        });
+};
+
+const 执行ComfyUI生图并自动切换 = async (
+    prompt: string,
+    apiConfig: 当前可用接口结构,
+    responseFormat: 'url' | 'b64_json',
+    size: string,
+    negativePrompt: string,
+    signal?: AbortSignal,
+    pngParams?: PNG解析参数结构
+): Promise<图片生成结果> => {
+    try {
+        const result = await 执行ComfyUI生图(prompt, apiConfig, responseFormat, size, negativePrompt, signal, pngParams);
+        return apiConfig.自动切换提示
+            ? { ...result, 客户提示: apiConfig.自动切换提示 }
+            : result;
+    } catch (error: any) {
+        if (!是ComfyUI后端不可用错误(error)) throw error;
+        const candidates = 构建ComfyUI自动切换候选(apiConfig);
+        if (candidates.length <= 0) throw error;
+        const errors: string[] = [typeof error?.message === 'string' ? error.message : String(error || '')];
+        for (const candidate of candidates) {
+            try {
+                const result = await 执行ComfyUI生图(prompt, candidate, responseFormat, size, negativePrompt, signal, pngParams);
+                return {
+                    ...result,
+                    客户提示: candidate.自动切换提示 || `当前 ComfyUI 后端不可用，已自动切换到在线后端：${candidate.baseUrl}`
+                };
+            } catch (candidateError: any) {
+                if (!是ComfyUI后端不可用错误(candidateError)) throw candidateError;
+                errors.push(typeof candidateError?.message === 'string' ? candidateError.message : String(candidateError || ''));
+            }
+        }
+        throw new Error(`${errors[0]}\n已尝试自动切换到上报的在线 ComfyUI 后端，但这些后端暂时也不可用。请稍后重试，或在“文生图”设置里选择其它在线后端。`);
+    }
+};
+
 const 请求分词器文本 = async (
     params: {
         apiConfig: 当前可用接口结构;
@@ -3489,7 +3552,7 @@ export const generateImageByPrompt = async (
     }
 
     if (backendType === 'comfyui') {
-        const result = await 执行ComfyUI生图(
+        const result = await 执行ComfyUI生图并自动切换(
             normalizedPrompt,
             apiConfig,
             responseFormat,

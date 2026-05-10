@@ -305,6 +305,23 @@ const 是否近身位置 = (text: unknown): boolean => 文本包含任一(text, 
     '在场',
 ]);
 
+const 是否聚落层级 = (layer: 地图层级结构): boolean => {
+    const text = `${layer.名称}${layer.描述}${layer.归属.中地点}${layer.归属.小地点}`;
+    if (是否野外位置(text)) return false;
+    if (文本包含任一(text, ['镇', '城', '坊', '市', '街', '巷', '村', '庄', '院', '宅', '府', '馆', '楼', '铺', '坊市', '客栈'])) return true;
+    return layer.层级 === '小地点' || layer.层级 === '具体地点';
+};
+
+const 生成序号文本 = (index: number): string => String(index + 1).padStart(2, '0');
+
+const 获取聚落目标建筑数量 = (layer: 地图层级结构, currentCount: number, peopleHint = 0): number => {
+    if (!是否聚落层级(layer)) return currentCount;
+    const base = layer.层级 === '具体地点' ? 6 : layer.层级 === '小地点' ? 14 : 10;
+    const byPeople = Math.ceil(Math.max(0, peopleHint) * 0.8);
+    const byArea = Math.floor((layer.网格宽度 * layer.网格高度) / 90);
+    return Math.max(currentCount, Math.min(28, Math.max(base, byPeople, byArea)));
+};
+
 const 计算野外坐标 = (
     key: string,
     layer: 地图层级结构,
@@ -618,11 +635,57 @@ const 计算矩形布局 = (
     );
 };
 
+const 计算道路附近落点 = (
+    point: 地图坐标点结构,
+    layer: 地图层级结构,
+    key: string,
+    index: number
+): 地图坐标点结构 => {
+    const hash = 稳定散列(`${layer.ID}-${key}-${index}-street`);
+    const along = ((hash % 100) - 50) / 100;
+    const side = ((hash >> 7) % 2 === 0 ? -1 : 1) * (0.55 + ((hash >> 11) % 28) / 100);
+    return {
+        x: 限制数值(point.x + along, 0.7, layer.网格宽度 - 0.7),
+        y: 限制数值(point.y + side, 0.7, layer.网格高度 - 0.7),
+    };
+};
+
 const 重排离散建筑布局 = (
     layer: 地图层级结构,
     layerBuildings: 地图建筑结构[]
 ) => {
     if (layerBuildings.length <= 1) return;
+    if (是否聚落层级(layer)) {
+        const total = layerBuildings.length;
+        const rows = Math.max(2, Math.min(5, Math.ceil(Math.sqrt(total * 0.58))));
+        const columns = Math.max(3, Math.ceil(total / rows));
+        const roadGap = 1.6;
+        const blockWidth = Math.min(layer.网格宽度 * 0.76, Math.max(14, columns * 3.8 + roadGap * Math.max(0, columns - 1)));
+        const blockHeight = Math.min(layer.网格高度 * 0.62, Math.max(10, rows * 3.4 + roadGap * Math.max(0, rows - 1)));
+        const originX = (layer.网格宽度 - blockWidth) / 2;
+        const originY = Math.max(1.4, (layer.网格高度 - blockHeight) / 2);
+        const cellWidth = blockWidth / columns;
+        const cellHeight = blockHeight / rows;
+        layerBuildings.forEach((building, index) => {
+            const column = index % columns;
+            const row = Math.floor(index / columns);
+            const hash = 稳定散列(`${layer.ID}-${building.ID}-${index}-urban`);
+            const laneBias = column % 2 === 0 ? -0.16 : 0.16;
+            const width = Math.min(3.4, Math.max(2.2, cellWidth * (0.62 + (hash % 16) / 100)));
+            const height = Math.min(3.1, Math.max(2.0, cellHeight * (0.58 + ((hash >> 5) % 16) / 100)));
+            const jitterX = (((hash >> 9) % 21) - 10) / 100;
+            const jitterY = (((hash >> 14) % 21) - 10) / 100;
+            const x = originX + column * cellWidth + (cellWidth - width) / 2 + laneBias + jitterX;
+            const y = originY + row * cellHeight + (cellHeight - height) / 2 + jitterY;
+            building.四角坐标 = 创建矩形四角(
+                限制数值(x, 0.8, Math.max(0.8, layer.网格宽度 - width - 0.8)),
+                限制数值(y, 0.8, Math.max(0.8, layer.网格高度 - height - 0.8)),
+                width,
+                height
+            );
+        });
+        return;
+    }
     const centers = layerBuildings.map((building) => 计算四角中心(building.四角坐标));
     const minX = Math.min(...centers.map((point) => point.x));
     const maxX = Math.max(...centers.map((point) => point.x));
@@ -1088,6 +1151,52 @@ const 从旧版字段派生地图空间 = (
         });
     }
 
+    const peopleHintByLayer = new Map<string, number>();
+    const registerPeopleHint = (layerId: string) => {
+        if (!layerId) return;
+        peopleHintByLayer.set(layerId, (peopleHintByLayer.get(layerId) || 0) + 1);
+    };
+    (Array.isArray(world?.活跃NPC列表) ? world.活跃NPC列表 : []).forEach((npc: any) => {
+        const pathText = [
+            npc?.位置路径,
+            npc?.当前位置,
+            npc?.归属?.大地点,
+            npc?.归属?.中地点,
+            npc?.归属?.小地点,
+        ].map((item) => 取文本(item)).filter(Boolean).join(' > ');
+        const normalizedPath = 归一化地图文本(pathText);
+        const fallbackName = npc?.当前位置;
+        const layer = layers.find((candidate) => (
+            (normalizedPath && normalizedPath.includes(归一化地图文本(candidate.名称)))
+            || 层级名称命中(candidate.名称, fallbackName)
+        ));
+        registerPeopleHint(layer?.ID || envSmallId || envMidId || envBigId || '');
+    });
+    const envCurrentLayer = layers.find((layer) => (
+        (取文本(options?.env?.具体地点) && layer.层级 === '具体地点' && 层级名称命中(layer.名称, options?.env?.具体地点))
+        || (取文本(options?.env?.小地点) && layer.层级 === '小地点' && 层级名称命中(layer.名称, options?.env?.小地点))
+    ));
+    registerPeopleHint(envCurrentLayer?.ID || envSmallId || envMidId || envBigId || '');
+
+    layers.forEach((layer) => {
+        if (!是否聚落层级(layer)) return;
+        const existing = buildingLayers.get(layer.ID) || [];
+        const targetCount = 获取聚落目标建筑数量(layer, existing.length, peopleHintByLayer.get(layer.ID) || 0);
+        const categories = layer.层级 === '具体地点'
+            ? ['厢房', '廊屋', '仓房', '厨房', '偏厅', '门房', '柴房', '小院']
+            : ['民居', '铺面', '客舍', '仓房', '茶棚', '院落', '工坊', '门楼', '厢房', '杂院'];
+        for (let index = existing.length; index < targetCount; index += 1) {
+            const category = categories[index % categories.length];
+            ensureBuilding({
+                layerId: layer.ID,
+                name: `未命名${category}${生成序号文本(index)}`,
+                desc: `${layer.名称} 中顺街排布的${category}，等待剧情赋予具体名称。`,
+                ownership: layer.归属,
+                category,
+            });
+        }
+    });
+
     buildings.forEach((building, index) => {
         const layer = layerById.get(building.所在层级ID);
         if (!layer) return;
@@ -1160,8 +1269,67 @@ const 按层级补齐道路 = (
             entrance: 计算建筑入口坐标(building, layer),
         }));
 
+        if (是否聚落层级(layer) && buildingAnchors.length >= 4) {
+            const xs = buildingAnchors.map((item) => item.center.x);
+            const ys = buildingAnchors.map((item) => item.center.y);
+            const minX = Math.max(1.2, Math.min(...xs) - 2.2);
+            const maxX = Math.min(layer.网格宽度 - 1.2, Math.max(...xs) + 2.2);
+            const minY = Math.max(1.2, Math.min(...ys) - 1.8);
+            const maxY = Math.min(layer.网格高度 - 1.2, Math.max(...ys) + 1.8);
+            const horizontalRows = Array.from(new Set(
+                buildingAnchors
+                    .map((item) => Number(item.entrance.y.toFixed(1)))
+                    .sort((a, b) => a - b)
+            )).filter((_, index, list) => index === 0 || index === list.length - 1 || index % 2 === 0).slice(0, 4);
+            const verticalCols = Array.from(new Set(
+                buildingAnchors
+                    .map((item) => Number(item.entrance.x.toFixed(1)))
+                    .sort((a, b) => a - b)
+            )).filter((_, index, list) => index === 0 || index === list.length - 1 || index % 3 === 0).slice(0, 3);
+            horizontalRows.forEach((y, index) => {
+                const name = index === 0 ? '主街' : `横巷${生成序号文本(index - 1)}`;
+                const key = `${layer.ID}|${归一化地图文本(name)}`;
+                if (roadLookup.has(key)) return;
+                const road: 地图道路结构 = {
+                    ID: 生成地图对象ID('road', layer.ID, name),
+                    名称: name,
+                    描述: `${layer.名称} 内串联建筑门面的${name}。`,
+                    归属: { ...layer.归属 },
+                    所在层级ID: layer.ID,
+                    路径点: [
+                        { x: minX, y: 限制数值(y, minY, maxY) },
+                        { x: maxX, y: 限制数值(y, minY, maxY) },
+                    ],
+                };
+                roads.push(road);
+                layerRoads.push(road);
+                roadLookup.set(key, road.ID);
+                追加唯一值(layer.道路ID列表, road.ID);
+            });
+            verticalCols.forEach((x, index) => {
+                const name = index === 0 ? '纵街' : `纵巷${生成序号文本(index - 1)}`;
+                const key = `${layer.ID}|${归一化地图文本(name)}`;
+                if (roadLookup.has(key)) return;
+                const road: 地图道路结构 = {
+                    ID: 生成地图对象ID('road', layer.ID, name),
+                    名称: name,
+                    描述: `${layer.名称} 内连接街巷的${name}。`,
+                    归属: { ...layer.归属 },
+                    所在层级ID: layer.ID,
+                    路径点: [
+                        { x: 限制数值(x, minX, maxX), y: minY },
+                        { x: 限制数值(x, minX, maxX), y: maxY },
+                    ],
+                };
+                roads.push(road);
+                layerRoads.push(road);
+                roadLookup.set(key, road.ID);
+                追加唯一值(layer.道路ID列表, road.ID);
+            });
+        }
+
         const mainRoadKey = `${layer.ID}|${归一化地图文本('沿建筑主街')}`;
-        if (layerRoads.length === 0 || (buildingAnchors.length > 1 && !roadLookup.has(mainRoadKey))) {
+        if (layerRoads.length === 0 || (!是否聚落层级(layer) && buildingAnchors.length > 1 && !roadLookup.has(mainRoadKey))) {
             if (buildingAnchors.length > 0) {
                 const xs = buildingAnchors.map((item) => item.center.x);
                 const ys = buildingAnchors.map((item) => item.center.y);
@@ -1356,7 +1524,11 @@ const 计算人物落点 = (params: {
         return 计算野外坐标(params.name, params.layer, params.index);
     }
 
-    return 计算散点坐标(`${params.name}-${params.index}`, params.layer.网格宽度, params.layer.网格高度, params.index);
+    const layerBuildings = params.buildings.filter((building) => building.所在层级ID === params.layer.ID);
+    const hash = 稳定散列(`${params.layer.ID}-${params.name}-${params.index}-resident`);
+    const building = layerBuildings[hash % layerBuildings.length];
+    const entrance = 计算建筑入口坐标(building, params.layer);
+    return 计算道路附近落点(entrance, params.layer, params.name, params.index);
 };
 
 const 补齐地图人物 = (

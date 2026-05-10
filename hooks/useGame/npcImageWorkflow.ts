@@ -465,7 +465,7 @@ export const 执行NPC生图工作流 = async (
         deps.更新NPC生图任务(task.id, (currentTask) => ({
             ...currentTask,
             进度阶段: 'saving',
-            进度文本: '图片已生成，正在写回图片档案。'
+            进度文本: localizedImageResult.客户提示 || '图片已生成，正在写回图片档案。'
         }));
         deps.更新NPC最近生图结果(npcKey, (currentNpc) => {
             const 成功结果 = {
@@ -514,7 +514,9 @@ export const 执行NPC生图工作流 = async (
             本地路径: localizedImageResult.本地路径,
             错误信息: undefined,
             进度阶段: 'success',
-            进度文本: '图片已生成并写入图片档案。'
+            进度文本: localizedImageResult.客户提示
+                ? `${localizedImageResult.客户提示}，图片已生成并写入图片档案。`
+                : '图片已生成并写入图片档案。'
         }));
     } catch (error: any) {
         const errorMessage = typeof error?.message === 'string' && error.message.trim()

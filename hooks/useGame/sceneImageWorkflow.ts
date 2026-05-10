@@ -283,7 +283,7 @@ export const 执行场景生图工作流 = async (
         deps.更新场景生图任务(task.id, (currentTask) => ({
             ...currentTask,
             进度阶段: 'saving',
-            进度文本: '图片已生成，正在写入场景壁纸档案。'
+            进度文本: localizedImageResult.客户提示 || '图片已生成，正在写入场景壁纸档案。'
         }));
 
         const result = {
@@ -342,7 +342,9 @@ export const 执行场景生图工作流 = async (
             额外要求: params.额外要求,
             错误信息: undefined,
             进度阶段: 'success',
-            进度文本: appliedAsWallpaper ? '图片已生成并自动应用为壁纸。' : '图片已生成并写入场景档案。',
+            进度文本: localizedImageResult.客户提示
+                ? `${localizedImageResult.客户提示}，${appliedAsWallpaper ? '图片已生成并自动应用为壁纸。' : '图片已生成并写入场景档案。'}`
+                : (appliedAsWallpaper ? '图片已生成并自动应用为壁纸。' : '图片已生成并写入场景档案。'),
             已应用为壁纸: appliedAsWallpaper
         }));
     } catch (error: any) {

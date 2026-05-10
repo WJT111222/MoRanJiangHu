@@ -456,6 +456,7 @@
 
   .desktop-right-detail-modal .fixed {
     inset: var(--desktop-game-top) 12px var(--desktop-game-bottom) auto !important;
+    z-index: 40 !important;
     width: var(--desktop-right-detail-width) !important;
     height: auto !important;
     min-height: 0 !important;
@@ -843,7 +844,7 @@
 
   .desktop-right-detail-modal--fullscreen .fixed {
     inset: var(--desktop-game-top) 12px var(--desktop-game-bottom) 12px !important;
-    z-index: 260 !important;
+    z-index: 45 !important;
     width: auto !important;
     max-height: none !important;
     padding: 0 !important;

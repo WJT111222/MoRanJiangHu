@@ -4,6 +4,7 @@ import {
     生图接口支持NSFW,
     获取文生图接口配置,
     获取场景文生图接口配置,
+    用已发现ComfyUI后端替换地址,
     接口配置是否可用,
     规范化接口设置,
     创建空接口设置,
@@ -281,6 +282,22 @@ describe('获取NSFW文生图接口配置', () => {
         expect(result).not.toBeNull();
         expect(result?.图片后端类型).toBe('comfyui');
         expect(result?.baseUrl).toBe('http://localhost:8188');
+    });
+
+    it('builds customer-facing ComfyUI auto switch config from reported backend', () => {
+        const settings = 构建测试接口设置({
+            文生图后端类型: 'comfyui',
+            文生图模型API地址: 'http://offline-comfyui:8188',
+            ComfyUI工作流JSON: '{"1":{"class_type":"KSampler"}}'
+        });
+        const current = 获取文生图接口配置(settings);
+        expect(current).not.toBeNull();
+        const result = 用已发现ComfyUI后端替换地址(current!, { url: 'http://online-comfyui:8188/' });
+        expect(result?.图片后端类型).toBe('comfyui');
+        expect(result?.baseUrl).toBe('http://online-comfyui:8188');
+        expect(result?.图片接口路径).toBe('/prompt');
+        expect(result?.ComfyUI工作流JSON).toBe(current?.ComfyUI工作流JSON);
+        expect(result?.自动切换提示).toContain('已自动切换到在线 ComfyUI 后端');
     });
 
     it('uses scene config as fallback for NSFW when scene backend supports it', () => {

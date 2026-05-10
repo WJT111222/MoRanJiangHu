@@ -238,23 +238,22 @@ const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange
 };
 
 const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupTitle, entry }) => (
-    <div className="group relative z-[1001] min-w-0 rounded-lg border border-white/12 bg-black/35 px-3 py-2.5 pr-11 transition hover:border-wuxia-gold/55 hover:bg-wuxia-gold/5 focus-within:border-wuxia-gold/60">
-        <div className="min-w-0">
+    <div className="min-w-0 rounded-lg border border-white/12 bg-black/35 px-3 py-2.5 transition hover:border-wuxia-gold/45 hover:bg-wuxia-gold/5">
+        <div className="flex min-w-0 items-start justify-between gap-2">
             <div className="min-w-0">
                 <div className="break-words text-[13px] font-semibold leading-5 text-gray-100">{entry.标签}</div>
                 <div className="mt-1 break-words font-mono text-base font-bold leading-5 text-amber-100">{entry.数值}</div>
             </div>
-            <button
-                type="button"
-                className="peer absolute right-2.5 top-2.5 z-[1010] flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-wuxia-gold/35 bg-wuxia-gold/10 text-sm font-bold text-wuxia-gold outline-none transition hover:border-wuxia-gold hover:bg-wuxia-gold/20 focus:border-wuxia-gold focus:bg-wuxia-gold/20"
+            <span
+                className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-wuxia-gold/25 bg-wuxia-gold/10 text-xs font-bold text-wuxia-gold/85"
+                title={`${groupTitle} · ${entry.标签}：${entry.依据}`}
                 aria-label={`${entry.标签}说明`}
             >
                 ?
-            </button>
+            </span>
         </div>
-        <div className="pointer-events-none fixed left-4 top-24 z-[2000] hidden w-[28rem] max-w-[min(88vw,28rem)] whitespace-normal break-words rounded-lg border border-wuxia-gold/45 bg-[#14110a] p-3 text-sm leading-6 text-amber-50 shadow-[0_16px_42px_rgba(0,0,0,0.78)] peer-hover:block peer-focus:block" style={{ pointerEvents: 'none' }}>
-            <div className="mb-1 text-xs font-bold tracking-[0.16em] text-wuxia-gold">{groupTitle} · {entry.标签}</div>
-            <div>{entry.依据}</div>
+        <div className="mt-2 line-clamp-2 break-words border-t border-white/8 pt-2 text-[11px] leading-5 text-gray-300">
+            {entry.依据}
         </div>
     </div>
 );
@@ -663,7 +662,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                     <div className="col-start-2 row-start-1 row-span-5 min-h-[22rem] min-w-0 space-y-3 overflow-y-auto rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-gray-100 custom-scrollbar">
                                         <div className="flex items-center justify-between gap-3">
                                             <div className="text-sm font-bold tracking-[0.18em] text-wuxia-gold">属性与判定依据</div>
-                                            <div className="text-xs text-gray-300">悬停或聚焦 ? 查看说明</div>
+                                            <div className="text-xs text-gray-300">依据已折行显示</div>
                                         </div>
                                         {selectedDetailGroups.map((group) => (
                                             <div key={group.标题}>

@@ -92,6 +92,31 @@ const 生成等高线 = (
     return lines;
 };
 
+const 生成地貌区域 = (
+    layer: any,
+    buildings: any[],
+    mapWidth: number,
+    mapHeight: number
+) => {
+    const layerText = 归一化地图文本(`${layer?.名称 || ''}${layer?.描述 || ''}${layer?.归属?.中地点 || ''}${layer?.归属?.小地点 || ''}`);
+    const isSettlement = buildings.length > 0 && ['镇', '城', '坊', '市', '街', '巷', '村', '庄', '院', '宅'].some((key) => layerText.includes(key));
+    const waterBias = ['溪', '河', '湖', '潭', '水', '江'].some((key) => layerText.includes(key));
+    const mountainBias = ['山', '岭', '峰', '谷', '坡', '崖', '林'].some((key) => layerText.includes(key));
+    const waterPath = waterBias
+        ? `M 0 ${mapHeight * 0.72} C ${mapWidth * 0.18} ${mapHeight * 0.62}, ${mapWidth * 0.32} ${mapHeight * 0.86}, ${mapWidth * 0.5} ${mapHeight * 0.72} S ${mapWidth * 0.82} ${mapHeight * 0.5}, ${mapWidth} ${mapHeight * 0.6} L ${mapWidth} ${mapHeight} L 0 ${mapHeight} Z`
+        : `M 0 ${mapHeight * 0.78} C ${mapWidth * 0.18} ${mapHeight * 0.7}, ${mapWidth * 0.33} ${mapHeight * 0.92}, ${mapWidth * 0.52} ${mapHeight * 0.8} S ${mapWidth * 0.82} ${mapHeight * 0.66}, ${mapWidth} ${mapHeight * 0.74} L ${mapWidth} ${mapHeight} L 0 ${mapHeight} Z`;
+    const hillPath = mountainBias
+        ? `M 0 0 L ${mapWidth} 0 L ${mapWidth} ${mapHeight * 0.18} C ${mapWidth * 0.72} ${mapHeight * 0.12}, ${mapWidth * 0.58} ${mapHeight * 0.28}, ${mapWidth * 0.36} ${mapHeight * 0.2} S ${mapWidth * 0.12} ${mapHeight * 0.28}, 0 ${mapHeight * 0.16} Z`
+        : `M 0 0 L ${mapWidth} 0 L ${mapWidth} ${mapHeight * 0.12} C ${mapWidth * 0.7} ${mapHeight * 0.08}, ${mapWidth * 0.52} ${mapHeight * 0.18}, ${mapWidth * 0.28} ${mapHeight * 0.12} S ${mapWidth * 0.08} ${mapHeight * 0.2}, 0 ${mapHeight * 0.12} Z`;
+    return {
+        waterPath,
+        hillPath,
+        showWater: waterBias || isSettlement,
+        showHills: mountainBias || !isSettlement,
+        showGreen: isSettlement
+    };
+};
+
 const 构建层级链 = (layers: any[], selectedLayerId: string) => {
     const layerById = new Map(layers.map((layer) => [layer.ID, layer]));
     const result: any[] = [];
@@ -249,6 +274,10 @@ const GridMapScene: React.FC<Props> = ({
     const currentPlace = 取文本(env?.具体地点, 取文本(env?.小地点, '未知地点'));
     const contourLines = useMemo(
         () => 生成等高线(selectedLayer, currentLayerBuildings, mapWidth, mapHeight),
+        [selectedLayer, currentLayerBuildings, mapWidth, mapHeight]
+    );
+    const terrainRegions = useMemo(
+        () => 生成地貌区域(selectedLayer, currentLayerBuildings, mapWidth, mapHeight),
         [selectedLayer, currentLayerBuildings, mapWidth, mapHeight]
     );
     const contentBounds = useMemo(() => {
@@ -470,6 +499,35 @@ const GridMapScene: React.FC<Props> = ({
                             onPointerUp={handleMapPointerUp}
                             onPointerCancel={handleMapPointerUp}
                         >
+                            {terrainRegions.showGreen && (
+                                <rect
+                                    x={0}
+                                    y={0}
+                                    width={mapWidth}
+                                    height={mapHeight}
+                                    fill="rgba(34, 80, 48, 0.08)"
+                                    pointerEvents="none"
+                                />
+                            )}
+                            {terrainRegions.showHills && (
+                                <path
+                                    d={terrainRegions.hillPath}
+                                    fill="rgba(74, 68, 43, 0.24)"
+                                    stroke="rgba(187, 247, 208, 0.14)"
+                                    strokeWidth={0.12}
+                                    pointerEvents="none"
+                                />
+                            )}
+                            {terrainRegions.showWater && (
+                                <path
+                                    d={terrainRegions.waterPath}
+                                    fill="rgba(14, 78, 112, 0.24)"
+                                    stroke="rgba(125, 211, 252, 0.28)"
+                                    strokeWidth={0.12}
+                                    pointerEvents="none"
+                                />
+                            )}
+
                             {Array.from({ length: Math.floor(mapWidth) + 1 }).map((_, index) => (
                                 <line
                                     key={`grid-x-${index}`}
@@ -553,6 +611,7 @@ const GridMapScene: React.FC<Props> = ({
                                 const active = selectedFeatureId === `building:${building.ID}`;
                                 const hit = defaultScene.命中建筑ID列表.includes(building.ID);
                                 const center = 计算中心(building.四角坐标);
+                                const showBuildingLabel = active || hit || !/^未命名/.test(取文本(building.名称));
                                 return (
                                     <g
                                         key={building.ID}
@@ -575,17 +634,19 @@ const GridMapScene: React.FC<Props> = ({
                                             strokeWidth={active ? 0.32 : 0.2}
                                             pointerEvents="none"
                                         />
-                                        <text
-                                            x={center.x}
-                                            y={center.y}
-                                            textAnchor="middle"
-                                            dominantBaseline="middle"
-                                            fill={active || hit ? '#f8df9a' : 'rgba(229,231,235,0.78)'}
-                                            fontSize={buildingLabelFontSize}
-                                            pointerEvents="none"
-                                        >
-                                            {building.名称.slice(0, 6)}
-                                        </text>
+                                        {showBuildingLabel && (
+                                            <text
+                                                x={center.x}
+                                                y={center.y}
+                                                textAnchor="middle"
+                                                dominantBaseline="middle"
+                                                fill={active || hit ? '#f8df9a' : 'rgba(229,231,235,0.78)'}
+                                                fontSize={buildingLabelFontSize}
+                                                pointerEvents="none"
+                                            >
+                                                {building.名称.slice(0, 6)}
+                                            </text>
+                                        )}
                                     </g>
                                 );
                             })}
