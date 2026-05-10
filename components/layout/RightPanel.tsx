@@ -119,15 +119,15 @@ const RightPanel: React.FC<Props> = ({
     ];
 
     return (
-        <div className="h-full flex flex-col p-2 border-l border-wuxia-gold/20 relative bg-transparent">
-            <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-gray-700 via-black to-black"></div>
+        <div className="right-panel-body h-full flex flex-col p-2 border-l border-wuxia-gold/20 relative bg-transparent">
+            <div className="right-panel-ambient absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-gray-700 via-black to-black"></div>
 
             {enabled ? (
                 <div className="mb-4 pb-4 border-b border-gray-800 shrink-0">
                     <MusicPlayerUI />
                 </div>
             ) : (
-                <div className="mb-3 text-center border-b border-gray-800 pb-3 relative h-[62px] flex flex-col justify-center shrink-0">
+                <div className="right-panel-system-header mb-3 text-center border-b border-gray-800 pb-3 relative h-[62px] flex flex-col justify-center shrink-0">
                     <h1 className="font-black tracking-[0.28em] opacity-90 drop-shadow-md text-wuxia-gold" style={{ fontSize: scaleFont(1.62, 21) }}>天机</h1>
                     <div className="text-gray-600 tracking-[0.14em] mt-0.5 uppercase" style={{ fontSize: scaleFont(0.86, 11), lineHeight: 1.1 }}>System Menu</div>
                     <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-wuxia-gold/50 to-transparent"></div>
@@ -142,12 +142,12 @@ const RightPanel: React.FC<Props> = ({
                 </div>
             )}
 
-            <div className="flex-1 flex flex-col gap-2 relative py-1 min-h-0">
-                <div className="absolute inset-0 border border-gray-800 bg-white/[0.02] pointer-events-none">
-                    <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-gray-600"></div>
-                    <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-gray-600"></div>
-                    <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-gray-600"></div>
-                    <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-gray-600"></div>
+            <div className="right-panel-menu-frame flex-1 flex flex-col gap-2 relative py-1 min-h-0">
+                <div className="right-panel-menu-outline absolute inset-0 border border-gray-800 bg-white/[0.02] pointer-events-none">
+                    <div className="right-panel-menu-corner absolute top-0 left-0 w-2 h-2 border-t border-l border-gray-600"></div>
+                    <div className="right-panel-menu-corner absolute top-0 right-0 w-2 h-2 border-t border-r border-gray-600"></div>
+                    <div className="right-panel-menu-corner absolute bottom-0 left-0 w-2 h-2 border-b border-l border-gray-600"></div>
+                    <div className="right-panel-menu-corner absolute bottom-0 right-0 w-2 h-2 border-b border-r border-gray-600"></div>
                 </div>
                 <div className="p-2.5 space-y-2 h-full overflow-y-auto no-scrollbar relative z-10">
                     {menuItems.map((item) => {
@@ -174,14 +174,14 @@ const RightPanel: React.FC<Props> = ({
                     <button
                         key={item.label}
                         onClick={item.action}
-                        className="w-full text-center transition-all py-1 uppercase tracking-[0.08em] border border-transparent hover:border-gray-800 hover:bg-white/5 rounded-sm text-gray-500"
+                        className="right-panel-system-button w-full text-center transition-all py-1 uppercase tracking-[0.08em] border border-transparent hover:border-gray-800 hover:bg-white/5 rounded-sm text-gray-500"
                         style={{ fontSize: scaleFont(0.88, 12) }}
                     >
                         [ {item.label} ]
                     </button>
                 ))}
             </div>
-            <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"></div>
+            <div className="right-panel-bottom-fade absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"></div>
         </div>
     );
 };

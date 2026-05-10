@@ -375,8 +375,8 @@ export const CharacterRenderer: React.FC<{
     return (
         <div className="flex w-full my-3 items-start group pl-1 min-w-0">
             <div className="flex flex-col items-center mr-2.5 sm:mr-5 relative z-20 shrink-0">
-                <div className={`w-11 h-11 sm:w-16 sm:h-16 ${avatarUrl ? 'bg-black/60' : bgClass} rounded-xl sm:rounded-2xl flex items-center justify-center text-white/90 font-black text-lg sm:text-2xl shadow-[0_8px_16px_rgba(0,0,0,0.6)] border border-white/10 sm:border-2 ring-1 ring-wuxia-gold/20 relative overflow-hidden transition-all group-hover:scale-105 group-hover:ring-wuxia-gold/40 duration-500`}>
-                    <div className="absolute inset-0 bg-noise opacity-30 mix-blend-overlay"></div>
+                <div className={`chat-character-avatar-tile w-11 h-11 sm:w-16 sm:h-16 ${avatarUrl ? 'bg-black/25' : bgClass} rounded-xl sm:rounded-2xl flex items-center justify-center text-white/90 font-black text-lg sm:text-2xl shadow-[0_6px_14px_rgba(0,0,0,0.24)] border border-white/10 sm:border-2 ring-1 ring-wuxia-gold/20 relative overflow-hidden transition-all group-hover:scale-105 group-hover:ring-wuxia-gold/40 duration-500`}>
+                    <div className="chat-character-avatar-noise absolute inset-0 bg-noise opacity-20 mix-blend-overlay"></div>
                     {avatarUrl ? (
                         <button
                             type="button"
@@ -391,9 +391,9 @@ export const CharacterRenderer: React.FC<{
                     )}
                     <div className="absolute inset-0 border border-inset border-white/5 pointer-events-none"></div>
                 </div>
-                <div className="mt-1.5 sm:mt-2 bg-black/90 border border-wuxia-gold/30 px-2 sm:px-3 py-0.5 rounded shadow-[0_4px_8px_rgba(0,0,0,0.5)] z-20 max-w-[64px] sm:max-w-[90px] text-center backdrop-blur-md relative">
-                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-wuxia-gold/40 rounded-full"></div>
-                    <span className="tracking-wider truncate block" style={roleNameStyle}>{sender}</span>
+                <div className="chat-character-nameplate mt-1.5 sm:mt-2 bg-black/70 border border-wuxia-gold/30 px-2 sm:px-3 py-0.5 rounded shadow-[0_3px_8px_rgba(0,0,0,0.22)] z-20 max-w-[64px] sm:max-w-[90px] text-center backdrop-blur-sm relative">
+                    <div className="chat-character-nameplate-dot absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-wuxia-gold/40 rounded-full"></div>
+                    <span className="chat-character-name tracking-wider truncate block" style={roleNameStyle}>{sender}</span>
                 </div>
             </div>
             <div className="relative flex-1 mt-0.5 sm:mt-1 min-w-0">

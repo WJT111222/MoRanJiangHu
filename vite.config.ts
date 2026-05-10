@@ -175,6 +175,15 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       }
+    },
+    test: {
+      exclude: [
+        'node_modules/**',
+        'dist/**',
+        '.tmp*/**',
+        'test-results/**',
+        'tests/e2e-*.spec.mjs'
+      ]
     }
   };
 });
