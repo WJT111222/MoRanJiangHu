@@ -615,8 +615,12 @@ const 是否有效物品名 = (name: string): boolean => {
     const 有效后缀 = /(?:剑|刀|枪|弓|弩|棍|鞭|甲|衣|袍|佩|簪|珠|戒|丹|药|散|酒|符|铁|砂|石|籍|卷|页|本|谱|牌|匣|盒|囊|轴|炉|鼎)$/u;
     
     // 排除纯描述性短语
-    const 纯描述性 = /^(一股|两股|三股|几股|浓浓|淡淡|微微|隐隐|阵阵|缕缕|丝丝|点点|些许|少许|许多|大量|小量)/u;
+    const 纯描述性 = /^(一股|两股|三股|几股|浓浓|淡淡|微微|隐隐|阵阵|缕缕|丝丝|点点|些许|少许|许多|大量|小量|温热|冰冷|炙热|寒冷|触感|感觉|气息|味道|香气)/u;
     if (纯描述性.test(name)) return false;
+    
+    // 排除动词开头的短语
+    const 动词开头 = /^(迅速|快速|缓缓|慢慢|逐渐|突然|猛然|瞬间|立刻|马上|驱散|消散|弥漫|扩散|传来|传出)/u;
+    if (动词开头.test(name)) return false;
     
     return 有效前缀.test(name) || 有效后缀.test(name);
 };
@@ -672,8 +676,81 @@ const 构建拍卖来源描述 = (itemName: string, marketIntent: boolean, rareI
 
 export const 从剧情响应构建拍卖行投放参数列表 = (
     response: GameResponse,
-    context?: { gameTime?: string; place?: string; maxCount?: number; allowInitialPlotSeed?: boolean }
+    context?: { 
+        gameTime?: string; 
+        place?: string; 
+        maxCount?: number; 
+        allowInitialPlotSeed?: boolean;
+        useAIExtraction?: boolean; // 新增：是否使用 AI 提取
+        aiExtractionResult?: any; // 新增：AI 提取的结果
+    }
 ): 拍卖行剧情桥接结果 => {
+    // 优先使用 AI 提取结果
+    if (context?.useAIExtraction && context?.aiExtractionResult) {
+        const aiResult = context.aiExtractionResult;
+        
+        // AI 判断没有市场语义和稀有物语义，且不是开局种子
+        if (!aiResult.是否有市场语义 && !aiResult.是否有稀有物语义 && !context.allowInitialPlotSeed) {
+            return { shouldDispatch: false, reason: 'AI 判断：本回合没有明确市场流通或稀有物投放语义' };
+        }
+        
+        // AI 提取的物品列表
+        const aiItems = Array.isArray(aiResult.提取的物品列表) 
+            ? aiResult.提取的物品列表.filter((item: any) => item.是否合理) 
+            : [];
+        
+        if (aiItems.length > 0) {
+            const mainline = aiResult.主线类型 || 猜测主线类型(提取响应文本(response));
+            const paramsList = aiItems.slice(0, context?.maxCount || 3).map((item: any) => {
+                const eventName = [
+                    context?.gameTime,
+                    `${item.名称}入市`
+                ].filter(Boolean).join(' · ') || `江湖风闻 ${Date.now().toString(36)}`;
+                
+                const 来源描述 = aiResult.是否有市场语义 
+                    ? `AI 判断：本回合明确出现「${item.名称}」流入市场或拍卖行的线索。`
+                    : aiResult.是否有稀有物语义
+                        ? `AI 判断：本回合明确出现可流通的稀有物品「${item.名称}」。`
+                        : `AI 判断：本回合明确出现可交易物品「${item.名称}」。`;
+                
+                return {
+                    事件名称: eventName,
+                    来源描述,
+                    主线类型: mainline,
+                    卖家名称: mainline === '官府线' ? '悬赏牙人' : mainline === '宗门线' ? '宗门掮客' : '江湖掮客',
+                    物品: {
+                        名称: item.名称,
+                        类型: item.类型,
+                        品质: item.品质,
+                        描述: item.描述,
+                        价值: item.价格估值
+                    },
+                    市场标签: ['AI提取', context?.place || '', mainline || '', item.品质].filter(Boolean),
+                    价格倍率: aiResult.是否有市场语义 ? 1.12 : aiResult.是否有稀有物语义 ? 1.28 : 1.0,
+                    是否限时热点: aiResult.是否有稀有物语义,
+                    有效天数: aiResult.是否有稀有物语义 ? 2 : 4
+                } satisfies 拍卖行事件投放参数;
+            });
+            
+            return {
+                shouldDispatch: true,
+                reason: aiResult.是否有市场语义 ? 'AI 判断：命中拍卖行/市场投放语义' 
+                    : aiResult.是否有稀有物语义 ? 'AI 判断：命中稀有物语义' 
+                    : 'AI 判断：命中可交易物品语义',
+                params: paramsList[0],
+                paramsList
+            };
+        }
+        
+        // AI 提取结果为空，但是开局种子，继续走开局生成逻辑
+        if (context.allowInitialPlotSeed) {
+            // 继续执行下面的开局种子逻辑
+        } else {
+            return { shouldDispatch: false, reason: 'AI 判断：本回合没有明确可交易物品名称' };
+        }
+    }
+    
+    // 以下是原有的正则提取逻辑（作为后备方案）
     const text = 提取响应文本(response);
     if (!text) return { shouldDispatch: false, reason: '本回合无可分析文本' };
     const auctionIntent = 明确市场语义正则.test(text);
@@ -694,7 +771,14 @@ export const 从剧情响应构建拍卖行投放参数列表 = (
         const mainline = 猜测主线类型(text) || '江湖线';
         const count = 2 + Math.floor(Math.random() * 2); // 2-3件
         const templates = 模板池
-            .filter(t => !t.主线类型 || t.主线类型 === mainline || Math.random() < 0.3)
+            .filter(t => {
+                // 排除不合理的品质-类型组合
+                if (t.类型 === '杂物' && (t.品质 === '传说' || t.品质 === '绝世' || t.品质 === '极品')) {
+                    return false;
+                }
+                // 优先选择符合主线类型的物品
+                return !t.主线类型 || t.主线类型 === mainline || Math.random() < 0.3;
+            })
             .sort(() => Math.random() - 0.5)
             .slice(0, count);
         
@@ -738,7 +822,14 @@ export const 从剧情响应构建拍卖行投放参数列表 = (
     const mainline = 猜测主线类型(text);
     const paramsList = itemNames.map((itemName) => {
         const type = 猜测物品类型(itemName);
-        const quality = 猜测物品品质(`${itemName}\n${text}`);
+        let quality = 猜测物品品质(`${itemName}\n${text}`);
+        
+        // 修正不合理的品质-类型组合
+        // 杂物不应该是传说、绝世、极品级别
+        if (type === '杂物' && (quality === '传说' || quality === '绝世' || quality === '极品')) {
+            quality = '上品'; // 降级为上品
+        }
+        
         const eventName = [
             context?.gameTime,
             `${itemName}入市`
