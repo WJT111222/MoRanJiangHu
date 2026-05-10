@@ -1232,6 +1232,9 @@ const 从旧版字段派生地图空间 = (
         追加唯一值(layer.建筑物ID列表, building.ID);
     });
 
+    // 存储优化器生成的道路，稍后添加到道路列表
+    const 优化器道路列表: Array<{ layer: 地图层级结构; roads: Array<{ name: string; points: 地图坐标点结构[] }> }> = [];
+    
     layers.forEach((layer) => {
         const layerBuildings = buildings.filter((building) => building.所在层级ID === layer.ID);
         
@@ -1244,6 +1247,11 @@ const 从旧版字段派生地图空间 = (
                     layerBuildings[index].四角坐标 = 优化建筑.四角坐标;
                 }
             });
+            
+            // 保存优化器生成的道路
+            if (优化结果.道路.length > 0) {
+                优化器道路列表.push({ layer, roads: 优化结果.道路 });
+            }
         } else {
             // 如果优化器不适用，使用原有逻辑
             重排离散建筑布局(layer, layerBuildings);
@@ -1255,18 +1263,41 @@ const 从旧版字段派生地图空间 = (
     return {
         layers,
         buildings,
+        优化器道路列表,
     };
 };
 
 const 按层级补齐道路 = (
     layers: 地图层级结构[],
     seedRoads: 地图道路结构[],
-    buildings: 地图建筑结构[]
+    buildings: 地图建筑结构[],
+    优化器道路列表: Array<{ layer: 地图层级结构; roads: Array<{ name: string; points: 地图坐标点结构[] }> }>
 ): 地图道路结构[] => {
     const roads = [...seedRoads];
     const roadLookup = new Map<string, string>();
     roads.forEach((road) => {
         roadLookup.set(`${road.所在层级ID}|${归一化地图文本(road.名称)}`, road.ID);
+    });
+    
+    // 首先添加优化器生成的道路
+    优化器道路列表.forEach(({ layer, roads: optimizerRoads }) => {
+        optimizerRoads.forEach((roadData) => {
+            const key = `${layer.ID}|${归一化地图文本(roadData.name)}`;
+            if (roadLookup.has(key)) return; // 避免重复
+            
+            const road: 地图道路结构 = {
+                ID: 生成地图对象ID('road', layer.ID, roadData.name),
+                名称: roadData.name,
+                描述: `${layer.名称}的${roadData.name}`,
+                归属: layer.归属,
+                所在层级ID: layer.ID,
+                路径点: roadData.points,
+            };
+            
+            roads.push(road);
+            roadLookup.set(key, road.ID);
+            追加唯一值(layer.道路ID列表, road.ID);
+        });
     });
 
     layers.forEach((layer) => {
@@ -1645,8 +1676,8 @@ export const 补齐世界地图空间字段 = (
     const baseRoads = 规范化地图道路列表(world);
     const basePeople = 规范化地图人物列表(world);
 
-    const { layers, buildings } = 从旧版字段派生地图空间(baseLayers, baseBuildings, world, options);
-    const roads = 按层级补齐道路(layers, baseRoads, buildings);
+    const { layers, buildings, 优化器道路列表 } = 从旧版字段派生地图空间(baseLayers, baseBuildings, world, options);
+    const roads = 按层级补齐道路(layers, baseRoads, buildings, 优化器道路列表);
     const people = 补齐地图人物(layers, basePeople, buildings, world);
 
     const layerById = new Map(layers.map((layer) => [layer.ID, layer]));
