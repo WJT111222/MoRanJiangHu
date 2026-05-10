@@ -90,6 +90,14 @@ const 取字符串数组 = (value: any): string[] => (
         : []
 );
 
+const 无门派文本集合 = new Set(['', 'none', '无', '无门派', '无门无派', '尚未加入任何门派', '江湖散人', '散修', '无所属门派']);
+
+export const 是否无门派标识 = (value: any): boolean => {
+    if (value === null || value === undefined) return true;
+    const normalized = typeof value === 'string' ? value.trim().replace(/\s+/g, '') : String(value).trim();
+    return 无门派文本集合.has(normalized);
+};
+
 const 规范化章节时间校准 = (value: any): 剧情系统结构['章节时间校准'] => (
     Array.isArray(value)
         ? value
@@ -210,7 +218,7 @@ export const 创建空门派状态 = (): 详细门派结构 => ({
 });
 
 export const 创建占位门派状态 = (charData: 角色数据结构): 详细门派结构 => {
-    if (!charData?.所属门派ID || charData.所属门派ID === 'none') {
+    if (是否无门派标识(charData?.所属门派ID) || (charData?.门派职位 !== undefined && 是否无门派标识(charData?.门派职位))) {
         return 创建空门派状态();
     }
     return {
@@ -292,7 +300,15 @@ export const 规范化门派状态 = (raw?: any): 详细门派结构 => {
     const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
     const id = 取文本(source?.ID, base.ID);
     const name = 取文本(source?.名称, base.名称);
-    const isActiveSect = id !== 'none' || Boolean(name && name !== base.名称) || 取文本(source?.玩家职位, base.玩家职位) !== '无';
+    const playerRankSource = 取文本(source?.玩家职位, base.玩家职位);
+    const hasExplicitInactiveMarker = (
+        (source?.ID !== undefined && 是否无门派标识(id))
+        || (source?.名称 !== undefined && 是否无门派标识(name))
+        || (source?.玩家职位 !== undefined && 是否无门派标识(playerRankSource))
+    );
+    const hasActiveMarker = !是否无门派标识(id) || (!是否无门派标识(name) && name !== base.名称) || !是否无门派标识(playerRankSource);
+    const isActiveSect = hasActiveMarker && !hasExplicitInactiveMarker;
+    if (!isActiveSect) return base;
     const displayName = isActiveSect && name === base.名称 ? (id === 'none' ? '青云山庄' : id) : name;
     const playerContribution = 取数字(source?.玩家贡献, base.玩家贡献);
     const totalContribution = Math.max(

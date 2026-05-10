@@ -30,7 +30,7 @@ interface Props {
     onSave: () => void;
     onLoad: () => void;
     visualConfig?: any;
-    latestChangeSummary?: string[];
+    latestChangedSections?: string[];
 }
 
 const RightPanel: React.FC<Props> = ({
@@ -60,35 +60,53 @@ const RightPanel: React.FC<Props> = ({
     onSave,
     onLoad,
     visualConfig,
-    latestChangeSummary = []
+    latestChangedSections = []
 }) => {
     const { enabled, currentLyric } = useMusic();
     const baseFontSize = Number(visualConfig?.['右侧栏']?.fontSize || visualConfig?.fontSize) || 13;
     const scaleFont = (ratio: number, min = 13) => `${Math.max(min, Math.round(baseFontSize * ratio))}px`;
+    const [dismissedChangeKeys, setDismissedChangeKeys] = React.useState<Set<string>>(() => new Set());
+    const changeSignature = React.useMemo(() => latestChangedSections.slice().sort().join('|'), [latestChangedSections]);
+
+    React.useEffect(() => {
+        setDismissedChangeKeys(new Set());
+    }, [changeSignature]);
+
+    const wrapChangedAction = (changeKeys: string[], action: () => void) => () => {
+        if (changeKeys.length > 0) {
+            setDismissedChangeKeys((prev) => {
+                const next = new Set(prev);
+                changeKeys.forEach((key) => next.add(key));
+                return next;
+            });
+        }
+        action();
+    };
 
     const menuItems = [
-        { label: '战斗', action: onOpenBattle, color: 'primary' as const },
-        { label: '装备', action: onOpenEquipment, color: 'primary' as const },
-        { label: '背包', action: onOpenInventory, color: 'primary' as const },
+        { label: '战斗', action: onOpenBattle, color: 'primary' as const, changeKeys: ['战斗'] },
+        { label: '装备', action: onOpenEquipment, color: 'primary' as const, changeKeys: ['装备'] },
+        { label: '背包', action: onOpenInventory, color: 'primary' as const, changeKeys: ['背包'] },
         ...(onOpenAuctionHouse ? [{ label: '拍卖行', action: onOpenAuctionHouse, color: 'primary' as const }] : []),
-        { label: '队伍', action: onOpenTeam, color: 'primary' as const },
-        { label: '社交', action: onOpenSocial, color: 'primary' as const },
-        ...(enableKungfu ? [{ label: '功法', action: onOpenKungfu, color: 'primary' as const }] : []),
-        { label: '地图', action: onOpenMap, color: 'primary' as const },
-        { label: '门派', action: onOpenSect, color: 'primary' as const },
-        { label: '任务', action: onOpenTask, color: 'primary' as const },
-        { label: '约定', action: onOpenAgreement, color: 'primary' as const },
+        { label: '队伍', action: onOpenTeam, color: 'primary' as const, changeKeys: ['队伍'] },
+        { label: '社交', action: onOpenSocial, color: 'primary' as const, changeKeys: ['社交'] },
+        ...(enableKungfu ? [{ label: '功法', action: onOpenKungfu, color: 'primary' as const, changeKeys: ['功法'] }] : []),
+        { label: '地图', action: onOpenMap, color: 'primary' as const, changeKeys: ['地图'] },
+        { label: '门派', action: onOpenSect, color: 'primary' as const, changeKeys: ['玩家门派'] },
+        { label: '任务', action: onOpenTask, color: 'primary' as const, changeKeys: ['任务列表'] },
+        { label: '约定', action: onOpenAgreement, color: 'primary' as const, changeKeys: ['约定列表'] },
         {
             label: worldEvolutionUpdating ? '世界·更新中' : '世界',
             action: onOpenWorld,
             color: worldEvolutionUpdating ? 'secondary' as const : 'primary' as const,
+            changeKeys: ['世界'],
             className: worldEvolutionEnabled && worldEvolutionUpdating
                 ? 'animate-pulse shadow-[0_0_18px_rgba(90,220,220,0.35)]'
                 : ''
         },
-        { label: '剧情', action: onOpenStory, color: 'primary' as const },
-        ...(enableHeroinePlan ? [{ label: '规划', action: onOpenHeroinePlan, color: 'primary' as const }] : []),
-        { label: '记忆', action: onOpenMemory, color: 'primary' as const },
+        { label: '剧情', action: onOpenStory, color: 'primary' as const, changeKeys: ['剧情'] },
+        ...(enableHeroinePlan ? [{ label: '规划', action: onOpenHeroinePlan, color: 'primary' as const, changeKeys: ['剧情'] }] : []),
+        { label: '记忆', action: onOpenMemory, color: 'primary' as const, changeKeys: ['记忆系统'] },
         ...(onOpenNovelExport ? [{ label: '导出小说', action: onOpenNovelExport, color: 'secondary' as const }] : []),
         ...(onOpenImageManager ? [{ label: '图册', action: onOpenImageManager, color: 'secondary' as const }] : []),
         ...(onOpenNovelDecomposition ? [{ label: '小说分解', action: onOpenNovelDecomposition, color: 'secondary' as const }] : []),
@@ -124,22 +142,6 @@ const RightPanel: React.FC<Props> = ({
                 </div>
             )}
 
-            {latestChangeSummary.length > 0 && (
-                <div className="relative z-10 mb-2 shrink-0 rounded border border-emerald-400/25 bg-emerald-950/20 px-3 py-2 shadow-[0_0_18px_rgba(16,185,129,0.12)]">
-                    <div className="mb-1 flex items-center justify-between gap-2">
-                        <span className="font-bold tracking-[0.18em] text-emerald-200" style={{ fontSize: scaleFont(0.78, 10) }}>本回合变化</span>
-                        <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.9)]"></span>
-                    </div>
-                    <div className="space-y-1">
-                        {latestChangeSummary.slice(0, 3).map((item, index) => (
-                            <div key={`${item}-${index}`} className="truncate font-mono text-emerald-100/90" style={{ fontSize: scaleFont(0.86, 11) }} title={item}>
-                                {item}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
             <div className="flex-1 flex flex-col gap-2 relative py-1 min-h-0">
                 <div className="absolute inset-0 border border-gray-800 bg-white/[0.02] pointer-events-none">
                     <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-gray-600"></div>
@@ -148,17 +150,23 @@ const RightPanel: React.FC<Props> = ({
                     <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-gray-600"></div>
                 </div>
                 <div className="p-2.5 space-y-2 h-full overflow-y-auto no-scrollbar relative z-10">
-                    {menuItems.map((item) => (
+                    {menuItems.map((item) => {
+                        const changeKeys = Array.isArray((item as any).changeKeys) ? (item as any).changeKeys as string[] : [];
+                        const hasUnreadChange = changeKeys.some((key) => latestChangedSections.includes(key) && !dismissedChangeKeys.has(key));
+                        return (
                         <GameButton
                             key={item.label}
-                            onClick={item.action}
+                            onClick={wrapChangedAction(changeKeys, item.action)}
                             variant={item.color}
-                            className={`w-full text-center py-1.5 text-sm tracking-[0.12em] hover:scale-[1.015] transition-transform !skew-x-0 border-opacity-60 ${item.className || ''}`}
+                            className={`relative w-full text-center py-1.5 text-sm tracking-[0.12em] hover:scale-[1.015] transition-transform !skew-x-0 border-opacity-60 ${item.className || ''}`}
                             contentClassName="!skew-x-0"
                         >
                             <span className="whitespace-nowrap" style={{ fontSize: scaleFont(0.96, 12), lineHeight: 1.35 }}>{item.label}</span>
+                            {hasUnreadChange && (
+                                <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(248,113,113,0.9)] ring-1 ring-red-200/60" />
+                            )}
                         </GameButton>
-                    ))}
+                    );})}
                 </div>
             </div>
             <div className="mt-3 pt-3 border-t border-gray-800 space-y-1.5 shrink-0">

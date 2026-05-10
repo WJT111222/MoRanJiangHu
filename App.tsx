@@ -43,16 +43,29 @@ const 获取物品自动生图Key = (scope: 'bag' | 'auction', item: any, ownerI
     item?.ID || item?.名称 || 'unknown'
 ].join(':');
 
-const 格式化本回合变化 = (commands: any[]): string[] => {
-    const watched = ['当前精力', '当前内力', '当前饱腹', '当前口渴', '当前经验', '头部当前血量', '胸部当前血量', '腹部当前血量', '左手当前血量', '右手当前血量', '左腿当前血量', '右腿当前血量', '金钱'];
-    return (Array.isArray(commands) ? commands : [])
-        .filter((cmd) => typeof cmd?.key === 'string' && watched.some((key) => cmd.key.includes(key)))
-        .slice(0, 6)
-        .map((cmd) => {
-            const key = String(cmd.key).replace(/^gameState\./, '').replace(/^角色\./, '');
-            const value = cmd.action === 'delete' ? '删除' : (typeof cmd.value === 'object' ? JSON.stringify(cmd.value).slice(0, 32) : String(cmd.value));
-            return `${key} ${cmd.action || 'set'} ${value}`;
-        });
+type 本回合变化区域 = '角色' | '背包' | '装备' | '战斗' | '队伍' | '社交' | '功法' | '地图' | '玩家门派' | '任务列表' | '约定列表' | '世界' | '剧情' | '记忆系统';
+
+const 提取本回合变化区域 = (commands: any[]): 本回合变化区域[] => {
+    const areas = new Set<本回合变化区域>();
+    (Array.isArray(commands) ? commands : []).forEach((cmd) => {
+        const key = typeof cmd?.key === 'string' ? cmd.key : '';
+        if (!key) return;
+        if (key.includes('角色.物品列表')) areas.add('背包');
+        if (key.includes('角色.装备')) areas.add('装备');
+        if (key.includes('角色.功法列表')) areas.add('功法');
+        if (key.includes('角色.当前坐标') || key.includes('世界.地图')) areas.add('地图');
+        if (key.includes('角色.') || key.startsWith('角色.')) areas.add('角色');
+        if (key.includes('战斗')) areas.add('战斗');
+        if (key.includes('社交')) areas.add('社交');
+        if (key.includes('队伍') || key.includes('是否队友')) areas.add('队伍');
+        if (key.includes('玩家门派')) areas.add('玩家门派');
+        if (key.includes('任务列表')) areas.add('任务列表');
+        if (key.includes('约定列表')) areas.add('约定列表');
+        if (key.includes('世界')) areas.add('世界');
+        if (key.includes('剧情') || key.includes('女主剧情规划')) areas.add('剧情');
+        if (key.includes('记忆')) areas.add('记忆系统');
+    });
+    return [...areas];
 };
 
 const 是同一个物品 = (left: any, right: any): boolean => {
@@ -868,8 +881,8 @@ const App: React.FC = () => {
             : [],
         [latestAssistantMessage]
     );
-    const latestChangeSummary = React.useMemo(
-        () => 格式化本回合变化(latestAssistantMessage?.structuredResponse?.tavern_commands || []),
+    const latestChangedSections = React.useMemo(
+        () => 提取本回合变化区域(latestAssistantMessage?.structuredResponse?.tavern_commands || []),
         [latestAssistantMessage]
     );
     const latestBattleContextText = React.useMemo(() => {
@@ -1927,7 +1940,6 @@ const App: React.FC = () => {
                                 onUploadAvatar={actions.updatePlayerAvatar}
                                 visualConfig={effectiveVisualConfig}
                                 gameConfig={state.gameConfig}
-                                latestChangeSummary={latestChangeSummary}
                             />
                         </div>
 
@@ -2076,7 +2088,7 @@ const App: React.FC = () => {
                                 onSave={openSave}
                                 onLoad={openLoad}
                                 visualConfig={effectiveVisualConfig}
-                                latestChangeSummary={latestChangeSummary}
+                                latestChangedSections={latestChangedSections}
                             />
                         </div>
 

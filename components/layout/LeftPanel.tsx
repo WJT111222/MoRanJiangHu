@@ -10,7 +10,6 @@ interface Props {
     onUploadAvatar?: (imageUrl: string) => void;
     visualConfig?: 视觉设置结构;
     gameConfig?: 游戏设置结构;
-    latestChangeSummary?: string[];
 }
 
 const use数值变化提示 = (value: number | string | undefined) => {
@@ -34,7 +33,9 @@ const WuxiaProgressBar: React.FC<{
     baseColor: string; 
     height?: string; 
     showGlow?: boolean;
-}> = ({ pct, baseColor, height = '6px', showGlow = true }) => {
+    delta?: number | null;
+    max?: number;
+}> = ({ pct, baseColor, height = '6px', showGlow = true, delta = null, max = 0 }) => {
     // 定义颜色的变体以模拟质感
     const style = {
         '--wuxia-base': baseColor,
@@ -42,6 +43,14 @@ const WuxiaProgressBar: React.FC<{
         '--wuxia-dark': `color-mix(in sRGB, ${baseColor} 80%, #000)`,
         '--wuxia-glow': `color-mix(in sRGB, ${baseColor} 50%, transparent)`,
     } as React.CSSProperties;
+
+  const safePct = Math.max(0, Math.min(100, pct));
+  const deltaPct = delta !== null && Number.isFinite(delta) && Number.isFinite(max) && max > 0
+      ? Math.min(100, Math.abs(delta) / max * 100)
+      : 0;
+  const deltaLeft = deltaPct > 0
+      ? (delta! >= 0 ? Math.max(0, safePct - deltaPct) : safePct)
+      : 0;
 
   return (
     <div 
@@ -58,7 +67,7 @@ const WuxiaProgressBar: React.FC<{
         <div 
             className="h-full transition-all duration-700 ease-out relative"
             style={{ 
-                width: `${pct}%`,
+                width: `${safePct}%`,
                 background: `linear-gradient(90deg, var(--wuxia-dark), var(--wuxia-base), var(--wuxia-light))`,
                 boxShadow: showGlow ? `0 0 10px var(--wuxia-glow)` : 'none'
             }}
@@ -74,6 +83,15 @@ const WuxiaProgressBar: React.FC<{
             {/* 头部高亮（类似玉石圆润感） */}
             <div className="absolute right-0 top-0 h-full w-2 bg-gradient-to-l from-white/30 to-transparent"></div>
         </div>
+        {deltaPct > 0 && (
+            <div
+                className={`absolute top-0 h-full transition-all duration-700 ${delta! >= 0 ? 'bg-emerald-300/80 shadow-[0_0_8px_rgba(110,231,183,0.55)]' : 'bg-red-400/80 shadow-[0_0_8px_rgba(248,113,113,0.55)]'}`}
+                style={{
+                    left: `${deltaLeft}%`,
+                    width: `${Math.max(1.4, deltaPct)}%`
+                }}
+            />
+        )}
     </div>
   );
 };
@@ -110,7 +128,7 @@ const FlatBar: React.FC<{ label: string; current: number; max: number; type: 'st
                     {current}/{max}
                 </span>
             </div>
-            <WuxiaProgressBar pct={pct} baseColor={baseColor} height="4px" />
+            <WuxiaProgressBar pct={pct} baseColor={baseColor} height="4px" delta={delta} max={max} />
         </div>
     );
 };
@@ -128,7 +146,7 @@ const MiniBodyPart: React.FC<{ name: string; current: number; max: number; statu
         <div className={`flex items-center justify-between gap-2 w-full h-[22px] border-b border-gray-800/20 last:border-0 hover:bg-white/5 transition-colors px-1 group/part ${delta !== null ? (delta >= 0 ? 'bg-emerald-400/10' : 'bg-red-500/15') : ''}`}>
             <span className="leading-none whitespace-nowrap text-right w-8" style={{ ...areaStyle, fontSize: `${名称字号}px`, opacity: 0.85 }}>{name}</span>
             <div className="flex-1 self-center">
-                <WuxiaProgressBar pct={pct} baseColor={color} height="4px" showGlow={false} />
+                <WuxiaProgressBar pct={pct} baseColor={color} height="4px" showGlow={false} delta={delta} max={max} />
             </div>
             <span className="font-mono w-[48px] text-right leading-none group-hover/part:text-wuxia-red transition-colors" style={{ color: 'rgba(156,163,175,0.8)', fontSize: `${数值字号}px` }}>
                 {delta !== null && <span className={delta >= 0 ? 'mr-1 text-emerald-200' : 'mr-1 text-red-200'}>{delta > 0 ? '+' : ''}{delta}</span>}
@@ -138,7 +156,7 @@ const MiniBodyPart: React.FC<{ name: string; current: number; max: number; statu
     );
 };
 
-const LeftPanel: React.FC<Props> = ({ 角色, onOpenCharacter, onUploadAvatar, visualConfig, gameConfig, latestChangeSummary = [] }) => {
+const LeftPanel: React.FC<Props> = ({ 角色, onOpenCharacter, onUploadAvatar, visualConfig, gameConfig }) => {
     use图片资源回源预取(角色);
     const 金钱 = 角色.金钱 || { 金元宝: 0, 银子: 0, 铜钱: 0 };
     const 玩家BUFF列表 = Array.isArray(角色.玩家BUFF) ? 角色.玩家BUFF : [];
@@ -279,14 +297,6 @@ const LeftPanel: React.FC<Props> = ({ 角色, onOpenCharacter, onUploadAvatar, v
                 )}
                 <FlatBar label="经验" current={角色.当前经验} max={角色.升级经验} type="exp" visualConfig={visualConfig} />
             </div>
-            {latestChangeSummary.length > 0 && (
-                <div className="mb-3 shrink-0 rounded border border-emerald-400/20 bg-emerald-950/15 px-2 py-1.5">
-                    <div className="mb-1 text-[10px] font-bold tracking-[0.2em] text-emerald-200">变化</div>
-                    {latestChangeSummary.slice(0, 3).map((item, index) => (
-                        <div key={`${item}-${index}`} className="truncate font-mono text-[10px] leading-5 text-emerald-100/85" title={item}>{item}</div>
-                    ))}
-                </div>
-            )}
             <div className="mb-3 shrink-0 border border-gray-800/60 bg-black/30 px-2 py-1.5 flex items-center justify-between font-mono" style={{ color: 'rgba(209,213,219,1)', fontSize: 缩放字号(1, 14) }}>
                 <span className="text-gray-500">钱财</span>
                 <span>元宝 {金钱.金元宝} / 银 {金钱.银子} / 铜 {金钱.铜钱}</span>
