@@ -67,4 +67,28 @@ describe('地图空间道路规划', () => {
             expect(正交线段穿过矩形(point, next, rect)).toBe(false);
         });
     });
+
+    it('会把主角寝居这类室内地点补成建筑面而不是野外空图', () => {
+        const world = 补齐世界地图空间字段({
+            地图层级: [],
+            地图建筑: [],
+            地图道路: [],
+            地图人物: []
+        } as any, {
+            env: {
+                大地点: '青州',
+                中地点: '杨家剑庄',
+                小地点: '松风阁',
+                具体地点: '主角寝居'
+            } as any
+        });
+
+        const specificLayer = world.地图层级.find((item: any) => item.名称 === '主角寝居');
+        expect(specificLayer).toBeTruthy();
+        const buildings = world.地图建筑.filter((item: any) => item.所在层级ID === specificLayer?.ID);
+        expect(buildings.length).toBeGreaterThan(0);
+        expect(buildings[0].名称).toBe('主角寝居');
+        expect(buildings[0].分类).toBe('居所');
+        expect(world.地图道路.some((item: any) => item.所在层级ID === specificLayer?.ID && item.名称 === '野径')).toBe(false);
+    });
 });

@@ -243,30 +243,53 @@ const 文本包含任一 = (text: unknown, keywords: string[]): boolean => {
     return Boolean(normalized) && keywords.some((keyword) => normalized.includes(归一化地图文本(keyword)));
 };
 
-const 是否野外位置 = (text: unknown): boolean => 文本包含任一(text, [
-    '野外',
-    '山',
-    '岭',
-    '峰',
-    '谷',
-    '坡',
-    '崖',
-    '林',
-    '竹林',
-    '密林',
-    '树林',
-    '溪',
-    '河岸',
-    '湖畔',
-    '荒',
-    '郊',
-    '官道',
-    '小径',
-    '山道',
-    '道旁',
-    '村外',
-    '城外',
+const 是否室内居所位置 = (text: unknown): boolean => 文本包含任一(text, [
+    '寝居',
+    '卧房',
+    '厢房',
+    '房间',
+    '屋内',
+    '屋中',
+    '屋舍',
+    '居室',
+    '住处',
+    '内室',
+    '柴房',
+    '客房',
+    '静室',
+    '阁',
+    '堂',
+    '院',
+    '庄',
 ]);
+
+const 是否野外位置 = (text: unknown): boolean => (
+    !是否室内居所位置(text)
+    && 文本包含任一(text, [
+        '野外',
+        '山',
+        '岭',
+        '峰',
+        '谷',
+        '坡',
+        '崖',
+        '林',
+        '竹林',
+        '密林',
+        '树林',
+        '溪',
+        '河岸',
+        '湖畔',
+        '荒',
+        '郊',
+        '官道',
+        '小径',
+        '山道',
+        '道旁',
+        '村外',
+        '城外',
+    ])
+);
 
 const 是否近身位置 = (text: unknown): boolean => 文本包含任一(text, [
     '身边',
@@ -1003,6 +1026,20 @@ const 从旧版字段派生地图空间 = (
             ownership: 规范化地点归属(building?.归属),
         });
     });
+
+    const envSpecificName = 取文本(options?.env?.具体地点);
+    if (envSpecificName && 是否室内居所位置(envSpecificName)) {
+        const specificLayer = layers.find((layer) => layer.层级 === '具体地点' && 层级名称命中(layer.名称, envSpecificName));
+        const layerId = specificLayer?.ID || envSmallId || envMidId || envBigId || '';
+        const ownership = specificLayer?.归属 || envOwnership;
+        ensureBuilding({
+            layerId,
+            name: envSpecificName,
+            desc: `${envSpecificName} 是当前地点的室内或院落空间，不按野外空地处理。`,
+            ownership,
+            category: /院|庄/.test(envSpecificName) ? '院落' : '居所',
+        });
+    }
 
     buildings.forEach((building, index) => {
         const layer = layerById.get(building.所在层级ID);

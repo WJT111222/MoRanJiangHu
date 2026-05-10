@@ -116,6 +116,21 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
     const 前排队友 = 队友列表.find((npc) => (npc?.当前血量 || 0) > 0);
     const 敌方默认目标 = 前排队友?.姓名 || character.姓名 || '主角';
     const 玩家远程伤害 = Math.max(1, Math.round(可视化.玩家.攻势 * 0.55));
+    const 我方参战者 = [
+        { id: 'player', 名称: character.姓名 || '主角', 境界: 玩家境界展示, 位置: '前排' },
+        ...队友列表.map((npc, index) => ({
+            id: String(npc.id || npc.姓名 || `ally-${index}`),
+            名称: npc.姓名 || `队友${index + 1}`,
+            境界: npc.境界 || '未明境界',
+            位置: index === 0 ? '前排' : '后排',
+        })),
+    ];
+    const 敌方参战者 = 敌方列表.map((enemy, index) => ({
+        id: `${enemy?.名字 || 'enemy'}-${index}`,
+        名称: enemy?.名字 || `敌人${index + 1}`,
+        境界: enemy?.境界 || '未明境界',
+        位置: index === 0 ? '前排' : '后排',
+    }));
 
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[210] flex items-center justify-center p-4 animate-fadeIn">
@@ -161,38 +176,58 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                 <div className="flex-1 min-h-0 flex flex-col relative z-10">
                     {/* 敌方单位列表（全宽版） */}
                     <div className="flex-1 p-6 overflow-y-auto custom-scrollbar relative">
-                        <div className="mb-4 grid gap-3 lg:grid-cols-[1.1fr_1fr]">
-                            <section className="rounded-xl border border-wuxia-gold/20 bg-black/35 p-4">
-                                <div className="mb-3 text-xs font-bold tracking-[0.22em] text-wuxia-gold/80">统一判定摘要</div>
-                                <div className="grid grid-cols-4 gap-2 text-xs">
-                                    <div title={指标说明.攻势} className="rounded border border-red-500/20 bg-red-950/20 px-3 py-2"><div className="text-red-200">攻势</div><div className="font-mono text-lg text-red-100">{可视化.玩家.攻势}</div></div>
-                                    <div title={指标说明.守势} className="rounded border border-sky-500/20 bg-sky-950/20 px-3 py-2"><div className="text-sky-200">守势</div><div className="font-mono text-lg text-sky-100">{可视化.玩家.守势}</div></div>
-                                    <div title={指标说明.身法} className="rounded border border-emerald-500/20 bg-emerald-950/20 px-3 py-2"><div className="text-emerald-200">身法</div><div className="font-mono text-lg text-emerald-100">{可视化.玩家.身法}</div></div>
-                                    <div title={指标说明.续航} className="rounded border border-amber-500/20 bg-amber-950/20 px-3 py-2"><div className="text-amber-200">续航</div><div className="font-mono text-lg text-amber-100">{可视化.玩家.续航}</div></div>
+                        <section className="mb-4 rounded-xl border border-wuxia-gold/20 bg-black/35 p-4">
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                                <div className="text-xs font-bold tracking-[0.22em] text-wuxia-gold/80">本存档境界与站位</div>
+                                <div className="text-[11px] text-wuxia-gold/70">主角境界：{玩家境界展示} · 境界层级 {境界值}</div>
+                            </div>
+                            <div className="grid gap-3 lg:grid-cols-2">
+                                <div className="rounded-lg border border-emerald-400/15 bg-emerald-950/10 p-3">
+                                    <div className="mb-2 text-[11px] font-bold tracking-[0.18em] text-emerald-200">我方队伍</div>
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        {我方参战者.map((unit) => (
+                                            <div key={unit.id} className="rounded border border-white/10 bg-black/30 px-3 py-2 text-xs">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="font-serif font-bold text-gray-100">{unit.名称}</span>
+                                                    <span className="rounded border border-emerald-400/25 bg-emerald-950/20 px-2 py-0.5 text-[10px] text-emerald-100">{unit.位置}</span>
+                                                </div>
+                                                <div className="mt-1 text-[11px] text-wuxia-gold/75">{unit.境界}</div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="mt-3 grid gap-2 md:grid-cols-2">
-                                    {可视化.阶段.map((stage) => (
-                                        <div key={stage.名称} className="rounded border border-white/8 bg-black/25 px-3 py-2">
-                                            <div className="text-xs font-semibold text-wuxia-gold">{stage.名称}</div>
-                                            <div className="mt-1 text-xs leading-5 text-gray-200">{stage.描述}</div>
-                                            <div className="mt-1 text-[10px] leading-4 text-gray-500">{stage.依据}</div>
-                                        </div>
-                                    ))}
+                                <div className="rounded-lg border border-red-400/15 bg-red-950/10 p-3">
+                                    <div className="mb-2 text-[11px] font-bold tracking-[0.18em] text-red-200">敌方队伍</div>
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        {敌方参战者.length > 0 ? 敌方参战者.map((unit) => (
+                                            <div key={unit.id} className="rounded border border-white/10 bg-black/30 px-3 py-2 text-xs">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="font-serif font-bold text-gray-100">{unit.名称}</span>
+                                                    <span className="rounded border border-red-400/25 bg-red-950/20 px-2 py-0.5 text-[10px] text-red-100">{unit.位置}</span>
+                                                </div>
+                                                <div className="mt-1 text-[11px] text-wuxia-gold/75">{unit.境界}</div>
+                                            </div>
+                                        )) : <div className="rounded border border-dashed border-red-400/20 p-3 text-center text-xs text-red-100/45">暂无敌方</div>}
+                                    </div>
                                 </div>
-                            </section>
-                            <section className="rounded-xl border border-white/10 bg-black/30 p-4">
-                                <div className="mb-3 text-xs font-bold tracking-[0.22em] text-gray-300">规则来源</div>
-                                <div className="space-y-2">
-                                    {逻辑判断知识库.slice(2, 5).map((rule) => (
-                                        <div key={rule.名称} className="rounded border border-white/8 bg-black/25 px-3 py-2 text-xs">
-                                            <div className="font-semibold text-gray-100">{rule.名称}</div>
-                                            <div className="mt-1 leading-5 text-gray-400">{rule.说明}</div>
-                                            <div className="mt-1 font-mono text-[10px] text-wuxia-gold/70">{rule.公式}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-                        </div>
+                            </div>
+                        </section>
+                        <section className="mb-4 rounded-xl border border-white/10 bg-black/30 p-4">
+                            <div className="mb-3 text-xs font-bold tracking-[0.22em] text-gray-300">计算规则</div>
+                            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                                {[
+                                    ['攻势', `攻势 = 力量 * 2 + 敏捷 * 0.8 + 境界层级 * 8 + 装备攻势；近战 = 攻势；远程 = max(1, round(攻势 * 0.55))`],
+                                    ['守势', '守势 = 体质 * 1.4 + 根骨 * 1.2 + 境界层级 * 4 + 装备守势'],
+                                    ['身法', '身法 = 敏捷 * 1.5 + 当前精力 / 最大精力 * 20 + 装备身法修正'],
+                                    ['续航', '续航 = 当前总气血 / 最大总气血 * 50 + 当前精力 / 最大精力 * 50'],
+                                ].map(([name, formula]) => (
+                                    <div key={name} className="rounded border border-white/8 bg-black/25 px-3 py-2 text-xs">
+                                        <div className="font-semibold text-gray-100">{name}</div>
+                                        <div className="mt-1 font-mono text-[10px] leading-5 text-wuxia-gold/75">{formula}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
                         <div className="mb-4 grid gap-4 xl:grid-cols-2">
                             <section className="rounded-xl border border-emerald-500/20 bg-emerald-950/10 p-4">
                                 <div className="mb-3 flex items-center justify-between">
@@ -202,7 +237,7 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                                 <div className="grid gap-3 md:grid-cols-2">
                                     <div className="rounded-lg border border-emerald-400/20 bg-black/35 p-3">
                                         <div className="flex items-center justify-between gap-3">
-                                            <div className="font-serif text-base font-bold text-wuxia-gold">{character.姓名 || '主角'}</div>
+                                            <div className="font-serif text-base font-bold text-wuxia-gold">{character.姓名 || '主角'} <span className="ml-2 text-[10px] text-emerald-200/80">前排</span></div>
                                             <div className="text-[11px] text-gray-400">{character.境界 || '未明境界'}</div>
                                         </div>
                                         <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
@@ -226,7 +261,7 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                                         return (
                                         <div key={npc.id || `${npc.姓名}-${index}`} className="rounded-lg border border-emerald-400/15 bg-black/30 p-3">
                                             <div className="flex items-center justify-between gap-3">
-                                                <div className="font-serif text-sm font-bold text-emerald-100">{npc.姓名 || `队友${index + 1}`}</div>
+                                                <div className="font-serif text-sm font-bold text-emerald-100">{npc.姓名 || `队友${index + 1}`} <span className="ml-2 text-[10px] text-emerald-200/70">{index === 0 ? '前排' : '后排'}</span></div>
                                                 <div className="text-[10px] text-gray-500">{npc.境界 || '未明'}</div>
                                             </div>
                                             <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-200">
@@ -258,7 +293,7 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                                         return (
                                         <div key={`${enemy?.名字 || 'enemy'}-${index}-summary`} className="rounded-lg border border-red-400/15 bg-black/30 p-3">
                                             <div className="flex items-center justify-between gap-3">
-                                                <div className="font-serif text-sm font-bold text-red-100">{enemy.名字 || `敌人${index + 1}`}</div>
+                                                <div className="font-serif text-sm font-bold text-red-100">{enemy.名字 || `敌人${index + 1}`} <span className="ml-2 text-[10px] text-red-200/70">{index === 0 ? '前排' : '后排'}</span></div>
                                                 <div className="text-[10px] text-gray-500">{enemy.境界 || '未明'}</div>
                                             </div>
                                             <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-200">
@@ -279,12 +314,6 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                                 </div>
                             </section>
                         </div>
-                        {contextText.trim() && (
-                            <div className="mb-4 rounded-xl border border-wuxia-gold/20 bg-black/35 p-4">
-                                <div className="mb-2 text-xs font-bold tracking-[0.22em] text-wuxia-gold/80">本回合战斗变化</div>
-                                <div className="max-h-32 overflow-y-auto whitespace-pre-wrap text-xs leading-6 text-gray-200">{contextText.trim()}</div>
-                            </div>
-                        )}
                         {敌方列表.length === 0 ? (
                             <div className="h-full rounded-2xl border border-dashed border-wuxia-gold/20 bg-black/20 flex flex-col items-center justify-center text-wuxia-gold/40 gap-4 font-serif">
                                 <IconYinYang size={64} className="opacity-30 drop-shadow-lg" />

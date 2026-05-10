@@ -639,65 +639,6 @@ const 规范化角色物品容器映射 = (rawRole?: any): 角色数据结构 =>
     const findItemByRef = (idOrName: string): any | undefined => {
         return itemById.get(idOrName) || deduped.find((item) => item?.名称 === idOrName);
     };
-    const createFallbackEquippedItem = (slot: 装备槽位, itemName: string): any => {
-        let baseId = `itm_auto_equip_${槽位ID片段映射[slot]}`;
-        let candidate = baseId;
-        let suffix = 1;
-        while (seenIds.has(candidate)) {
-            candidate = `${baseId}_${suffix++}`;
-        }
-        seenIds.add(candidate);
-        const type = 槽位类型映射[slot];
-        const generated: any = {
-            ID: candidate,
-            名称: itemName,
-            描述: `由装备栏位自动补全的${slot}装备。`,
-            类型: type,
-            品质: '凡品',
-            重量: slot === '坐骑' ? 30 : 1,
-            堆叠数量: 1,
-            是否可堆叠: false,
-            价值: 0,
-            当前耐久: 100,
-            最大耐久: 100,
-            词条列表: [],
-            当前装备部位: slot
-        };
-        if (type === '武器') {
-            generated.武器子类 = slot === '暗器' ? '暗器' : '剑';
-            generated.最小攻击 = 1;
-            generated.最大攻击 = 3;
-            generated.攻速修正 = 1;
-            generated.格挡率 = 0;
-        }
-        if (type === '防具') {
-            const 防具位置映射: Record<string, '头部' | '胸部' | '腿部' | '手部' | '足部'> = {
-                头部: '头部',
-                胸部: '胸部',
-                盔甲: '胸部',
-                内衬: '胸部',
-                腿部: '腿部',
-                手部: '手部',
-                足部: '足部'
-            };
-            generated.装备位置 = 防具位置映射[slot] || '胸部';
-            generated.覆盖部位 = slot === '头部'
-                ? ['头部']
-                : slot === '胸部' || slot === '盔甲' || slot === '内衬'
-                    ? ['胸部', '腹部']
-                    : slot === '腿部'
-                        ? ['左腿', '右腿']
-                        : slot === '手部'
-                            ? ['左臂', '右臂', '手掌']
-                            : ['足部'];
-            generated.物理防御 = 1;
-            generated.内功防御 = 1;
-        }
-        deduped.push(generated);
-        itemById.set(candidate, generated);
-        return generated;
-    };
-
     const equippedByItemId = new Map<string, 装备槽位>();
     装备槽位列表.forEach((slot) => {
         const rawRef = (role.装备 as any)[slot];
@@ -707,7 +648,11 @@ const 规范化角色物品容器映射 = (rawRole?: any): 角色数据结构 =>
             return;
         }
         (role.装备 as any)[slot] = normalizedRef;
-        const matched = findItemByRef(normalizedRef) || createFallbackEquippedItem(slot, normalizedRef);
+        const matched = findItemByRef(normalizedRef);
+        if (!matched?.ID) {
+            (role.装备 as any)[slot] = '无';
+            return;
+        }
         const existedSlot = equippedByItemId.get(matched.ID);
         if (existedSlot && existedSlot !== slot) {
             (role.装备 as any)[slot] = '无';

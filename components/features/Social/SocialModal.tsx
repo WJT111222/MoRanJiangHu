@@ -265,6 +265,24 @@ const SocialModal: React.FC<Props> = ({
             <div className={`text-sm font-serif leading-relaxed ${accent}`}>{value?.trim() || "暂无记录"}</div>
         </div>
     );
+    const 读取数值 = (source: any, keys: string[], fallback = 0): number => {
+        for (const key of keys) {
+            const parsed = Number(source?.[key]);
+            if (Number.isFinite(parsed)) return parsed;
+        }
+        return fallback;
+    };
+    const NPC基础属性 = currentNPC ? [
+        ['战力', 读取数值(currentNPC, ['战斗力', '攻击力'])],
+        ['防御', 读取数值(currentNPC, ['防御力'])],
+        ['力量', 读取数值(currentNPC, ['力量'])],
+        ['敏捷', 读取数值(currentNPC, ['敏捷'])],
+        ['体质', 读取数值(currentNPC, ['体质'])],
+        ['根骨', 读取数值(currentNPC, ['根骨'])],
+        ['气血', `${读取数值(currentNPC, ['当前血量'])}/${读取数值(currentNPC, ['最大血量'])}`],
+        ['精力', `${读取数值(currentNPC, ['当前精力'])}/${读取数值(currentNPC, ['最大精力'])}`],
+        ['内力', `${读取数值(currentNPC, ['当前内力'])}/${读取数值(currentNPC, ['最大内力'])}`],
+    ] : [];
 
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fadeIn">
@@ -545,15 +563,23 @@ const SocialModal: React.FC<Props> = ({
                                         <div className="bg-black/40 p-5 border border-sky-900/30 rounded-xl relative overflow-hidden shadow-lg">
                                             <h4 className="flex items-center gap-2 text-sky-300/90 font-serif font-bold mb-4 uppercase tracking-[0.2em] text-sm">
                                                 <span className="w-1.5 h-1.5 rotate-45 bg-sky-400/70"></span>
-                                                技艺与随身状态
+                                                角色属性与随身状态
                                             </h4>
+                                            <div className="mb-4 grid grid-cols-3 gap-2">
+                                                {NPC基础属性.map(([label, value]) => (
+                                                    <div key={label} className="rounded-lg border border-white/10 bg-black/35 px-3 py-2">
+                                                        <div className="text-[10px] tracking-[0.18em] text-gray-500">{label}</div>
+                                                        <div className="mt-1 font-mono text-sm text-gray-100">{value}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 <div className="rounded-lg border border-white/10 bg-black/30 p-3">
                                                     <div className="mb-2 text-[10px] tracking-[0.2em] text-wuxia-gold/70">装备</div>
                                                     <div className="space-y-1 text-xs text-gray-300">
-                                                        {Object.entries((currentNPC as any).当前装备 || {}).map(([key, value]) => (
+                                                        {Object.entries((currentNPC as any).当前装备 || {}).length > 0 ? Object.entries((currentNPC as any).当前装备 || {}).map(([key, value]) => (
                                                             <div key={key} className="flex justify-between gap-3"><span className="text-gray-500">{key}</span><span>{String(value || '无')}</span></div>
-                                                        ))}
+                                                        )) : <span className="text-xs text-gray-600">暂无装备</span>}
                                                     </div>
                                                 </div>
                                                 <div className="rounded-lg border border-white/10 bg-black/30 p-3">
@@ -578,12 +604,12 @@ const SocialModal: React.FC<Props> = ({
                                                 <div className="rounded-lg border border-white/10 bg-black/30 p-3">
                                                     <div className="mb-2 text-[10px] tracking-[0.2em] text-sky-300/80">技艺</div>
                                                     <div className="grid grid-cols-2 gap-1.5">
-                                                        {读取NPC技艺(currentNPC).map((skill: any, idx) => (
+                                                        {读取NPC技艺(currentNPC).length > 0 ? 读取NPC技艺(currentNPC).map((skill: any, idx) => (
                                                             <div key={`${skill.名称}-${idx}`} className="rounded border border-sky-900/30 bg-sky-950/10 px-2 py-1">
                                                                 <div className="text-[10px] text-sky-100">{skill.名称}</div>
                                                                 <div className="text-[9px] text-gray-500">{skill.等级 || '未入门'} · {Number(skill.熟练度 || 0)}</div>
                                                             </div>
-                                                        ))}
+                                                        )) : <span className="text-xs text-gray-600">暂无技艺</span>}
                                                     </div>
                                                 </div>
                                             </div>
