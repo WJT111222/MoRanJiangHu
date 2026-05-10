@@ -266,7 +266,7 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                                     alt={`${character.姓名 || '主角'}披挂像`}
                                                     className="absolute inset-0 h-full w-full object-contain"
                                                 />
-                                                <div className="absolute inset-x-0 bottom-0 h-16 md:h-28 bg-gradient-to-t from-black via-black/55 to-transparent pointer-events-none"></div>
+                                                <div className="absolute inset-x-0 bottom-0 h-16 md:h-28 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none"></div>
                                             </>
                                         ) : (
                                             <div className="absolute inset-0 flex flex-col items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">

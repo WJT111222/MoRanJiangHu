@@ -679,12 +679,58 @@ export const 从剧情响应构建拍卖行投放参数列表 = (
     const auctionIntent = 明确市场语义正则.test(text);
     const rareIntent = /传说|绝世|极品|稀世|孤本|镇派|秘藏|神兵|残卷|宝库|遗迹/u.test(text);
     
-    // 必须有明确的市场语义或稀有物语义才能投放
-    if (!auctionIntent && !rareIntent) {
+    // 开局剧情种子：允许在开局时生成2-3件符合世界观的拍品
+    const isInitialPlotSeed = context?.allowInitialPlotSeed === true;
+    
+    // 必须有明确的市场语义或稀有物语义，或者是开局剧情种子
+    if (!auctionIntent && !rareIntent && !isInitialPlotSeed) {
         return { shouldDispatch: false, reason: '本回合没有明确市场流通或稀有物投放语义' };
     }
     
-    const itemNames = 提取明确物品名列表(text, context?.maxCount || 1);
+    const itemNames = 提取明确物品名列表(text, context?.maxCount || (isInitialPlotSeed ? 3 : 1));
+    
+    // 如果是开局剧情种子但没有提取到物品名，生成2-3件符合世界观的拍品
+    if (isInitialPlotSeed && itemNames.length === 0) {
+        const mainline = 猜测主线类型(text) || '江湖线';
+        const count = 2 + Math.floor(Math.random() * 2); // 2-3件
+        const templates = 模板池
+            .filter(t => !t.主线类型 || t.主线类型 === mainline || Math.random() < 0.3)
+            .sort(() => Math.random() - 0.5)
+            .slice(0, count);
+        
+        const paramsList = templates.map((template) => {
+            const eventName = [
+                context?.gameTime,
+                `${template.名称}入市`
+            ].filter(Boolean).join(' · ') || `开局流通 ${Date.now().toString(36)}`;
+            const 来源描述 = `开局时流入市面的${template.品质}${template.类型}，符合当前世界观和剧情背景。`;
+            return {
+                事件名称: eventName,
+                来源描述,
+                主线类型: template.主线类型 || mainline,
+                卖家名称: template.主线类型 === '官府线' ? '悬赏牙人' : template.主线类型 === '宗门线' ? '宗门掮客' : '江湖掮客',
+                物品: {
+                    名称: template.名称,
+                    类型: template.类型,
+                    品质: template.品质,
+                    描述: template.描述,
+                    价值: template.价格
+                },
+                市场标签: ['开局流通', context?.place || '', template.主线类型 || mainline, template.品质].filter(Boolean),
+                价格倍率: 1.0,
+                是否限时热点: false,
+                有效天数: 4
+            } satisfies 拍卖行事件投放参数;
+        });
+        
+        return {
+            shouldDispatch: true,
+            reason: '开局剧情种子：生成符合世界观的初始拍品',
+            params: paramsList[0],
+            paramsList
+        };
+    }
+    
     if (itemNames.length === 0) {
         return { shouldDispatch: false, reason: '本回合没有明确可交易物品名称' };
     }
