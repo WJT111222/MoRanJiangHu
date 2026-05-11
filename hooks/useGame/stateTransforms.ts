@@ -728,7 +728,14 @@ const 规范化角色物品容器映射 = (rawRole?: any): 角色数据结构 =>
         delete (role as any).最近生图结果;
     }
 
-    role.物品列表 = 补齐自动丹药预设(deduped);
+    role.物品列表 = deduped;
+    // 只有角色身上从未被系统补过（已补齐系统丹药预设 !== true）才补一次。
+    // 用户反馈：丹药用完后下回合又出来了——根因就是这里每回合都补一次。
+    const 是否已补过 = (role as any).已补齐系统丹药预设 === true;
+    if (!是否已补过) {
+        role.物品列表 = 补齐自动丹药预设(role.物品列表);
+        (role as any).已补齐系统丹药预设 = true;
+    }
     return role;
 };
 

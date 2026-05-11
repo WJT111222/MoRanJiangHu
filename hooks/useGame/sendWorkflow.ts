@@ -394,7 +394,13 @@ export const 执行主剧情发送工作流 = async (
     let sendInput = extracted.cleanInput || content.trim();
     let recallTag = extracted.recallTag;
     let attachedRecallPreview = '';
-    const recallTimeoutMs = 25000;
+    // 动态超时：基础 + 每 10 回合追加，封顶上限。上下文越长，检索越慢，死板 25s 不够用。
+    const recallMemoryConfig = 规范化记忆配置(currentState.memoryConfig);
+    const recallBaseSeconds = Math.max(5, Number(recallMemoryConfig.剧情回忆检索基础超时秒数) || 25);
+    const recallPer10Seconds = Math.max(0, Number(recallMemoryConfig.剧情回忆检索每10回合追加秒数) || 6);
+    const recallMaxSeconds = Math.max(recallBaseSeconds, Number(recallMemoryConfig.剧情回忆检索最大超时秒数) || 180);
+    const recallScaledSeconds = recallBaseSeconds + Math.floor(Math.max(0, nextRound - 1) / 10) * recallPer10Seconds;
+    const recallTimeoutMs = Math.min(recallMaxSeconds, recallScaledSeconds) * 1000;
     const recallMaxAttempts = 2;
 
     const createRecallTimeoutError = () => {
