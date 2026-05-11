@@ -1553,6 +1553,12 @@ const 构建ComfyUI工作流 = (
     const promptValue = hasNegativePlaceholder
         ? prompt
         : 为不支持独立负面字段的模型附加负面提示词(prompt, negativePrompt);
+    const isZImageTurboWorkflow = /mPMix_NSFW_V9_fp8|qwen_3_4b\.safetensors|qwen-image-2512-Q6_K|res_multistep|sgm_uniform/i.test(workflowText || '');
+    const isQwenImageWorkflow = /qwen_image_fp8_e4m3fn|qwen_2\.5_vl_7b_fp8_scaled|qwen_image_vae/i.test(workflowText || '');
+    const defaultSteps = isZImageTurboWorkflow ? 9 : (isQwenImageWorkflow ? 20 : 28);
+    const defaultCfg = isZImageTurboWorkflow ? 1 : (isQwenImageWorkflow ? 2.5 : 7);
+    const defaultSampler = isZImageTurboWorkflow ? 'res_multistep' : 'euler';
+    const defaultScheduler = isZImageTurboWorkflow ? 'sgm_uniform' : (isQwenImageWorkflow ? 'simple' : 'normal');
     const replacements: Record<string, string | number> = {
         '__PROMPT__': promptValue,
         '{{prompt}}': promptValue,
@@ -1564,16 +1570,16 @@ const 构建ComfyUI工作流 = (
         '{{height}}': height,
         '__SIZE__': `${width}x${height}`,
         '{{size}}': `${width}x${height}`,
-        '__STEPS__': Math.max(1, Math.floor(Number(pngParams?.步数) || 28)),
-        '{{steps}}': Math.max(1, Math.floor(Number(pngParams?.步数) || 28)),
-        '__CFG__': Number.isFinite(Number(pngParams?.CFG强度)) ? Number(pngParams?.CFG强度) : 7,
-        '{{cfg}}': Number.isFinite(Number(pngParams?.CFG强度)) ? Number(pngParams?.CFG强度) : 7,
+        '__STEPS__': Math.max(1, Math.floor(Number(pngParams?.步数) || defaultSteps)),
+        '{{steps}}': Math.max(1, Math.floor(Number(pngParams?.步数) || defaultSteps)),
+        '__CFG__': Number.isFinite(Number(pngParams?.CFG强度)) ? Number(pngParams?.CFG强度) : defaultCfg,
+        '{{cfg}}': Number.isFinite(Number(pngParams?.CFG强度)) ? Number(pngParams?.CFG强度) : defaultCfg,
         '__CFG_RESCALE__': Number.isFinite(Number(pngParams?.CFG重缩放)) ? Number(pngParams?.CFG重缩放) : 0,
         '{{cfg_rescale}}': Number.isFinite(Number(pngParams?.CFG重缩放)) ? Number(pngParams?.CFG重缩放) : 0,
-        '__SAMPLER__': (pngParams?.采样器 || '').trim() || 'euler',
-        '{{sampler}}': (pngParams?.采样器 || '').trim() || 'euler',
-        '__SCHEDULER__': (pngParams?.噪声计划 || '').trim() || 'normal',
-        '{{scheduler}}': (pngParams?.噪声计划 || '').trim() || 'normal',
+        '__SAMPLER__': (pngParams?.采样器 || '').trim() || defaultSampler,
+        '{{sampler}}': (pngParams?.采样器 || '').trim() || defaultSampler,
+        '__SCHEDULER__': (pngParams?.噪声计划 || '').trim() || defaultScheduler,
+        '{{scheduler}}': (pngParams?.噪声计划 || '').trim() || defaultScheduler,
         '__SEED__': Number.isFinite(Number(pngParams?.随机种子)) ? Math.max(0, Math.floor(Number(pngParams?.随机种子))) : 0,
         '{{seed}}': Number.isFinite(Number(pngParams?.随机种子)) ? Math.max(0, Math.floor(Number(pngParams?.随机种子))) : 0,
         '__SMEA__': pngParams?.SMEA === true ? 'true' : 'false',

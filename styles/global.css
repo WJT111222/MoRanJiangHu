@@ -1544,8 +1544,8 @@ html[data-theme="day"] .right-panel-bottom-fade {
     border-right-width: 0 !important;
     border-bottom-width: 1px !important;
     flex: 0 0 auto !important;
-    max-height: 18rem !important;
-    overflow: hidden !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .desktop-right-detail-modal--auction_house:not(.desktop-right-detail-modal--fullscreen) .auction-house-filter-panel > :first-child {
@@ -1568,7 +1568,7 @@ html[data-theme="day"] .right-panel-bottom-fade {
   .desktop-right-detail-modal--auction_house:not(.desktop-right-detail-modal--fullscreen) .auction-house-market-panel {
     margin-top: 0 !important;
     max-width: 100% !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .desktop-right-detail-modal--auction_house:not(.desktop-right-detail-modal--fullscreen) .auction-house-market-list {

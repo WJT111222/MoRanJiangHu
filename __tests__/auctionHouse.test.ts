@@ -54,9 +54,66 @@ describe('拍卖行默认补货', () => {
         const uniqueKeys = new Set(itemKeys);
         expect(uniqueKeys.size).toBe(itemKeys.length);
     });
+
+    it('系统补货不再生成杂物拍品', () => {
+        const state = 清理并补货({
+            拍卖品列表: [],
+            交易记录: [],
+            最近补货时间: 0,
+            行情列表: [],
+            最近行情时间: 0
+        }, { 允许系统补货: true });
+
+        expect(state.拍卖品列表.filter((entry) => entry.状态 === '上架中').every((entry) => entry.物品.类型 !== '杂物' && entry.物品.类型 !== '杂项')).toBe(true);
+    });
 });
 
 describe('拍卖行剧情物品入市过滤', () => {
+    it('人物手中拿着的食盒不会被当成入市拍品', () => {
+        const result = 从剧情响应构建拍卖行投放参数列表({
+            logs: [
+                {
+                    sender: '旁白',
+                    text: '沈清婉手中提着一个食盒，轻轻搁在桌边，只说这是给你带来的点心，并没有任何出售、寄售或入市的意思。'
+                }
+            ]
+        } as any, { maxCount: 3 });
+
+        expect(result.shouldDispatch).toBe(false);
+        expect(result.reason).toContain('具体物品入市');
+    });
+
+    it('AI 提取到杂物也不能自动流入拍卖行', () => {
+        const result = 从剧情响应构建拍卖行投放参数列表({
+            logs: [
+                {
+                    sender: '旁白',
+                    text: '牙行门口有人议论沈清婉手中提着一个食盒，实际只是她随身带来的饭食。'
+                }
+            ]
+        } as any, {
+            maxCount: 1,
+            useAIExtraction: true,
+            aiExtractionResult: {
+                是否有市场语义: true,
+                是否有稀有物语义: false,
+                提取的物品列表: [
+                    {
+                        名称: '沈清婉手中提着一个食盒',
+                        类型: '杂物',
+                        品质: '上品',
+                        描述: '人物手中拿着的食盒',
+                        价格估值: 8200,
+                        是否合理: true
+                    }
+                ]
+            }
+        });
+
+        expect(result.shouldDispatch).toBe(false);
+        expect(result.reason).toContain('具体物品入市');
+    });
+
     it('玩家身边或持有的物品不会因为本回合出现就流入市场', () => {
         const result = 从剧情响应构建拍卖行投放参数列表({
             logs: [
@@ -83,6 +140,21 @@ describe('拍卖行剧情物品入市过滤', () => {
 
         expect(result.shouldDispatch).toBe(true);
         expect(result.params?.物品?.名称).toBe('青云剑');
+    });
+
+    it('世界大事和宗门交易导致的物品可以流入拍卖行', () => {
+        const result = 从剧情响应构建拍卖行投放参数列表({
+            logs: [
+                {
+                    sender: '世界大事',
+                    text: '玄沙帮与青云剑宗在矿道外攻杀一场，镖局战后将缴获的寒潭玄铁屑送入牙行寄售，坊市已有卖家叫价。'
+                }
+            ]
+        } as any, { maxCount: 1 });
+
+        expect(result.shouldDispatch).toBe(true);
+        expect(result.params?.物品?.名称).toBe('寒潭玄铁屑');
+        expect(result.params?.卖家名称).toBe('宗门掮客');
     });
 
     it('AI 提取误判玩家私有物时仍会被确定性过滤', () => {

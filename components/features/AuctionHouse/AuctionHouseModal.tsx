@@ -271,7 +271,7 @@ const AuctionHouseModal: React.FC<Props> = ({
                 </div>
 
                 <div className="auction-house-body flex min-h-0 flex-1 flex-col bg-[#0b0907]">
-                    <section className={`auction-house-filter-panel shrink-0 overflow-hidden border-b border-wuxia-gold/10 bg-[#0e0b08] ${isMobile ? 'p-2' : 'p-3'}`}>
+                    <section className={`auction-house-filter-panel shrink-0 overflow-visible border-b border-wuxia-gold/10 bg-[#0e0b08] ${isMobile ? 'p-2' : 'p-3'}`}>
                         <div className={`grid min-w-0 gap-3 ${isNarrowPanel ? '' : '2xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.72fr)]'}`}>
                             <div>
                                 <div className="mb-2 flex items-center justify-between text-xs text-wuxia-gold/70">
@@ -287,7 +287,7 @@ const AuctionHouseModal: React.FC<Props> = ({
                                 </div>
                             </div>
 
-                            <div className={`auction-house-market-panel ${isNarrowPanel ? 'hidden' : ''} grid min-w-0 max-w-full gap-3 overflow-hidden rounded-xl border border-wuxia-gold/15 bg-[#11100d] p-2.5 lg:grid-cols-2`}>
+                            <div className={`auction-house-market-panel ${isNarrowPanel ? 'hidden' : ''} grid min-w-0 max-w-full gap-3 overflow-visible rounded-xl border border-wuxia-gold/15 bg-[#11100d] p-2.5 lg:grid-cols-2`}>
                                 <div className="min-w-0">
                                     <div className="mb-2 flex items-center justify-between text-xs font-semibold text-wuxia-gold/80">
                                         <span>今日行情</span>

@@ -66,11 +66,12 @@ const 生成等高线 = (
     mapHeight: number
 ): Array<Array<{ x: number; y: number }>> => {
     const layerText = 归一化地图文本(`${layer?.名称 || ''}${layer?.描述 || ''}`);
-    const shouldShowTerrain = buildings.length === 0 || ['山', '岭', '峰', '谷', '坡', '崖', '林', '溪', '野', '郊', '荒'].some((key) => layerText.includes(key));
-    if (!shouldShowTerrain) return [];
+    const hasTerrainHint = buildings.length === 0 || ['山', '岭', '峰', '谷', '坡', '崖', '林', '溪', '野', '郊', '荒'].some((key) => layerText.includes(key));
 
     const lines: Array<Array<{ x: number; y: number }>> = [];
-    const lineCount = Math.max(4, Math.min(8, Math.floor(mapHeight / 4)));
+    const lineCount = hasTerrainHint
+        ? Math.max(4, Math.min(8, Math.floor(mapHeight / 4)))
+        : Math.max(3, Math.min(5, Math.floor(mapHeight / 8)));
     for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
         const yBase = ((lineIndex + 1) / (lineCount + 1)) * mapHeight;
         const amplitude = 0.55 + (lineIndex % 3) * 0.22;
@@ -99,21 +100,16 @@ const 生成地貌区域 = (
     mapHeight: number
 ) => {
     const layerText = 归一化地图文本(`${layer?.名称 || ''}${layer?.描述 || ''}${layer?.归属?.中地点 || ''}${layer?.归属?.小地点 || ''}`);
-    const isSettlement = buildings.length > 0 && ['镇', '城', '坊', '市', '街', '巷', '村', '庄', '院', '宅'].some((key) => layerText.includes(key));
     const waterBias = ['溪', '河', '湖', '潭', '水', '江'].some((key) => layerText.includes(key));
-    const mountainBias = ['山', '岭', '峰', '谷', '坡', '崖', '林'].some((key) => layerText.includes(key));
     const waterPath = waterBias
         ? `M 0 ${mapHeight * 0.72} C ${mapWidth * 0.18} ${mapHeight * 0.62}, ${mapWidth * 0.32} ${mapHeight * 0.86}, ${mapWidth * 0.5} ${mapHeight * 0.72} S ${mapWidth * 0.82} ${mapHeight * 0.5}, ${mapWidth} ${mapHeight * 0.6} L ${mapWidth} ${mapHeight} L 0 ${mapHeight} Z`
         : `M 0 ${mapHeight * 0.78} C ${mapWidth * 0.18} ${mapHeight * 0.7}, ${mapWidth * 0.33} ${mapHeight * 0.92}, ${mapWidth * 0.52} ${mapHeight * 0.8} S ${mapWidth * 0.82} ${mapHeight * 0.66}, ${mapWidth} ${mapHeight * 0.74} L ${mapWidth} ${mapHeight} L 0 ${mapHeight} Z`;
-    const hillPath = mountainBias
-        ? `M 0 0 L ${mapWidth} 0 L ${mapWidth} ${mapHeight * 0.18} C ${mapWidth * 0.72} ${mapHeight * 0.12}, ${mapWidth * 0.58} ${mapHeight * 0.28}, ${mapWidth * 0.36} ${mapHeight * 0.2} S ${mapWidth * 0.12} ${mapHeight * 0.28}, 0 ${mapHeight * 0.16} Z`
-        : `M 0 0 L ${mapWidth} 0 L ${mapWidth} ${mapHeight * 0.12} C ${mapWidth * 0.7} ${mapHeight * 0.08}, ${mapWidth * 0.52} ${mapHeight * 0.18}, ${mapWidth * 0.28} ${mapHeight * 0.12} S ${mapWidth * 0.08} ${mapHeight * 0.2}, 0 ${mapHeight * 0.12} Z`;
     return {
         waterPath,
-        hillPath,
+        hillPath: '',
         showWater: waterBias,
-        showHills: mountainBias || !isSettlement,
-        showGreen: isSettlement
+        showHills: false,
+        showGreen: false
     };
 };
 
@@ -187,7 +183,7 @@ const GridMapScene: React.FC<Props> = ({
         () => roads.filter((item) => item.所在层级ID === currentLayerId),
         [roads, currentLayerId]
     );
-    const shouldShowContourLines = currentLayerBuildings.length < 4;
+    const shouldShowContourLines = true;
     const currentLayerPeople = useMemo(() => {
         const basePeople = persistentPeople.filter((item) => item.所在层级ID === currentLayerId);
         if (defaultScene.当前层级?.ID !== currentLayerId) {
@@ -365,11 +361,11 @@ const GridMapScene: React.FC<Props> = ({
     }, []);
     const inverseViewScale = Math.max(mapViewBox.width / 92, mapViewBox.height / 56);
     const buildingLabelFontSize = Math.max(0.76, 1.34 * inverseViewScale);
-    const personLabelFontSize = Math.max(0.54, 0.82 * inverseViewScale);
-    const personLabelHeight = Math.max(0.66, 1.02 * inverseViewScale);
-    const personMarkerRadius = Math.max(0.34, 0.48 * inverseViewScale);
-    const playerMarkerRadius = Math.max(0.48, 0.64 * inverseViewScale);
-    const personOuterRadius = Math.max(0.48, 0.68 * inverseViewScale);
+    const personLabelFontSize = Math.max(0.42, 0.55 * inverseViewScale);
+    const personLabelHeight = Math.max(0.54, 0.74 * inverseViewScale);
+    const personMarkerRadius = Math.max(0.2, 0.3 * inverseViewScale);
+    const playerMarkerRadius = Math.max(0.3, 0.42 * inverseViewScale);
+    const personOuterRadius = Math.max(0.3, 0.46 * inverseViewScale);
     const personLayouts = useMemo(() => {
         const placed: Array<{ x: number; y: number }> = [];
         const labelBoxes: Array<{ x: number; y: number; width: number; height: number }> = [];
@@ -398,17 +394,22 @@ const GridMapScene: React.FC<Props> = ({
             }
             return score;
         };
-        return currentLayerPeople.map((person, index) => {
+        const orderedPeople = [...currentLayerPeople].sort((a, b) => {
+            const priorityA = (a?.是否当前玩家 ? 2 : 0) + (selectedFeatureId === `person:${a?.ID}` ? 1 : 0);
+            const priorityB = (b?.是否当前玩家 ? 2 : 0) + (selectedFeatureId === `person:${b?.ID}` ? 1 : 0);
+            return priorityB - priorityA;
+        });
+        return orderedPeople.map((person, index) => {
             const source = person?.坐标 || { x: 0, y: 0 };
-            const minGap = personOuterRadius * 1.82;
+            const minGap = personOuterRadius * 2.55;
             let x = 约束数值(Number(source.x) || 0, personOuterRadius, Math.max(personOuterRadius, mapWidth - personOuterRadius));
             let y = 约束数值(Number(source.y) || 0, personOuterRadius, Math.max(personOuterRadius, mapHeight - personOuterRadius));
             const overlaps = (candidateX: number, candidateY: number) => placed.some((point) => Math.hypot(point.x - candidateX, point.y - candidateY) < minGap);
             if (overlaps(x, y)) {
                 let found = false;
-                for (let ring = 1; ring <= 5 && !found; ring += 1) {
-                    const radius = minGap * ring * 0.64;
-                    const slots = 8 + ring * 4;
+                for (let ring = 1; ring <= 7 && !found; ring += 1) {
+                    const radius = minGap * ring * 0.88;
+                    const slots = 10 + ring * 5;
                     for (let slot = 0; slot < slots; slot += 1) {
                         const angle = (Math.PI * 2 * slot) / slots + index * 0.43;
                         const candidateX = 约束数值((Number(source.x) || 0) + Math.cos(angle) * radius, personOuterRadius, Math.max(personOuterRadius, mapWidth - personOuterRadius));
@@ -423,8 +424,9 @@ const GridMapScene: React.FC<Props> = ({
                 }
             }
             placed.push({ x, y });
-            const labelText = String(person?.名称 || '').slice(0, 6);
-            const labelWidth = Math.max(2.35 * inverseViewScale, (labelText.length * 0.72 + 0.72) * inverseViewScale);
+            const isImportant = person?.是否当前玩家 || selectedFeatureId === `person:${person?.ID}`;
+            const labelText = String(person?.名称 || '').slice(0, isImportant ? 6 : 4);
+            const labelWidth = Math.max(1.8 * inverseViewScale, (labelText.length * 0.52 + 0.62) * inverseViewScale);
             const offsets = [
                 { dx: 0, dy: -(personOuterRadius + personLabelHeight + 0.18 * inverseViewScale) },
                 { dx: 0, dy: personOuterRadius + 0.18 * inverseViewScale },
@@ -460,7 +462,10 @@ const GridMapScene: React.FC<Props> = ({
                     height: personLabelHeight,
                 };
             }
-            labelBoxes.push(bestBox);
+            const labelVisible = isImportant || bestScore < 1000;
+            if (labelVisible) {
+                labelBoxes.push(bestBox);
+            }
             return {
                 person,
                 x,
@@ -469,11 +474,12 @@ const GridMapScene: React.FC<Props> = ({
                 labelX: bestBox.x,
                 labelY: bestBox.y,
                 labelWidth: bestBox.width,
+                labelVisible,
                 shifted: Math.hypot(x - (Number(source.x) || 0), y - (Number(source.y) || 0)) > 0.05,
                 labelShifted: Math.hypot((bestBox.x + bestBox.width / 2) - x, (bestBox.y + bestBox.height / 2) - y) > personOuterRadius + personLabelHeight * 0.85,
             };
         });
-    }, [currentLayerPeople, inverseViewScale, mapHeight, mapWidth, personLabelHeight, personOuterRadius]);
+    }, [currentLayerPeople, inverseViewScale, mapHeight, mapWidth, personLabelHeight, personOuterRadius, selectedFeatureId]);
 
     const npcDebugRows = useMemo(() => {
         const keys = [
@@ -546,12 +552,12 @@ const GridMapScene: React.FC<Props> = ({
                         <div className="absolute left-3 bottom-3 z-10 max-w-[calc(100%-1.5rem)] rounded-lg border border-[#c7a56a]/55 bg-[#fffaf0]/95 px-3 py-2 shadow-[0_8px_24px_rgba(92,45,10,0.12)]">
                             <div className="mb-1 text-[10px] font-bold tracking-[0.18em] text-[#7a3f12]">图例</div>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#5f3a1e]">
-                                <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-4 rounded-sm border border-[#7e5824]/40 bg-[#c49d5c]/35" />地势</span>
+                                <span className="inline-flex items-center gap-1.5"><i className="h-0 w-5 border-t border-dashed border-[#7e5824]/70" />等高线</span>
                                 {terrainRegions.showWater && <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-4 rounded-sm border border-[#1d6384]/45 bg-[#4fafd3]/45" />水体</span>}
                                 <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-4 rounded-sm border border-[#5c2d0a]/70 bg-[#f5e7c6]" />建筑</span>
-                                <span className="inline-flex items-center gap-1.5"><i className="h-1 w-5 rounded-sm bg-[#1f1b13]" />道路</span>
+                                <span className="inline-flex items-center gap-1.5"><i className="h-0 w-5 border-t-2 border-[#1f1b13]" />道路</span>
                                 <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full border border-[#5b4b8a] bg-[#c4b5fd]" />人物</span>
-                                <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full border border-[#8a6a10] bg-[#f9d976]" />当前</span>
+                                <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full border border-[#8a6a10] bg-[#f9d976]" />主角</span>
                             </div>
                         </div>
                         <svg
@@ -622,7 +628,7 @@ const GridMapScene: React.FC<Props> = ({
                                     key={`contour-${index}`}
                                     points={points.map((point) => `${point.x},${point.y}`).join(' ')}
                                     fill="none"
-                                    stroke={index % 2 === 0 ? 'rgba(32, 91, 115, 0.26)' : 'rgba(76, 130, 74, 0.24)'}
+                                    stroke={index % 2 === 0 ? 'rgba(126, 88, 36, 0.34)' : 'rgba(138, 90, 43, 0.24)'}
                                     strokeWidth={0.12}
                                     strokeDasharray="0.6 0.45"
                                     strokeLinecap="round"
@@ -715,9 +721,9 @@ const GridMapScene: React.FC<Props> = ({
                                 );
                             })}
 
-                            {personLayouts.map(({ person, x, y, labelText, labelX, labelY, labelWidth, shifted, labelShifted }) => {
+                            {personLayouts.map(({ person, x, y, labelText, labelX, labelY, labelWidth, labelVisible, shifted, labelShifted }) => {
                                 const active = selectedFeatureId === `person:${person.ID}`;
-                                const showLabel = true;
+                                const showLabel = labelVisible;
                                 const markerRadius = person.是否当前玩家 ? playerMarkerRadius : personMarkerRadius;
                                 return (
                                     <g

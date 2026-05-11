@@ -92,6 +92,7 @@ const MobileInventoryModal: React.FC<Props> = ({ character, onClose, onCharacter
     const [activeCategory, setActiveCategory] = useState<ItemCategory>('全部');
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [actionMessage, setActionMessage] = useState('');
+    const [imageViewer, setImageViewer] = useState<{ src: string; alt: string } | null>(null);
 
     const items = Array.isArray(character?.物品列表) ? character.物品列表 : [];
     const totalWeight = getSafeNumber(character?.当前负重);
@@ -273,7 +274,16 @@ const MobileInventoryModal: React.FC<Props> = ({ character, onClose, onCharacter
                             >
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-gray-800 bg-black/60">
                                     {itemIconImage ? (
-                                        <img src={itemIconImage} alt={name} className="h-full w-full object-cover" loading="lazy" />
+                                        <img
+                                            src={itemIconImage}
+                                            alt={name}
+                                            className="h-full w-full object-cover"
+                                            loading="lazy"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                setImageViewer({ src: itemIconImage, alt: name });
+                                            }}
+                                        />
                                     ) : (
                                         renderItemIcon(getSafeText(item?.类型), `w-6 h-6 opacity-80 ${styles.text}`)
                                     )}
@@ -307,7 +317,14 @@ const MobileInventoryModal: React.FC<Props> = ({ character, onClose, onCharacter
                         <div className="flex h-10 shrink-0 items-center justify-between border-b border-gray-800 bg-black/20 px-4">
                             <div className="flex min-w-0 items-center gap-2">
                                 {获取物品已选图标地址(selectedItem) ? (
-                                    <img src={获取物品已选图标地址(selectedItem)} alt={getSafeText(selectedItem?.名称, '物品图标')} className="h-8 w-8 shrink-0 rounded border border-gray-700 object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => setImageViewer({ src: 获取物品已选图标地址(selectedItem), alt: getSafeText(selectedItem?.名称, '物品图标') })}
+                                        className="h-8 w-8 shrink-0 overflow-hidden rounded border border-gray-700"
+                                        aria-label={`放大查看${getSafeText(selectedItem?.名称, '物品图标')}`}
+                                    >
+                                        <img src={获取物品已选图标地址(selectedItem)} alt={getSafeText(selectedItem?.名称, '物品图标')} className="h-full w-full object-cover" />
+                                    </button>
                                 ) : null}
                                 <div className="min-w-0 truncate text-sm text-gray-100">
                                     <span className={getRarityNameClass(getSafeText(selectedItem?.品质))}>
@@ -423,6 +440,26 @@ const MobileInventoryModal: React.FC<Props> = ({ character, onClose, onCharacter
                     </div>
                 ) : null}
             </div>
+            {imageViewer && (
+                <div
+                    className="fixed inset-0 z-[360] flex items-center justify-end bg-black/82 pr-4 backdrop-blur-sm"
+                    onClick={() => setImageViewer(null)}
+                >
+                    <div className="relative max-w-[85vw]" onClick={(event) => event.stopPropagation()}>
+                        <button
+                            type="button"
+                            onClick={() => setImageViewer(null)}
+                            className="absolute right-3 top-3 z-10 flex h-12 min-h-[48px] w-12 min-w-[48px] items-center justify-center rounded-full border-2 border-white bg-red-600 text-white shadow-[0_0_24px_rgba(220,38,38,0.75)] transition hover:scale-110 hover:bg-red-500 hover:shadow-[0_0_32px_rgba(248,113,113,0.95)]"
+                            aria-label="关闭图片预览"
+                        >
+                            <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <img src={imageViewer.src} alt={imageViewer.alt} className="max-h-[94vh] max-w-[85vw] rounded-lg border border-white/25 bg-black object-contain shadow-2xl" />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

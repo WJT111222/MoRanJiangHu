@@ -3,6 +3,7 @@ import { 角色数据结构, 装备槽位 } from '../../../types';
 import { 游戏物品 } from '../../../models/item';
 import { getRarityNameClass, getRarityStyles } from '../../ui/rarityStyles';
 import { 获取图片展示地址 } from '../../../utils/imageAssets';
+import { 获取物品已选图标地址 } from '../../../utils/itemImage';
 import { IconSwords, IconDagger, IconShield, IconArmor, IconBackpack, IconRing, IconBelt, IconHelmet, IconBoot, IconPants, IconGlove, IconHorse, ItemTypeIcon } from '../../ui/Icons';
 import { 获取物品可装备槽位, 计算装备评分, 装备物品到角色, 卸下角色装备 } from '../../../utils/equipmentActions';
 
@@ -55,6 +56,7 @@ const 读取有效词条列表 = (item: any): any[] => {
 const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange }) => {
     const [selectedItem, setSelectedItem] = useState<游戏物品 | null>(null);
     const [actionMessage, setActionMessage] = useState('');
+    const [imageViewer, setImageViewer] = useState<{ src: string; alt: string } | null>(null);
     const playerImageHistory = Array.isArray(character?.图片档案?.生图历史) ? character.图片档案!.生图历史 : [];
     const selectedPortraitId = typeof character?.图片档案?.已选立绘图片ID === 'string'
         ? character.图片档案.已选立绘图片ID.trim()
@@ -138,6 +140,7 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
     const renderSlot = (slot: { key: keyof typeof character.装备, label: string, icon: React.ReactNode }) => {
         const itemRef = character.装备[slot.key];
         const item = getItem(itemRef);
+        const itemIconImage = item ? 获取物品已选图标地址(item) : '';
         const qualityClass = item
             ? `${getRarityStyles(item.品质).border} ${getRarityStyles(item.品质).text} ${getRarityStyles(item.品质).bg} shadow-inner bg-opacity-10 border-opacity-50 hover:bg-opacity-20`
             : 'border-wuxia-gold/15 text-gray-400 border-dashed bg-black/30 hover:bg-black/50 hover:border-wuxia-gold/35';
@@ -152,7 +155,11 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                 
                 {/* Icon Box */}
                 <div className={`w-9 h-9 md:w-12 md:h-12 shrink-0 rounded-lg md:rounded-xl flex items-center justify-center border ${item ? 'bg-black/50 border-white/10 shadow-lg text-wuxia-gold/90' : 'bg-black/60 border-gray-700/60 text-gray-400'}`}>
+                    {itemIconImage ? (
+                        <img src={itemIconImage} alt={item?.名称 || slot.label} className="h-full w-full rounded-lg object-cover" loading="lazy" />
+                    ) : (
                         <span className="scale-90 opacity-85 transition-opacity duration-300 group-hover:scale-110 group-hover:opacity-100 md:scale-100">{slot.icon}</span>
+                    )}
                     </div>
                 
                 {/* Info */}
@@ -178,7 +185,10 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
         );
     };
 
+    const selectedItemIconImage = 获取物品已选图标地址(selectedItem);
+
     return (
+        <>
         <div className="equipment-modal-body fixed inset-0 bg-black/95 backdrop-blur-sm z-[200] flex items-center justify-center p-0 md:p-4 animate-fadeIn">
             {/* 主窗口：采用 max-w-7xl h-[90vh] 标准，增加仙侠金边渐变效果 */}
             <div className="bg-ink-black/95 border-y border-wuxia-gold/20 md:border md:border-wuxia-gold/20 w-full max-w-none md:max-w-[calc(100vw-2rem)] 2xl:max-w-[1780px] h-[100dvh] md:max-h-[92vh] md:h-[92vh] flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] relative overflow-hidden rounded-none md:rounded-2xl">
@@ -312,11 +322,21 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                                     谱
                                 </div>
                                 <div className="flex gap-3 md:gap-5 relative z-10">
-                                    <div className={`w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-2xl border-2 ${getRarityStyles(selectedItem.品质).border} ${getRarityStyles(selectedItem.品质).bg} bg-opacity-20 flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(0,0,0,0.3)]`}>
-                                        <span className="drop-shadow-md">
-                                            <ItemTypeIcon type={selectedItem.类型} size={36} />
-                                        </span>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => selectedItemIconImage && setImageViewer({ src: selectedItemIconImage, alt: selectedItem.名称 || '装备图标' })}
+                                        disabled={!selectedItemIconImage}
+                                        className={`w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-2xl border-2 ${getRarityStyles(selectedItem.品质).border} ${getRarityStyles(selectedItem.品质).bg} bg-opacity-20 flex items-center justify-center shrink-0 overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.3)] disabled:cursor-default`}
+                                        aria-label={selectedItemIconImage ? `放大查看${selectedItem.名称}` : undefined}
+                                    >
+                                        {selectedItemIconImage ? (
+                                            <img src={selectedItemIconImage} alt={selectedItem.名称 || '装备图标'} className="h-full w-full object-cover" />
+                                        ) : (
+                                            <span className="drop-shadow-md">
+                                                <ItemTypeIcon type={selectedItem.类型} size={36} />
+                                            </span>
+                                        )}
+                                    </button>
                                     <div className="flex-1 min-w-0 pr-10 md:pr-6">
                                         <div className={`text-xl md:text-3xl font-serif font-black truncate drop-shadow-md mb-2 md:mb-3 tracking-wide ${getRarityNameClass(selectedItem.品质)}`}>
                                             {selectedItem.名称}
@@ -487,6 +507,27 @@ const EquipmentModal: React.FC<Props> = ({ character, onClose, onCharacterChange
                 </div>
             </div>
         </div>
+        {imageViewer && (
+            <div
+                className="fixed inset-0 z-[360] flex items-center justify-end bg-black/82 pr-8 backdrop-blur-sm"
+                onClick={() => setImageViewer(null)}
+            >
+                <div className="relative max-w-[85vw]" onClick={(event) => event.stopPropagation()}>
+                    <button
+                        type="button"
+                        onClick={() => setImageViewer(null)}
+                        className="absolute right-3 top-3 z-10 flex h-12 min-h-[48px] w-12 min-w-[48px] items-center justify-center rounded-full border-2 border-white bg-red-600 text-white shadow-[0_0_24px_rgba(220,38,38,0.75)] transition hover:scale-110 hover:bg-red-500 hover:shadow-[0_0_32px_rgba(248,113,113,0.95)]"
+                        aria-label="关闭图片预览"
+                    >
+                        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                    <img src={imageViewer.src} alt={imageViewer.alt} className="max-h-[94vh] max-w-[85vw] rounded-lg border border-white/25 bg-black object-contain shadow-2xl" />
+                </div>
+            </div>
+        )}
+        </>
     );
 };
 

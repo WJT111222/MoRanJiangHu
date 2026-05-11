@@ -839,12 +839,16 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
         }
         const overwrite = options?.overwrite === true;
         const pick = (current: string, fallback: string) => overwrite ? fallback : ((current || '').trim() || fallback);
+        const shouldCopyApiKey = 图片后端需要鉴权(feature.文生图后端类型);
+        const nsfwApiKey = shouldCopyApiKey
+            ? pick(feature.NSFW生图模型API密钥, feature.文生图模型API密钥)
+            : (overwrite ? '' : (feature.NSFW生图模型API密钥 || ''));
 
         return {
             NSFW生图后端类型: feature.文生图后端类型,
             NSFW生图模型使用模型: pick(feature.NSFW生图模型使用模型, feature.文生图模型使用模型),
             NSFW生图模型API地址: pick(feature.NSFW生图模型API地址, feature.文生图模型API地址),
-            NSFW生图模型API密钥: pick(feature.NSFW生图模型API密钥, feature.文生图模型API密钥),
+            NSFW生图模型API密钥: nsfwApiKey,
             当前NSFW图片后端发现ID: overwrite
                 ? feature.当前图片后端发现ID
                 : ((feature.当前NSFW图片后端发现ID || '').trim() || feature.当前图片后端发现ID),
