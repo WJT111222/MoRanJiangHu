@@ -124,6 +124,11 @@ const 状态文案: Record<图片生成状态类型, string> = {
     pending: '生成中'
 };
 
+const 获取图片状态文案 = (result?: { 状态?: 图片生成状态类型; 来源?: string } | null): string => {
+    if ((result?.来源 || '') === 'hosted') return '无需生图';
+    return 状态文案[result?.状态 || 'success'];
+};
+
 const 队列状态样式: Record<NPC生图任务记录['状态'], string> = {
     queued: 'border-slate-700 text-slate-300 bg-slate-950/40',
     running: 'border-sky-700 text-sky-300 bg-sky-950/30',
@@ -1170,7 +1175,7 @@ const LibraryTabContent: React.FC<TabProps> = ({
                                             <div className="text-[#a67c00]/60 font-serif tracking-widest p-6 text-center border border-dashed border-[#d4af37]/20 rounded">图片不可用</div>
                                         )}
                                         <div className="flex items-center justify-between font-serif relative z-10">
-                                            <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[img.状态 || 'success']}`}>{状态文案[img.状态 || 'success']}</span>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[img.状态 || 'success']}`}>{获取图片状态文案(img)}</span>
                                             <span className='text-[#a67c00]/60 text-[10px] tracking-wider'>{格式化时间(img.生成时间)}</span>
                                         </div>
                                         <div className="text-[10px] text-gray-500 font-serif relative z-10">本地路径：{格式化本地图片描述(img.本地路径)}</div>
@@ -1749,7 +1754,7 @@ const HistoryTabContent: React.FC<TabProps> = ({
                             <summary className='flex items-center justify-between outline-none cursor-pointer'>
                                 <span className='font-bold text-cyan-500/90 tracking-widest truncate max-w-[150px]'>{result.摘要 || '场景记录'}</span>
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[result.状态 || 'success']}`}>{状态文案[result.状态 || 'success']}</span>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[result.状态 || 'success']}`}>{获取图片状态文案(result)}</span>
                                     <span className="text-[#A67C00] transition-transform group-open:rotate-180">▼</span>
                                 </div>
                             </summary>
@@ -1802,7 +1807,7 @@ const HistoryTabContent: React.FC<TabProps> = ({
                             <summary className='flex items-center justify-between outline-none cursor-pointer'>
                                 <span className='font-bold text-[#d4af37] tracking-widest'>{entry.npcRecord.NPC姓名} ({获取NPC构图文案(result.构图, result.部位)})</span>
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[result.状态 || 'success']}`}>{状态文案[result.状态 || 'success']}</span>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[result.状态 || 'success']}`}>{获取图片状态文案(result)}</span>
                                     <span className="text-[#A67C00] transition-transform group-open:rotate-180">▼</span>
                                 </div>
                             </summary>

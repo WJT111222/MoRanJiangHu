@@ -42,6 +42,7 @@ type 独立阶段失败决策参数 = {
     stageId: 独立阶段标识;
     stageLabel: string;
     errorText: string;
+    manualAttempt?: number;
 };
 
 type 规划分析进度 = {
@@ -585,6 +586,7 @@ export const 执行主剧情发送工作流 = async (
         onSkip?: (errorText: string) => void;
         getErrorText?: (error: any) => string;
         useGlobalAutoRetry?: boolean;
+        skipFailureDecision?: boolean;
     }): Promise<{ completed: boolean; result?: T }> => {
         let manualAttempt = 0;
         while (true) {
@@ -608,12 +610,17 @@ export const 执行主剧情发送工作流 = async (
                         || deps.格式化错误详情(error)
                         || error?.message
                         || '未知错误'
-                    );
+                );
                 params.onError?.(errorText);
+                if (params.skipFailureDecision) {
+                    params.onSkip?.(errorText);
+                    return { completed: false };
+                }
                 const decision = await 请求独立阶段失败决策({
                     stageId: params.stageId,
                     stageLabel: params.stageLabel,
-                    errorText
+                    errorText,
+                    manualAttempt
                 });
                 if (decision === 'retry') {
                     continue;
@@ -1228,20 +1235,21 @@ export const 执行主剧情发送工作流 = async (
                     onError: (errorText) => {
                         options?.onPlanningProgress?.({
                             phase: "error",
-                            text: `${errorText || "规划分析失败"}\n等待选择：重试当前阶段，或跳过继续。`
+                            text: `${errorText || "规划分析失败"}\n规划分析失败不会阻塞本回合，已自动跳过。`
                         });
                     },
                     onSkip: (errorText) => {
                         options?.onPlanningProgress?.({
                             phase: "skipped",
-                            text: `规划分析失败，已按用户选择跳过。${errorText ? `\n${errorText}` : ""}`
+                            text: `规划分析失败，已自动跳过；本回合正文和其他后台结果保留。${errorText ? `\n${errorText}` : ""}`
                         });
                     },
                     getErrorText: (error: any) => (
                         deps.提取原始报错详情(error)
                         || error?.message
                         || "规划分析失败"
-                    )
+                    ),
+                    skipFailureDecision: true
                 });
                 const planningResult = planningStage.result;
                 if (!本次仍是最新前台回合()) {

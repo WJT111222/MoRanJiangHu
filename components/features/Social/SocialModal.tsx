@@ -47,6 +47,7 @@ const SocialModal: React.FC<Props> = ({
     const [香闺展示模式, set香闺展示模式] = useState<Record<string, 'text' | 'image'>>({});
     const [showFullBackground, setShowFullBackground] = useState(false);
     const [imageViewer, setImageViewer] = useState<{ src: string; alt: string } | null>(null);
+    const [imageViewerZoom, setImageViewerZoom] = useState(1);
 
     useEffect(() => {
         if (socialList.length === 0) {
@@ -69,6 +70,7 @@ const SocialModal: React.FC<Props> = ({
     useEffect(() => {
         setShowFullBackground(false);
         setImageViewer(null);
+        setImageViewerZoom(1);
     }, [selectedId]);
 
     const currentNPC = socialList.find((n, index) => 获取NPC稳定ID(n, index) === selectedId) || socialList[0];
@@ -247,8 +249,28 @@ const SocialModal: React.FC<Props> = ({
     const 打开图片查看器 = (src?: string, alt?: string) => {
         const normalizedSrc = typeof src === 'string' ? src.trim() : '';
         if (!normalizedSrc) return;
+        setImageViewerZoom(1);
         setImageViewer({ src: normalizedSrc, alt: (alt || '图片预览').trim() || '图片预览' });
     };
+    const 关闭图片查看器 = () => {
+        setImageViewer(null);
+        setImageViewerZoom(1);
+    };
+    const 调整图片缩放 = (delta: number) => {
+        setImageViewerZoom((prev) => Math.min(3, Math.max(0.5, Number((prev + delta).toFixed(2)))));
+    };
+
+    useEffect(() => {
+        if (!imageViewer) return;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                关闭图片查看器();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [imageViewer]);
+
     const 香闺部位列表: Array<{ key: 香闺秘档部位类型; label: string; text: string }> = currentNPC ? [
         { key: '胸部', label: '胸部描述', text: 读取胸部描述(currentNPC) || '暂无记录' },
         { key: '小穴', label: '小穴描述', text: 读取小穴描述(currentNPC) || '暂无记录' },
@@ -340,7 +362,17 @@ const SocialModal: React.FC<Props> = ({
 
                                 <div className="relative w-12 h-12 shrink-0 rounded-lg overflow-hidden border border-white/10 bg-black/50 group-hover:border-white/30 transition-colors">
                                     {提取头像图片地址(npc) ? (
-                                        <img src={提取头像图片地址(npc)} alt={npc.姓名} className="w-full h-full object-cover" />
+                                        <button
+                                            type="button"
+                                            className="block h-full w-full"
+                                            title="查看头像"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                打开图片查看器(提取头像图片地址(npc), `${npc.姓名} 头像`);
+                                            }}
+                                        >
+                                            <img src={提取头像图片地址(npc)} alt={npc.姓名} className="w-full h-full object-cover" />
+                                        </button>
                                     ) : (
                                         <div className={`w-full h-full flex items-center justify-center font-serif font-bold text-lg ${npcIsFemale ? 'text-pink-500/50' : 'text-blue-500/50'}`}>
                                             {npc.姓名[0]}
@@ -944,14 +976,14 @@ const SocialModal: React.FC<Props> = ({
 
             {imageViewer && typeof document !== 'undefined' && createPortal((
                 <div
-                    className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn cursor-pointer"
-                    onClick={() => setImageViewer(null)}
+                    className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-sm flex items-center justify-end p-4 pr-8 animate-fadeIn cursor-pointer"
+                    onClick={关闭图片查看器}
                 >
                     <button
                         className="fixed right-5 top-5 z-[330] flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-red-600/95 text-white shadow-[0_0_24px_rgba(220,38,38,1)] backdrop-blur-md transition-all hover:scale-110 hover:bg-red-500 hover:shadow-[0_0_32px_rgba(220,38,38,1)]"
                         onClick={(e) => {
                             e.stopPropagation();
-                            setImageViewer(null);
+                            关闭图片查看器();
                         }}
                         aria-label="关闭图片预览"
                         title="关闭图片预览"
@@ -960,11 +992,17 @@ const SocialModal: React.FC<Props> = ({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
-                    <div className="relative inline-flex w-fit max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] rounded-lg shadow-[0_0_50px_rgba(212,175,55,0.15)] overflow-hidden cursor-default" onClick={e => e.stopPropagation()}>
+                    <div className="fixed right-5 top-20 z-[330] flex overflow-hidden rounded-full border border-white/20 bg-black/75 text-sm text-white shadow-lg backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
+                        <button type="button" className="px-4 py-2 hover:bg-white/15" onClick={() => 调整图片缩放(-0.25)} aria-label="缩小图片">-</button>
+                        <button type="button" className="border-x border-white/15 px-4 py-2 hover:bg-white/15" onClick={() => setImageViewerZoom(1)} aria-label="重置缩放">{Math.round(imageViewerZoom * 100)}%</button>
+                        <button type="button" className="px-4 py-2 hover:bg-white/15" onClick={() => 调整图片缩放(0.25)} aria-label="放大图片">+</button>
+                    </div>
+                    <div className="relative flex h-[calc(100vh-2rem)] w-[min(85vw,calc(100vw-2rem))] items-center justify-end overflow-auto rounded-lg shadow-[0_0_50px_rgba(212,175,55,0.15)] cursor-default" onClick={e => e.stopPropagation()}>
                         <img
                             src={imageViewer.src}
                             alt={imageViewer.alt}
-                            className="max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] object-contain rounded-lg"
+                            className="max-w-[85vw] max-h-[calc(100vh-2rem)] object-contain rounded-lg transition-transform duration-150 origin-center"
+                            style={{ transform: `scale(${imageViewerZoom})` }}
                         />
                     </div>
                 </div>

@@ -43,11 +43,11 @@ export const 构建物品视觉描述 = (item: any): string => [
 const 获取渲染风格要求 = (style: string): string => {
     switch (style) {
         case '写实道具':
-            return 'photorealistic single prop product shot, real metal leather cloth wood or paper materials, studio lighting, tactile surface detail, no ink painting, no guofeng illustration';
+            return 'photorealistic single prop product shot, real metal leather cloth wood or paper materials, studio lighting, tactile surface detail, no ink painting, no guofeng illustration, no text, no letters, no label, no inscription, no logo, no watermark';
         case '像素图标':
-            return 'high-end pixel art item icon, crisp silhouette, readable at small size';
+            return 'high-end pixel art item icon, crisp silhouette, readable at small size, no text, no letters, no label, no logo, no watermark';
         case '3D渲染':
-            return 'stylized 3D game item render, centered product lighting, soft shadow';
+            return 'stylized 3D game item render, centered product lighting, soft shadow, no text, no letters, no label, no inscription, no logo, no watermark';
         case '国风插画':
         default:
             return 'Chinese wuxia illustration style, ink wash texture, refined golden rim light';
@@ -62,8 +62,8 @@ export const 构建物品图提示词 = (
     const renderStyle = options?.渲染风格 || '写实道具';
     return [
         renderStyle === '写实道具'
-            ? '单个游戏物品的写实产品图，真实摄影质感，真实金属、皮革、布料、木材或纸张材质，主体居中，占画面约75%，中性深色影棚背景，柔和投影，清晰轮廓，高级游戏道具 UI 图标。不要国风插画，不要水墨，不要宣纸纹理，不要手绘，不要文字，不要水印，不要人物。'
-            : '单个武侠/仙侠游戏物品图标资产，主体居中，占画面约75%，柔和投影，清晰轮廓，高级游戏道具 UI 图标，不要文字，不要水印，不要人物。',
+            ? '单个游戏物品的写实产品图，真实摄影质感，真实金属、皮革、布料、木材或纸张材质，主体居中，占画面约75%，中性深色影棚背景，柔和投影，清晰轮廓，高级游戏道具 UI 图标。不要国风插画，不要水墨，不要宣纸纹理，不要手绘，不要任何文字、字母、题字、铭牌、标签、印章、Logo、水印，不要人物。'
+            : '单个武侠/仙侠游戏物品图标资产，主体居中，占画面约75%，柔和投影，清晰轮廓，高级游戏道具 UI 图标，不要任何文字、字母、题字、铭牌、标签、印章、Logo、水印，不要人物。',
         获取渲染风格要求(renderStyle),
         `物品名称：${item?.名称 || '无名物品'}`,
         `类型与品质：${item?.品质 || '凡品'} ${item?.类型 || '杂物'}`,
@@ -103,9 +103,9 @@ export const 生成物品图标 = async (
         构图: '头像',
         尺寸: size,
         附加正向提示词: renderStyle === '写实道具'
-            ? 'single object, photorealistic item icon, centered product composition, neutral dark studio background, clean silhouette, realistic material'
-            : 'single object, item icon, centered composition, clean silhouette',
-        附加负面提示词: 'person, human, face, hand, text, watermark, logo, white background, cluttered background, ink wash, guofeng illustration, Chinese painting, brush strokes, anime, cartoon, flat illustration',
+            ? 'single object, photorealistic item icon, centered product composition, neutral dark studio background, clean silhouette, realistic material, no text, no letters, no label, no inscription, no logo, no watermark'
+            : 'single object, item icon, centered composition, clean silhouette, no text, no letters, no label, no inscription, no logo, no watermark',
+        附加负面提示词: 'person, human, face, hand, text, typography, letters, words, caption, label, plaque, sign, inscription, Chinese characters, English letters, calligraphy, seal, stamp, logo, watermark, signature, white background, cluttered background, ink wash, guofeng illustration, Chinese painting, brush strokes, anime, cartoon, flat illustration',
     });
     const localResult = await persistImageAssetLocally(rawResult);
     const imageRecord: 物品生图结果 = {

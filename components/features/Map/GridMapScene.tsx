@@ -215,6 +215,10 @@ const GridMapScene: React.FC<Props> = ({
         () => (selectedLayer ? 构建层级链(layers, selectedLayer.ID) : []),
         [layers, selectedLayer]
     );
+    const parentLayer = useMemo(
+        () => selectedLayer?.父级ID ? layers.find((layer) => layer.ID === selectedLayer.父级ID) || null : null,
+        [layers, selectedLayer]
+    );
     const siblingLayers = useMemo(() => {
         if (!selectedLayer) return layers;
         const parentId = selectedLayer.父级ID || '';
@@ -360,12 +364,12 @@ const GridMapScene: React.FC<Props> = ({
         }
     }, []);
     const inverseViewScale = Math.max(mapViewBox.width / 92, mapViewBox.height / 56);
-    const buildingLabelFontSize = Math.max(0.76, 1.34 * inverseViewScale);
-    const personLabelFontSize = Math.max(0.42, 0.55 * inverseViewScale);
-    const personLabelHeight = Math.max(0.54, 0.74 * inverseViewScale);
-    const personMarkerRadius = Math.max(0.2, 0.3 * inverseViewScale);
-    const playerMarkerRadius = Math.max(0.3, 0.42 * inverseViewScale);
-    const personOuterRadius = Math.max(0.3, 0.46 * inverseViewScale);
+    const buildingLabelFontSize = Math.max(0.96, 1.55 * inverseViewScale);
+    const personLabelFontSize = Math.max(0.82, 1.05 * inverseViewScale);
+    const personLabelHeight = Math.max(0.98, 1.28 * inverseViewScale);
+    const personMarkerRadius = Math.max(0.26, 0.34 * inverseViewScale);
+    const playerMarkerRadius = Math.max(0.34, 0.46 * inverseViewScale);
+    const personOuterRadius = Math.max(0.36, 0.52 * inverseViewScale);
     const personLayouts = useMemo(() => {
         const placed: Array<{ x: number; y: number }> = [];
         const labelBoxes: Array<{ x: number; y: number; width: number; height: number }> = [];
@@ -401,7 +405,7 @@ const GridMapScene: React.FC<Props> = ({
         });
         return orderedPeople.map((person, index) => {
             const source = person?.坐标 || { x: 0, y: 0 };
-            const minGap = personOuterRadius * 2.55;
+            const minGap = personOuterRadius * 3.15;
             let x = 约束数值(Number(source.x) || 0, personOuterRadius, Math.max(personOuterRadius, mapWidth - personOuterRadius));
             let y = 约束数值(Number(source.y) || 0, personOuterRadius, Math.max(personOuterRadius, mapHeight - personOuterRadius));
             const overlaps = (candidateX: number, candidateY: number) => placed.some((point) => Math.hypot(point.x - candidateX, point.y - candidateY) < minGap);
@@ -425,17 +429,17 @@ const GridMapScene: React.FC<Props> = ({
             }
             placed.push({ x, y });
             const isImportant = person?.是否当前玩家 || selectedFeatureId === `person:${person?.ID}`;
-            const labelText = String(person?.名称 || '').slice(0, isImportant ? 6 : 4);
-            const labelWidth = Math.max(1.8 * inverseViewScale, (labelText.length * 0.52 + 0.62) * inverseViewScale);
+            const labelText = person?.是否当前玩家 ? '主角' : String(person?.名称 || '').slice(0, isImportant ? 6 : 4);
+            const labelWidth = Math.max(2.75 * inverseViewScale, (labelText.length * 0.86 + 0.95) * inverseViewScale);
             const offsets = [
                 { dx: 0, dy: -(personOuterRadius + personLabelHeight + 0.18 * inverseViewScale) },
                 { dx: 0, dy: personOuterRadius + 0.18 * inverseViewScale },
-                { dx: personOuterRadius + 0.2 * inverseViewScale, dy: -personLabelHeight / 2 },
-                { dx: -(personOuterRadius + labelWidth + 0.2 * inverseViewScale), dy: -personLabelHeight / 2 },
-                { dx: personOuterRadius + 0.2 * inverseViewScale, dy: -(personOuterRadius + personLabelHeight * 0.55) },
-                { dx: -(personOuterRadius + labelWidth + 0.2 * inverseViewScale), dy: -(personOuterRadius + personLabelHeight * 0.55) },
-                { dx: personOuterRadius + 0.2 * inverseViewScale, dy: personOuterRadius * 0.35 },
-                { dx: -(personOuterRadius + labelWidth + 0.2 * inverseViewScale), dy: personOuterRadius * 0.35 },
+                { dx: personOuterRadius + 0.36 * inverseViewScale, dy: -personLabelHeight / 2 },
+                { dx: -(personOuterRadius + labelWidth + 0.36 * inverseViewScale), dy: -personLabelHeight / 2 },
+                { dx: personOuterRadius + 0.36 * inverseViewScale, dy: -(personOuterRadius + personLabelHeight * 0.75) },
+                { dx: -(personOuterRadius + labelWidth + 0.36 * inverseViewScale), dy: -(personOuterRadius + personLabelHeight * 0.75) },
+                { dx: personOuterRadius + 0.36 * inverseViewScale, dy: personOuterRadius * 0.52 },
+                { dx: -(personOuterRadius + labelWidth + 0.36 * inverseViewScale), dy: personOuterRadius * 0.52 },
             ];
             let bestBox: { x: number; y: number; width: number; height: number } | null = null;
             let bestScore = Number.POSITIVE_INFINITY;
@@ -514,7 +518,7 @@ const GridMapScene: React.FC<Props> = ({
 
     const detailTitle = selectedFeature?.data?.名称 || selectedLayer?.名称 || currentPlace;
     const detailType = selectedFeature?.kind === 'building'
-        ? '建筑面'
+        ? (selectedFeature.data?.分类 === '房间' || selectedFeature.data?.分类 === '外墙' || selectedFeature.data?.分类 === '门' ? '室内结构' : '建筑面')
         : selectedFeature?.kind === 'road'
             ? '道路线'
             : selectedFeature?.kind === 'person'
@@ -554,8 +558,8 @@ const GridMapScene: React.FC<Props> = ({
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#5f3a1e]">
                                 <span className="inline-flex items-center gap-1.5"><i className="h-0 w-5 border-t border-dashed border-[#7e5824]/70" />等高线</span>
                                 {terrainRegions.showWater && <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-4 rounded-sm border border-[#1d6384]/45 bg-[#4fafd3]/45" />水体</span>}
-                                <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-4 rounded-sm border border-[#5c2d0a]/70 bg-[#f5e7c6]" />建筑</span>
-                                <span className="inline-flex items-center gap-1.5"><i className="h-0 w-5 border-t-2 border-[#1f1b13]" />道路</span>
+                                <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-4 rounded-sm border border-[#5c2d0a]/70 bg-[#f5e7c6]" />{selectedLayer?.层级 === '具体地点' && currentLayerRoads.length === 0 ? '房间/结构' : '建筑'}</span>
+                                {currentLayerRoads.length > 0 && <span className="inline-flex items-center gap-1.5"><i className="h-0 w-5 border-t-2 border-[#1f1b13]" />道路</span>}
                                 <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full border border-[#5b4b8a] bg-[#c4b5fd]" />人物</span>
                                 <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full border border-[#8a6a10] bg-[#f9d976]" />主角</span>
                             </div>
@@ -705,17 +709,30 @@ const GridMapScene: React.FC<Props> = ({
                                             pointerEvents="none"
                                         />
                                         {showBuildingLabel && (
-                                            <text
-                                                x={center.x}
-                                                y={center.y}
-                                                textAnchor="middle"
-                                                dominantBaseline="middle"
-                                                fill={active || hit ? '#7a2e0e' : '#3f2a14'}
-                                                fontSize={buildingLabelFontSize}
-                                                pointerEvents="none"
-                                            >
-                                                {building.名称.slice(0, 6)}
-                                            </text>
+                                            <g pointerEvents="none">
+                                                <text
+                                                    x={center.x}
+                                                    y={center.y}
+                                                    textAnchor="middle"
+                                                    dominantBaseline="middle"
+                                                    fill="rgba(255,250,240,0.92)"
+                                                    stroke="rgba(255,250,240,0.92)"
+                                                    strokeWidth={0.38 * inverseViewScale}
+                                                    fontSize={buildingLabelFontSize}
+                                                >
+                                                    {building.名称.slice(0, 6)}
+                                                </text>
+                                                <text
+                                                    x={center.x}
+                                                    y={center.y}
+                                                    textAnchor="middle"
+                                                    dominantBaseline="middle"
+                                                    fill={active || hit ? '#7a2e0e' : '#3f2a14'}
+                                                    fontSize={buildingLabelFontSize}
+                                                >
+                                                    {building.名称.slice(0, 6)}
+                                                </text>
+                                            </g>
                                         )}
                                     </g>
                                 );
@@ -827,12 +844,27 @@ const GridMapScene: React.FC<Props> = ({
                         <div className="mt-2 text-sm leading-6 text-[#4f2d16]">
                             {layerChain.length > 0 ? layerChain.map((layer, index) => (
                                 <span key={layer.ID}>
-                                    <span className={layer.ID === currentLayerId ? 'text-[#b45309] font-bold' : ''}>{layer.名称}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedLayerId(layer.ID)}
+                                        className={`rounded px-1.5 py-0.5 transition-colors ${layer.ID === currentLayerId ? 'bg-[#fff1d6] text-[#b45309] font-bold' : 'hover:bg-[#fff1d6] hover:text-[#b45309]'}`}
+                                    >
+                                        {layer.名称}
+                                    </button>
                                     {index < layerChain.length - 1 ? <span className="mx-1 text-[#a87945]">/</span> : null}
                                 </span>
                             )) : '未命中层级'}
                         </div>
                         <div className="mt-2 text-xs text-[#6f4a26]">{layerSummaryText}</div>
+                        {parentLayer && (
+                            <button
+                                type="button"
+                                onClick={() => setSelectedLayerId(parentLayer.ID)}
+                                className="mt-3 rounded-full border border-[#d8c4a2] bg-[#fffaf0] px-3 py-1.5 text-[11px] text-[#4f2d16] hover:border-[#b45309]/55 hover:text-[#b45309]"
+                            >
+                                返回上一级：{parentLayer.名称}
+                            </button>
+                        )}
                     </div>
 
                     <div className="space-y-2">

@@ -740,6 +740,23 @@ html[data-theme="day"] .sect-modal-body button:disabled {
   opacity: 0.72 !important;
 }
 
+html[data-theme="day"] .auction-house-modal button.auction-house-preview-close,
+html[data-theme="day"] .auction-house-modal [data-auction-preview-close="true"].auction-house-preview-close,
+.auction-house-modal button.auction-house-preview-close {
+  color: #ffffff !important;
+  background: #dc2626 !important;
+  background-color: #dc2626 !important;
+  border-color: #ffffff !important;
+}
+
+html[data-theme="day"] .auction-house-modal button.auction-house-preview-close:hover,
+html[data-theme="day"] .auction-house-modal [data-auction-preview-close="true"].auction-house-preview-close:hover,
+.auction-house-modal button.auction-house-preview-close:hover {
+  background: #ef4444 !important;
+  background-color: #ef4444 !important;
+  border-color: #ffffff !important;
+}
+
 html[data-theme="day"] .left-panel-body [class*="border-gray-"],
 html[data-theme="day"] .left-panel-body [class*="border-white/"],
 html[data-theme="day"] .equipment-modal-body [class*="border-gray-"],

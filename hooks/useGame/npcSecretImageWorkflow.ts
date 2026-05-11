@@ -65,7 +65,7 @@ type NPC秘档部位生图工作流依赖 = {
     更新NPC香闺秘档部位结果: (npcKey: string, part: 香闺秘档部位类型, updater: (current: any) => any) => void;
 };
 
-const 默认额外负面提示词 = 'face, eyes, portrait, headshot, upper body, half body, full body, torso, abdomen, legs, arm, feet, hands, multiple people, extra legs, extra arms, extra breasts, extra nipples, extra fingers, three legs, three breasts, merged body parts, room focus, scenery focus, environment focus, background focus, wide shot, mid shot, text, watermark, speech bubble, dialogue box, blurry, low quality, bad anatomy';
+const 默认额外负面提示词 = 'face, eyes, portrait, headshot, upper body, half body, full body, torso, abdomen, legs, arm, feet, hands, multiple people, extra legs, extra arms, extra breasts, extra nipples, extra fingers, three legs, three breasts, merged body parts, duplicate anatomy, mirrored anatomy, multiple genitals, extra genitals, room focus, scenery focus, environment focus, background focus, wide shot, mid shot, collage, contact sheet, reference sheet, character sheet, split screen, panel layout, comic panel, manga panel, thumbnails, bottom strip, inset image, text, typography, letters, words, caption, subtitle, watermark, signature, logo, speech bubble, dialogue box, blurry, low quality, bad anatomy';
 const 默认裸体正向提示词 = 'nude, naked, unclothed';
 
 const 获取画风标签 = (style?: 当前可用接口结构['画风']): string => {

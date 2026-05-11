@@ -613,7 +613,7 @@ export const 默认功能模型占位: 功能模型占位配置结构 = {
     NovelAI采样器: 'k_euler_ancestral',
     NovelAI噪点表: 'karras',
     NovelAI步数: 28,
-    NovelAI负面提示词: 'lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry',
+    NovelAI负面提示词: 'lowres, bad anatomy, bad hands, text, typography, letters, words, numbers, caption, label, plaque, sign, inscription, Chinese characters, English letters, calligraphy, seal, stamp, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, logo, artist name, web address, url, copyright, subtitle, subtitles, title, poster text, comic text, manga text, dialogue text, speech bubble, dialogue box, word balloon, UI overlay, date stamp, QR code, barcode, blurry',
     NPC生图使用词组转化器: true,
     词组转化兼容模式: false,
     香闺秘档特写强制裸体语义: false,

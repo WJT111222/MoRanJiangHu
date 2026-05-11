@@ -253,6 +253,7 @@ type 独立阶段失败决策参数 = {
     stageId: 独立阶段标识;
     stageLabel: string;
     errorText: string;
+    manualAttempt?: number;
 };
 
 type 规划分析进度 = {

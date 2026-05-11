@@ -112,6 +112,7 @@ type IndependentStageFailureParams = {
     stageId: IndependentStageId;
     stageLabel: string;
     errorText: string;
+    manualAttempt?: number;
 };
 
 interface Props {
@@ -292,6 +293,9 @@ const InputArea: React.FC<Props> = ({
                 onPlanningProgress: (progress) => 记录并设置队列进度('planning', progress, setPlanningProgress),
                 onVariableGenerationProgress: (progress) => 记录并设置队列进度('variable', progress, setVariableGenerationProgress),
                 onStageFailureDecision: async (params) => {
+                    if (params.stageId === 'planning' && (params.manualAttempt || 1) <= 1) {
+                        return 'skip';
+                    }
                     const message = `${params.stageLabel}请求失败：\n\n${params.errorText || '未知错误'}\n\n选择“重试”会重新执行当前阶段；选择“跳过”会继续后续阶段。`;
                     if (requestConfirm) {
                         const accepted = await requestConfirm({
@@ -323,6 +327,9 @@ const InputArea: React.FC<Props> = ({
                     onPlanningProgress: (progress) => 记录并设置队列进度('planning.retry', progress, setPlanningProgress),
                     onVariableGenerationProgress: (progress) => 记录并设置队列进度('variable.retry', progress, setVariableGenerationProgress),
                     onStageFailureDecision: async (params) => {
+                        if (params.stageId === 'planning' && (params.manualAttempt || 1) <= 1) {
+                            return 'skip';
+                        }
                         const message = `${params.stageLabel}请求失败：\n\n${params.errorText || '未知错误'}\n\n选择“重试”会重新执行当前阶段；选择“跳过”会继续后续阶段。`;
                         if (requestConfirm) {
                             const accepted = await requestConfirm({

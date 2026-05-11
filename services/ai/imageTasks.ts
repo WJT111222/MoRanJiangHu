@@ -90,8 +90,11 @@ type NPC秘档部位提示词选项 = {
 };
 type 分词器任务类型 = '角色' | '场景' | '部位特写';
 
-const 自动去水印负面提示词 = 'text, watermark, signature, username, logo, artist name, web address, url, copyright, subtitle';
-const 默认NovelAI负面提示词 = 'photorealistic, realistic, 3d, rendering, unreal engine, octane render, real life, photography, bokeh, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name, border, out of frame';
+const 自动去水印负面提示词 = 'text, typography, letters, words, numbers, caption, label, plaque, sign, inscription, Chinese characters, English letters, calligraphy, seal, stamp, watermark, signature, username, logo, artist name, web address, url, copyright, subtitle, subtitles, title, poster text, comic text, manga text, dialogue text, speech bubble, dialogue box, word balloon, UI overlay, interface text, date stamp, QR code, barcode, poster layout, magazine cover, comic page, comic panel, manga panel, callout, text box, white oval bubble, black outline bubble, overlay, title card, credits, framed text, floating label, name tag';
+const 全局无文字正向提示词 = 'plain single image, clean composition, no graphic design layout, no poster layout, no comic panel, no text overlay, no captions, no subtitles, no callout, no speech bubble, no watermark, no logo, no signature, no typography, no letters, no Chinese characters, no English letters';
+const 部位特写单图正向提示词 = 'single image, one frame, one subject only, extreme close-up macro crop, target fills the frame, plain blurred background, no collage, no panel layout, no reference sheet, no bottom strip';
+const 部位特写反拼贴负面提示词 = 'multiple views, split screen, panel layout, comic panel, comic page, manga panel, story panels, collage, contact sheet, reference sheet, character sheet, turnaround, comparison sheet, montage, triptych, diptych, quadriptych, grid layout, tiled composition, thumbnails, bottom strip, inset image, duplicate anatomy, mirrored anatomy, repeated organ, multiple organs, multiple nipples, extra nipples, multiple genitals, extra genitals';
+const 默认NovelAI负面提示词 = 'photorealistic, realistic, 3d, rendering, unreal engine, octane render, real life, photography, bokeh, lowres, bad anatomy, bad hands, text, typography, letters, words, numbers, caption, label, plaque, sign, inscription, Chinese characters, English letters, calligraphy, seal, stamp, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, logo, blurry, artist name, border, out of frame, subtitles, title, poster text, speech bubble, dialogue box, word balloon, UI overlay, date stamp, QR code, barcode';
 const 默认分词器AI角色提示词 = [
     '你是分词器大师。',
     '你的职责是把输入资料整理成稳定、可执行、可直接投喂图像模型的高质量提示词。',
@@ -1388,11 +1391,14 @@ export const 提取角色锚点提示词 = async (
 const 构建后置正向提示词 = (
     options?: { 构图?: '头像' | '半身' | '立绘' | '场景' | '部位特写'; 场景类型?: 场景生成类型; 尺寸?: string }
 ): string => {
-    return '';
+    return 合并正向提示词片段(
+        全局无文字正向提示词,
+        options?.构图 === '部位特写' ? 部位特写单图正向提示词 : ''
+    );
 };
 
 const 构图附加负面提示词映射: Partial<Record<'头像' | '半身' | '立绘' | '场景' | '部位特写', string>> = {
-    部位特写: 'multiple views, split screen, panel layout, comic panel, comic page, collage, contact sheet, reference sheet, character sheet, turnaround, comparison sheet, montage, triptych, diptych, quadriptych, grid layout, tiled composition'
+    部位特写: 部位特写反拼贴负面提示词
 };
 
 export const 构建最终图片提示词 = (
@@ -1541,6 +1547,71 @@ const 注入ComfyUI工作流占位符 = (
     return value;
 };
 
+const 判断ComfyUI正向文本编码节点 = (node: any): boolean => {
+    const classType = String(node?.class_type || '').toLowerCase();
+    const title = String(node?._meta?.title || node?.title || '').toLowerCase();
+    const text = String(node?.inputs?.text || '').toLowerCase();
+    return typeof node?.inputs?.text === 'string'
+        && /cliptextencode|textencode|prompt/.test(classType)
+        && !/negative|负向|负面|反向/.test(title)
+        && !/lowres|bad anatomy|worst quality|watermark|bad hands|blurry/.test(text);
+};
+
+const 判断ComfyUI负向文本编码节点 = (node: any): boolean => {
+    const classType = String(node?.class_type || '').toLowerCase();
+    const title = String(node?._meta?.title || node?.title || '').toLowerCase();
+    const text = String(node?.inputs?.text || '').toLowerCase();
+    return typeof node?.inputs?.text === 'string'
+        && /cliptextencode|textencode|prompt/.test(classType)
+        && (
+            /negative|负向|负面|反向/.test(title)
+            || /lowres|bad anatomy|worst quality|watermark|bad hands|blurry|__negative_prompt__|\{\{negative_prompt\}\}/.test(text)
+        );
+};
+
+const 补齐ComfyUI负向提示词节点 = (workflow: Record<string, unknown>, negativePrompt: string): Record<string, unknown> => {
+    if (!negativePrompt.trim()) return workflow;
+    const mutable = workflow as Record<string, any>;
+    const nodes = Object.entries(mutable).filter(([, node]) => node && typeof node === 'object');
+    if (nodes.some(([, node]) => 判断ComfyUI负向文本编码节点(node))) return workflow;
+
+    const zeroOutEntry = nodes.find(([, node]) => /conditioningzeroout/i.test(String((node as any)?.class_type || '')));
+    if (!zeroOutEntry) return workflow;
+    const [zeroOutNodeId] = zeroOutEntry;
+
+    const positiveEntry = nodes.find(([, node]) => 判断ComfyUI正向文本编码节点(node))
+        || nodes.find(([, node]) => typeof (node as any)?.inputs?.text === 'string');
+    const clipInput = (positiveEntry?.[1] as any)?.inputs?.clip;
+    if (!Array.isArray(clipInput)) return workflow;
+
+    const numericIds = Object.keys(mutable)
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id));
+    const negativeNodeId = String((numericIds.length ? Math.max(...numericIds) : 0) + 1);
+    mutable[negativeNodeId] = {
+        inputs: {
+            text: negativePrompt,
+            clip: clipInput
+        },
+        class_type: 'CLIPTextEncode',
+        _meta: {
+            title: 'Negative Prompt'
+        }
+    };
+
+    nodes.forEach(([, node]) => {
+        const inputs = (node as any)?.inputs;
+        if (!inputs || typeof inputs !== 'object') return;
+        Object.entries(inputs).forEach(([key, value]) => {
+            const isZeroOutLink = Array.isArray(value) && value[0] === zeroOutNodeId && value[1] === 0;
+            if (isZeroOutLink && /negative|负向|负面|反向/i.test(key)) {
+                inputs[key] = [negativeNodeId, 0];
+            }
+        });
+    });
+    return workflow;
+};
+
 const 构建ComfyUI工作流 = (
     workflowText: string,
     prompt: string,
@@ -1588,7 +1659,8 @@ const 构建ComfyUI工作流 = (
         '{{smea_dyn}}': pngParams?.SMEA动态 === true ? 'true' : 'false'
     };
     const parsed = 解析ComfyUI工作流(workflowText);
-    return 注入ComfyUI工作流占位符(parsed, replacements) as Record<string, unknown>;
+    const injected = 注入ComfyUI工作流占位符(parsed, replacements) as Record<string, unknown>;
+    return 补齐ComfyUI负向提示词节点(injected, negativePrompt);
 };
 
 const 规范化SD采样器与调度器 = (pngParams?: PNG解析参数结构): { samplerName: string; scheduler?: string } => {
@@ -2170,12 +2242,12 @@ const 香闺秘档部位描述字段映射: Record<香闺秘档部位类型, str
 
 const 构建香闺秘档部位特写说明 = (部位: 香闺秘档部位类型): string => {
     if (部位 === '胸部') {
-        return '胸部微距特写 (Breasts Macro Photography)。极近距离裁切，画面完全被胸部占据，聚焦于乳头纹理、乳晕色泽 (Pink nipples, Detailed areola) 以及皮肤的透光感 (Subsurface scattering)，背景需完全虚化或仅保留极小比例。';
+        return '胸部微距特写 (Breasts Macro Photography)。单张画面、单一主体、极近距离裁切，目标部位占据 90% 以上画面，聚焦于乳头纹理、乳晕色泽 (Pink nipples, Detailed areola) 以及皮肤的透光感 (Subsurface scattering)，背景必须简洁虚化，禁止参考页、拼贴、底部小图、分镜和任何文字水印。';
     }
     if (部位 === '小穴') {
-        return '阴部核心特写 (Crotch/Pussy Macro Focus)。超近距离紧裁切，聚焦于花径、湿润程度 (Wetness, Pussy juice) 以及皮肤纹理，强调真实的肉感与微距细节，严禁退回全身或半身视角。';
+        return '阴部核心特写 (Crotch/Pussy Macro Focus)。单张画面、单一主体、超近距离紧裁切，目标部位占据 90% 以上画面，聚焦于花径、湿润程度 (Wetness, Pussy juice) 以及皮肤纹理，强调真实的肉感与微距细节，严禁退回全身或半身视角，禁止参考页、拼贴、底部小图、分镜和任何文字水印。';
     }
-    return '后庭局部特写 (Ass/Anus Extreme Close-up)。超近距离裁切，画面被臀部与后庭占据，聚焦于皮肤褶皱、肉感 (Skin texture, Fleshy) 以及后庭细节 (Detailed anus)，强调微距级别的细节呈现。';
+    return '后庭局部特写 (Ass/Anus Extreme Close-up)。单张画面、单一主体、超近距离裁切，目标部位占据 90% 以上画面，聚焦于皮肤褶皱、肉感 (Skin texture, Fleshy) 以及后庭细节 (Detailed anus)，强调微距级别的细节呈现，禁止参考页、拼贴、底部小图、分镜和任何文字水印。';
 };
 
 const 强化香闺秘档特写词组 = (
@@ -2184,10 +2256,13 @@ const 强化香闺秘档特写词组 = (
 ): string => {
     const source = 清理生图词组输出(prompt);
     if (!source) return source;
-    const deny = /^(?:portrait|headshot|upper body|half body|waist-?up|full body|cowboy shot|wide shot|mid shot|long shot|standing|sitting|kneeling|running|walking|looking at viewer|face focus|facial focus|scenery|environment|landscape|room|indoors|outdoors|background|establishing shot)$/i;
-    return 去重提示词片段(按逗号拆分提示词(source))
+    const deny = /^(?:portrait|headshot|upper body|half body|waist-?up|full body|cowboy shot|wide shot|mid shot|long shot|standing|sitting|kneeling|running|walking|looking at viewer|face focus|facial focus|scenery|environment|landscape|room|indoors|outdoors|background|establishing shot|collage|contact sheet|reference sheet|character sheet|comic panel|manga panel|split screen|multiple views|thumbnail|thumbnails|bottom strip|speech bubble|dialogue box|watermark|signature|logo|text|caption|subtitle)$/i;
+    return 合并正向提示词片段(
+        部位特写单图正向提示词,
+        去重提示词片段(按逗号拆分提示词(source))
         .filter((token) => !deny.test(token))
-        .join(', ');
+            .join(', ')
+    );
 };
 
 export const buildNpcDirectImagePrompt = (
@@ -3156,6 +3231,7 @@ export const generateNpcSecretPartImagePrompt = async (
         '任务：根据输入的角色资料、角色锚点和目标部位描述，生成稳定、可画的英文 tags。',
         '【输出策略】：可以使用 NovelAI 权重分组语法来组织构图、主体、局部细节和附加风格要求，但不要默认补充固定质量串或固定画风串。',
         '【构图规范】：极速聚焦（Macro Focus）。目标部位必须撑满画面，禁止任何退回半身、全身或普通人像的倾向。',
+        '【画面形态】：只能是单张完整画面、单一主体、单一镜头；禁止拼贴、参考页、分镜、宫格、底部小图、缩略图条和任何文字水印。',
         '【视觉纹理】：重点描述 skins texture, subsurface scattering, glistening moisture, soft shadows, rim lighting。',
         '【解剖约束】：严格执行“单体准则”。禁止出现重复乳头、多重生殖器或镜像复制。若资料中包含多项描述，应提炼为单一、稳定的视觉焦点。',
         '【风格对齐】：跟随输入资料、额外要求和风格词，不要擅自附加档案页、参考页、拼贴页、多分镜或固定古风底座。',
@@ -3168,6 +3244,7 @@ export const generateNpcSecretPartImagePrompt = async (
         '你是武侠/仙侠香闺秘档部位特写提示词转换器。',
         '任务：将角色资料、角色锚点与部位描述转化为稳定、可画的生图短语（英文 tags）。',
         '画面要求：纯粹的微距特写 (Macro shot)。目标部位占据 90% 以上画面，强调纹理、颜色、光泽与边缘细节。',
+        '画面形态：只能是单张完整画面、单一主体、单一镜头；禁止拼贴、参考页、分镜、宫格、底部小图、缩略图条和任何文字水印。',
         '禁止退步：严禁生成包含头部、四肢或大幅场景的提示词。',
         '单体约束：画面中只能有一个目标器官，严禁任何形式的解剖重复或畸变镜像。',
         '质感表现：优先体现肤质（如玉、细腻）、湿润感、光影层次（侧逆光、柔光）以及布料的物理挤压关系。',
@@ -3193,6 +3270,7 @@ export const generateNpcSecretPartImagePrompt = async (
         '重点：只保留目标部位特写和最小必要周边，让局部细节完整、清晰、可画。',
         '镜头要求：必须是 extreme close-up / ultra tight crop，目标部位占据画面主体，不能退成普通近景。',
         '数量要求：只允许一个目标部位，不允许重复、镜像复制、并排复制。',
+        '版式要求：只允许单张画面；禁止 collage, contact sheet, reference sheet, panel layout, thumbnails, bottom strip, speech bubble, text, watermark。',
         '禁止内容：face, portrait, upper body, half body, full body, legs, hands, multiple people, room focus, scenery focus。',
         兼容模式 && 风格提示词输入 ? `额外风格正面提示词：${风格提示词输入}` : '',
         额外要求 ? `附加要求：${额外要求}` : '附加要求：无'
@@ -3210,6 +3288,7 @@ export const generateNpcSecretPartImagePrompt = async (
         '画面要求：描述必须具体、可见、可画，优先写形状、颜色、肌理、湿润感、边缘和布料裁切。',
         '镜头要求：必须是 extreme close-up / ultra tight crop，目标部位占据画面主体，不能退成普通近景。',
         '数量要求：只允许一个目标部位，不允许重复、镜像复制、并排复制。',
+        '版式要求：只允许单张画面；禁止 collage, contact sheet, reference sheet, panel layout, thumbnails, bottom strip, speech bubble, text, watermark。',
         '禁止内容：face, portrait, upper body, half body, full body, legs, hands, multiple people, room focus, scenery focus。',
         '格式：请只输出 <提示词>...</提示词>。',
         兼容模式 && 风格提示词输入 ? `额外风格正面提示词：${风格提示词输入}` : '',

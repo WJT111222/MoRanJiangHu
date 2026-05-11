@@ -57,6 +57,67 @@ const 取字符串数组 = (value: unknown): string[] => (
         : []
 );
 
+const 从候选读取文本 = (source: any, keys: string[], fallback = ''): string => {
+    if (!source || typeof source !== 'object') return fallback;
+    for (const key of keys) {
+        const text = 取文本(source?.[key]);
+        if (text) return text;
+    }
+    return fallback;
+};
+
+const 从候选读取数值 = (source: any, keys: string[], fallback = 0): number => {
+    if (!source || typeof source !== 'object') return fallback;
+    for (const key of keys) {
+        const value = source?.[key];
+        if (value === undefined || value === null || value === '') continue;
+        const parsed = 取数字(value, Number.NaN);
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    return fallback;
+};
+
+const 从候选读取字符串数组 = (source: any, keys: string[]): string[] => {
+    if (!source || typeof source !== 'object') return [];
+    for (const key of keys) {
+        const list = 取字符串数组(source?.[key]);
+        if (list.length > 0) return list;
+    }
+    return [];
+};
+
+const 从候选读取坐标 = (source: any, keys: string[]): 地图坐标点结构 | null => {
+    if (!source || typeof source !== 'object') return null;
+    for (const key of keys) {
+        const point = 解析坐标点(source?.[key]);
+        if (point) return point;
+    }
+    const x = 从候选读取数值(source, ['x', 'X', '横坐标', '坐标X'], Number.NaN);
+    const y = 从候选读取数值(source, ['y', 'Y', '纵坐标', '坐标Y'], Number.NaN);
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+};
+
+const 读取地图层级类型 = (item: any): 地图层级类型 => {
+    const raw = 从候选读取文本(item, ['层级', '等级', '级别', '类型', '地图层级']);
+    if ((['大地点', '中地点', '小地点', '具体地点'] as const).includes(raw as 地图层级类型)) return raw as 地图层级类型;
+    if (/国家|天下|州郡|郡国|区域|国域/u.test(raw)) return '大地点';
+    if (/城市|城镇|城池|宗门|门派|坊市|县城|府城/u.test(raw)) return '中地点';
+    if (/街区|院落|山谷|村庄|建筑群|小地点|街坊|片区/u.test(raw)) return '小地点';
+    if (/室内|房间|寝居|卧房|内室|具体地点|建筑物内部/u.test(raw)) return '具体地点';
+    return '小地点';
+};
+
+const 从层级推断归属 = (item: any, layerType: 地图层级类型, name: string): 地点归属结构 => {
+    const base = 规范化地点归属(item?.归属);
+    const big = 取文本(base.大地点 || item?.大地点 || item?.国家 || item?.州郡 || item?.上级大地点);
+    const mid = 取文本(base.中地点 || item?.中地点 || item?.城市 || item?.城镇 || item?.宗门 || item?.上级中地点);
+    const small = 取文本(base.小地点 || item?.小地点 || item?.街区 || item?.院落 || item?.建筑 || item?.上级小地点);
+    if (layerType === '大地点') return { 大地点: big || name, 中地点: '', 小地点: '' };
+    if (layerType === '中地点') return { 大地点: big, 中地点: mid || name, 小地点: '' };
+    if (layerType === '小地点') return { 大地点: big, 中地点: mid, 小地点: small || name };
+    return { 大地点: big, 中地点: mid, 小地点: small };
+};
+
 export const 归一化地图文本 = (value: unknown): string => (
     String(value || '').trim().replace(/\s+/g, '').toLowerCase()
 );
@@ -264,6 +325,11 @@ const 是否室内居所位置 = (text: unknown): boolean => 文本包含任一(
     '庄',
 ]);
 
+const 是否室内层级 = (layer?: 地图层级结构 | null): boolean => {
+    if (!layer || layer.层级 !== '具体地点') return false;
+    return 是否室内居所位置(`${layer.名称}${layer.描述}${layer.归属?.小地点 || ''}`);
+};
+
 const 是否野外位置 = (text: unknown): boolean => (
     !是否室内居所位置(text)
     && 文本包含任一(text, [
@@ -307,6 +373,7 @@ const 是否近身位置 = (text: unknown): boolean => 文本包含任一(text, 
 ]);
 
 const 是否聚落层级 = (layer: 地图层级结构): boolean => {
+    if (是否室内层级(layer)) return false;
     const text = `${layer.名称}${layer.描述}${layer.归属.中地点}${layer.归属.小地点}`;
     if (是否野外位置(text)) return false;
     if (文本包含任一(text, ['镇', '城', '坊', '市', '街', '巷', '村', '庄', '院', '宅', '府', '馆', '楼', '铺', '坊市', '客栈'])) return true;
@@ -636,6 +703,115 @@ const 计算矩形布局 = (
     );
 };
 
+const 计算父层子层入口布局 = (
+    parent: 地图层级结构,
+    child: 地图层级结构,
+    siblings: 地图层级结构[],
+    index: number
+): 地图四角坐标结构 => {
+    const marginX = Math.max(2.2, parent.网格宽度 * 0.1);
+    const marginY = Math.max(2.0, parent.网格高度 * 0.1);
+    const usableWidth = Math.max(4, parent.网格宽度 - marginX * 2);
+    const usableHeight = Math.max(4, parent.网格高度 - marginY * 2);
+    const anchors = siblings.map((item) => ({
+        x: Number(item.锚点坐标?.x),
+        y: Number(item.锚点坐标?.y),
+    })).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+    const minX = anchors.length > 0 ? Math.min(...anchors.map((point) => point.x)) : 0;
+    const maxX = anchors.length > 0 ? Math.max(...anchors.map((point) => point.x)) : 0;
+    const minY = anchors.length > 0 ? Math.min(...anchors.map((point) => point.y)) : 0;
+    const maxY = anchors.length > 0 ? Math.max(...anchors.map((point) => point.y)) : 0;
+    const rangeX = maxX - minX;
+    const rangeY = maxY - minY;
+    const columns = Math.max(1, Math.ceil(Math.sqrt(Math.max(1, siblings.length))));
+    const rows = Math.max(1, Math.ceil(Math.max(1, siblings.length) / columns));
+    const gridX = ((index % columns) + 0.5) / columns;
+    const gridY = (Math.floor(index / columns) + 0.5) / rows;
+    const childAnchor = {
+        x: Number(child.锚点坐标?.x),
+        y: Number(child.锚点坐标?.y),
+    };
+    const normalizedX = rangeX > 0.01 && Number.isFinite(childAnchor.x)
+        ? (childAnchor.x - minX) / rangeX
+        : gridX;
+    const normalizedY = rangeY > 0.01 && Number.isFinite(childAnchor.y)
+        ? (childAnchor.y - minY) / rangeY
+        : gridY;
+    const centerX = marginX + 限制数值(normalizedX, 0.08, 0.92) * usableWidth;
+    const centerY = marginY + 限制数值(normalizedY, 0.08, 0.92) * usableHeight;
+    const width = child.层级 === '中地点'
+        ? Math.min(7.2, Math.max(4.8, parent.网格宽度 * 0.12))
+        : child.层级 === '小地点'
+            ? Math.min(6.2, Math.max(4.1, parent.网格宽度 * 0.11))
+            : Math.min(5.2, Math.max(3.4, parent.网格宽度 * 0.095));
+    const height = child.层级 === '中地点'
+        ? Math.min(5.2, Math.max(3.5, parent.网格高度 * 0.09))
+        : child.层级 === '小地点'
+            ? Math.min(4.6, Math.max(3.0, parent.网格高度 * 0.085))
+            : Math.min(3.9, Math.max(2.4, parent.网格高度 * 0.075));
+    return 创建矩形四角(
+        限制数值(centerX - width / 2, 0.8, Math.max(0.8, parent.网格宽度 - width - 0.8)),
+        限制数值(centerY - height / 2, 0.8, Math.max(0.8, parent.网格高度 - height - 0.8)),
+        width,
+        height
+    );
+};
+
+const 计算室内结构布局 = (
+    layer: 地图层级结构,
+    index: number,
+    total: number,
+    category?: string
+): 地图四角坐标结构 => {
+    const type = 取文本(category);
+    if (type === '外墙') {
+        return 创建矩形四角(0.8, 0.8, Math.max(3, layer.网格宽度 - 1.6), Math.max(3, layer.网格高度 - 1.6));
+    }
+    if (type === '门') {
+        const doorWidth = Math.min(3.2, Math.max(2.2, layer.网格宽度 * 0.14));
+        return 创建矩形四角((layer.网格宽度 - doorWidth) / 2, layer.网格高度 - 1.75, doorWidth, 0.7);
+    }
+    const roomIndex = Math.max(0, index - 1);
+    const roomTotal = Math.max(1, total - 2);
+    const columns = roomTotal <= 2 ? roomTotal : 2;
+    const rows = Math.max(1, Math.ceil(roomTotal / columns));
+    const paddingX = 3.0;
+    const paddingY = 3.0;
+    const usableWidth = Math.max(8, layer.网格宽度 - paddingX * 2);
+    const usableHeight = Math.max(8, layer.网格高度 - paddingY * 2.4);
+    const cellWidth = usableWidth / Math.max(1, columns);
+    const cellHeight = usableHeight / rows;
+    const width = Math.max(4.6, cellWidth * 0.82);
+    const height = Math.max(3.6, cellHeight * 0.72);
+    const column = roomIndex % Math.max(1, columns);
+    const row = Math.floor(roomIndex / Math.max(1, columns));
+    const x = paddingX + column * cellWidth + (cellWidth - width) / 2;
+    const y = paddingY + row * cellHeight + (cellHeight - height) / 2;
+    return 创建矩形四角(
+        限制数值(x, 1.4, Math.max(1.4, layer.网格宽度 - width - 1.4)),
+        限制数值(y, 1.4, Math.max(1.4, layer.网格高度 - height - 1.4)),
+        Math.min(width, layer.网格宽度 - 2.8),
+        Math.min(height, layer.网格高度 - 2.8)
+    );
+};
+
+const 构建室内结构名称列表 = (layer: 地图层级结构): Array<{ name: string; category: string; desc: string }> => {
+    const layerName = 取文本(layer.名称, '室内');
+    const isLargeResidence = 文本包含任一(layerName, ['院', '庄', '府', '馆', '楼', '阁', '堂']);
+    const rooms = isLargeResidence
+        ? ['正厅', '内室', '侧厢', '屏风间']
+        : ['起居间', '寝榻区', '屏风间'];
+    return [
+        { name: `${layerName}外墙`, category: '外墙', desc: `${layerName} 的外墙轮廓，用来标示室内边界。` },
+        ...rooms.map((room) => ({
+            name: `${layerName}${room}`,
+            category: '房间',
+            desc: `${layerName} 内的${room}。`,
+        })),
+        { name: `${layerName}门`, category: '门', desc: `${layerName} 的出入口。` },
+    ];
+};
+
 const 计算道路附近落点 = (
     point: 地图坐标点结构,
     layer: 地图层级结构,
@@ -757,28 +933,27 @@ const 规范化地图层级列表 = (world: any): 地图层级结构[] => (
     Array.isArray(world?.地图层级)
         ? world.地图层级
             .map((item: any, index: number) => {
-                const ownership = 规范化地点归属(item?.归属);
-                const layerType = (['大地点', '中地点', '小地点', '具体地点'] as const).includes(item?.层级)
-                    ? item.层级 as 地图层级类型
-                    : '小地点';
+                const name = 从候选读取文本(item, ['名称', '名字', '地点名称', 'name'], `未命名层级${index + 1}`);
+                const layerType = 读取地图层级类型(item);
+                const ownership = 从层级推断归属(item, layerType, name);
                 const size = 获取层级尺寸(layerType);
-                const width = Math.max(8, 取数字(item?.网格宽度, size.width));
-                const height = Math.max(8, 取数字(item?.网格高度, size.height));
-                const name = 取文本(item?.名称, `未命名层级${index + 1}`);
+                const range = item?.范围 && typeof item.范围 === 'object' ? item.范围 : {};
+                const width = Math.max(8, 从候选读取数值(item, ['网格宽度', '宽度', 'width', '宽'], 从候选读取数值(range, ['宽', '宽度', 'width'], size.width)));
+                const height = Math.max(8, 从候选读取数值(item, ['网格高度', '高度', 'height', '高'], 从候选读取数值(range, ['高', '高度', 'height'], size.height)));
                 return {
-                    ID: 取文本(item?.ID, 生成地图对象ID('layer', layerType, ownership.大地点, ownership.中地点, ownership.小地点, name, index)),
+                    ID: 从候选读取文本(item, ['ID', 'id', 'Id', '层级ID'], 生成地图对象ID('layer', layerType, ownership.大地点, ownership.中地点, ownership.小地点, name, index)),
                     名称: name,
                     层级: layerType,
-                    描述: 取文本(item?.描述),
+                    描述: 从候选读取文本(item, ['描述', '说明', '简介', 'description']),
                     归属: ownership,
-                    父级ID: 取文本(item?.父级ID),
-                    锚点坐标: 规范化坐标点(item?.锚点坐标 ?? item?.坐标 ?? item?.父层坐标, { x: index * 12, y: index * 9 }),
+                    父级ID: 从候选读取文本(item, ['父级ID', '父ID', '父层ID', 'parentId', 'parentID']),
+                    锚点坐标: 从候选读取坐标(item, ['锚点坐标', '中心坐标', '坐标', '父层坐标', '位置']) || { x: index * 12, y: index * 9 },
                     网格宽度: width,
                     网格高度: height,
-                    边界四角坐标: 规范化四角(item?.边界四角坐标, width, height),
-                    建筑物ID列表: 取字符串数组(item?.建筑物ID列表 ?? item?.建筑列表),
-                    道路ID列表: 取字符串数组(item?.道路ID列表 ?? item?.道路列表),
-                    人物ID列表: 取字符串数组(item?.人物ID列表 ?? item?.人物列表),
+                    边界四角坐标: 规范化四角(item?.边界四角坐标 ?? item?.四角坐标 ?? item?.范围四角, width, height),
+                    建筑物ID列表: 从候选读取字符串数组(item, ['建筑物ID列表', '建筑列表', '主要建筑', '建筑物', '建筑']),
+                    道路ID列表: 从候选读取字符串数组(item, ['道路ID列表', '道路列表', '主要道路', '道路']),
+                    人物ID列表: 从候选读取字符串数组(item, ['人物ID列表', '人物列表', '人物']),
                 };
             })
             .filter((item) => item.名称 || item.描述)
@@ -1091,6 +1266,15 @@ const 从旧版字段派生地图空间 = (
         buildingLookup.set(`${building.所在层级ID}|${归一化地图文本(building.名称)}`, building.ID);
     });
 
+    const 通过归属查找层级ID = (
+        layerType: 地图层级类型,
+        ownership: 地点归属结构,
+        name: string
+    ): string => {
+        const matched = layers.find((layer) => layer.层级 === layerType && 匹配层级与归属(layer, ownership, name));
+        return matched?.ID || '';
+    };
+
     const selectTargetLayerForBuilding = (building: any): string => {
         const ownership = 规范化地点归属(building?.归属);
         const buildingName = 取文本(building?.名称);
@@ -1118,26 +1302,129 @@ const 从旧版字段派生地图空间 = (
         desc?: string;
         ownership: 地点归属结构;
         category?: string;
+        quad?: 地图四角坐标结构;
     }) => {
         const key = `${params.layerId}|${归一化地图文本(params.name)}`;
         if (!params.layerId || !params.name || buildingLookup.has(key)) return;
         const layer = layerById.get(params.layerId);
         if (!layer) return;
         const layerBuildings = buildingLayers.get(params.layerId) || [];
+        const nextIndex = layerBuildings.length;
+        const nextTotal = Math.max(nextIndex + 1, 1);
         const building: 地图建筑结构 = {
             ID: 生成地图对象ID('building', params.layerId, params.name),
             名称: params.name,
-            描述: 取文本(params.desc, `${params.name} 的建筑轮廓。`),
+            描述: 取文本(params.desc, 是否室内层级(layer) ? `${params.name} 的室内结构轮廓。` : `${params.name} 的建筑轮廓。`),
             归属: { ...params.ownership },
             所在层级ID: params.layerId,
-            分类: 取文本(params.category, '建筑'),
-            四角坐标: 计算矩形布局(layer, layerBuildings.length, Math.max(layerBuildings.length + 1, 1)),
+            分类: 取文本(params.category, 是否室内层级(layer) ? '房间' : '建筑'),
+            四角坐标: params.quad || (是否室内层级(layer)
+                ? 计算室内结构布局(layer, nextIndex, nextTotal, params.category)
+                : 计算矩形布局(layer, nextIndex, nextTotal)),
         };
         layerBuildings.push(building);
         buildingLayers.set(params.layerId, layerBuildings);
         buildings.push(building);
         buildingLookup.set(key, building.ID);
     };
+
+    layers.forEach((layer) => {
+        const source = (Array.isArray(world?.地图层级) ? world.地图层级 : []).find((item: any) => (
+            层级名称命中(从候选读取文本(item, ['ID', 'id', 'Id', '层级ID']), layer.ID)
+            || 层级名称命中(从候选读取文本(item, ['名称', '名字', '地点名称', 'name']), layer.名称)
+        ));
+        if (!source) return;
+        const rawBuildings = 从候选读取字符串数组(source, ['主要建筑', '建筑列表', '建筑物', '建筑']);
+        rawBuildings.forEach((name, index) => {
+            const isSpecificName = layer.层级 === '小地点' || 是否室内居所位置(name);
+            const childOwnership = {
+                大地点: layer.归属.大地点,
+                中地点: layer.归属.中地点,
+                小地点: layer.层级 === '小地点' ? layer.归属.小地点 : '',
+            };
+            const childId = isSpecificName
+                ? 通过归属查找层级ID('具体地点', childOwnership, name)
+                : layer.层级 === '大地点'
+                    ? 通过归属查找层级ID('中地点', { 大地点: layer.归属.大地点, 中地点: name, 小地点: '' }, name)
+                    : layer.层级 === '中地点'
+                        ? 通过归属查找层级ID('小地点', { 大地点: layer.归属.大地点, 中地点: layer.归属.中地点 || layer.名称, 小地点: name }, name)
+                        : '';
+            if (childId) return;
+            ensureBuilding({
+                layerId: layer.ID,
+                name,
+                desc: `${name} 属于 ${layer.名称} 的平面要素。`,
+                ownership: childOwnership,
+                category: layer.层级 === '大地点'
+                    ? '城市/区域'
+                    : layer.层级 === '中地点'
+                        ? '小地点入口'
+                        : isSpecificName
+                            ? '室内入口'
+                            : '建筑',
+                quad: 计算矩形布局(layer, index, rawBuildings.length),
+            });
+        });
+    });
+
+    const findParentLayer = (layer: 地图层级结构): 地图层级结构 | null => {
+        if (layer.层级 === '大地点') return null;
+        const candidates = layer.层级 === '中地点'
+            ? layers.filter((candidate) => candidate.层级 === '大地点')
+            : layer.层级 === '小地点'
+                ? layers.filter((candidate) => candidate.层级 === '中地点' || candidate.层级 === '大地点')
+                : layers.filter((candidate) => candidate.层级 === '小地点' || candidate.层级 === '中地点' || candidate.层级 === '大地点');
+        return candidates
+            .map((candidate) => {
+                let score = 0;
+                if (layer.归属.大地点 && 层级名称命中(candidate.名称, layer.归属.大地点)) score += 50;
+                if (layer.归属.中地点 && (层级名称命中(candidate.名称, layer.归属.中地点) || 层级名称命中(candidate.归属.中地点, layer.归属.中地点))) score += 40;
+                if (layer.归属.小地点 && (层级名称命中(candidate.名称, layer.归属.小地点) || 层级名称命中(candidate.归属.小地点, layer.归属.小地点))) score += 35;
+                if (candidate.层级 === '小地点') score += layer.层级 === '具体地点' ? 18 : 0;
+                if (candidate.层级 === '中地点') score += layer.层级 === '小地点' ? 18 : layer.层级 === '具体地点' ? 8 : 0;
+                if (candidate.层级 === '大地点') score += layer.层级 === '中地点' ? 18 : 2;
+                return { candidate, score };
+            })
+            .filter((item) => item.score > 0 && item.candidate.ID !== layer.ID)
+            .sort((left, right) => right.score - left.score)[0]?.candidate || null;
+    };
+
+    layers.forEach((layer) => {
+        if (layer.父级ID && layerById.has(layer.父级ID)) return;
+        const parent = findParentLayer(layer);
+        if (parent) layer.父级ID = parent.ID;
+    });
+
+    const childLayersByParent = new Map<string, 地图层级结构[]>();
+    layers.forEach((layer) => {
+        const parentId = 取文本(layer.父级ID);
+        if (!parentId || !layerById.has(parentId)) return;
+        const bucket = childLayersByParent.get(parentId) || [];
+        bucket.push(layer);
+        childLayersByParent.set(parentId, bucket);
+    });
+
+    childLayersByParent.forEach((childLayers, parentId) => {
+        const parent = layerById.get(parentId);
+        if (!parent || 是否室内层级(parent)) return;
+        childLayers.forEach((childLayer, index) => {
+            const category = childLayer.层级 === '中地点'
+                ? '城市/区域'
+                : childLayer.层级 === '小地点'
+                    ? '小地点入口'
+                    : 是否室内层级(childLayer)
+                        ? '室内入口'
+                        : '地点入口';
+            ensureBuilding({
+                layerId: parent.ID,
+                name: childLayer.名称,
+                desc: `${childLayer.名称} 在 ${parent.名称} 中的层级入口。`,
+                ownership: childLayer.归属,
+                category,
+                quad: 计算父层子层入口布局(parent, childLayer, childLayers, index),
+            });
+        });
+    });
 
     内部建筑映射.forEach((names, layerId) => {
         const ownership = layerById.get(layerId)?.归属 || { 大地点: '', 中地点: '', 小地点: '' };
@@ -1167,13 +1454,17 @@ const 从旧版字段派生地图空间 = (
         const specificLayer = layers.find((layer) => layer.层级 === '具体地点' && 层级名称命中(layer.名称, envSpecificName));
         const layerId = specificLayer?.ID || envSmallId || envMidId || envBigId || '';
         const ownership = specificLayer?.归属 || envOwnership;
-        ensureBuilding({
-            layerId,
-            name: envSpecificName,
-            desc: `${envSpecificName} 是当前地点的室内或院落空间，不按野外空地处理。`,
-            ownership,
-            category: /院|庄/.test(envSpecificName) ? '院落' : '居所',
-        });
+        if (specificLayer) {
+            构建室内结构名称列表(specificLayer).forEach((structure) => {
+                ensureBuilding({
+                    layerId,
+                    name: structure.name,
+                    desc: structure.desc,
+                    ownership,
+                    category: structure.category,
+                });
+            });
+        }
     }
 
     const peopleHintByLayer = new Map<string, number>();
@@ -1204,6 +1495,21 @@ const 从旧版字段派生地图空间 = (
     registerPeopleHint(envCurrentLayer?.ID || envSmallId || envMidId || envBigId || '');
 
     layers.forEach((layer) => {
+        if (是否室内层级(layer)) {
+            const existing = buildingLayers.get(layer.ID) || [];
+            if (existing.length === 0) {
+                构建室内结构名称列表(layer).forEach((structure) => {
+                    ensureBuilding({
+                        layerId: layer.ID,
+                        name: structure.name,
+                        desc: structure.desc,
+                        ownership: layer.归属,
+                        category: structure.category,
+                    });
+                });
+            }
+            return;
+        }
         if (!是否聚落层级(layer)) return;
         const existing = buildingLayers.get(layer.ID) || [];
         const targetCount = 获取聚落目标建筑数量(layer, existing.length, peopleHintByLayer.get(layer.ID) || 0);
@@ -1226,7 +1532,10 @@ const 从旧版字段派生地图空间 = (
         const layer = layerById.get(building.所在层级ID);
         if (!layer) return;
         const siblings = buildings.filter((item) => item.所在层级ID === building.所在层级ID);
-        if (!building.四角坐标 || building.四角坐标.length < 4) {
+        if (是否室内层级(layer)) {
+            const indoorIndex = siblings.findIndex((item) => item.ID === building.ID);
+            building.四角坐标 = 计算室内结构布局(layer, indoorIndex >= 0 ? indoorIndex : index, Math.max(siblings.length, 1), building.分类);
+        } else if (!building.四角坐标 || building.四角坐标.length < 4) {
             building.四角坐标 = 计算矩形布局(layer, index, Math.max(siblings.length, 1));
         }
         追加唯一值(layer.建筑物ID列表, building.ID);
@@ -1237,10 +1546,16 @@ const 从旧版字段派生地图空间 = (
     
     layers.forEach((layer) => {
         const layerBuildings = buildings.filter((building) => building.所在层级ID === layer.ID);
+        if (是否室内层级(layer)) {
+            layerBuildings.forEach((building, index) => {
+                building.四角坐标 = 计算室内结构布局(layer, index, Math.max(layerBuildings.length, 1), building.分类);
+            });
+            return;
+        }
         
         // 先尝试使用新的布局优化器
         const 优化结果 = 优化地图布局(layer, layerBuildings);
-        if (优化结果.建筑.length > 0) {
+        if (优化结果.建筑.length > 0 && 优化结果.道路.length > 0) {
             // 应用优化后的建筑布局
             优化结果.建筑.forEach((优化建筑, index) => {
                 if (layerBuildings[index]) {
@@ -1283,6 +1598,7 @@ const 按层级补齐道路 = (
     
     // 首先添加优化器生成的道路
     优化器道路列表.forEach(({ layer, roads: optimizerRoads }) => {
+        if (是否室内层级(layer)) return;
         optimizerRoads.forEach((roadData) => {
             const key = `${layer.ID}|${归一化地图文本(roadData.name)}`;
             if (roadLookup.has(key)) return; // 避免重复
@@ -1304,6 +1620,15 @@ const 按层级补齐道路 = (
     });
 
     layers.forEach((layer) => {
+        if (是否室内层级(layer)) {
+            for (let index = roads.length - 1; index >= 0; index -= 1) {
+                if (roads[index].所在层级ID !== layer.ID) continue;
+                roadLookup.delete(`${roads[index].所在层级ID}|${归一化地图文本(roads[index].名称)}`);
+                roads.splice(index, 1);
+            }
+            layer.道路ID列表 = [];
+            return;
+        }
         const layerBuildings = buildings.filter((building) => building.所在层级ID === layer.ID);
         const layerBounds = layerBuildings.length > 0
             ? layerBuildings.reduce((bounds, building) => {
@@ -1729,6 +2054,17 @@ const 查找当前层级 = (
         : [];
 
     if (matchedBuildings.length > 0) {
+        const exactLayer = 查找最佳名称层级(layers, '具体地点', env?.具体地点);
+        if (exactLayer) {
+            const layerBuildings = buildings.filter((building) => building.所在层级ID === exactLayer.ID);
+            const exactMatchedBuildings = layerBuildings.filter((building) => 层级名称命中(building.名称, currentPlace));
+            return {
+                layer: exactLayer,
+                matchedBuildingIds: exactMatchedBuildings.length > 0
+                    ? exactMatchedBuildings.map((item) => item.ID)
+                    : []
+            };
+        }
         const layer = layers.find((item) => item.ID === matchedBuildings[0].所在层级ID) || null;
         return { layer, matchedBuildingIds: matchedBuildings.map((item) => item.ID) };
     }

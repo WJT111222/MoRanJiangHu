@@ -126,6 +126,11 @@ const 状态文案: Record<图片生成状态类型, string> = {
     pending: '生成中'
 };
 
+const 获取图片状态文案 = (result?: { 状态?: 图片生成状态类型; 来源?: string } | null): string => {
+    if ((result?.来源 || '') === 'hosted') return '无需生图';
+    return 状态文案[result?.状态 || 'success'];
+};
+
 const 队列状态样式: Record<NPC生图任务记录['状态'], string> = {
     queued: 'border-slate-700 text-slate-300 bg-slate-950/40',
     running: 'border-sky-700 text-sky-300 bg-sky-950/30',
@@ -2734,7 +2739,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                                 
                                                 <div className="absolute top-2 left-2 flex flex-col gap-1.5 opacity-90 transition-opacity group-hover:opacity-100">
                                                     <span className={`text-[10px] px-2 py-0.5 rounded border inline-block w-fit backdrop-blur bg-black/60 shadow-md ${状态样式[status]}`}>
-                                                        {状态文案[status]}
+                                                        {获取图片状态文案(result)}
                                                     </span>
                                                     {当前用途标签.map((label) => (
                                                         <span
@@ -2920,7 +2925,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                     <div key={item.id} className="rounded border border-cyan-400/15 bg-black/35 px-3 py-2 text-[11px]">
                                         <div className="flex items-center justify-between gap-2">
                                             <span className="truncate font-serif text-cyan-100" title={item.物品名称}>{item.物品名称}</span>
-                                            <span className={`shrink-0 rounded border px-1.5 py-0.5 ${状态样式[item.状态 || 'success']}`}>{状态文案[item.状态 || 'success']}</span>
+                                            <span className={`shrink-0 rounded border px-1.5 py-0.5 ${状态样式[item.状态 || 'success']}`}>{获取图片状态文案(item)}</span>
                                         </div>
                                         <div className="mt-1 flex flex-wrap gap-2 text-cyan-100/55">
                                             <span>{item.构图 || '物品图'}</span>
@@ -3376,7 +3381,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                                     
                                                     <div className="absolute top-2 left-2 flex flex-col gap-1.5 opacity-90 transition-opacity group-hover:opacity-100">
                                                         <span className={`text-[10px] px-2 py-0.5 rounded border inline-block w-fit backdrop-blur bg-black/60 shadow-md ${状态样式[status]}`}>
-                                                            {状态文案[status]}
+                                                            {获取图片状态文案(result)}
                                                         </span>
                                                         {isCurrentWallpaper && (
                                                             <span className="rounded border border-wuxia-gold/60 bg-wuxia-gold/20 backdrop-blur-sm px-2 py-0.5 text-[10px] text-wuxia-gold shadow-[0_0_10px_rgba(212,175,55,0.3)] w-fit">
@@ -3541,7 +3546,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                                 )}
                                                 <div className="absolute top-2 left-2 flex flex-col gap-1.5 opacity-90 transition-opacity group-hover:opacity-100">
                                                     <span className={`text-[10px] px-2 py-0.5 rounded border inline-block w-fit backdrop-blur bg-black/60 shadow-md ${状态样式[status]}`}>
-                                                        {状态文案[status]}
+                                                        {获取图片状态文案(result)}
                                                     </span>
                                                     <span className="rounded border border-wuxia-gold/40 bg-black/60 backdrop-blur-sm px-2 py-0.5 text-[10px] text-wuxia-gold/80 shadow-md w-fit">
                                                         场景
@@ -3676,7 +3681,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                             )}
                                             <div className="absolute top-2 left-2 flex flex-col gap-1.5 opacity-90 transition-opacity group-hover:opacity-100">
                                                 <span className={`text-[10px] px-2 py-0.5 rounded border inline-block w-fit backdrop-blur bg-black/60 shadow-md ${状态样式[status]}`}>
-                                                    {状态文案[status]}
+                                                    {获取图片状态文案(result)}
                                                 </span>
                                                 <span className="rounded border border-wuxia-gold/40 bg-black/60 backdrop-blur-sm px-2 py-0.5 text-[10px] text-wuxia-gold/80 shadow-md w-fit">
                                                     角色
