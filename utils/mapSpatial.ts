@@ -423,10 +423,8 @@ const 生成序号文本 = (index: number): string => String(index + 1).padStart
 
 const 获取聚落目标建筑数量 = (layer: 地图层级结构, currentCount: number, peopleHint = 0): number => {
     if (!是否聚落层级(layer)) return currentCount;
-    const base = layer.层级 === '具体地点' ? 6 : layer.层级 === '小地点' ? 14 : 10;
-    const byPeople = Math.ceil(Math.max(0, peopleHint) * 0.8);
-    const byArea = Math.floor((layer.网格宽度 * layer.网格高度) / 90);
-    return Math.max(currentCount, Math.min(28, Math.max(base, byPeople, byArea)));
+    const byPeople = Math.min(4, Math.ceil(Math.max(0, peopleHint) * 0.6));
+    return Math.max(currentCount, byPeople);
 };
 
 const 计算野外坐标 = (
@@ -508,6 +506,37 @@ const 建筑边界重叠 = (
     && left.maxX + gap > right.minX
     && left.minY < right.maxY + gap
     && left.maxY + gap > right.minY
+);
+
+const 线段边界相交 = (
+    from: 地图坐标点结构,
+    to: 地图坐标点结构,
+    bounds: { minX: number; maxX: number; minY: number; maxY: number }
+): boolean => {
+    const minX = Math.min(from.x, to.x);
+    const maxX = Math.max(from.x, to.x);
+    const minY = Math.min(from.y, to.y);
+    const maxY = Math.max(from.y, to.y);
+    return minX <= bounds.maxX
+        && maxX >= bounds.minX
+        && minY <= bounds.maxY
+        && maxY >= bounds.minY;
+};
+
+const 路径触及边界 = (
+    points: 地图坐标点结构[],
+    bounds: { minX: number; maxX: number; minY: number; maxY: number }
+): boolean => (
+    points.some((point) => (
+        point.x >= bounds.minX
+        && point.x <= bounds.maxX
+        && point.y >= bounds.minY
+        && point.y <= bounds.maxY
+    ))
+    || points.some((point, index) => {
+        const next = points[index + 1];
+        return next ? 线段边界相交(point, next, bounds) : false;
+    })
 );
 
 const 避让层级建筑重叠 = (
@@ -890,33 +919,31 @@ const 计算人物避让落点 = (
     return next;
 };
 
+const 是否卷轴路线 = (road?: Pick<地图道路结构, '名称'> | null): boolean => (
+    /卷轴路线|卷轴连线|图内连线|邻近路径/u.test(road?.名称 || '')
+);
+
 const 重排离散建筑布局 = (
     layer: 地图层级结构,
     layerBuildings: 地图建筑结构[]
 ) => {
     if (layerBuildings.length <= 1) return;
     if (是否聚落层级(layer)) {
+        const center = { x: layer.网格宽度 * 0.5, y: layer.网格高度 * 0.52 };
+        const radiusX = Math.min(layer.网格宽度 * 0.34, Math.max(layer.网格宽度 * 0.24, 8));
+        const radiusY = Math.min(layer.网格高度 * 0.24, Math.max(layer.网格高度 * 0.16, 5));
         const total = layerBuildings.length;
-        const rows = Math.max(2, Math.min(5, Math.ceil(Math.sqrt(total * 0.58))));
-        const columns = Math.max(3, Math.ceil(total / rows));
-        const roadGap = 1.6;
-        const blockWidth = Math.min(layer.网格宽度 * 0.76, Math.max(14, columns * 3.8 + roadGap * Math.max(0, columns - 1)));
-        const blockHeight = Math.min(layer.网格高度 * 0.62, Math.max(10, rows * 3.4 + roadGap * Math.max(0, rows - 1)));
-        const originX = (layer.网格宽度 - blockWidth) / 2;
-        const originY = Math.max(1.4, (layer.网格高度 - blockHeight) / 2);
-        const cellWidth = blockWidth / columns;
-        const cellHeight = blockHeight / rows;
         layerBuildings.forEach((building, index) => {
-            const column = index % columns;
-            const row = Math.floor(index / columns);
             const hash = 稳定散列(`${layer.ID}-${building.ID}-${index}-urban`);
-            const laneBias = column % 2 === 0 ? -0.16 : 0.16;
-            const width = Math.min(5.2, Math.max(3.4, cellWidth * (0.74 + (hash % 14) / 100)));
-            const height = Math.min(4.6, Math.max(2.9, cellHeight * (0.70 + ((hash >> 5) % 14) / 100)));
-            const jitterX = (((hash >> 9) % 21) - 10) / 100;
-            const jitterY = (((hash >> 14) % 21) - 10) / 100;
-            const x = originX + column * cellWidth + (cellWidth - width) / 2 + laneBias + jitterX;
-            const y = originY + row * cellHeight + (cellHeight - height) / 2 + jitterY;
+            const angle = (-120 + (360 / Math.max(1, total)) * index) * Math.PI / 180;
+            const point = {
+                x: center.x + Math.cos(angle) * radiusX,
+                y: center.y + Math.sin(angle) * radiusY,
+            };
+            const width = Math.min(4.8, Math.max(3.1, layer.网格宽度 * (0.088 + (hash % 8) / 500)));
+            const height = Math.min(3.8, Math.max(2.5, layer.网格高度 * (0.078 + ((hash >> 3) % 8) / 520)));
+            const x = point.x - width / 2;
+            const y = point.y - height / 2;
             building.四角坐标 = 创建矩形四角(
                 限制数值(x, 0.8, Math.max(0.8, layer.网格宽度 - width - 0.8)),
                 限制数值(y, 0.8, Math.max(0.8, layer.网格高度 - height - 0.8)),
@@ -1559,8 +1586,8 @@ const 从旧版字段派生地图空间 = (
             const category = categories[index % categories.length];
             ensureBuilding({
                 layerId: layer.ID,
-                name: `未命名${category}${生成序号文本(index)}`,
-                desc: `${layer.名称} 中顺街排布的${category}，等待剧情赋予具体名称。`,
+                name: `${layer.名称}${category}${生成序号文本(index)}`,
+                desc: `${layer.名称} 中可供地图承接的${category}节点，后续剧情可继续细化。`,
                 ownership: layer.归属,
                 category,
             });
@@ -1728,12 +1755,12 @@ const 按层级补齐道路 = (
                     roads.splice(index, 1);
                     continue;
                 }
-                const touchesReadableCluster = road.路径点.some((point) => (
-                    point.x >= layerBounds.minX - padding
-                    && point.x <= layerBounds.maxX + padding
-                    && point.y >= layerBounds.minY - padding
-                    && point.y <= layerBounds.maxY + padding
-                ));
+                const touchesReadableCluster = 路径触及边界(road.路径点, {
+                    minX: layerBounds.minX - padding,
+                    maxX: layerBounds.maxX + padding,
+                    minY: layerBounds.minY - padding,
+                    maxY: layerBounds.maxY + padding,
+                });
                 if (!touchesReadableCluster) {
                     roadLookup.delete(`${road.所在层级ID}|${归一化地图文本(road.名称)}`);
                     roads.splice(index, 1);
@@ -1887,6 +1914,7 @@ const 按层级补齐道路 = (
 
         buildingAnchors.forEach(({ building, entrance }) => {
             if (是否聚落层级(layer)) return;
+            if (是否野外层级(layer)) return;
             const key = `${layer.ID}|${归一化地图文本(`${building.名称}接入路`)}`;
             if (roadLookup.has(key)) return;
             const nearestRoadPoint = 计算最近路径点(entrance, layerRoads);
@@ -1913,6 +1941,13 @@ const 按层级补齐道路 = (
         roads
             .filter((road) => road.所在层级ID === layer.ID)
             .forEach((road) => {
+                if (是否卷轴路线(road)) {
+                    road.路径点 = road.路径点.map((point) => ({
+                        x: 限制数值(point.x, 0.7, layer.网格宽度 - 0.7),
+                        y: 限制数值(point.y, 0.7, layer.网格高度 - 0.7),
+                    }));
+                    return;
+                }
                 road.路径点 = 规划避让建筑正交路径(road.路径点, layer, layerBuildings);
             });
 
@@ -1923,6 +1958,7 @@ const 按层级补齐道路 = (
             roads
                 .filter((road) => road.所在层级ID === layer.ID)
                 .forEach((road) => {
+                    if (是否卷轴路线(road)) return;
                     road.路径点 = 规划避让建筑正交路径(road.路径点, layer, layerBuildings);
                 });
         }
