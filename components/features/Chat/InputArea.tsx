@@ -615,7 +615,7 @@ const InputArea: React.FC<Props> = ({
             effectivePlanningProgress
         ].some((item) => item?.phase === 'start');
         if (hasQueueProgress && (hasRunningQueueStage || postStoryQueueRunning)) {
-            setQueueCollapsed(false);
+            // 不再自动展开面板，保持收缩状态让用户手动点开
         }
     }, [
         postStoryQueueRunning,
@@ -634,7 +634,7 @@ const InputArea: React.FC<Props> = ({
         ]
             .some((item) => item?.phase === 'error');
         if (hasMainQueueError) {
-            setQueueCollapsed(false);
+            // 错误时也不自动展开，保持收缩
         }
     }, [
         polishProgress?.phase,
@@ -1044,7 +1044,7 @@ const InputArea: React.FC<Props> = ({
                                 >
                                     <span className="inline-flex items-center justify-center gap-2">
                                         {queueRunning && <span className="inline-block w-3 h-3 border-2 border-wuxia-cyan/40 border-t-wuxia-cyan rounded-full animate-spin" />}
-                                        <span>{queueRunning ? '运行中' : '收起队列'}</span>
+                                        <span>{queueRunning ? `${currentRunningStage?.label || ''}运行中` : '收起队列'}</span>
                                     </span>
                                 </button>
                             </div>
@@ -1054,13 +1054,13 @@ const InputArea: React.FC<Props> = ({
                                 <button
                                     type="button"
                                     onClick={() => setQueueCollapsed(false)}
-                                    className={`h-8 w-32 border text-sm tracking-[0.18em] transition hover:bg-neutral-950 ${queueBadgeClass}`}
+                                    className={`h-8 px-4 min-w-[8rem] border text-sm tracking-[0.18em] transition hover:bg-neutral-950 ${queueBadgeClass}`}
                                     style={{ clipPath: 'polygon(12% 0%, 88% 0%, 100% 100%, 0% 100%)' }}
                                     title="展开独立更新阶段队列"
                                 >
                                     <span className="inline-flex items-center justify-center gap-2">
                                         {queueRunning && <span className="inline-block w-3 h-3 border-2 border-wuxia-cyan/40 border-t-wuxia-cyan rounded-full animate-spin" />}
-                                        <span>{queueRunning ? '队列中' : '队列'}</span>
+                                        <span>{queueRunning ? `${currentRunningStage?.label || '队列'}运行中` : '队列'}</span>
                                     </span>
                                 </button>
                             </div>

@@ -3,7 +3,7 @@ export const RELEASE_INFO = {
     "versionCode": 117,
     "versionName": "1.0.116",
     "releaseChannel": "stable",
-    "releasePublishedAt": "2026-05-12T12:26:16+08:00",
+    "releasePublishedAt": "2026-05-12T12:34:29+08:00",
     "releaseNotes": [
         "正式发布 1.0.116，新增战斗回合动画组件和技艺侧边栏面板。",
         "战斗界面新增回合动画组件：行动顺序按身法排列，支持伤害飘字、暴击提示、血量/精力/内力变化动画、部位损伤展示和昏迷/死亡/逃跑状态标签。",
