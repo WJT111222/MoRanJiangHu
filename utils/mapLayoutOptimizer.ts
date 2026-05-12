@@ -16,6 +16,8 @@ type 道路网格 = {
     纵向道路: Array<{ x: number; name: string }>;
 };
 
+const 限制数值 = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
 /**
  * 判断是否为聚落层级（城镇、村庄等）
  */
@@ -162,6 +164,96 @@ export const 生成道路路径 = (
     return 道路列表;
 };
 
+const 计算环形坐标 = (
+    count: number,
+    radiusX: number,
+    radiusY: number,
+    startDeg: number,
+    center: 地图坐标点结构
+): 地图坐标点结构[] => {
+    if (count <= 0) return [];
+    return Array.from({ length: count }, (_, index) => {
+        const angle = (startDeg + (360 / count) * index) * Math.PI / 180;
+        return {
+            x: center.x + Math.cos(angle) * radiusX,
+            y: center.y + Math.sin(angle) * radiusY,
+        };
+    });
+};
+
+const 生成卷轴环形建筑布局 = (
+    层级: 地图层级结构,
+    建筑列表: 地图建筑结构[]
+): 地图建筑结构[] => {
+    const { 网格宽度: width, 网格高度: height } = 层级;
+    const center = { x: width * 0.5, y: height * 0.52 };
+    const radiusX = Math.min(width * 0.34, Math.max(width * 0.24, 8));
+    const radiusY = Math.min(height * 0.24, Math.max(height * 0.16, 5));
+    const points = 计算环形坐标(建筑列表.length, radiusX, radiusY, -120, center);
+
+    return 建筑列表.map((建筑, index) => {
+        const point = points[index] || center;
+        const hash = Array.from(`${层级.ID}-${建筑.ID}-${index}`).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+        const buildingWidth = Math.min(4.8, Math.max(3.1, width * (0.088 + (hash % 8) / 500)));
+        const buildingHeight = Math.min(3.8, Math.max(2.5, height * (0.078 + ((hash >> 3) % 8) / 520)));
+        const x = 限制数值(point.x - buildingWidth / 2, 0.9, Math.max(0.9, width - buildingWidth - 0.9));
+        const y = 限制数值(point.y - buildingHeight / 2, 0.9, Math.max(0.9, height - buildingHeight - 0.9));
+        const 四角坐标: 地图四角坐标结构 = [
+            { x, y },
+            { x: x + buildingWidth, y },
+            { x: x + buildingWidth, y: y + buildingHeight },
+            { x, y: y + buildingHeight },
+        ];
+
+        return {
+            ...建筑,
+            四角坐标,
+        };
+    });
+};
+
+const 计算建筑朝中心入口 = (
+    建筑: 地图建筑结构,
+    center: 地图坐标点结构
+): 地图坐标点结构 => {
+    const xs = 建筑.四角坐标.map((point) => point.x);
+    const ys = 建筑.四角坐标.map((point) => point.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const buildingCenter = {
+        x: (minX + maxX) / 2,
+        y: (minY + maxY) / 2,
+    };
+    const dx = center.x - buildingCenter.x;
+    const dy = center.y - buildingCenter.y;
+    if (Math.abs(dx) > Math.abs(dy)) {
+        return {
+            x: dx >= 0 ? maxX : minX,
+            y: buildingCenter.y,
+        };
+    }
+    return {
+        x: buildingCenter.x,
+        y: dy >= 0 ? maxY : minY,
+    };
+};
+
+const 生成卷轴连线路径 = (
+    层级: 地图层级结构,
+    建筑列表: 地图建筑结构[]
+): Array<{ name: string; points: 地图坐标点结构[] }> => {
+    const center = { x: 层级.网格宽度 * 0.5, y: 层级.网格高度 * 0.52 };
+    return 建筑列表.slice(0, 6).map((建筑, index) => ({
+        name: `卷轴路线${String(index + 1).padStart(2, '0')}`,
+        points: [
+            center,
+            计算建筑朝中心入口(建筑, center),
+        ],
+    }));
+};
+
 /**
  * 优化建筑和道路布局
  * 主入口函数
@@ -180,15 +272,10 @@ export const 优化地图布局 = (
             道路: [],
         };
     }
-    
-    // 生成道路网格
-    const 道路网格 = 生成城镇道路网格(层级, 建筑列表.length);
-    
-    // 沿道路布置建筑
-    const 优化后的建筑 = 沿道路布置建筑(层级, 道路网格, 建筑列表);
-    
-    // 生成道路路径
-    const 道路路径 = 生成道路路径(层级, 道路网格, 优化后的建筑);
+
+    // v11.0.2 APK 的地图更像卷轴节点图：当前区域居中，关键建筑环绕，路线从中心放射。
+    const 优化后的建筑 = 生成卷轴环形建筑布局(层级, 建筑列表);
+    const 道路路径 = 生成卷轴连线路径(层级, 优化后的建筑);
     
     return {
         建筑: 优化后的建筑,

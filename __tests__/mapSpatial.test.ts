@@ -94,7 +94,7 @@ describe('地图空间道路规划', () => {
         expect(world.地图道路.some((item: any) => item.所在层级ID === specificLayer?.ID)).toBe(false);
     });
 
-    it('聚落布局使用优化道路并丢弃模型给出的无意义旧道路', () => {
+    it('聚落布局参考 v11.0.2 APK 使用卷轴环形节点并丢弃无意义旧道路', () => {
         const world = 补齐世界地图空间字段({
             地图层级: [{
                 ID: 'layer_town',
@@ -127,42 +127,35 @@ describe('地图空间道路规划', () => {
         } as any);
         const roads = world.地图道路.filter((item: any) => item.所在层级ID === 'layer_town');
         const buildings = world.地图建筑.filter((item: any) => item.所在层级ID === 'layer_town');
-        const buildingRects = buildings.map((building: any) => {
-            const xs = building.四角坐标.map((point: any) => point.x);
-            const ys = building.四角坐标.map((point: any) => point.y);
-            return {
-                minX: Math.min(...xs) - 0.1,
-                maxX: Math.max(...xs) + 0.1,
-                minY: Math.min(...ys) - 0.1,
-                maxY: Math.max(...ys) + 0.1
-            };
-        });
-        const clusterXs = buildings.flatMap((building: any) => building.四角坐标.map((point: any) => point.x));
-        const clusterYs = buildings.flatMap((building: any) => building.四角坐标.map((point: any) => point.y));
-        const clusterBounds = {
-            minX: Math.min(...clusterXs) - 4,
-            maxX: Math.max(...clusterXs) + 4,
-            minY: Math.min(...clusterYs) - 4,
-            maxY: Math.max(...clusterYs) + 4,
-        };
 
         expect(roads.some((road: any) => road.ID === 'stray_diagonal')).toBe(false);
         expect(roads.some((road: any) => /接入路/u.test(road.名称))).toBe(false);
         expect(roads.length).toBeLessThanOrEqual(6);
+        expect(roads.length).toBeGreaterThan(0);
+        expect(roads.every((road: any) => /卷轴路线/u.test(road.名称))).toBe(true);
         roads.forEach((road: any) => {
-            road.路径点.forEach((point: any, index: number) => {
-                expect(point.x).toBeGreaterThanOrEqual(clusterBounds.minX);
-                expect(point.x).toBeLessThanOrEqual(clusterBounds.maxX);
-                expect(point.y).toBeGreaterThanOrEqual(clusterBounds.minY);
-                expect(point.y).toBeLessThanOrEqual(clusterBounds.maxY);
-                const next = road.路径点[index + 1];
-                if (!next) return;
-                expect(point.x === next.x || point.y === next.y).toBe(true);
-                buildingRects.forEach((rect: any) => {
-                    expect(正交线段穿过矩形(point, next, rect)).toBe(false);
-                });
+            expect(road.路径点.length).toBe(2);
+            expect(road.路径点[0].x).toBeCloseTo(20, 1);
+            expect(road.路径点[0].y).toBeCloseTo(15.6, 1);
+            road.路径点.forEach((point: any) => {
+                expect(point.x).toBeGreaterThanOrEqual(0);
+                expect(point.x).toBeLessThanOrEqual(40);
+                expect(point.y).toBeGreaterThanOrEqual(0);
+                expect(point.y).toBeLessThanOrEqual(30);
             });
         });
+        const centers = buildings.map((building: any) => {
+            const xs = building.四角坐标.map((point: any) => point.x);
+            const ys = building.四角坐标.map((point: any) => point.y);
+            return {
+                x: (Math.min(...xs) + Math.max(...xs)) / 2,
+                y: (Math.min(...ys) + Math.max(...ys)) / 2,
+            };
+        });
+        expect(Math.min(...centers.map((point: any) => point.x))).toBeLessThan(12);
+        expect(Math.max(...centers.map((point: any) => point.x))).toBeGreaterThan(28);
+        expect(Math.min(...centers.map((point: any) => point.y))).toBeLessThan(11);
+        expect(Math.max(...centers.map((point: any) => point.y))).toBeGreaterThan(20);
     });
 
     it('会把下级地点投影成父层可见入口并保持层级链承接', () => {
