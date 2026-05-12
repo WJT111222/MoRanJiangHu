@@ -93,16 +93,45 @@ const 物品品质转英文 = (quality: string): string => {
     return 'common';
 };
 
+const 物品名称转英文描述 = (name: string): string => {
+    // 常见武侠物品名称到英文视觉描述的映射
+    const map: Record<string, string> = {
+        '木牌': 'wooden plaque tablet', '身份木牌': 'wooden identity plaque with carved text',
+        '令牌': 'metal command token', '腰牌': 'waist badge token',
+        '铜牌': 'bronze badge', '铁牌': 'iron plaque',
+        '玉佩': 'jade pendant', '玉牌': 'jade plaque',
+        '信物': 'keepsake token', '印章': 'seal stamp',
+        '钥匙': 'ornate key', '锦囊': 'silk pouch',
+        '卷轴': 'scroll', '书信': 'letter scroll',
+        '地图': 'map scroll', '银票': 'silver banknote',
+        '食盒': 'wooden food box', '酒壶': 'wine gourd',
+        '灯笼': 'paper lantern', '火折子': 'fire starter flint',
+        '绳索': 'hemp rope', '包袱': 'cloth bundle',
+        '银两': 'silver ingots', '铜钱': 'copper coins',
+    };
+    for (const [cn, en] of Object.entries(map)) {
+        if (name.includes(cn)) return en;
+    }
+    // 通用关键词推断
+    if (/牌|令|符/.test(name)) return 'wooden or metal plaque token';
+    if (/壶|瓶|罐/.test(name)) return 'ceramic or metal container vessel';
+    if (/匣|盒|箱/.test(name)) return 'wooden box or case';
+    if (/书|卷|册|经/.test(name)) return 'ancient book or scroll';
+    if (/袋|囊|包/.test(name)) return 'cloth pouch or bag';
+    return '';
+};
+
 const 构建物品视觉主体描述 = (item: any): string => {
+    const name = 读取文本(item?.名称);
     const typeEn = 物品类型转英文(读取文本(item?.类型, '物品'));
     const qualityEn = 物品品质转英文(读取文本(item?.品质, '普通'));
+    const nameEn = 物品名称转英文描述(name);
     const description = 读取文本(item?.视觉描述 || item?.描述);
     const tags = Array.isArray(item?.视觉标签)
         ? item.视觉标签.map((tag: unknown) => 读取文本(tag)).filter(Boolean).join(', ')
         : '';
-    // 只把中文"名称/描述"作为风格描写给模型，不再使用 "名称:X 类型:Y 品质:Z" 这种键值对格式
     return [
-        `a single ${qualityEn} ${typeEn} prop`,
+        nameEn ? `a single ${qualityEn} ${nameEn}` : `a single ${qualityEn} ${typeEn} prop`,
         description ? `form and materials: ${description}` : '',
         tags ? `material cues: ${tags}` : ''
     ].filter(Boolean).join('\n');
