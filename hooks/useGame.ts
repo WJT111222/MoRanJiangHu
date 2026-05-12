@@ -342,6 +342,7 @@ export const useGame = () => {
         showSocial, setShowSocial,
         showTeam, setShowTeam,
         showKungfu, setShowKungfu,
+        showSkills, setShowSkills,
         showWorld, setShowWorld,
         showMap, setShowMap,
         showSect, setShowSect,
@@ -3353,7 +3354,7 @@ export const useGame = () => {
             chatForceScrollToken: 聊天区强制置底令牌
         },
         setters: {
-            setShowSettings, setShowInventory, setShowEquipment, setShowBattle, setShowSocial, setShowTeam, setShowKungfu, setShowWorld, setShowMap, setShowSect, setShowTask, setShowAgreement, setShowStory, setShowHeroinePlan, setShowMemory, setShowSaveLoad,
+            setShowSettings, setShowInventory, setShowEquipment, setShowBattle, setShowSocial, setShowTeam, setShowKungfu, setShowSkills, setShowWorld, setShowMap, setShowSect, setShowTask, setShowAgreement, setShowStory, setShowHeroinePlan, setShowMemory, setShowSaveLoad,
             setActiveTab, setCurrentTheme,
             setApiConfig, setVisualConfig, setImageManagerConfig, setPrompts,
             setCharacter: 设置角色,

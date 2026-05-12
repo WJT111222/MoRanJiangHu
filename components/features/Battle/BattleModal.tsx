@@ -3,6 +3,7 @@ import { NPC结构, 角色数据结构, 战斗状态结构 } from '../../../type
 import { IconSwords, IconYinYang } from '../../ui/Icons';
 import { 生成战斗可视化数据, 逻辑判断知识库 } from '../../../utils/rulebook';
 import { 计算角色总气血 } from '../../../utils/characterVitals';
+import BattleRoundAnimation from './BattleRoundAnimation';
 
 interface Props {
     character: 角色数据结构;
@@ -560,6 +561,15 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                                 <div className="rounded border border-white/10 bg-black/25 px-3 py-2 text-gray-300">移动消耗 = 水平距离 + 上坡高度*1.6 - 下坡高度*0.45，预算 = 身法</div>
                             </div>
                         </section>
+                        {battle?.是否战斗中 && (
+                            <section className="mb-4">
+                                <BattleRoundAnimation
+                                    character={character}
+                                    battle={battle}
+                                    compact={false}
+                                />
+                            </section>
+                        )}
                         <section className="mb-4 rounded-xl border border-white/10 bg-black/30 p-4">
                             <div className="mb-3 text-xs font-bold tracking-[0.22em] text-gray-300">计算规则</div>
                             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">

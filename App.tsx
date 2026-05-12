@@ -142,6 +142,8 @@ const TeamModal = 创建可预加载懒组件('team-modal', () => import('./comp
 const MobileTeamModal = 创建可预加载懒组件('mobile-team-modal', () => import('./components/features/Team/MobileTeamModal'));
 const KungfuModal = 创建可预加载懒组件('kungfu-modal', () => import('./components/features/Kungfu/KungfuModal'));
 const MobileKungfuModal = 创建可预加载懒组件('mobile-kungfu-modal', () => import('./components/features/Kungfu/MobileKungfuModal'));
+const SkillsPanel = 创建可预加载懒组件('skills-panel', () => import('./components/features/Skills/SkillsPanel'));
+const MobileSkillsPanel = 创建可预加载懒组件('mobile-skills-panel', () => import('./components/features/Skills/MobileSkillsPanel'));
 const WorldModal = 创建可预加载懒组件('world-modal', () => import('./components/features/World/WorldModal'));
 const MobileWorldModal = 创建可预加载懒组件('mobile-world-modal', () => import('./components/features/World/MobileWorldModal'));
 const MapModal = 创建可预加载懒组件('map-modal', () => import('./components/features/Map/MapModal'));
@@ -407,6 +409,9 @@ const App: React.FC = () => {
                 if (启用修炼体系) {
                     setters.setShowKungfu(true);
                 }
+                break;
+            case 'skills':
+                setters.setShowSkills(true);
                 break;
             case 'world':
                 setters.setShowWorld(true);
@@ -1180,6 +1185,7 @@ const App: React.FC = () => {
         state.showInventory ? '背包' :
         state.showSocial ? '社交' :
         (启用修炼体系 && state.showKungfu) ? '功法' :
+        state.showSkills ? '技艺' :
         state.showWorld ? '世界' :
         state.showMap ? '地图' :
         state.showTeam ? '队伍' :
@@ -1205,6 +1211,7 @@ const App: React.FC = () => {
         state.showInventory ? 'inventory' :
         state.showSocial ? 'social' :
         (启用修炼体系 && state.showKungfu) ? 'kungfu' :
+        state.showSkills ? 'skills' :
         state.showWorld ? 'world' :
         state.showMap ? 'map' :
         state.showTeam ? 'team' :
@@ -1231,6 +1238,7 @@ const App: React.FC = () => {
         || state.showSocial
         || state.showTeam
         || (启用修炼体系 && state.showKungfu)
+        || state.showSkills
         || state.showWorld
         || state.showMap
         || state.showSect
@@ -1300,6 +1308,7 @@ const App: React.FC = () => {
         setters.setShowTeam(false);
         setters.setShowSocial(false);
         setters.setShowKungfu(false);
+        setters.setShowSkills(false);
         setters.setShowWorld(false);
         setters.setShowMap(false);
         setters.setShowSect(false);
@@ -1399,6 +1408,10 @@ const App: React.FC = () => {
         closeAllPanels();
         setters.setShowKungfu(true);
     }, [closeAllPanels, setters, 启用修炼体系]);
+    const openSkills = React.useCallback(() => {
+        closeAllPanels();
+        setters.setShowSkills(true);
+    }, [closeAllPanels, setters]);
     const openWorld = React.useCallback(() => {
         closeAllPanels();
         setters.setShowWorld(true);
@@ -1770,6 +1783,9 @@ const App: React.FC = () => {
                 if (启用修炼体系) {
                     setters.setShowKungfu(true);
                 }
+                break;
+            case '技艺':
+                setters.setShowSkills(true);
                 break;
             case '世界':
                 setters.setShowWorld(true);
@@ -2998,6 +3014,26 @@ const App: React.FC = () => {
                                 <KungfuModal
                                     skills={safeCharacter?.功法列表 || []}
                                     onClose={() => setters.setShowKungfu(false)}
+                                />
+                            )}
+                        </懒加载边界>
+                    )}
+
+                    {state.showSkills && (
+                        <懒加载边界>
+                            {isMobile ? (
+                                <MobileSkillsPanel
+                                    技艺列表={safeCharacter?.技艺 || []}
+                                    社交列表={state.社交}
+                                    典籍列表={safeCharacter?.功法列表 || []}
+                                    onClose={() => setters.setShowSkills(false)}
+                                />
+                            ) : (
+                                <SkillsPanel
+                                    技艺列表={safeCharacter?.技艺 || []}
+                                    社交列表={state.社交}
+                                    典籍列表={safeCharacter?.功法列表 || []}
+                                    onClose={() => setters.setShowSkills(false)}
                                 />
                             )}
                         </懒加载边界>
