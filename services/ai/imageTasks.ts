@@ -1624,16 +1624,27 @@ const 构建ComfyUI工作流 = (
     const hasConditioningZeroOut = /ConditioningZeroOut/i.test(workflowText || '');
     // For ConditioningZeroOut workflows (Lumina2/Flux-like models):
     // 1. Do NOT inject negative prompt into positive prompt
-    // 2. Strip "no X" anti-pattern phrases from positive prompt - these models don't understand
-    //    negation and will treat "no watermark, no text" as positive content, generating those things.
+    // 2. Strip ALL "no X" / "absolutely no X" anti-pattern phrases from positive prompt - these models
+    //    don't understand negation and will treat "no watermark, no text" as positive content,
+    //    generating those things (text, watermarks, speech bubbles, Chinese characters, etc.)
+    // 3. Strip Chinese characters from prompt - Lumina2 will render them as visible text on the image
     let cleanedPrompt = prompt;
     if (hasConditioningZeroOut) {
         cleanedPrompt = prompt
-            .replace(/,?\s*no\s+(?:graphic design layout|poster layout|comic panel|text overlay|captions|subtitles|callout|speech bubble|watermark|logo|signature|typography|letters|Chinese characters|English letters|collage|panel layout|reference sheet|bottom strip)\b/gi, '')
+            // Remove "absolutely no X", "no X" patterns (greedy: captures multi-word objects)
+            .replace(/,?\s*absolutely\s+no\s+[^,\n]+/gi, '')
+            .replace(/,?\s*no\s+(?:graphic design layout|poster layout|comic panel|text overlay|captions|subtitles|callout|speech bubble|watermark|watermarks|logo|logos|signature|typography|letters|numbers|Chinese characters|English letters|collage|panel layout|reference sheet|bottom strip|card design|card frame|UI|UI icon layout|frame|badges|text|label|labels|inscription|ink painting|guofeng illustration)\b/gi, '')
             .replace(/,?\s*plain single image\b/gi, '')
             .replace(/,?\s*clean composition\b/gi, '')
+            // Remove Chinese characters and surrounding context labels (e.g. "form and materials: 中文描述")
+            .replace(/[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef，。！？、；：""''（）【】]+/g, '')
+            .replace(/\bform and materials:\s*$/gim, '')
+            .replace(/\bmaterial cues:\s*$/gim, '')
+            .replace(/\n\s*\n/g, '\n')
             .replace(/,\s*,/g, ',')
-            .replace(/^[\s,]+|[\s,]+$/g, '')
+            .replace(/,\s*\n/g, '\n')
+            .replace(/\n\s*,/g, '\n')
+            .replace(/^[\s,\n]+|[\s,\n]+$/g, '')
             .trim();
     }
     const promptValue = hasNegativePlaceholder
