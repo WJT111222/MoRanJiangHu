@@ -2404,8 +2404,8 @@ const App: React.FC = () => {
                             </div>
 
                             <div className="shrink-0 text-wuxia-gold font-bold ml-2 z-20 bg-ink-black/90 px-2 flex items-center h-full border-l border-gray-800 text-transparent relative">
-                                <span className="absolute inset-0 flex items-center px-2 text-wuxia-gold">【V0.0.1】</span>
-                                【V0.0.1】
+                                <span className="absolute inset-0 flex items-center px-2 text-wuxia-gold">【V{RELEASE_INFO.versionName}】</span>
+                                【V{RELEASE_INFO.versionName}】
                             </div>
                         </div>
                     )}
