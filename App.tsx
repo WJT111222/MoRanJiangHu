@@ -24,7 +24,7 @@ import { isDynamicImportFetchError, lazyImportWithReload } from './utils/lazyImp
 import { 小说拆分后台调度服务 } from './services/novelDecompositionScheduler';
 import { checkForAppUpdate, subscribeAppUpdateProgress, type AppUpdateProgressState } from './services/appUpdate';
 import { RELEASE_INFO } from './data/releaseInfo';
-import { 读取拍卖行状态, 保存拍卖行状态, 清理并补货, 投放事件拍卖品, 从剧情响应构建拍卖行投放参数列表, 构建拍卖行存储作用域, 上架背包物品, 创建交易记录, 结算玩家寄售, 从势力互动投放拍卖品, type 拍卖行状态 } from './services/auctionHouse';
+import { 读取拍卖行状态, 保存拍卖行状态, 清理并补货, 投放事件拍卖品, 构建拍卖行存储作用域, 上架背包物品, 创建交易记录, 结算玩家寄售, 从势力互动投放拍卖品, type 拍卖行状态 } from './services/auctionHouse';
 import './services/diagnosticLog';
 import type { 物品生图结果 } from './types';
 
@@ -987,30 +987,9 @@ const App: React.FC = () => {
             return settled.nextState;
         });
     }, [actions, auctionHouseScope, latestAssistantMessage, setters, state.角色]);
-    React.useEffect(() => {
-        const response = latestAssistantMessage?.structuredResponse;
-        if (!response) return;
-        const signature = `${latestAssistantMessage.timestamp || 0}-${latestAssistantMessage.gameTime || ''}`;
-        if (auctionBridgeHandledRef.current.has(signature)) return;
-        auctionBridgeHandledRef.current.add(signature);
-        const assistantResponseCount = Array.isArray(state.历史记录)
-            ? state.历史记录.filter((item: any) => item?.role === 'assistant' && item?.structuredResponse).length
-            : 0;
-        const bridge = 从剧情响应构建拍卖行投放参数列表(response, {
-            gameTime: latestAssistantMessage.gameTime || currentEnvTime,
-            place: state.环境?.具体地点 || state.环境?.小地点 || state.环境?.中地点 || state.环境?.大地点 || '',
-            maxCount: assistantResponseCount <= 1 ? 3 : 1,
-            allowInitialPlotSeed: assistantResponseCount <= 1
-        });
-        const paramsList = Array.isArray(bridge.paramsList) ? bridge.paramsList : (bridge.params ? [bridge.params] : []);
-        if (!bridge.shouldDispatch || paramsList.length === 0) return;
-        setAuctionHouseState((prev) => {
-            const next = paramsList.reduce((current, params) => 投放事件拍卖品(current, params), prev);
-            保存拍卖行状态(next, auctionHouseScope);
-            return next;
-        });
-        console.info('[拍卖行桥接] 已从剧情回合投放事件货品', bridge.reason, paramsList.map((params) => params.事件名称).join(' / '));
-    }, [latestAssistantMessage, currentEnvTime, state.环境, state.历史记录, auctionHouseScope]);
+    // [已移除] 拍卖行物品不再从主角剧情正文中提取，改为从世界势力互动事件中自然流出。
+    // 旧逻辑：从剧情响应构建拍卖行投放参数列表 → 投放事件拍卖品
+    // 新逻辑：世界演化 → 势力互动 → 世界.拍卖行待投放物品 → 从势力互动投放拍卖品
 
     // 从世界势力互动中投放物品到拍卖行
     const factionAuctionHandledRef = React.useRef<number>(0);
