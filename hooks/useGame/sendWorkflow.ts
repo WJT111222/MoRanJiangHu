@@ -761,6 +761,8 @@ export const 执行主剧情发送工作流 = async (
         });
 
         const worldEvolutionSplitEnabled = 接口配置是否可用(获取世界演变接口配置(currentState.apiConfig));
+        // 让出主线程，避免连续深拷贝 + processResponseCommands 阻塞 UI 导致"未响应"
+        await new Promise(resolve => setTimeout(resolve, 0));
         const mainCommandBaseState = {
             角色: deps.深拷贝(currentState.角色),
             环境: deps.深拷贝(currentState.环境),
@@ -773,6 +775,7 @@ export const 执行主剧情发送工作流 = async (
             剧情: deps.深拷贝(currentState.剧情),
             女主剧情规划: deps.深拷贝(currentState.女主剧情规划)
         };
+        await new Promise(resolve => setTimeout(resolve, 0));
         let aiData = 按世界演变分流净化响应(aiResult.response, worldEvolutionSplitEnabled).response;
         let displayAiData = aiData;
 
@@ -790,6 +793,7 @@ export const 执行主剧情发送工作流 = async (
             ...aiData,
             tavern_commands: Array.isArray(aiData.tavern_commands) ? [...aiData.tavern_commands] : []
         };
+        await new Promise(resolve => setTimeout(resolve, 0));
         let simulatedState = 计时同步队列步骤(
             "main.simulateResponseCommands",
             () => deps.processResponseCommands(responseForExecution, mainCommandBaseState, { applyState: false }),

@@ -288,9 +288,10 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
                 风格提示词输入: 兼容模式风格提示词 || undefined
             });
         const 特写附加正向提示词 = [强制裸体语义 ? 默认裸体正向提示词 : '', 前置正向提示词].filter(Boolean).join(', ');
+        const 特写尺寸 = 尺寸 || '1024x1280';
         const 最终提示词 = imageAIService.构建最终图片提示词(生图词组, imageApi!, {
             构图: '部位特写',
-            尺寸: 尺寸 || '1024x1024',
+            尺寸: 特写尺寸,
             附加正向提示词: 特写附加正向提示词,
             附加负面提示词: 合并负向画师串,
             PNG参数
@@ -347,7 +348,7 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
         const imageResult = await 执行生图模型调用带重试(
             () => imageAIService.generateImageByPrompt(生图词组, imageApi!, options?.signal, {
                 构图: '部位特写',
-                尺寸: 尺寸 || '1024x1024',
+                尺寸: 特写尺寸,
                 附加正向提示词: 特写附加正向提示词,
                 附加负面提示词: 合并负向画师串,
                 跳过基础负面提示词: Boolean((画师串预设?.负面提示词 || '').trim() || (PNG画风预设?.负面提示词 || '').trim()),
@@ -378,7 +379,8 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
                 }
             }
         );
-        const localizedImageResult = await imageAIService.persistImageAssetLocally(imageResult);
+        const fixedImageResult = await imageAIService.修复部位特写底部缩略图栏(imageResult);
+        const localizedImageResult = await imageAIService.persistImageAssetLocally(fixedImageResult);
         if (!localizedImageResult.图片URL && !localizedImageResult.本地路径) {
             throw new Error('图片已生成，但未得到可展示或可保存的图片资源。');
         }
