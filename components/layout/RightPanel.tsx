@@ -88,13 +88,7 @@ const RightPanel: React.FC<Props> = ({
         { label: '装备', action: onOpenEquipment, color: 'primary' as const, changeKeys: ['装备'] },
         { label: '背包', action: onOpenInventory, color: 'primary' as const, changeKeys: ['背包'] },
         ...(onOpenAuctionHouse ? [{ label: '拍卖行', action: onOpenAuctionHouse, color: 'primary' as const }] : []),
-        { label: '队伍', action: onOpenTeam, color: 'primary' as const, changeKeys: ['队伍'] },
         { label: '社交', action: onOpenSocial, color: 'primary' as const, changeKeys: ['社交'] },
-        ...(enableKungfu ? [{ label: '功法', action: onOpenKungfu, color: 'primary' as const, changeKeys: ['功法'] }] : []),
-        { label: '地图', action: onOpenMap, color: 'primary' as const, changeKeys: ['地图'] },
-        { label: '门派', action: onOpenSect, color: 'primary' as const, changeKeys: ['玩家门派'] },
-        { label: '任务', action: onOpenTask, color: 'primary' as const, changeKeys: ['任务列表'] },
-        { label: '约定', action: onOpenAgreement, color: 'primary' as const, changeKeys: ['约定列表'] },
         {
             label: worldEvolutionUpdating ? '世界·更新中' : '世界',
             action: onOpenWorld,
@@ -104,6 +98,12 @@ const RightPanel: React.FC<Props> = ({
                 ? 'animate-pulse shadow-[0_0_18px_rgba(90,220,220,0.35)]'
                 : ''
         },
+        { label: '队伍', action: onOpenTeam, color: 'primary' as const, changeKeys: ['队伍'] },
+        ...(enableKungfu ? [{ label: '功法', action: onOpenKungfu, color: 'primary' as const, changeKeys: ['功法'] }] : []),
+        { label: '地图', action: onOpenMap, color: 'primary' as const, changeKeys: ['地图'] },
+        { label: '门派', action: onOpenSect, color: 'primary' as const, changeKeys: ['玩家门派'] },
+        { label: '任务', action: onOpenTask, color: 'primary' as const, changeKeys: ['任务列表'] },
+        { label: '约定', action: onOpenAgreement, color: 'primary' as const, changeKeys: ['约定列表'] },
         { label: '剧情', action: onOpenStory, color: 'primary' as const, changeKeys: ['剧情'] },
         ...(enableHeroinePlan ? [{ label: '规划', action: onOpenHeroinePlan, color: 'primary' as const, changeKeys: ['剧情规划'] }] : []),
         { label: '记忆', action: onOpenMemory, color: 'primary' as const, changeKeys: ['记忆系统'] },

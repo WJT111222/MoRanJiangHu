@@ -2336,10 +2336,10 @@ const App: React.FC = () => {
                             className={`md:hidden shrink-0 h-[28px] bg-ink-black/88 border-t border-wuxia-gold/20 flex items-center font-mono text-wuxia-gold-dark relative overflow-hidden pb-[var(--app-safe-bottom,env(safe-area-inset-bottom,0px))] ${isMobile ? 'mx-0 mb-0' : 'mx-1 mb-1'}`}
                             style={{ fontSize: '11px' }}
                         >
-                            <div className="shrink-0 h-full px-2 flex items-center border-r border-gray-800 text-wuxia-gold/90 tracking-[0.18em] text-transparent relative">
+                            <button type="button" onClick={openWorld} className="shrink-0 h-full px-2 flex items-center border-r border-gray-800 text-wuxia-gold/90 tracking-[0.18em] text-transparent relative hover:bg-wuxia-gold/10 transition-colors">
                                 <span className="absolute inset-0 flex items-center px-2 text-wuxia-gold/90">世界大事</span>
                                 世界大事
-                            </div>
+                            </button>
                             <div className="flex-1 overflow-hidden relative h-full flex items-center">
                                 <div className="absolute left-0 top-0 bottom-0 w-5 bg-gradient-to-r from-ink-black to-transparent z-10 pointer-events-none"></div>
                                 <div className="absolute right-0 top-0 bottom-0 w-5 bg-gradient-to-l from-ink-black to-transparent z-10 pointer-events-none"></div>
@@ -2372,10 +2372,10 @@ const App: React.FC = () => {
                             className="hidden md:flex shrink-0 h-[37px] bg-ink-black/90 border-t border-wuxia-gold/20 justify-between px-4 items-center font-mono text-wuxia-gold-dark z-50 shadow-[0_-5px_15px_rgba(0,0,0,0.8)] relative rounded-b-xl mx-1 mb-1 overflow-hidden"
                             style={{ fontSize: 'var(--ui-compact-mono-font-size, 12px)' }}
                         >
-                            <div className="shrink-0 text-wuxia-gold font-bold mr-2 z-20 bg-ink-black/90 px-2 flex items-center h-full border-r border-gray-800 text-transparent relative">
+                            <button type="button" onClick={openWorld} className="shrink-0 text-wuxia-gold font-bold mr-2 z-20 bg-ink-black/90 px-2 flex items-center h-full border-r border-gray-800 text-transparent relative hover:bg-wuxia-gold/10 transition-colors cursor-pointer">
                                 <span className="absolute inset-0 flex items-center px-2 text-wuxia-gold">【世界大事】</span>
                                 【世界大事】
-                            </div>
+                            </button>
 
                             <div className="flex-1 overflow-hidden relative h-full flex items-center mx-2">
                                 <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-ink-black to-transparent z-10 pointer-events-none"></div>

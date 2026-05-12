@@ -563,10 +563,10 @@ export const JudgmentRenderer: React.FC<{ text: string; thoughtBlock?: JudgmentT
                                     'border-white/10 bg-white/5 text-gray-100'
                                 }`}
                             >
-                                <span className="mr-1.5 font-bold text-gray-50">{item.label}</span>
+                                <span className="mr-1.5 font-bold text-gray-200">{item.label}</span>
                                 <span className="mr-1.5 font-mono font-black">{formatBreakdownValue(item, kind)}</span>
                                 {item.description && (
-                                    <span className="text-gray-200">{item.description}</span>
+                                    <span className="text-gray-300">{item.description}</span>
                                 )}
                             </div>
                         );

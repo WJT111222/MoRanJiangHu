@@ -630,6 +630,32 @@ const 规范化角色物品容器映射 = (rawRole?: any): 角色数据结构 =>
     (role as any).功法列表 = Array.isArray((role as any).功法列表) ? (role as any).功法列表 : [];
     (role as any).技艺 = 标准化角色技艺((role as any).技艺);
 
+    // 兜底：如果技艺全为"未入门/熟练度0"，根据角色信息自动给基础值
+    const 技艺列表 = (role as any).技艺 as Array<{ 名称: string; 等级: string; 熟练度: number; 描述: string }>;
+    const 全部为零 = 技艺列表.every((s) => s.熟练度 === 0 && (s.等级 === '未入门' || !s.等级));
+    if (全部为零) {
+        const 出身 = 规范化文本((role as any).出身背景?.名称) + 规范化文本((role as any).出身背景?.描述);
+        const 门派 = 规范化文本((role as any).所属门派ID);
+        const 背景 = `${出身} ${门派} ${规范化文本((role as any).性格)} ${规范化文本((role as any).外貌)}`;
+        const 推断 = (keywords: string[], skill: string, level: number) => {
+            if (keywords.some((kw) => 背景.includes(kw))) {
+                const item = 技艺列表.find((s) => s.名称 === skill);
+                if (item) { item.等级 = '入门'; item.熟练度 = level; item.描述 = `因出身经历而具备基础${skill}能力。`; }
+            }
+        };
+        推断(['药', '医', '治', '伤', '救'], '医术', 20);
+        推断(['铁', '锻', '匠', '器', '铸'], '炼器', 18);
+        推断(['丹', '炉', '药铺', '药堂'], '炼丹', 15);
+        推断(['猎', '山', '林', '野', '采', '农'], '采集', 22);
+        推断(['阵', '符', '术', '道', '玄'], '阵法', 12);
+        推断(['鉴', '商', '当铺', '古玩', '宝'], '鉴定', 16);
+        // 如果推断后仍全为零，给一个最低保底
+        if (技艺列表.every((s) => s.熟练度 === 0)) {
+            const fallback = 技艺列表.find((s) => s.名称 === '采集') || 技艺列表[0];
+            if (fallback) { fallback.等级 = '入门'; fallback.熟练度 = 10; fallback.描述 = '日常生活中积累的基础能力。'; }
+        }
+    }
+
     const rawEquip = role?.装备 && typeof role.装备 === 'object' ? role.装备 : ({} as any);
     role.装备 = { ...默认装备模板, ...(rawEquip as any) };
 
