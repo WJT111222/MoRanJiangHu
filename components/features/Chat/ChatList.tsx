@@ -211,10 +211,11 @@ const ChatList: React.FC<Props> = ({ history, loading, scrollRef, onUpdateHistor
     const 最新回合定位签名 = React.useMemo(() => {
         if (latestTurnAnchorIndex < 0 || latestTurnAnchorIndex >= history.length) return '';
         const latestTurn = history[latestTurnAnchorIndex];
+        if (latestTurn?.autoScrollToTurnIcon !== true) return '';
         return [
             latestTurnAnchorIndex,
             latestTurn?.timestamp || 0,
-            latestTurn?.autoScrollToTurnIcon === true ? '1' : '0'
+            '1'
         ].join(':');
     }, [history, latestTurnAnchorIndex]);
 
