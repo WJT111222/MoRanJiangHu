@@ -71,6 +71,18 @@ export interface NPC技艺 {
     描述?: string;
 }
 
+export interface NPC天赋 {
+    名称: string;
+    描述: string;
+    效果: string;
+}
+
+export interface NPC出身背景 {
+    名称: string;
+    描述: string;
+    效果: string;
+}
+
 export interface NPC结构 {
     id: string;
     姓名: string;
@@ -90,6 +102,8 @@ export interface NPC结构 {
     好感度突破条件?: string; // 下一阶段好感提升的触发条件
     关系突破条件?: string; // 关系状态升级/转折的触发条件
     关系网变量?: NPC关系边[]; // 重要女性角色的关系网变量（谁-和谁-是什么关系）
+    天赋列表?: NPC天赋[];
+    出身背景?: NPC出身背景;
 
     // --- 基础属性（所有 NPC 都应补齐，与主角六维同口径） ---
     力量?: number;

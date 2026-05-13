@@ -1431,6 +1431,27 @@ const App: React.FC = () => {
         void actions.performAutoSave?.({ role: nextCharacter, force: true });
         actions.pushNotification({ title: '藏经阁学习成功', message: `已习得「${learnedSkill.名称}」，可在功法页查看。`, tone: 'success' });
     }, [actions, setters, state.玩家门派?.名称, state.角色]);
+    const handleLearnNpcSkill = React.useCallback((npc: any, skill: any) => {
+        const npcName = String(npc?.姓名 || npc?.名称 || '该人物').trim();
+        const skillName = String(skill?.名称 || '技艺').trim();
+        const skillLevel = String(skill?.等级 || '未入门').trim();
+        const proficiency = Number(skill?.熟练度 ?? 0);
+        if (!npcName || !skillName || !Number.isFinite(proficiency)) return;
+        const playerSkill = (Array.isArray(state.角色?.技艺) ? state.角色.技艺 : [])
+            .find((item: any) => item?.名称 === skillName);
+        const playerSkillText = playerSkill
+            ? `主角当前${skillName}：${playerSkill.等级 || '未入门'}，熟练度${Number(playerSkill.熟练度 || 0)}。`
+            : `主角当前尚未稳定记录${skillName}技艺。`;
+        actions.appendSystemMessage?.(
+            `[学艺请求] 玩家已选择向${npcName}学习${skillName}技艺。对方当前${skillName}：${skillLevel}，熟练度${Math.max(0, Math.floor(proficiency))}。${playerSkillText}下一回合 AI 必须在正文中反馈请教过程、对方态度、学习条件与阶段结果；若学习有效，在<变量规划>中更新角色.技艺里${skillName}的熟练度/等级/描述，并按事实同步${npcName}的记忆、好感或关系状态。`,
+            { position: 'after_last_turn' }
+        );
+        actions.pushNotification({
+            title: '学艺请求已记录',
+            message: `下回合将向${npcName}请教「${skillName}」。`,
+            tone: 'success'
+        });
+    }, [actions, state.角色?.技艺]);
     const handleAcceptSectMission = React.useCallback((mission: any) => {
         if (!mission?.id) return;
         const nextSect = {
@@ -3044,6 +3065,7 @@ const App: React.FC = () => {
                                     onToggleMajorRole={actions.updateNpcMajorRole}
                                     onTogglePresence={actions.updateNpcPresence}
                                     onDeleteNpc={actions.removeNpc}
+                                    onLearnSkill={handleLearnNpcSkill}
                                 />
                             ) : (
                                 <SocialModal
@@ -3057,6 +3079,7 @@ const App: React.FC = () => {
                                     onToggleMajorRole={actions.updateNpcMajorRole}
                                     onTogglePresence={actions.updateNpcPresence}
                                     onDeleteNpc={actions.removeNpc}
+                                    onLearnSkill={handleLearnNpcSkill}
                                 />
                             )}
                         </懒加载边界>

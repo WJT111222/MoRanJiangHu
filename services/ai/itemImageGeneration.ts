@@ -55,11 +55,11 @@ export const 构建物品视觉描述 = (item: any): string => {
 const 获取渲染风格要求 = (style: string): string => {
     switch (style) {
         case '写实道具':
-            return 'photorealistic single prop product photography, isolated physical object only, real metal leather cloth wood or paper materials, studio lighting, tactile surface detail, neutral matte background, no card design, no UI icon layout, no poster layout, no ink painting, no guofeng illustration, no text, no letters, no label, no inscription, no logo, no watermark';
+            return 'photorealistic single prop product photography, isolated physical object, real metal leather cloth wood or paper materials, studio lighting, tactile surface detail, neutral matte background, clean product composition';
         case '像素图标':
-            return 'high-end pixel art item icon, crisp silhouette, readable at small size, no text, no letters, no label, no logo, no watermark';
+            return 'high-end pixel art item icon, crisp silhouette, readable at small size, clean transparent-style asset presentation';
         case '3D渲染':
-            return 'stylized 3D single prop render, centered product lighting, soft shadow, no card design, no text, no letters, no label, no inscription, no logo, no watermark';
+            return 'stylized 3D single prop render, centered product lighting, soft shadow, clean asset presentation';
         case '国风插画':
         default:
             return 'Chinese wuxia illustration style, ink wash texture, refined golden rim light';
@@ -98,6 +98,19 @@ const 物品是否柔性服装 = (item: any): boolean => {
         || (/内衬|腿部|足部|胸部/.test(equipSlot) && 物品名称是否柔性服装(`${name}${equipSlot}`));
 };
 
+const 物品是否布鞋 = (item: any): boolean => {
+    const text = [
+        item?.名称,
+        item?.类型,
+        item?.装备位置,
+        item?.当前装备部位,
+        item?.描述,
+        item?.视觉描述,
+        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
+    ].map((value) => 读取文本(value)).join(' ');
+    return /布鞋|旧布鞋|千层底|布靴|麻鞋|草鞋/.test(text);
+};
+
 const 物品品质转英文 = (quality: string): string => {
     const map: Record<string, string> = {
         '传说': 'legendary', '绝世': 'mythic', '极品': 'top grade',
@@ -113,19 +126,19 @@ const 物品品质转英文 = (quality: string): string => {
 const 物品名称转英文描述 = (name: string): string => {
     // 常见武侠物品名称到英文视觉描述的映射
     const map: Record<string, string> = {
-        '练功服': 'cloth kung fu training uniform, soft fabric robe and trousers, folded garment, not armor',
-        '武服': 'cloth martial arts uniform, soft fabric outfit, folded garment, not armor',
-        '劲装': 'fitted cloth martial arts outfit, soft fabric clothing, not armor',
-        '布衣': 'plain cloth robe, soft fabric garment, not armor',
-        '布衫': 'plain cloth shirt robe, soft fabric garment, not armor',
-        '青衫': 'blue green cloth robe, soft fabric garment, not armor',
-        '长衫': 'long cloth robe, soft fabric garment, not armor',
-        '道袍': 'taoist cloth robe, soft flowing fabric garment, not armor',
-        '外袍': 'outer cloth robe, soft flowing fabric garment, not armor',
-        '长袍': 'long robe, soft fabric garment, not armor',
-        '内衬': 'inner cloth lining garment, soft fabric clothing, not armor',
-        '长裤': 'cloth trousers, folded fabric clothing, not armor',
-        '布鞋': 'cloth shoes, soft worn fabric footwear',
+        '练功服': 'cloth kung fu training uniform, soft fabric robe and trousers, folded garment',
+        '武服': 'cloth martial arts uniform, soft fabric outfit, folded garment',
+        '劲装': 'fitted cloth martial arts outfit, soft fabric clothing',
+        '布衣': 'plain cloth robe, soft fabric garment',
+        '布衫': 'plain cloth shirt robe, soft fabric garment',
+        '青衫': 'blue green cloth robe, soft fabric garment',
+        '长衫': 'long cloth robe, soft fabric garment',
+        '道袍': 'taoist cloth robe, soft flowing fabric garment',
+        '外袍': 'outer cloth robe, soft flowing fabric garment',
+        '长袍': 'long robe, soft fabric garment',
+        '内衬': 'inner cloth lining garment, soft fabric clothing',
+        '长裤': 'cloth trousers, folded fabric clothing',
+        '布鞋': 'cloth shoes, woven fabric upper, layered stitched cloth sole, soft worn fabric footwear',
         '靴': 'boots, leather or cloth footwear',
         '木牌': 'wooden plaque tablet', '身份木牌': 'wooden identity plaque with carved text',
         '令牌': 'metal command token', '腰牌': 'waist badge token',
@@ -149,7 +162,7 @@ const 物品名称转英文描述 = (name: string): string => {
     if (/匣|盒|箱/.test(name)) return 'wooden box or case';
     if (/书|卷|册|经/.test(name)) return 'ancient book or scroll';
     if (/袋|囊|包/.test(name)) return 'cloth pouch or bag';
-    if (物品名称是否柔性服装(name)) return 'soft cloth martial arts garment, folded fabric clothing, not armor';
+    if (物品名称是否柔性服装(name)) return 'soft cloth martial arts garment, folded fabric clothing';
     return '';
 };
 
@@ -165,10 +178,23 @@ const 构建物品视觉主体描述 = (item: any): string => {
         : '';
     return [
         nameEn ? `a single ${qualityEn} ${nameEn}` : `a single ${qualityEn} ${typeEn} prop`,
-        isSoftGarment ? 'soft textile clothing item, fabric seams and folds, no rigid shell, no metal plates, no cuirass, no breastplate' : '',
+        isSoftGarment ? 'soft textile clothing item, fabric seams, cloth folds, woven texture, flexible silhouette' : '',
         description ? `form and materials: ${description}` : '',
         tags ? `material cues: ${tags}` : ''
     ].filter(Boolean).join('\n');
+};
+
+export const 构建物品负面提示词 = (item: any): string => {
+    const isSoftGarment = 物品是否柔性服装(item);
+    const isClothShoe = 物品是否布鞋(item);
+    return [
+        'person, human, face, hand',
+        'text, typography, letters, words, numbers, caption, label, plaque, sign, inscription, Chinese characters, English letters, calligraphy, seal, stamp, logo, watermark, signature, title, poster text',
+        'item card, game card, trading card, UI overlay, interface, badge, quality badge, rarity badge, speech bubble, dialogue box, border frame, decorative frame',
+        'white background, cluttered background, ink wash, guofeng illustration, Chinese painting, brush strokes, anime, cartoon, flat illustration',
+        isSoftGarment ? 'armor, cuirass, breastplate, metal armor, metal plates, gauntlet, shield, helmet, hard shell, leather jacket, shiny leather garment' : '',
+        isClothShoe ? 'leather dress shoe, polished leather shoe, oxford shoe, loafer, business shoe, high heel, glossy leather, hard stacked heel' : ''
+    ].filter(Boolean).join(', ');
 };
 
 export const 构建物品图提示词 = (
@@ -179,9 +205,9 @@ export const 构建物品图提示词 = (
     const renderStyle = options?.渲染风格 || '写实道具';
     const isSoftGarment = 物品是否柔性服装(item);
     const softGarmentGuard = isSoftGarment
-        ? 'for clothing items: show a soft fabric garment laid flat or neatly folded, visible cloth weave, seams and wrinkles, absolutely not armor, no cuirass, no breastplate, no metal plates, no rigid shell'
+        ? 'for clothing items: soft fabric garment laid flat or neatly folded, visible cloth weave, seams, wrinkles, flexible drape'
         : '';
-    // 精简 prompt：只保留"风格 + 物体 + 绝不画文字"三块核心，避免因 prompt 过长被模型忽略关键指令
+    // 精简 prompt：正向只描述目标画面，排除项交给独立负面提示词。
     return [
         renderStyle === '写实道具'
             ? 'photorealistic product photo of a single physical game prop, centered on a plain neutral background, realistic materials and soft shadow'
@@ -190,7 +216,7 @@ export const 构建物品图提示词 = (
         style === '写实' ? 'photorealistic' : style,
         构建物品视觉主体描述(item),
         softGarmentGuard,
-        'absolutely no text, no letters, no numbers, no Chinese characters, no captions, no labels, no watermarks, no logos, no UI, no card frame, no badges'
+        'plain neutral background, centered object, clear silhouette, product catalog lighting'
     ].filter(Boolean).join('\n');
 };
 
@@ -223,9 +249,9 @@ export const 生成物品图标 = async (
         构图: '头像',
         尺寸: size,
         附加正向提示词: renderStyle === '写实道具'
-            ? `single physical object only, photorealistic product photo, centered product composition, neutral matte studio background, clean silhouette, realistic material, no card design, no UI, no frame, no badges, no text, no letters, no label, no inscription, no logo, no watermark${enrichedItemIsSoftGarment ? ', soft fabric garment, cloth folds, not armor, no metal plates, no cuirass' : ''}`
-            : 'single physical object only, centered composition, clean silhouette, no card design, no UI, no frame, no badges, no text, no letters, no label, no inscription, no logo, no watermark',
-        附加负面提示词: `person, human, face, hand, text, typography, letters, words, numbers, caption, label, plaque, sign, inscription, Chinese characters, English letters, calligraphy, seal, stamp, logo, watermark, signature, title, poster text, item card, game card, trading card, UI overlay, interface, badge, quality badge, rarity badge, speech bubble, dialogue box, border frame, decorative frame, white background, cluttered background, ink wash, guofeng illustration, Chinese painting, brush strokes, anime, cartoon, flat illustration${enrichedItemIsSoftGarment ? ', armor, cuirass, breastplate, metal armor, metal plates, gauntlet, shield, helmet, hard shell' : ''}`,
+            ? `single physical object, photorealistic product photo, centered product composition, neutral matte studio background, clean silhouette, realistic material${enrichedItemIsSoftGarment ? ', soft fabric garment, cloth folds, flexible drape' : ''}`
+            : 'single physical object, centered composition, clean silhouette, plain asset presentation',
+        附加负面提示词: 构建物品负面提示词(enrichedItem),
     });
     const localResult = await persistImageAssetLocally(rawResult);
     const imageRecord: 物品生图结果 = {
