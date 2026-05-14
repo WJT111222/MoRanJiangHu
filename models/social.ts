@@ -83,6 +83,28 @@ export interface NPC出身背景 {
     效果: string;
 }
 
+export type 名器部位类型 = '胸部' | '小穴' | '屁穴';
+export type 名器品质类型 = '无' | '普通' | '稀有' | '极品' | '传说';
+
+export interface 名器效果结构 {
+    判定修正?: number; // 亲密、魅力、诱惑、双修等相关判定的建议修正
+    魅力修正?: number;
+    亲密推进修正?: number;
+    双修收益修正?: number;
+    风险修正?: number; // 易失控、惹祸、反噬、关系误判等风险
+    标签?: string[];
+    说明: string;
+}
+
+export interface 名器档案条目 {
+    部位: 名器部位类型;
+    名称: string; // 无名器时写“无名器”或“无对应名器”
+    品质: 名器品质类型;
+    来源世界书?: string;
+    稳定描述: string;
+    效果: 名器效果结构;
+}
+
 export interface NPC结构 {
     id: string;
     姓名: string;
@@ -143,6 +165,7 @@ export interface NPC结构 {
     胸部描述?: string; // 应包含胸型/体量 + 乳头乳晕大小与颜色等
     小穴描述?: string; // 应包含入口/内部/容纳尺度/颜色/湿润度等
     屁穴描述?: string; // 应包含颜色/松紧/湿润度/使用痕迹等
+    名器档案?: 名器档案条目[]; // 结构化名器机制，供判定、关系推进、生图和叙事一致性读取
     性癖?: string; // 偏好与倾向
     敏感点?: string; // 主要敏感区域
 
