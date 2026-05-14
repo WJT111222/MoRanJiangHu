@@ -26,6 +26,7 @@ import {
 } from '../../../utils/openingConfig';
 import { 默认境界母板提示词 } from '../../../prompts/runtime/fandom';
 import { 设置键 } from '../../../utils/settingsSchema';
+import { 根据名称映射天赋抽卡, 补全天赋抽卡名称列表, 天赋抽卡数量, 抽取天赋卡牌 } from '../../../utils/talentDraw';
 
 interface Props {
     onComplete: (
@@ -192,6 +193,9 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, request
     // Talents & Background
     const [selectedBackground, setSelectedBackground] = useState<背景结构>(预设背景[0]);
     const [selectedTalents, setSelectedTalents] = useState<天赋结构[]>([]);
+    const [天赋选择模式, set天赋选择模式] = useState<'抽卡' | '列表'>('抽卡');
+    const [天赋抽卡名称列表, set天赋抽卡名称列表] = useState<string[]>([]);
+    const [天赋抽卡轮次, set天赋抽卡轮次] = useState(1);
     const [自定义天赋列表, 设置自定义天赋列表] = useState<天赋结构[]>([]);
     const [自定义背景列表, 设置自定义背景列表] = useState<背景结构[]>([]);
     const [自定义开局预设列表, 设置自定义开局预设列表] = useState<开局预设方案结构[]>([]);
@@ -252,6 +256,20 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, request
         () => [...预设天赋, ...自定义天赋列表.filter(item => !预设天赋.some(p => p.名称 === item.名称))],
         [自定义天赋列表]
     );
+    const 当前抽卡天赋选项 = useMemo(
+        () => 根据名称映射天赋抽卡(天赋抽卡名称列表, 全部天赋选项),
+        [天赋抽卡名称列表, 全部天赋选项]
+    );
+    useEffect(() => {
+        set天赋抽卡名称列表(prev => 补全天赋抽卡名称列表(prev, 全部天赋选项, 天赋抽卡数量));
+    }, [全部天赋选项]);
+    const 重抽天赋卡牌 = () => {
+        set天赋抽卡名称列表(抽取天赋卡牌(全部天赋选项, 天赋抽卡数量).map(item => item.名称));
+        set天赋抽卡轮次(prev => prev + 1);
+    };
+    const 取消选择天赋 = (名称: string) => {
+        setSelectedTalents(prev => prev.filter(item => item.名称 !== 名称));
+    };
     const 重置自定义天赋编辑 = () => {
         setCustomTalent({ 名称: '', 描述: '', 效果: '' });
         set正在编辑天赋名('');
@@ -1542,9 +1560,14 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, request
                                     <div className="flex flex-col items-start md:items-end gap-3">
                                         <div className="flex flex-wrap gap-2 justify-start md:justify-end">
                                             {selectedTalentNames.length > 0 ? selectedTalentNames.map(name => (
-                                                <span key={name} className="rounded-full border border-wuxia-red/35 bg-wuxia-red/10 px-3 py-1 text-xs text-wuxia-red">
-                                                    {name}
-                                                </span>
+                                                <button
+                                                    key={name}
+                                                    type="button"
+                                                    onClick={() => 取消选择天赋(name)}
+                                                    className="rounded-full border border-wuxia-red/35 bg-wuxia-red/10 px-3 py-1 text-xs text-wuxia-red transition-colors hover:border-wuxia-red hover:bg-wuxia-red/20 hover:text-white"
+                                                >
+                                                    {name} ×
+                                                </button>
                                             )) : (
                                                 <span className="text-xs text-gray-500">尚未选择天赋</span>
                                             )}
@@ -1608,11 +1631,51 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, request
                                         <h3 className="text-2xl font-serif font-bold text-wuxia-gold mt-2">天赋选择</h3>
                                         <p className="text-xs text-gray-400 mt-2 leading-6">选择最多三个天赋，组合出你的长期成长风格、擅长判定与可走路线。</p>
                                     </div>
-                                    <div className="text-xs text-gray-500">建议搭配：战斗 + 生存 + 社交 / 探索，角色会更立体</div>
+                                    <div className="flex flex-col items-start md:items-end gap-2">
+                                        <div className="flex rounded-full border border-gray-700 bg-black/35 p-1 text-xs">
+                                            {(['抽卡', '列表'] as const).map((mode) => (
+                                                <button
+                                                    key={mode}
+                                                    type="button"
+                                                    onClick={() => set天赋选择模式(mode)}
+                                                    className={`rounded-full px-4 py-1.5 transition-all ${
+                                                        天赋选择模式 === mode
+                                                            ? 'bg-wuxia-red/25 text-wuxia-red border border-wuxia-red/45'
+                                                            : 'text-gray-400 hover:text-wuxia-gold'
+                                                    }`}
+                                                >
+                                                    {mode === '抽卡' ? '抽卡模式' : '全部列表'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {天赋选择模式 === '抽卡' ? (
+                                            <button
+                                                type="button"
+                                                onClick={重抽天赋卡牌}
+                                                className="rounded-full border border-wuxia-cyan/40 bg-wuxia-cyan/10 px-4 py-2 text-xs text-wuxia-cyan transition-all hover:border-wuxia-gold hover:text-wuxia-gold"
+                                            >
+                                                重 roll
+                                            </button>
+                                        ) : (
+                                            <div className="text-xs text-gray-500">建议搭配：战斗 + 生存 + 社交 / 探索，角色会更立体</div>
+                                        )}
+                                    </div>
                                 </div>
 
+                                {天赋选择模式 === '抽卡' && (
+                                    <div className="mb-5 rounded-2xl border border-wuxia-red/25 bg-gradient-to-br from-wuxia-red/10 via-black/30 to-wuxia-cyan/5 px-4 py-3">
+                                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                            <div>
+                                                <div className="text-[11px] uppercase tracking-[0.3em] text-wuxia-red/70 font-mono">Draw Round #{天赋抽卡轮次}</div>
+                                                <div className="mt-1 text-sm text-gray-300">本轮抽出 {当前抽卡天赋选项.length}/{Math.min(天赋抽卡数量, 全部天赋选项.length)} 张天赋卡，重 roll 只刷新卡池。</div>
+                                            </div>
+                                            <div className="text-[11px] text-gray-500">已选天赋会保留，可点击上方标签取消。</div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                                    {全部天赋选项.map((t, idx) => {
+                                    {(天赋选择模式 === '抽卡' ? 当前抽卡天赋选项 : 全部天赋选项).map((t, idx) => {
                                         const isSelected = !!selectedTalents.find(x => x.名称 === t.名称);
                                         return (
                                             <div
