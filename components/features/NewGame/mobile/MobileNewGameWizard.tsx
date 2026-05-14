@@ -28,7 +28,7 @@ import {
 } from '../../../../utils/openingConfig';
 import { 默认境界母板提示词 } from '../../../../prompts/runtime/fandom';
 import { 设置键 } from '../../../../utils/settingsSchema';
-import { 根据名称映射天赋抽卡, 补全天赋抽卡名称列表, 天赋抽卡数量, 抽取天赋卡牌 } from '../../../../utils/talentDraw';
+import { 根据名称映射天赋抽卡, 根据名称映射抽卡, 补全天赋抽卡名称列表, 补全抽卡名称列表, 天赋抽卡数量, 出身抽卡数量, 抽取天赋卡牌, 抽取卡牌 } from '../../../../utils/talentDraw';
 
 interface Props {
     onComplete: (
@@ -194,6 +194,10 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
 
     // Talents & Background
     const [selectedBackground, setSelectedBackground] = useState<背景结构>(预设背景[0]);
+    const [出身选择模式, set出身选择模式] = useState<'抽卡' | '列表'>('抽卡');
+    const [出身抽卡名称列表, set出身抽卡名称列表] = useState<string[]>([]);
+    const [出身抽卡轮次, set出身抽卡轮次] = useState(1);
+    const [出身已重Roll次数, set出身已重Roll次数] = useState(0);
     const [selectedTalents, setSelectedTalents] = useState<天赋结构[]>([]);
     const [天赋选择模式, set天赋选择模式] = useState<'抽卡' | '列表'>('抽卡');
     const [天赋抽卡名称列表, set天赋抽卡名称列表] = useState<string[]>([]);
@@ -262,17 +266,35 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
         () => [...预设天赋, ...自定义天赋列表.filter(item => !预设天赋.some(p => p.名称 === item.名称))],
         [自定义天赋列表]
     );
+    const 当前抽卡出身选项 = useMemo(
+        () => 根据名称映射抽卡(出身抽卡名称列表, 全部背景选项),
+        [出身抽卡名称列表, 全部背景选项]
+    );
     const 当前抽卡天赋选项 = useMemo(
         () => 根据名称映射天赋抽卡(天赋抽卡名称列表, 全部天赋选项),
         [天赋抽卡名称列表, 全部天赋选项]
     );
     useEffect(() => {
+        set出身抽卡名称列表(prev => 补全抽卡名称列表(prev, 全部背景选项, 出身抽卡数量));
+    }, [全部背景选项]);
+    useEffect(() => {
         set天赋抽卡名称列表(prev => 补全天赋抽卡名称列表(prev, 全部天赋选项, 天赋抽卡数量));
     }, [全部天赋选项]);
     useEffect(() => {
+        set出身已重Roll次数(0);
+        set出身抽卡轮次(1);
         set天赋已重Roll次数(0);
         set天赋抽卡轮次(1);
     }, [worldConfig.difficulty]);
+    const 重抽出身卡牌 = () => {
+        if (出身剩余重Roll次数 <= 0) {
+            alert(`当前难度“${当前难度设定.label}”的出身重 roll 次数已用完`);
+            return;
+        }
+        set出身抽卡名称列表(抽取卡牌(全部背景选项, 出身抽卡数量).map(item => item.名称));
+        set出身抽卡轮次(prev => prev + 1);
+        set出身已重Roll次数(prev => prev + 1);
+    };
     const 重抽天赋卡牌 = () => {
         if (天赋剩余重Roll次数 <= 0) {
             alert(`当前难度“${当前难度设定.label}”的天赋重 roll 次数已用完`);
@@ -507,7 +529,9 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
     const stepProgress = ((step + 1) / STEPS.length) * 100;
     const currentStepLabel = STEPS[step] || '创建';
     const 当前难度设定 = useMemo(() => 获取难度设定(worldConfig.difficulty), [worldConfig.difficulty]);
+    const 出身剩余重Roll次数 = Math.max(0, 当前难度设定.天赋重Roll次数 - 出身已重Roll次数);
     const 天赋剩余重Roll次数 = Math.max(0, 当前难度设定.天赋重Roll次数 - 天赋已重Roll次数);
+    const 当前出身展示列表 = 出身选择模式 === '抽卡' ? 当前抽卡出身选项 : 全部背景选项;
     const 难度判定修正文本 = 当前难度设定.判定修正 > 0 ? `+${当前难度设定.判定修正}` : String(当前难度设定.判定修正);
     const selectedTalentNames = selectedTalents.map(item => item.名称);
     const 背景长期说明 = '背景代表长期身份资源、社会关系、风险来源与成长路径，不应只决定第一幕处境。';
@@ -1591,8 +1615,44 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
                                     </div>
                                 )}
 
+                                
+                                <div className="mb-4 space-y-3 rounded-2xl border border-gray-800 bg-black/25 p-3">
+                                    <div className="grid grid-cols-2 gap-2 rounded-full border border-gray-700 bg-black/35 p-1 text-[11px]">
+                                        {(['抽卡', '列表'] as const).map((mode) => (
+                                            <button
+                                                key={mode}
+                                                type="button"
+                                                onClick={() => set出身选择模式(mode)}
+                                                className={`rounded-full px-3 py-2 transition-all ${
+                                                    出身选择模式 === mode
+                                                        ? 'border border-wuxia-cyan/45 bg-wuxia-cyan/20 text-wuxia-cyan'
+                                                        : 'text-gray-400'
+                                                }`}
+                                            >
+                                                {mode === '抽卡' ? '抽卡模式' : '全部列表'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {出身选择模式 === '抽卡' && (
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <div className="text-[10px] uppercase tracking-[0.25em] text-wuxia-cyan/70 font-mono">Origin #{出身抽卡轮次}</div>
+                                                <div className="mt-1 text-[11px] text-gray-500">本轮 {当前抽卡出身选项.length}/{Math.min(出身抽卡数量, 全部背景选项.length)} 个，已用 {出身已重Roll次数}/{当前难度设定.天赋重Roll次数} 次。</div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={重抽出身卡牌}
+                                                disabled={出身剩余重Roll次数 <= 0}
+                                                className="shrink-0 rounded-full border border-wuxia-gold/40 bg-wuxia-gold/10 px-4 py-2 text-xs text-wuxia-gold active:bg-wuxia-gold/20 disabled:cursor-not-allowed disabled:border-gray-700 disabled:bg-black/30 disabled:text-gray-600"
+                                            >
+                                                重抽出身 {出身剩余重Roll次数}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="space-y-3">
-                                    {全部背景选项.map((bg, idx) => {
+                                    {当前出身展示列表.map((bg, idx) => {
                                         const isSelected = selectedBackground.名称 === bg.名称;
                                         return (
                                             <div
