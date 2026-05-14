@@ -26,6 +26,7 @@ import {
 } from '../../../../utils/openingConfig';
 import { 默认境界母板提示词 } from '../../../../prompts/runtime/fandom';
 import { 设置键 } from '../../../../utils/settingsSchema';
+import { 根据名称映射天赋抽卡, 补全天赋抽卡名称列表, 天赋抽卡数量, 抽取天赋卡牌 } from '../../../../utils/talentDraw';
 
 interface Props {
     onComplete: (
@@ -192,6 +193,9 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
     // Talents & Background
     const [selectedBackground, setSelectedBackground] = useState<背景结构>(预设背景[0]);
     const [selectedTalents, setSelectedTalents] = useState<天赋结构[]>([]);
+    const [天赋选择模式, set天赋选择模式] = useState<'抽卡' | '列表'>('抽卡');
+    const [天赋抽卡名称列表, set天赋抽卡名称列表] = useState<string[]>([]);
+    const [天赋抽卡轮次, set天赋抽卡轮次] = useState(1);
     const [自定义天赋列表, 设置自定义天赋列表] = useState<天赋结构[]>([]);
     const [自定义背景列表, 设置自定义背景列表] = useState<背景结构[]>([]);
     const [自定义开局预设列表, 设置自定义开局预设列表] = useState<开局预设方案结构[]>([]);
@@ -252,6 +256,20 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
         () => [...预设天赋, ...自定义天赋列表.filter(item => !预设天赋.some(p => p.名称 === item.名称))],
         [自定义天赋列表]
     );
+    const 当前抽卡天赋选项 = useMemo(
+        () => 根据名称映射天赋抽卡(天赋抽卡名称列表, 全部天赋选项),
+        [天赋抽卡名称列表, 全部天赋选项]
+    );
+    useEffect(() => {
+        set天赋抽卡名称列表(prev => 补全天赋抽卡名称列表(prev, 全部天赋选项, 天赋抽卡数量));
+    }, [全部天赋选项]);
+    const 重抽天赋卡牌 = () => {
+        set天赋抽卡名称列表(抽取天赋卡牌(全部天赋选项, 天赋抽卡数量).map(item => item.名称));
+        set天赋抽卡轮次(prev => prev + 1);
+    };
+    const 取消选择天赋 = (名称: string) => {
+        setSelectedTalents(prev => prev.filter(item => item.名称 !== 名称));
+    };
     const 重置自定义天赋编辑 = () => {
         setCustomTalent({ 名称: '', 描述: '', 效果: '' });
         set正在编辑天赋名('');
@@ -1503,7 +1521,14 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
                                     <p className="text-[11px] text-gray-400 mt-2 leading-6">{天赋说明}</p>
                                     <div className="mt-3 flex flex-wrap gap-2">
                                         {selectedTalentNames.length > 0 ? selectedTalentNames.map(name => (
-                                            <span key={name} className="rounded-full border border-wuxia-red/35 bg-wuxia-red/10 px-3 py-1 text-[11px] text-wuxia-red">{name}</span>
+                                            <button
+                                                key={name}
+                                                type="button"
+                                                onClick={() => 取消选择天赋(name)}
+                                                className="rounded-full border border-wuxia-red/35 bg-wuxia-red/10 px-3 py-1 text-[11px] text-wuxia-red transition-colors active:bg-wuxia-red/25"
+                                            >
+                                                {name} ×
+                                            </button>
                                         )) : (
                                             <span className="text-[11px] text-gray-500">尚未选择天赋</span>
                                         )}
@@ -1555,8 +1580,42 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
                                     </div>
                                 )}
 
+                                <div className="mb-4 space-y-3 rounded-2xl border border-gray-800 bg-black/25 p-3">
+                                    <div className="grid grid-cols-2 gap-2 rounded-full border border-gray-700 bg-black/35 p-1 text-[11px]">
+                                        {(['抽卡', '列表'] as const).map((mode) => (
+                                            <button
+                                                key={mode}
+                                                type="button"
+                                                onClick={() => set天赋选择模式(mode)}
+                                                className={`rounded-full px-3 py-2 transition-all ${
+                                                    天赋选择模式 === mode
+                                                        ? 'border border-wuxia-red/45 bg-wuxia-red/25 text-wuxia-red'
+                                                        : 'text-gray-400'
+                                                }`}
+                                            >
+                                                {mode === '抽卡' ? '抽卡模式' : '全部列表'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {天赋选择模式 === '抽卡' && (
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <div className="text-[10px] uppercase tracking-[0.25em] text-wuxia-red/70 font-mono">Draw #{天赋抽卡轮次}</div>
+                                                <div className="mt-1 text-[11px] text-gray-500">本轮 {当前抽卡天赋选项.length}/{Math.min(天赋抽卡数量, 全部天赋选项.length)} 张，已选会保留。</div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={重抽天赋卡牌}
+                                                className="shrink-0 rounded-full border border-wuxia-cyan/40 bg-wuxia-cyan/10 px-4 py-2 text-xs text-wuxia-cyan active:bg-wuxia-cyan/20"
+                                            >
+                                                重 roll
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="space-y-3">
-                                    {全部天赋选项.map((t, idx) => {
+                                    {(天赋选择模式 === '抽卡' ? 当前抽卡天赋选项 : 全部天赋选项).map((t, idx) => {
                                         const isSelected = !!selectedTalents.find(x => x.名称 === t.名称);
                                         return (
                                             <div
