@@ -29,6 +29,7 @@ import { checkForAppUpdate, subscribeAppUpdateProgress, type AppUpdateProgressSt
 import { RELEASE_INFO } from './data/releaseInfo';
 import { 读取拍卖行状态, 保存拍卖行状态, 清理并补货, 投放事件拍卖品, 构建拍卖行存储作用域, 上架背包物品, 创建交易记录, 结算玩家寄售, 从势力互动投放拍卖品, type 拍卖行状态 } from './services/auctionHouse';
 import { 整理世界状态客户可见大事 } from './hooks/useGame/worldEvolutionUtils';
+import { getDiagnosticLogs, subscribeDiagnosticLogs } from './services/diagnosticLog';
 import './services/diagnosticLog';
 import type { 物品生图结果 } from './types';
 
@@ -289,7 +290,7 @@ class ModalErrorBoundary extends React.Component<
                     <div className="mt-4 text-xs leading-5 text-red-200/70">
                         {isLazyImportError
                             ? '检测到页面资源已经更新，但当前页面还停留在旧版本。点击下面按钮刷新后，通常就能直接恢复。'
-                            : '请把这段报错截图发我，我就能继续按具体原因修。'}
+                            : '这次错误已写入运行日志。可打开“设置 → 运行日志”查看详情、复制诊断或点击“上报日志”提交给维护人员。'}
                     </div>
                     {isLazyImportError && (
                         <button
@@ -359,6 +360,7 @@ const App: React.FC = () => {
     const autoItemImageRunningRef = React.useRef<Set<string>>(new Set());
     const autoItemImageFailedAtRef = React.useRef<Map<string, number>>(new Map());
     const auctionSettlementHandledRef = React.useRef<Set<string>>(new Set());
+    const 最近运行报错提示IDRef = React.useRef('');
     const auctionHouseScope = React.useMemo(() => 构建拍卖行存储作用域({
         游戏初始时间: state.游戏初始时间,
         角色数据: state.角色,
@@ -379,6 +381,19 @@ const App: React.FC = () => {
     }, []);
 
     React.useEffect(() => subscribeAppUpdateProgress(setAppUpdateProgress), []);
+    React.useEffect(() => {
+        const unsubscribe = subscribeDiagnosticLogs(() => {
+            const latestError = getDiagnosticLogs().find((entry) => entry.level === 'error');
+            if (!latestError || 最近运行报错提示IDRef.current === latestError.id) return;
+            最近运行报错提示IDRef.current = latestError.id;
+            actions.pushNotification({
+                title: '运行报错已记录',
+                message: '可打开“设置 → 运行日志”查看详情、复制诊断或点击“上报日志”提交给维护人员。',
+                tone: 'error'
+            });
+        });
+        return unsubscribe;
+    }, [actions]);
     React.useEffect(() => {
         const next = 清理并补货(读取拍卖行状态(auctionHouseScope));
         setAuctionHouseState(next);
