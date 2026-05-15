@@ -177,7 +177,7 @@
   </main>
 
   <script>
-    const manifestUrl = 'https://download.bacon.de5.net/moranjianghu/latest.json';
+    const releaseInfoUrl = '/release-info.json';
     const statusNode = document.getElementById('status');
     const latestNode = document.getElementById('latest');
     const historyNode = document.getElementById('history');
@@ -230,7 +230,7 @@
       return { latest, history };
     };
 
-    fetch(manifestUrl, { cache: 'no-store' })
+    fetch(releaseInfoUrl, { cache: 'no-store' })
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
@@ -240,7 +240,7 @@
         latestNode.hidden = false;
         latestNode.innerHTML = `<h2>最新版本</h2>${renderEntry(latest)}`;
         historyNode.innerHTML = history.length > 0 ? history.map(renderEntry).join('') : '<article class="entry">暂无更多历史版本。</article>';
-        statusNode.textContent = `已同步线上更新清单：v${latest.versionName || '未知版本'}`;
+        statusNode.textContent = `已同步站内更新清单：v${latest.versionName || '未知版本'}`;
       })
       .catch((error) => {
         statusNode.textContent = `更新清单读取失败：${error.message || error}`;

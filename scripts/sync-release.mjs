@@ -10,6 +10,7 @@ const releaseConfigPath = path.join(rootDir, 'release.config.json');
 const packageJsonPath = path.join(rootDir, 'package.json');
 const buildGradlePath = path.join(rootDir, 'android', 'app', 'build.gradle');
 const releaseInfoTsPath = path.join(rootDir, 'data', 'releaseInfo.ts');
+const publicReleaseInfoPath = path.join(rootDir, 'public', 'release-info.json');
 
 const releaseConfig = JSON.parse(fs.readFileSync(releaseConfigPath, 'utf8'));
 
@@ -47,5 +48,6 @@ export type ReleaseInfo = typeof RELEASE_INFO;
 `;
 
 fs.writeFileSync(releaseInfoTsPath, releaseInfoSource, 'utf8');
+fs.writeFileSync(publicReleaseInfoPath, `${JSON.stringify(normalizedConfig, null, 2)}\n`, 'utf8');
 
 console.log(`Release synced: v${normalizedConfig.versionName} (${normalizedConfig.versionCode})`);
