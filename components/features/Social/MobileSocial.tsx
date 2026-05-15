@@ -22,6 +22,21 @@ interface Props {
 }
 
 const 是女性角色 = (npc?: NPC结构 | null): boolean => String((npc as any)?.性别 || '').trim() === '女';
+const 死亡状态正则 = /(死亡|已死|身亡|阵亡|战死|气绝|断气|毙命|殒命|已故)/;
+const NPC是否死亡 = (npc?: NPC结构 | null): boolean => {
+    if (!npc) return false;
+    const 当前血量 = Number((npc as any).当前血量);
+    const 最大血量 = Number((npc as any).最大血量);
+    if (Number.isFinite(当前血量) && 当前血量 <= 0 && Number.isFinite(最大血量) && 最大血量 > 0) return true;
+    const statusText = [
+        (npc as any).状态,
+        (npc as any).生死状态,
+        (npc as any).生命状态,
+        (npc as any).死亡描述,
+        ...(Array.isArray((npc as any).DEBUFF) ? (npc as any).DEBUFF.flatMap((item: any) => [item?.名称, item?.描述, item?.效果]) : [])
+    ].filter(Boolean).join(' ');
+    return 死亡状态正则.test(statusText);
+};
 
 const MobileSocial: React.FC<Props> = ({
     socialList,
@@ -81,6 +96,7 @@ const MobileSocial: React.FC<Props> = ({
         [currentNPC]
     );
     const 当前角色是女性 = 是女性角色(currentNPC);
+    const 当前角色已死亡 = NPC是否死亡(currentNPC);
     const 展示女性扩展 = 当前角色是女性 && Boolean(currentNPC?.是否主要角色);
     const 展示女性私密档案 = 展示女性扩展 && nsfwEnabled;
     const 取首个非空文本 = (...values: unknown[]): string => {
@@ -327,7 +343,9 @@ const MobileSocial: React.FC<Props> = ({
                             <span className="text-[9px] text-wuxia-cyan/80 bg-wuxia-cyan/10 px-1.5 py-0.5 rounded border border-wuxia-cyan/30">{socialList.length} 人</span>
                         </div>
                         <div className="flex gap-2 overflow-x-auto no-scrollbar px-3 pb-2 h-full items-center">
-                            {socialList.map(npc => (
+                            {socialList.map(npc => {
+                                const npcDead = NPC是否死亡(npc);
+                                return (
                                 <button
                                     key={npc.id}
                                     onClick={() => {
@@ -344,7 +362,7 @@ const MobileSocial: React.FC<Props> = ({
                                         <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-wuxia-gold shadow-[0_0_10px_rgba(212,175,55,0.8)] z-10"></div>
                                     )}
                                     
-                                    <div className="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden border border-white/10 bg-black/50">
+                                    <div className={`relative w-10 h-10 shrink-0 rounded-lg overflow-hidden border bg-black/50 ${npcDead ? 'border-gray-500/50' : 'border-white/10'}`}>
                                         {提取头像图片地址(npc) ? (
                                             <button
                                                 type="button"
@@ -355,11 +373,16 @@ const MobileSocial: React.FC<Props> = ({
                                                     打开图片查看器(提取头像图片地址(npc), `${npc.姓名} 头像`);
                                                 }}
                                             >
-                                                <img src={提取头像图片地址(npc)} alt={npc.姓名} className="w-full h-full object-cover" />
+                                                <img src={提取头像图片地址(npc)} alt={npc.姓名} className={`w-full h-full object-cover ${npcDead ? 'grayscale opacity-60' : ''}`} />
                                             </button>
                                         ) : (
-                                            <div className={`w-full h-full flex items-center justify-center font-serif font-bold text-sm ${是女性角色(npc) ? 'text-pink-500/50' : 'text-blue-500/50'}`}>
+                                            <div className={`w-full h-full flex items-center justify-center font-serif font-bold text-sm ${npcDead ? 'text-gray-500/60 grayscale' : 是女性角色(npc) ? 'text-pink-500/50' : 'text-blue-500/50'}`}>
                                                 {npc.姓名[0]}
+                                            </div>
+                                        )}
+                                        {npcDead && (
+                                            <div className="absolute inset-x-0 bottom-0 bg-black/70 text-center text-[8px] tracking-widest text-gray-200">
+                                                已故
                                             </div>
                                         )}
                                     </div>
@@ -388,7 +411,7 @@ const MobileSocial: React.FC<Props> = ({
                                         </div>
                                     )}
                                 </button>
-                            ))}
+                            );})}
                             {socialList.length === 0 && (
                                  <div className="text-center text-gray-600 text-xs w-full py-4 font-serif flex flex-col items-center gap-1">
                                     <IconBeads size={20} className="opacity-50" />
@@ -452,7 +475,14 @@ const MobileSocial: React.FC<Props> = ({
                                             title={当前详情主图 ? '点击查看图片大图' : ''}
                                         >
                                             {当前详情主图 ? (
-                                                <img src={当前详情主图} alt={currentNPC.姓名} className="w-full h-full object-cover" />
+                                                <>
+                                                    <img src={当前详情主图} alt={currentNPC.姓名} className={`w-full h-full object-cover ${当前角色已死亡 ? 'grayscale opacity-65' : ''}`} />
+                                                    {当前角色已死亡 && (
+                                                        <div className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-[10px] tracking-[0.25em] text-gray-200">
+                                                            已故
+                                                        </div>
+                                                    )}
+                                                </>
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center font-serif text-2xl text-wuxia-gold/30">{currentNPC.姓名[0]}</div>
                                             )}
@@ -480,9 +510,9 @@ const MobileSocial: React.FC<Props> = ({
                                                     <span className="text-[9px] bg-black/60 border border-wuxia-gold/20 px-1.5 py-0.5 rounded text-wuxia-gold/80 shadow-inner">LV.{currentNPC.境界}</span>
                                                 )}
                                                 <span className="text-[9px] bg-black/60 border border-white/10 px-1.5 py-0.5 rounded text-gray-300">{currentNPC.身份}</span>
-                                                <span className={`text-[9px] px-1.5 py-0.5 flex items-center gap-1 rounded border border-white/10 bg-black/60 ${currentNPC.是否在场 ? 'text-emerald-400' : 'text-gray-500'}`}>
-                                                    <span className={`w-1 h-1 rounded-full ${currentNPC.是否在场 ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'}`}></span>
-                                                    {currentNPC.是否在场 ? '在场' : '离场'}
+                                                <span className={`text-[9px] px-1.5 py-0.5 flex items-center gap-1 rounded border border-white/10 bg-black/60 ${当前角色已死亡 ? 'text-gray-300' : currentNPC.是否在场 ? 'text-emerald-400' : 'text-gray-500'}`}>
+                                                    <span className={`w-1 h-1 rounded-full ${当前角色已死亡 ? 'bg-gray-400' : currentNPC.是否在场 ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'}`}></span>
+                                                    {当前角色已死亡 ? '已故' : currentNPC.是否在场 ? '在场' : '离场'}
                                                 </span>
                                                 {currentNPC.是否队友 && (
                                                     <span className="text-[9px] bg-wuxia-gold/10 border border-wuxia-gold/30 px-1.5 py-0.5 rounded text-wuxia-gold flex items-center gap-0.5 shadow-[0_0_8px_rgba(212,175,55,0.2)]">

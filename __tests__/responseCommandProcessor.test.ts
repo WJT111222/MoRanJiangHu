@@ -86,6 +86,47 @@ describe('responseCommandProcessor dialogue social sync', () => {
     });
 });
 
+describe('responseCommandProcessor current scene presence sync', () => {
+    it('keeps only NPCs confirmed in the current response as present', () => {
+        const state = 构建基础状态();
+        state.社交 = 规范化社交列表([
+            { id: 'npc_shen_ruoyan', 姓名: '沈若嫣', 性别: '女', 是否在场: false },
+            { id: 'npc_bandit_a', 姓名: '水贼头目', 性别: '男', 是否在场: true },
+            { id: 'npc_guard_a', 姓名: '兵器库守卫', 性别: '男', 是否在场: true }
+        ], { 合并同名: false });
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '站在杨长风身侧的沈若嫣，那双清冷的桃花眼中，终于绽放出一抹明亮。' }
+            ],
+            tavern_commands: []
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect(result.社交.find((npc: any) => npc.姓名 === '沈若嫣')?.是否在场).toBe(true);
+        expect(result.社交.find((npc: any) => npc.姓名 === '水贼头目')?.是否在场).toBe(false);
+        expect(result.社交.find((npc: any) => npc.姓名 === '兵器库守卫')?.是否在场).toBe(false);
+    });
+
+    it('treats dialogue speakers as present and explicit offscreen mentions as absent', () => {
+        const state = 构建基础状态();
+        state.社交 = 规范化社交列表([
+            { id: 'npc_yang_qinger', 姓名: '杨青儿', 性别: '女', 是否在场: false },
+            { id: 'npc_zhao_pingan', 姓名: '赵平安', 性别: '男', 是否在场: true }
+        ], { 合并同名: false });
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '杨青儿', text: '兄长，账册已经带来了。' },
+                { sender: '旁白', text: '赵平安仍在山门外待命，并不在堂中。' }
+            ],
+            tavern_commands: []
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect(result.社交.find((npc: any) => npc.姓名 === '杨青儿')?.是否在场).toBe(true);
+        expect(result.社交.find((npc: any) => npc.姓名 === '赵平安')?.是否在场).toBe(false);
+    });
+});
+
 describe('responseCommandProcessor equipment guard', () => {
     it('blocks silent equipment clearing without an explicit removal trigger', () => {
         const state = 构建基础状态();
@@ -263,5 +304,102 @@ describe('responseCommandProcessor NSFW female state fallback', () => {
         expect(result.社交[0].初夜时间).toBe('三月十六日 清晨');
         expect(result.社交[0].小穴描述).toContain('原“未经人事”状态失效');
         expect(result.社交[0].子宫.内射记录).toHaveLength(0);
+    });
+});
+
+describe('responseCommandProcessor NPC death fallback', () => {
+    it('sets named dead NPC health and death state when the story confirms death without commands', () => {
+        const state = 构建基础状态();
+        state.环境 = { 时间: '四月初一 黄昏' } as any;
+        state.社交 = 规范化社交列表([
+            {
+                id: 'npc_zhao_yunting',
+                姓名: '赵云廷',
+                性别: '男',
+                年龄: 28,
+                身份: '同门竞争者',
+                是否在场: true,
+                当前血量: 423,
+                最大血量: 423,
+                DEBUFF: []
+            }
+        ], { 合并同名: false });
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '赵云廷被杨培强一剑贯穿心脉，当场身亡。' }
+            ],
+            tavern_commands: []
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect(result.社交[0].当前血量).toBe(0);
+        expect(result.社交[0].状态).toBe('死亡');
+        expect(result.社交[0].生死状态).toBe('死亡');
+        expect(result.社交[0].生命状态).toBe('死亡');
+        expect(result.社交[0].是否在场).toBe(false);
+        expect(result.社交[0].死亡时间).toBe('四月初一 黄昏');
+        expect(result.社交[0].DEBUFF.some((item: any) => item?.名称 === '死亡')).toBe(true);
+    });
+
+    it('does not mark death for negated or near-death wording', () => {
+        const state = 构建基础状态();
+        state.社交 = 规范化社交列表([
+            {
+                id: 'npc_zhao_yunting',
+                姓名: '赵云廷',
+                性别: '男',
+                是否在场: true,
+                当前血量: 423,
+                最大血量: 423,
+                DEBUFF: []
+            }
+        ], { 合并同名: false });
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '赵云廷险些身亡，却终究保住性命，只是重伤倒地。' }
+            ],
+            tavern_commands: []
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect(result.社交[0].当前血量).toBe(423);
+        expect(result.社交[0].是否在场).toBe(true);
+        expect(result.社交[0].DEBUFF.some((item: any) => item?.名称 === '死亡')).toBe(false);
+    });
+
+    it('chooses the victim instead of the attacker when both NPC names appear', () => {
+        const state = 构建基础状态();
+        state.社交 = 规范化社交列表([
+            {
+                id: 'npc_lin_waner',
+                姓名: '林婉儿',
+                性别: '女',
+                是否在场: true,
+                当前血量: 200,
+                最大血量: 200,
+                DEBUFF: []
+            },
+            {
+                id: 'npc_zhao_yunting',
+                姓名: '赵云廷',
+                性别: '男',
+                是否在场: true,
+                当前血量: 423,
+                最大血量: 423,
+                DEBUFF: []
+            }
+        ], { 合并同名: false });
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '林婉儿一剑杀死了赵云廷，血光溅在石阶上。' }
+            ],
+            tavern_commands: []
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect(result.社交[0].当前血量).toBe(200);
+        expect(result.社交[0].状态).toBeUndefined();
+        expect(result.社交[1].当前血量).toBe(0);
+        expect(result.社交[1].状态).toBe('死亡');
     });
 });

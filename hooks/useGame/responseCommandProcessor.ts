@@ -156,6 +156,74 @@ const 补入对白发送者到社交 = (
     return [...markedSocialList, ...inferredNpcs];
 };
 
+const 拆分事实句 = (text: string): string[] => (
+    (text || '')
+        .split(/[。！？!?；;\n\r]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+);
+
+const 提取对白发送者集合 = (response: GameResponse, playerName?: string): Set<string> => {
+    const result = new Set<string>();
+    const logs = Array.isArray(response?.logs) ? response.logs : [];
+    logs.forEach((log: any) => {
+        const sender = typeof log?.sender === 'string' ? log.sender.trim() : '';
+        if (!是否对白NPC发送者(sender, playerName)) return;
+        result.add(归一化文本键(sender));
+    });
+    return result;
+};
+
+const 现场缺席事实正则 = /(不在(?:场|此处|现场|身边)|未在(?:场|此处|现场|身边)|离场|离开|退下|退走|散去|走远|远在|留守|待命|守在|守于|驻守|回到|返回|躲在|藏在|被押走|被带走|被拖走|逃走|逃离|不见踪影)/;
+const 现场确认事实正则 = /(在场|在此|现场|身侧|身旁|旁边|面前|眼前|跟前|近前|席间|堂中|厅中|屋内|房内|院中|站在|立在|坐在|跪在|伏在|靠在|走进|进入|赶来|来到|现身|出声|开口|说道|问道|答道|回应|看着|望向|盯着|拔刀|出手|跪下|行礼|沉默|皱眉|冷笑|微笑)/;
+
+const NPC已死亡 = (npc: any): boolean => {
+    const 当前血量 = Number(npc?.当前血量);
+    const 最大血量 = Number(npc?.最大血量);
+    if (Number.isFinite(当前血量) && 当前血量 <= 0 && Number.isFinite(最大血量) && 最大血量 > 0) return true;
+    const statusText = [
+        npc?.状态,
+        npc?.生死状态,
+        npc?.生命状态,
+        npc?.死亡描述,
+        ...(Array.isArray(npc?.DEBUFF) ? npc.DEBUFF.flatMap((item: any) => [item?.名称, item?.描述, item?.效果]) : [])
+    ].filter(Boolean).join(' ');
+    return 死亡状态正则.test(statusText);
+};
+
+const 判断NPC本回合是否在场 = (
+    npc: any,
+    responseFactText: string,
+    dialogueSenderKeys: Set<string>
+): boolean => {
+    const name = 读取NPC名称(npc);
+    const key = 归一化文本键(name);
+    if (key && dialogueSenderKeys.has(key)) return true;
+    if (!name || !responseFactText.includes(name)) return false;
+    const relatedSentences = 拆分事实句(responseFactText).filter((sentence) => sentence.includes(name));
+    if (relatedSentences.length <= 0) return false;
+    if (relatedSentences.some((sentence) => 现场缺席事实正则.test(sentence))) return false;
+    if (relatedSentences.some((sentence) => 现场确认事实正则.test(sentence))) return true;
+    return relatedSentences.length > 0;
+};
+
+const 同步当前视角在场状态 = (
+    response: GameResponse,
+    socialList: any[],
+    playerName?: string
+): any[] => {
+    if (!Array.isArray(socialList) || socialList.length <= 0) return socialList;
+    const responseFactText = 提取响应事实文本(response);
+    if (!responseFactText.trim()) return socialList;
+    const dialogueSenderKeys = 提取对白发送者集合(response, playerName);
+    return socialList.map((npc: any) => {
+        if (!npc || typeof npc !== 'object') return npc;
+        if (NPC已死亡(npc)) return { ...npc, 是否在场: false };
+        const nextPresent = 判断NPC本回合是否在场(npc, responseFactText, dialogueSenderKeys);
+        return npc.是否在场 === nextPresent ? npc : { ...npc, 是否在场: nextPresent };
+    });
+};
+
 const 装备槽位列表 = ['头部', '胸部', '盔甲', '内衬', '腿部', '手部', '足部', '主武器', '副武器', '暗器', '背部', '腰部', '坐骑'] as const;
 type 装备槽位 = typeof 装备槽位列表[number];
 const 装备槽位集合 = new Set<string>(装备槽位列表);
@@ -313,6 +381,97 @@ const 应用生理事实到女性NPC = (
     });
 };
 
+const 死亡事实肯定正则 = /(死亡|已死|身亡|阵亡|战死|气绝|断气|毙命|殒命|咽气|当场(?:死|亡|身亡|毙命)|再无(?:气息|生机)|命丧|头颅落地|心脉(?:断绝|俱断)|被[^。！？\n\r]{0,24}杀死|杀死(?:了)?)/;
+const 死亡事实否定正则 = /(未死|没死|没有死|并未死|尚未死|不曾死|差点|险些|几乎|差一点|差些|昏死|假死|装死|濒死|垂死|重伤|保住(?:了)?性命|留有一线生机|逃过一劫)/;
+const 死亡状态正则 = /(死亡|已死|身亡|阵亡|战死|气绝|断气|毙命|殒命|已故)/;
+
+const 提取死亡事实句 = (responseFactText: string): string => {
+    const sentences = 拆分事实句(responseFactText);
+    return sentences.find((sentence) => 死亡事实肯定正则.test(sentence) && !死亡事实否定正则.test(sentence)) || '';
+};
+
+const 提取死亡事实相关NPC索引 = (deathSentence: string, socialList: any[]): number | null => {
+    if (!deathSentence) return null;
+    const candidates = (Array.isArray(socialList) ? socialList : [])
+        .map((npc: any, index: number) => ({ npc, index, name: 读取NPC名称(npc) }))
+        .filter((item) => item.name);
+    const mentioned = candidates.filter((item) => deathSentence.includes(item.name));
+    if (mentioned.length === 1) return mentioned[0].index;
+    if (mentioned.length > 1) {
+        const scored = mentioned
+            .map((item) => {
+                const escapedName = item.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const 被动死亡 = new RegExp(`${escapedName}[^。！？\\n\\r]{0,12}被[^。！？\\n\\r]{0,36}(?:杀死|斩杀|击杀|害死|毙命|贯穿|斩落|刺死|砍死)`).test(deathSentence);
+                const 主体死亡 = new RegExp(`${escapedName}[^。！？\\n\\r]{0,24}(?:死亡|已死|身亡|阵亡|战死|气绝|断气|毙命|殒命|咽气|再无(?:气息|生机)|心脉(?:断绝|俱断))`).test(deathSentence);
+                const 宾语死亡 = new RegExp(`(?:杀死|斩杀|击杀|害死|刺死|砍死)(?:了)?[^。！？\\n\\r]{0,12}${escapedName}`).test(deathSentence);
+                const 疑似施害者 = new RegExp(`${escapedName}[^。！？\\n\\r]{0,12}(?:杀死|斩杀|击杀|害死|刺死|砍死)`).test(deathSentence);
+                return {
+                    ...item,
+                    score: (被动死亡 ? 4 : 0) + (主体死亡 ? 3 : 0) + (宾语死亡 ? 4 : 0) - (疑似施害者 ? 3 : 0)
+                };
+            })
+            .sort((a, b) => b.score - a.score || deathSentence.indexOf(a.name) - deathSentence.indexOf(b.name));
+        if (scored[0]?.score > 0 && scored[0].score > (scored[1]?.score ?? -Infinity)) return scored[0].index;
+        const presentMentioned = mentioned.filter((item) => item.npc?.是否在场 === true);
+        if (presentMentioned.length === 1) return presentMentioned[0].index;
+        const exactNameFirst = [...mentioned].sort((a, b) => deathSentence.indexOf(a.name) - deathSentence.indexOf(b.name));
+        return exactNameFirst[0].index;
+    }
+    return null;
+};
+
+const 生成死亡事实日期 = (envLike: any): string => (
+    typeof envLike?.时间 === 'string' && envLike.时间.trim()
+        ? envLike.时间.trim()
+        : new Date().toISOString()
+);
+
+const 应用死亡事实到NPC = (
+    response: GameResponse,
+    socialList: any[],
+    envLike: any
+): any[] => {
+    const responseFactText = 提取响应事实文本(response);
+    const deathSentence = 提取死亡事实句(responseFactText);
+    const targetIndex = 提取死亡事实相关NPC索引(deathSentence, socialList);
+    if (targetIndex === null) return socialList;
+
+    const eventDate = 生成死亡事实日期(envLike);
+    return socialList.map((npc: any, index: number) => {
+        if (index !== targetIndex || !npc || typeof npc !== 'object') return npc;
+        const currentDebuffs = Array.isArray(npc.DEBUFF) ? npc.DEBUFF : [];
+        const hasDeathDebuff = currentDebuffs.some((item: any) => {
+            const text = [item?.名称, item?.描述, item?.效果].filter(Boolean).join(' ');
+            return 死亡状态正则.test(text);
+        });
+        const deathDebuff = {
+            名称: '死亡',
+            描述: deathSentence || '角色已死亡。',
+            效果: '角色已死亡，气血归零，不能继续作为在场行动角色。',
+            开始时间: eventDate,
+            结束时间: '永久'
+        };
+        return {
+            ...npc,
+            当前血量: 0,
+            状态: '死亡',
+            生死状态: '死亡',
+            生命状态: '死亡',
+            是否在场: false,
+            死亡时间: npc.死亡时间 || eventDate,
+            死亡描述: npc.死亡描述 || deathSentence,
+            DEBUFF: hasDeathDebuff
+                ? currentDebuffs.map((item: any) => {
+                    const text = [item?.名称, item?.描述, item?.效果].filter(Boolean).join(' ');
+                    return 死亡状态正则.test(text)
+                        ? { ...deathDebuff, ...item, 名称: item?.名称 || '死亡' }
+                        : item;
+                })
+                : [...currentDebuffs, deathDebuff]
+        };
+    });
+};
+
 const 装备移除触发正则 = /(卸下|脱下|取下|摘下|换下|换装|更换|丢弃|扔掉|遗弃|卖出|售卖|出售|卖给|卖了|卖掉|上架|典当|赠予|交给|交出|缴械|被夺|夺走|抢走|没收|遗失|失落|掉落|损坏|毁坏|破碎|断裂|烧毁|腐蚀|消耗|报废|解除装备|卸除装备)/;
 
 const 命令是否有装备移除触发 = (cmd: any, responseFactText: string): boolean => {
@@ -448,6 +607,14 @@ export const 执行响应命令处理 = (
             应用生理事实到女性NPC(response, socialBuffer, envBuffer, charBuffer?.姓名),
             { 合并同名: false }
         );
+        socialBuffer = deps.规范化社交列表(
+            应用死亡事实到NPC(response, socialBuffer, envBuffer),
+            { 合并同名: false }
+        );
+        socialBuffer = deps.规范化社交列表(
+            同步当前视角在场状态(response, socialBuffer, charBuffer?.姓名),
+            { 合并同名: false }
+        );
         storyBuffer = deps.规范化剧情状态(storyBuffer);
 
         let finalState: 响应命令处理状态 = {
@@ -493,10 +660,18 @@ export const 执行响应命令处理 = (
         角色: charBuffer,
         环境: deps.规范化环境信息(envBuffer),
         社交: deps.规范化社交列表(
-            应用生理事实到女性NPC(
+            同步当前视角在场状态(
                 response,
-                补入对白发送者到社交(response, socialBuffer, charBuffer?.姓名),
-                envBuffer,
+                应用死亡事实到NPC(
+                    response,
+                    应用生理事实到女性NPC(
+                        response,
+                        补入对白发送者到社交(response, socialBuffer, charBuffer?.姓名),
+                        envBuffer,
+                        charBuffer?.姓名
+                    ),
+                    envBuffer
+                ),
                 charBuffer?.姓名
             ),
             { 合并同名: false }

@@ -24,6 +24,21 @@ interface Props {
 }
 
 const 是女性角色 = (npc?: NPC结构 | null): boolean => String((npc as any)?.性别 || '').trim() === '女';
+const 死亡状态正则 = /(死亡|已死|身亡|阵亡|战死|气绝|断气|毙命|殒命|已故)/;
+const NPC是否死亡 = (npc?: NPC结构 | null): boolean => {
+    if (!npc) return false;
+    const 当前血量 = Number((npc as any).当前血量);
+    const 最大血量 = Number((npc as any).最大血量);
+    if (Number.isFinite(当前血量) && 当前血量 <= 0 && Number.isFinite(最大血量) && 最大血量 > 0) return true;
+    const statusText = [
+        (npc as any).状态,
+        (npc as any).生死状态,
+        (npc as any).生命状态,
+        (npc as any).死亡描述,
+        ...(Array.isArray((npc as any).DEBUFF) ? (npc as any).DEBUFF.flatMap((item: any) => [item?.名称, item?.描述, item?.效果]) : [])
+    ].filter(Boolean).join(' ');
+    return 死亡状态正则.test(statusText);
+};
 
 const SocialModal: React.FC<Props> = ({
     socialList,
@@ -81,6 +96,7 @@ const SocialModal: React.FC<Props> = ({
         [currentNPC]
     );
     const 当前角色是女性 = 是女性角色(currentNPC);
+    const 当前角色已死亡 = NPC是否死亡(currentNPC);
     const 展示女性扩展 = 当前角色是女性 && Boolean(currentNPC?.是否主要角色);
     const 展示女性私密档案 = 展示女性扩展 && nsfwEnabled;
     const 取首个非空文本 = (...values: unknown[]): string => {
@@ -346,6 +362,7 @@ const SocialModal: React.FC<Props> = ({
                             const npcStableId = 获取NPC稳定ID(npc, index);
                             const isSelected = selectedId === npcStableId;
                             const npcIsFemale = 是女性角色(npc);
+                            const npcDead = NPC是否死亡(npc);
                             return (
                             <button
                                 key={npcStableId}
@@ -363,7 +380,7 @@ const SocialModal: React.FC<Props> = ({
                                     <div className="social-roster-card__mark absolute left-0 top-2 bottom-2 w-1 rounded-r bg-wuxia-gold shadow-[0_0_10px_rgba(212,175,55,0.8)] z-10"></div>
                                 )}
 
-                                <div className="relative w-12 h-12 shrink-0 rounded-lg overflow-hidden border border-white/10 bg-black/50 group-hover:border-white/30 transition-colors">
+                                <div className={`relative w-12 h-12 shrink-0 rounded-lg overflow-hidden border bg-black/50 group-hover:border-white/30 transition-colors ${npcDead ? 'border-gray-500/50' : 'border-white/10'}`}>
                                     {提取头像图片地址(npc) ? (
                                         <button
                                             type="button"
@@ -374,11 +391,16 @@ const SocialModal: React.FC<Props> = ({
                                                 打开图片查看器(提取头像图片地址(npc), `${npc.姓名} 头像`);
                                             }}
                                         >
-                                            <img src={提取头像图片地址(npc)} alt={npc.姓名} className="w-full h-full object-cover" />
+                                            <img src={提取头像图片地址(npc)} alt={npc.姓名} className={`w-full h-full object-cover ${npcDead ? 'grayscale opacity-60' : ''}`} />
                                         </button>
                                     ) : (
-                                        <div className={`w-full h-full flex items-center justify-center font-serif font-bold text-lg ${npcIsFemale ? 'text-pink-500/50' : 'text-blue-500/50'}`}>
+                                        <div className={`w-full h-full flex items-center justify-center font-serif font-bold text-lg ${npcDead ? 'text-gray-500/60 grayscale' : npcIsFemale ? 'text-pink-500/50' : 'text-blue-500/50'}`}>
                                             {npc.姓名[0]}
+                                        </div>
+                                    )}
+                                    {npcDead && (
+                                        <div className="absolute inset-x-0 bottom-0 bg-black/70 text-center text-[9px] tracking-widest text-gray-200">
+                                            已故
                                         </div>
                                     )}
                                 </div>
@@ -394,8 +416,8 @@ const SocialModal: React.FC<Props> = ({
                                                 <span className="w-1 h-1 rounded-full bg-gray-700 shrink-0"></span>
                                             </>
                                         )}
-                                        <span className={npc.是否在场 ? 'text-emerald-400/90' : 'text-gray-600'}>
-                                            {npc.是否在场 ? '在场' : '离线'}
+                                        <span className={npcDead ? 'text-gray-400' : npc.是否在场 ? 'text-emerald-400/90' : 'text-gray-600'}>
+                                            {npcDead ? '已故' : npc.是否在场 ? '在场' : '离线'}
                                         </span>
                                     </div>
                                     <div className="social-roster-card__relation text-[10px] text-pink-400/80 mt-1 truncate">
@@ -490,7 +512,12 @@ const SocialModal: React.FC<Props> = ({
                                         >
                                             {当前详情主图 ? (
                                                 <>
-                                                    <img src={当前详情主图} alt={currentNPC.姓名} className="w-full h-full object-cover group-hover/portrait:scale-110 transition-transform duration-500" />
+                                                    <img src={当前详情主图} alt={currentNPC.姓名} className={`w-full h-full object-cover group-hover/portrait:scale-110 transition-transform duration-500 ${当前角色已死亡 ? 'grayscale opacity-65' : ''}`} />
+                                                    {当前角色已死亡 && (
+                                                        <div className="absolute inset-x-0 bottom-0 bg-black/70 py-1 text-center text-xs tracking-[0.3em] text-gray-200">
+                                                            已故
+                                                        </div>
+                                                    )}
                                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/portrait:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
                                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-wuxia-gold drop-shadow-[0_0_5px_rgba(212,175,55,0.8)]">
                                                             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
@@ -515,9 +542,9 @@ const SocialModal: React.FC<Props> = ({
                                                     <span className="text-xs bg-black/60 border border-wuxia-gold/20 px-2 py-1 rounded text-wuxia-gold/80 shadow-inner">LV.{currentNPC.境界}</span>
                                                 )}
                                                 <span className="text-xs bg-black/60 border border-white/10 px-2 py-1 rounded text-gray-300">{currentNPC.身份}</span>
-                                                <span className={`text-xs px-2 py-1 flex items-center gap-1 rounded border border-white/10 bg-black/60 ${currentNPC.是否在场 ? 'text-emerald-400' : 'text-gray-500'}`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full ${currentNPC.是否在场 ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'}`}></span>
-                                                    {currentNPC.是否在场 ? '在场中' : '离场'}
+                                                <span className={`text-xs px-2 py-1 flex items-center gap-1 rounded border border-white/10 bg-black/60 ${当前角色已死亡 ? 'text-gray-300' : currentNPC.是否在场 ? 'text-emerald-400' : 'text-gray-500'}`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${当前角色已死亡 ? 'bg-gray-400' : currentNPC.是否在场 ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'}`}></span>
+                                                    {当前角色已死亡 ? '已故' : currentNPC.是否在场 ? '在场中' : '离场'}
                                                 </span>
                                                 {currentNPC?.图片档案?.已选立绘图片ID && (
                                                     <span className="text-xs bg-sky-950/30 border border-sky-500/30 px-2 py-1 rounded text-sky-200">已设立绘</span>
