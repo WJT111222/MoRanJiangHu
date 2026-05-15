@@ -12,6 +12,62 @@ type 手动NPC工作流依赖 = {
 
 const 生成手动NPCID = (): string => `npc_manual_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+const 取首个非空文本 = (...values: unknown[]): string => {
+    for (const value of values) {
+        if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+    return '';
+};
+
+const 生成生日 = (npc: any, nowText: string): string => {
+    const seed = 取首个非空文本(npc?.id, npc?.姓名, npc?.身份, nowText);
+    let hash = 0;
+    for (let i = 0; i < seed.length; i += 1) {
+        hash = (Math.imul(hash, 31) + seed.charCodeAt(i)) | 0;
+    }
+    const positive = Math.abs(hash);
+    const month = (positive % 12) + 1;
+    const day = (Math.floor(positive / 12) % 28) + 1;
+    return `${month}月${day}日`;
+};
+
+const 构建女性重要角色档案初稿 = (npc: any, nowText: string): any => {
+    if (!npc || npc.性别 !== '女' || npc.是否主要角色 !== true) return npc;
+    const name = 取首个非空文本(npc?.姓名, '她');
+    const identity = 取首个非空文本(npc?.身份, npc?.境界, '江湖女子');
+    const personality = 取首个非空文本(npc?.核心性格特征, npc?.简介, '气质沉静，言行自持');
+    const appearance = 取首个非空文本(npc?.外貌描写, npc?.外貌, npc?.档案?.外貌要点, npc?.档案?.外貌描写);
+    const body = 取首个非空文本(npc?.身材描写, npc?.身材, npc?.档案?.身材要点, npc?.档案?.身材描写);
+    const clothing = 取首个非空文本(npc?.衣着风格, npc?.衣着, npc?.档案?.衣着风格, npc?.档案?.衣着要点);
+    const relationship = 取首个非空文本(npc?.关系状态, '初识');
+
+    const next = {
+        ...npc,
+        生日: 取首个非空文本(npc?.生日, npc?.出生日期, npc?.档案?.生日) || 生成生日(npc, nowText),
+        对主角称呼: 取首个非空文本(npc?.对主角称呼, npc?.档案?.对主角称呼) || (relationship.includes('陌生') || relationship.includes('初识') ? '少侠' : '公子'),
+        外貌描写: appearance || `${name}眉眼清丽，气韵与${identity}身份相称，神态里带着不易忽略的辨识度。`,
+        身材描写: body || `${name}身形匀称，仪态收放有度，行动间能看出长期行走江湖或修习武艺留下的利落线条。`,
+        衣着风格: clothing || `${name}常着与${identity}相配的衣裙，配色素雅而整洁，细节处保留个人偏好。`,
+        胸部描述: 取首个非空文本(npc?.胸部描述) || `${name}胸部轮廓自然协调，与整体身形比例相称，档案细节待后续剧情补充。`,
+        小穴描述: 取首个非空文本(npc?.小穴描述) || `${name}私密档案已建立，具体状态保持为未公开记录，等待后续剧情自然补充。`,
+        屁穴描述: 取首个非空文本(npc?.屁穴描述) || `${name}后庭档案已建立，当前无特殊经历记录，等待后续剧情自然补充。`,
+        性癖: 取首个非空文本(npc?.性癖) || `受${personality}影响，更重视信任、情绪安全与关系递进。`,
+        敏感点: 取首个非空文本(npc?.敏感点) || '耳侧、颈侧、腰背等近身接触区域较易触动情绪反应。',
+        子宫: npc?.子宫 && typeof npc.子宫 === 'object' && !Array.isArray(npc.子宫)
+            ? {
+                状态: 取首个非空文本(npc.子宫.状态) || '未受孕',
+                宫口状态: 取首个非空文本(npc.子宫.宫口状态) || '紧闭',
+                内射记录: Array.isArray(npc.子宫.内射记录) ? npc.子宫.内射记录 : []
+            }
+            : {
+                状态: '未受孕',
+                宫口状态: '紧闭',
+                内射记录: []
+            }
+    };
+    return next;
+};
+
 export const 创建手动NPC工作流 = (deps: 手动NPC工作流依赖) => {
     const 更新社交并执行即时自动存档 = (updater: (list: NPC结构[]) => NPC结构[]) => {
         let socialSnapshot: NPC结构[] | null = null;
@@ -111,8 +167,12 @@ export const 创建手动NPC工作流 = (deps: 手动NPC工作流依赖) => {
 
     const updateNpcMajorRole = (npcId: string, isMajor: boolean) => {
         if (!npcId) return;
+        const 环境 = deps.获取环境();
+        const nowText = deps.环境时间转标准串(环境) || 环境?.时间 || '';
         更新社交并执行即时自动存档((prev) => prev.map((npc: any) => (
-            !npc || npc.id !== npcId ? npc : { ...npc, 是否主要角色: isMajor }
+            !npc || npc.id !== npcId
+                ? npc
+                : 构建女性重要角色档案初稿({ ...npc, 是否主要角色: isMajor }, nowText)
         )));
     };
 
