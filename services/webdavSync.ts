@@ -8,6 +8,7 @@ import * as dbService from './dbService';
 
 const WEBDAV_ROOT_DIR = 'MoRanJiangHu';
 const WEBDAV_SAVES_DIR = 'saves';
+const WEBDAV_CHUNKS_DIR = 'chunks';
 const WEBDAV_MANIFEST_FILE = 'manifest.json';
 const WEBDAV_MANIFEST_FORMAT = 'moranjianghu-webdav-manifest';
 const WEBDAV_PACKAGE_FORMAT = 'moranjianghu-webdav-save-package';
@@ -16,6 +17,8 @@ const WEBDAV_MANIFEST_VERSION = 1;
 const WEBDAV_SETTINGS_FILE = 'settings.json';
 const WEBDAV_PROXY_PATH = '/api/webdav-proxy';
 const PRIMARY_SYNC_API_BASE = 'https://msjh.bacon159.pp.ua';
+const WEBDAV_INLINE_PACKAGE_LIMIT = 700 * 1024;
+const WEBDAV_CHUNK_BASE64_SIZE = 512 * 1024;
 
 export interface WebDAV同步配置 {
     url: string;
@@ -49,12 +52,29 @@ interface WebDAV清单结构 {
     settings?: WebDAV设置同步元数据 | null;
 }
 
-interface WebDAV存档包 {
+interface WebDAV分片引用 {
+    fileName: string;
+    size: number;
+}
+
+interface WebDAV内联存档包 {
     format: typeof WEBDAV_PACKAGE_FORMAT;
     version: number;
     metadata: WebDAV云存档元数据;
     archiveBase64: string;
 }
+
+interface WebDAV分片存档包 {
+    format: typeof WEBDAV_PACKAGE_FORMAT;
+    version: number;
+    metadata: WebDAV云存档元数据;
+    storage: 'chunks';
+    chunkDir: string;
+    totalBase64Length: number;
+    chunks: WebDAV分片引用[];
+}
+
+type WebDAV存档包 = WebDAV内联存档包 | WebDAV分片存档包;
 
 export interface WebDAV增量同步结果 {
     uploaded: number;
@@ -73,18 +93,39 @@ export interface WebDAV设置同步元数据 {
     size: number;
 }
 
-interface WebDAV设置包 {
+interface WebDAV内联设置包 {
     format: typeof WEBDAV_SETTINGS_PACKAGE_FORMAT;
     version: number;
     metadata: WebDAV设置同步元数据;
     archiveBase64: string;
 }
 
+interface WebDAV分片设置包 {
+    format: typeof WEBDAV_SETTINGS_PACKAGE_FORMAT;
+    version: number;
+    metadata: WebDAV设置同步元数据;
+    storage: 'chunks';
+    chunkDir: string;
+    totalBase64Length: number;
+    chunks: WebDAV分片引用[];
+}
+
+type WebDAV设置包 = WebDAV内联设置包 | WebDAV分片设置包;
+
 export interface WebDAV同步摘要 {
     saveCount: number;
     updatedAt: string | null;
     settings: WebDAV设置同步元数据 | null;
 }
+
+export interface WebDAV同步进度 {
+    stage: 'prepare' | 'directory' | 'upload' | 'download' | 'manifest' | 'done';
+    message: string;
+    current?: number;
+    total?: number;
+}
+
+export type WebDAV同步进度回调 = (progress: WebDAV同步进度) => void;
 
 const 读取文本 = (value: unknown): string => (
     typeof value === 'string' ? value.trim() : ''
@@ -206,6 +247,117 @@ const 确保集合 = async (config: WebDAV同步配置, segments: string[]): Pro
 const 确保WebDAV目录结构 = async (config: WebDAV同步配置): Promise<void> => {
     await 确保集合(config, [WEBDAV_ROOT_DIR]);
     await 确保集合(config, [WEBDAV_ROOT_DIR, WEBDAV_SAVES_DIR]);
+};
+
+const 确保多级集合 = async (config: WebDAV同步配置, segments: string[]): Promise<void> => {
+    for (let index = 1; index <= segments.length; index += 1) {
+        await 确保集合(config, segments.slice(0, index));
+    }
+};
+
+const 去除扩展名 = (fileName: string): string => fileName.replace(/\.[^.]+$/, '');
+
+const 是否分片包 = (payload: unknown): payload is WebDAV分片存档包 | WebDAV分片设置包 => {
+    const raw = payload as Partial<WebDAV分片存档包 | WebDAV分片设置包> | null;
+    return raw?.storage === 'chunks'
+        && !!读取文本(raw.chunkDir)
+        && Array.isArray(raw.chunks)
+        && raw.chunks.every((item) => 读取文本(item?.fileName) && Number(item?.size) > 0);
+};
+
+const 读取包Base64 = async (
+    config: WebDAV同步配置,
+    payload: WebDAV存档包 | WebDAV设置包,
+    onProgress?: WebDAV同步进度回调
+): Promise<string> => {
+    if ('archiveBase64' in payload && 读取文本(payload.archiveBase64)) return payload.archiveBase64;
+    if (!是否分片包(payload)) throw new Error('WebDAV 分片包格式无效');
+
+    const chunks: string[] = [];
+    const total = payload.chunks.length;
+    for (let index = 0; index < total; index += 1) {
+        const chunk = payload.chunks[index];
+        onProgress?.({
+            stage: 'download',
+            current: index + 1,
+            total,
+            message: `正在下载分片 ${index + 1}/${total}`
+        });
+        const response = await webdavFetch(config, 'GET', [WEBDAV_ROOT_DIR, WEBDAV_CHUNKS_DIR, payload.chunkDir, chunk.fileName]);
+        if (!response.ok) {
+            throw new Error(`下载 WebDAV 分片失败：${response.status}${await 读取错误详情(response)}`);
+        }
+        chunks.push(await response.text());
+    }
+    const value = chunks.join('');
+    if (Number(payload.totalBase64Length) > 0 && value.length !== Number(payload.totalBase64Length)) {
+        throw new Error('WebDAV 分片包不完整');
+    }
+    return value;
+};
+
+const 写入包 = async (
+    config: WebDAV同步配置,
+    targetSegments: string[],
+    payload: Omit<WebDAV存档包, 'archiveBase64' | 'storage' | 'chunkDir' | 'totalBase64Length' | 'chunks'> | Omit<WebDAV设置包, 'archiveBase64' | 'storage' | 'chunkDir' | 'totalBase64Length' | 'chunks'>,
+    archiveBase64: string,
+    chunkScope: 'saves' | 'settings',
+    onProgress?: WebDAV同步进度回调
+): Promise<void> => {
+    const inlineBody = JSON.stringify({ ...payload, archiveBase64 });
+    if (inlineBody.length <= WEBDAV_INLINE_PACKAGE_LIMIT) {
+        onProgress?.({ stage: 'upload', current: 1, total: 1, message: '正在上传数据包 1/1' });
+        const response = await webdavFetch(config, 'PUT', targetSegments, {
+            headers: { 'Content-Type': 'application/json; charset=utf-8' },
+            body: inlineBody
+        });
+        if (!response.ok) {
+            throw new Error(`上传 WebDAV 数据包失败：${response.status}${await 读取错误详情(response)}`);
+        }
+        return;
+    }
+
+    const targetFileName = targetSegments[targetSegments.length - 1] || 'package.json';
+    const chunkDir = `${chunkScope}/${安全文件名(去除扩展名(targetFileName), 'package')}`;
+    const chunkDirSegments = [WEBDAV_ROOT_DIR, WEBDAV_CHUNKS_DIR, ...chunkDir.split('/')];
+    onProgress?.({ stage: 'directory', message: '正在准备 WebDAV 分片目录' });
+    await 确保多级集合(config, chunkDirSegments);
+
+    const chunks: WebDAV分片引用[] = [];
+    const total = Math.ceil(archiveBase64.length / WEBDAV_CHUNK_BASE64_SIZE);
+    for (let index = 0; index < total; index += 1) {
+        const part = archiveBase64.slice(index * WEBDAV_CHUNK_BASE64_SIZE, (index + 1) * WEBDAV_CHUNK_BASE64_SIZE);
+        const fileName = `part-${String(index + 1).padStart(4, '0')}.txt`;
+        onProgress?.({
+            stage: 'upload',
+            current: index + 1,
+            total,
+            message: `正在上传分片 ${index + 1}/${total}`
+        });
+        const response = await webdavFetch(config, 'PUT', [...chunkDirSegments, fileName], {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            body: part
+        });
+        if (!response.ok) {
+            throw new Error(`上传 WebDAV 分片失败：${response.status}${await 读取错误详情(response)}`);
+        }
+        chunks.push({ fileName, size: part.length });
+    }
+
+    onProgress?.({ stage: 'manifest', message: '正在写入 WebDAV 分片索引' });
+    const response = await webdavFetch(config, 'PUT', targetSegments, {
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({
+            ...payload,
+            storage: 'chunks',
+            chunkDir,
+            totalBase64Length: archiveBase64.length,
+            chunks
+        }, null, 2)
+    });
+    if (!response.ok) {
+        throw new Error(`上传 WebDAV 分片索引失败：${response.status}${await 读取错误详情(response)}`);
+    }
 };
 
 const 读取远端清单 = async (config: WebDAV同步配置): Promise<WebDAV清单结构> => {
@@ -384,34 +536,33 @@ const 构建设置元数据 = async (bytes: Uint8Array): Promise<WebDAV设置同
     size: bytes.length
 });
 
-export const 上传设置到WebDAV = async (config: WebDAV同步配置): Promise<WebDAV设置同步元数据> => {
+export const 上传设置到WebDAV = async (config: WebDAV同步配置, onProgress?: WebDAV同步进度回调): Promise<WebDAV设置同步元数据> => {
     const normalized = 规范化配置(config);
     if (!normalized) throw new Error('请填写 WebDAV 地址、用户名和密码');
+    onProgress?.({ stage: 'directory', message: '正在准备 WebDAV 目录' });
     await 确保WebDAV目录结构(normalized);
+    onProgress?.({ stage: 'manifest', message: '正在读取云端清单' });
     const manifest = await 读取远端清单(normalized);
+    onProgress?.({ stage: 'prepare', message: '正在打包本机设置' });
     const bytes = await extractSettingsSyncData();
     const metadata = await 构建设置元数据(bytes);
-    const packagePayload: WebDAV设置包 = {
+    const packagePayload = {
         format: WEBDAV_SETTINGS_PACKAGE_FORMAT,
         version: WEBDAV_MANIFEST_VERSION,
-        metadata,
-        archiveBase64: 字节转Base64(bytes)
+        metadata
     };
-    const response = await webdavFetch(normalized, 'PUT', [WEBDAV_ROOT_DIR, metadata.fileName], {
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: JSON.stringify(packagePayload)
-    });
-    if (!response.ok) {
-        throw new Error(`上传 WebDAV 设置包失败：${response.status}${await 读取错误详情(response)}`);
-    }
+    await 写入包(normalized, [WEBDAV_ROOT_DIR, metadata.fileName], packagePayload, 字节转Base64(bytes), 'settings', onProgress);
     manifest.settings = metadata;
+    onProgress?.({ stage: 'manifest', message: '正在更新云端清单' });
     await 写入远端清单(normalized, manifest);
+    onProgress?.({ stage: 'done', message: 'WebDAV 设置上传完成' });
     return metadata;
 };
 
-export const 下载设置自WebDAV = async (config: WebDAV同步配置): Promise<云同步恢复结果> => {
+export const 下载设置自WebDAV = async (config: WebDAV同步配置, onProgress?: WebDAV同步进度回调): Promise<云同步恢复结果> => {
     const normalized = 规范化配置(config);
     if (!normalized) throw new Error('请填写 WebDAV 地址、用户名和密码');
+    onProgress?.({ stage: 'manifest', message: '正在读取云端清单' });
     const manifest = await 读取远端清单(normalized);
     const fileName = manifest.settings?.fileName || WEBDAV_SETTINGS_FILE;
     const response = await webdavFetch(normalized, 'GET', [WEBDAV_ROOT_DIR, fileName]);
@@ -419,16 +570,20 @@ export const 下载设置自WebDAV = async (config: WebDAV同步配置): Promise
         throw new Error(`下载 WebDAV 设置包失败：${response.status}${await 读取错误详情(response)}`);
     }
     const payload = await response.json().catch(() => null) as WebDAV设置包 | null;
-    if (payload?.format !== WEBDAV_SETTINGS_PACKAGE_FORMAT || !读取文本(payload.archiveBase64)) {
+    if (payload?.format !== WEBDAV_SETTINGS_PACKAGE_FORMAT) {
         throw new Error('WebDAV 设置包格式无效');
     }
-    return restoreSettingsSyncData(base64转字节(payload.archiveBase64));
+    const archiveBase64 = await 读取包Base64(normalized, payload, onProgress);
+    onProgress?.({ stage: 'done', message: 'WebDAV 设置下载完成' });
+    return restoreSettingsSyncData(base64转字节(archiveBase64));
 };
 
-export const 增量同步到WebDAV = async (config: WebDAV同步配置, saves?: 存档结构[]): Promise<WebDAV增量同步结果> => {
+export const 增量同步到WebDAV = async (config: WebDAV同步配置, saves?: 存档结构[], onProgress?: WebDAV同步进度回调): Promise<WebDAV增量同步结果> => {
     const normalized = 规范化配置(config);
     if (!normalized) throw new Error('请填写 WebDAV 地址、用户名和密码');
+    onProgress?.({ stage: 'directory', message: '正在准备 WebDAV 目录' });
     await 确保WebDAV目录结构(normalized);
+    onProgress?.({ stage: 'manifest', message: '正在读取云端清单' });
     const manifest = await 读取远端清单(normalized);
     const localSaves = Array.isArray(saves) ? saves : await dbService.读取存档列表();
     const knownHashes = new Set(manifest.saves.map((item) => item.hash).filter(Boolean));
@@ -436,6 +591,7 @@ export const 增量同步到WebDAV = async (config: WebDAV同步配置, saves?: 
     let skipped = 0;
 
     for (const save of localSaves) {
+        onProgress?.({ stage: 'prepare', current: uploaded + skipped + 1, total: localSaves.length, message: `正在打包存档 ${uploaded + skipped + 1}/${localSaves.length}` });
         const saveCopy = 深拷贝(save);
         const archiveBlob = await 导出ZIP存档文件({ saves: [saveCopy] });
         const archiveBytes = new Uint8Array(await archiveBlob.arrayBuffer());
@@ -449,15 +605,10 @@ export const 增量同步到WebDAV = async (config: WebDAV同步配置, saves?: 
             format: WEBDAV_PACKAGE_FORMAT,
             version: WEBDAV_MANIFEST_VERSION,
             metadata,
-            archiveBase64: 字节转Base64(archiveBytes)
+            archiveBase64: ''
         };
-        const response = await webdavFetch(normalized, 'PUT', [WEBDAV_ROOT_DIR, WEBDAV_SAVES_DIR, metadata.fileName], {
-            headers: { 'Content-Type': 'application/json; charset=utf-8' },
-            body: JSON.stringify(packagePayload)
-        });
-        if (!response.ok) {
-            throw new Error(`上传 WebDAV 云存档失败：${response.status}${await 读取错误详情(response)}`);
-        }
+        const { archiveBase64: _unused, ...packageBase } = packagePayload;
+        await 写入包(normalized, [WEBDAV_ROOT_DIR, WEBDAV_SAVES_DIR, metadata.fileName], packageBase, 字节转Base64(archiveBytes), 'saves', onProgress);
 
         manifest.saves = manifest.saves.filter((item) => item.hash !== metadata.hash && item.id !== metadata.id);
         manifest.saves.push(metadata);
@@ -466,13 +617,16 @@ export const 增量同步到WebDAV = async (config: WebDAV同步配置, saves?: 
     }
 
     manifest.saves.sort((a, b) => Number(b.saveTimestamp || 0) - Number(a.saveTimestamp || 0));
+    onProgress?.({ stage: 'manifest', message: '正在更新云端清单' });
     await 写入远端清单(normalized, manifest);
+    onProgress?.({ stage: 'done', message: 'WebDAV 存档同步完成' });
     return { uploaded, skipped, total: localSaves.length };
 };
 
 export const 下载WebDAV云存档 = async (
     config: WebDAV同步配置,
-    item: WebDAV云存档元数据
+    item: WebDAV云存档元数据,
+    onProgress?: WebDAV同步进度回调
 ): Promise<{ save: 存档结构; metadata: WebDAV云存档元数据 }> => {
     const normalized = 规范化配置(config);
     if (!normalized) throw new Error('请填写 WebDAV 地址、用户名和密码');
@@ -483,13 +637,15 @@ export const 下载WebDAV云存档 = async (
         throw new Error(`下载 WebDAV 云存档失败：${response.status}${await 读取错误详情(response)}`);
     }
     const payload = await response.json().catch(() => null) as WebDAV存档包 | null;
-    if (payload?.format !== WEBDAV_PACKAGE_FORMAT || !读取文本(payload.archiveBase64)) {
+    if (payload?.format !== WEBDAV_PACKAGE_FORMAT) {
         throw new Error('WebDAV 云存档包格式无效');
     }
-    const archiveBytes = base64转字节(payload.archiveBase64);
+    const archiveBase64 = await 读取包Base64(normalized, payload, onProgress);
+    const archiveBytes = base64转字节(archiveBase64);
     const archive = new Blob([archiveBytes], { type: 'application/zip' });
     const parsed = await 解析ZIP存档文件(archive);
     const save = Array.isArray(parsed.saves) ? parsed.saves[0] : null;
     if (!save) throw new Error('WebDAV 云存档包中没有有效存档');
+    onProgress?.({ stage: 'done', message: 'WebDAV 云存档下载完成' });
     return { save, metadata: payload.metadata || item };
 };
