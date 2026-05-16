@@ -13,6 +13,7 @@ import {
 } from '../../types';
 import { applyStateCommand, normalizeStateCommandKey } from '../../utils/stateHelpers';
 import { 规范化任务列表自动结算 } from '../../utils/taskCompat';
+import { sanitizeInventoryCommand } from './inventoryCommandGuard';
 
 export type 响应命令处理状态 = {
     角色: 角色数据结构;
@@ -619,7 +620,11 @@ export const 执行响应命令处理 = (
     if (Array.isArray(response.tavern_commands)) {
         const responseFactText = 提取响应事实文本(response);
         response.tavern_commands.forEach(cmd => {
-            const safeCmd = 净化角色装备命令(cmd, charBuffer?.装备 || {}, responseFactText);
+            const safeCmd = sanitizeInventoryCommand(
+                净化角色装备命令(cmd, charBuffer?.装备 || {}, responseFactText),
+                charBuffer,
+                responseFactText
+            );
             if (!safeCmd) return;
             const result = applyStateCommand(
                 charBuffer,

@@ -231,6 +231,68 @@ describe('responseCommandProcessor equipment guard', () => {
     });
 });
 
+describe('responseCommandProcessor inventory guard', () => {
+    it('blocks silent inventory clearing without an explicit removal trigger', () => {
+        const state = 构建基础状态();
+        state.角色 = {
+            姓名: '杨培强',
+            物品列表: [
+                { ID: 'item_sword', 名称: '青钢剑', 数量: 1 },
+                { ID: 'item_pill', 名称: '回气丹', 数量: 3 }
+            ]
+        } as any;
+
+        const result = 执行响应命令处理({
+            logs: [{ sender: '旁白', text: '他继续赶路，并未整理行囊。' }],
+            tavern_commands: [
+                { action: 'set', key: '角色.物品列表', value: [] }
+            ]
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect((result.角色 as any).物品列表.map((item: any) => item.名称)).toEqual(['青钢剑', '回气丹']);
+    });
+
+    it('preserves inventory when a full role set omits the inventory list', () => {
+        const state = 构建基础状态();
+        state.角色 = {
+            姓名: '杨培强',
+            境界: '聚息境一重',
+            物品列表: [
+                { ID: 'item_token', 名称: '门派令牌', 数量: 1 }
+            ]
+        } as any;
+
+        const result = 执行响应命令处理({
+            logs: [{ sender: '旁白', text: '他打坐调息，气息更稳。' }],
+            tavern_commands: [
+                { action: 'set', key: '角色', value: { 姓名: '杨培强', 境界: '聚息境二重' } }
+            ]
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect((result.角色 as any).境界).toBe('聚息境二重');
+        expect((result.角色 as any).物品列表.map((item: any) => item.名称)).toEqual(['门派令牌']);
+    });
+
+    it('allows inventory clearing when the story explicitly says the items were discarded', () => {
+        const state = 构建基础状态();
+        state.角色 = {
+            姓名: '杨培强',
+            物品列表: [
+                { ID: 'item_scrap', 名称: '破布条', 数量: 2 }
+            ]
+        } as any;
+
+        const result = 执行响应命令处理({
+            logs: [{ sender: '旁白', text: '他把背包里的破布条全部丢弃，只留下空空的行囊。' }],
+            tavern_commands: [
+                { action: 'set', key: '角色.物品列表', value: [] }
+            ]
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect((result.角色 as any).物品列表).toEqual([]);
+    });
+});
+
 describe('responseCommandProcessor NSFW female state fallback', () => {
     it('adds a womb record when explicit internal ejaculation facts are present without commands', () => {
         const state = 构建基础状态();
