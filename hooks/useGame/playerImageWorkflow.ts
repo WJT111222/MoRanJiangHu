@@ -1,6 +1,6 @@
 import type { 生图任务来源类型, 角色数据结构 } from '../../types';
 import type { 当前可用接口结构 } from '../../utils/apiConfig';
-import { 获取图片展示地址 } from '../../utils/imageAssets';
+import { 获取图片展示地址, 图片资源记录含可恢复地址 } from '../../utils/imageAssets';
 import { 主角角色锚点标识 } from './imagePresetWorkflow';
 import { 合并NPC图片档案 } from './npcImageStateWorkflow';
 
@@ -124,14 +124,14 @@ export const 创建主角图片工作流 = (deps: 主角图片工作流依赖) =
         const archive = player?.图片档案 && typeof player.图片档案 === 'object' ? player.图片档案 : {};
         const history = Array.isArray(archive?.生图历史) ? archive.生图历史 : [];
         const selectedAvatarId = typeof archive?.已选头像图片ID === 'string' ? archive.已选头像图片ID.trim() : '';
-        if (selectedAvatarId && history.some((item: any) => item?.id === selectedAvatarId && item?.状态 === 'success' && 获取图片展示地址(item))) {
+        if (selectedAvatarId && history.some((item: any) => item?.id === selectedAvatarId && item?.状态 === 'success' && 图片资源记录含可恢复地址(item))) {
             return true;
         }
         const recent = archive?.最近生图结果 || player?.最近生图结果;
         return [recent, ...history].some((item: any) => (
             item?.状态 === 'success'
             && item?.构图 === '头像'
-            && Boolean(获取图片展示地址(item))
+            && 图片资源记录含可恢复地址(item)
         ));
     };
 

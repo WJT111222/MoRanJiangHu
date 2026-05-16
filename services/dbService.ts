@@ -415,22 +415,6 @@ export const 保存图片资源 = async (dataUrl: string, preferredId?: string):
     const signature = 生成图片资源签名(normalized);
     const cachedRef = signature ? 图片资源签名缓存.get(signature) : '';
     if (cachedRef) return cachedRef;
-    if (是DataUrl图片(normalized)) {
-        try {
-            const uploaded = await 上传DataUrl到图床(normalized);
-            if (uploaded.url) {
-                const fallbackId = (typeof preferredId === 'string' ? preferredId.trim() : '') || 生成图片资源ID();
-                await 写入图片资源记录(fallbackId, normalized);
-                注册远程图片兜底引用(uploaded.url, fallbackId);
-                if (signature) {
-                    图片资源签名缓存.set(signature, uploaded.url);
-                }
-                return uploaded.url;
-            }
-        } catch (error) {
-            console.warn('图床上传失败，已回退到本地图片资源:', error);
-        }
-    }
     const id = (typeof preferredId === 'string' ? preferredId.trim() : '') || 生成图片资源ID();
     await 写入图片资源记录(id, normalized);
     const ref = 创建图片资源引用(id);

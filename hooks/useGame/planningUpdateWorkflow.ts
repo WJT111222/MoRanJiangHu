@@ -89,34 +89,57 @@ const 过滤规划补丁命令 = (commands: TavernCommand[] | undefined, targets
     })
 );
 
-const 规划分析请求超时毫秒 = 90000;
+const 规划分析首次响应超时毫秒 = 90000;
+const 规划分析流式空闲超时毫秒 = 10000;
 const 规划分析自动重试最大次数 = 3;
 
-const 创建规划分析超时错误 = (): Error => {
-    const error = new Error(`规划分析请求超时（${Math.max(1, Math.ceil(规划分析请求超时毫秒 / 1000))} 秒）`);
+const 创建规划分析超时错误 = (message: string): Error => {
+    const error = new Error(message);
     error.name = 'TimeoutError';
     return error;
 };
 
-const 执行规划分析带超时 = async <T,>(task: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+const 执行规划分析带超时 = async <T,>(
+    task: (signal: AbortSignal, markStreamActivity: () => void) => Promise<T>
+): Promise<T> => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const timeoutError = 创建规划分析超时错误();
+    let rejectTimeout: ((reason?: any) => void) | null = null;
+    let hasStreamActivity = false;
+    let timeoutError = 创建规划分析超时错误(
+        `规划分析等待首次响应超时（${Math.max(1, Math.ceil(规划分析首次响应超时毫秒 / 1000))} 秒）`
+    );
+    const resetTimer = () => {
+        if (timer) clearTimeout(timer);
+        const timeoutMs = hasStreamActivity ? 规划分析流式空闲超时毫秒 : 规划分析首次响应超时毫秒;
+        timeoutError = 创建规划分析超时错误(
+            hasStreamActivity
+                ? `规划分析流式输出空闲超时（${Math.max(1, Math.ceil(规划分析流式空闲超时毫秒 / 1000))} 秒无新数据）`
+                : `规划分析等待首次响应超时（${Math.max(1, Math.ceil(规划分析首次响应超时毫秒 / 1000))} 秒）`
+        );
+        timer = setTimeout(() => {
+            if (!controller.signal.aborted) {
+                controller.abort(timeoutError);
+            }
+            rejectTimeout?.(timeoutError);
+        }, timeoutMs);
+    };
+    const markStreamActivity = () => {
+        hasStreamActivity = true;
+        resetTimer();
+    };
     try {
+        resetTimer();
         return await Promise.race([
-            task(controller.signal),
+            task(controller.signal, markStreamActivity),
             new Promise<T>((_, reject) => {
-                timer = setTimeout(() => {
-                    if (!controller.signal.aborted) {
-                        controller.abort(timeoutError);
-                    }
-                    reject(timeoutError);
-                }, 规划分析请求超时毫秒);
+                rejectTimeout = reject;
+                controller.signal.addEventListener('abort', () => reject(controller.signal.reason || timeoutError), { once: true });
             })
         ]);
     } catch (error) {
-        if (controller.signal.aborted && controller.signal.reason === timeoutError) {
-            throw timeoutError;
+        if (controller.signal.aborted && controller.signal.reason) {
+            throw controller.signal.reason;
         }
         throw error;
     } finally {
@@ -133,7 +156,7 @@ const 提取规划分析重试原因 = (error: any): string => {
 };
 
 const 执行规划分析带超时和重试 = async <T,>(
-    task: (signal: AbortSignal) => Promise<T>,
+    task: (signal: AbortSignal, markStreamActivity: () => void) => Promise<T>,
     onRetry?: (attempt: number, maxAttempts: number, reason: string) => void
 ): Promise<T> => {
     let lastError: any = null;
@@ -142,8 +165,8 @@ const 执行规划分析带超时和重试 = async <T,>(
         console.info('[性能诊断][规划分析] 模型请求尝试开始', {
             attempt,
             maxAttempts: 规划分析自动重试最大次数,
-            timeoutMs: 规划分析请求超时毫秒,
-            maxPossibleRequestMs: 规划分析请求超时毫秒 * 规划分析自动重试最大次数
+            firstResponseTimeoutMs: 规划分析首次响应超时毫秒,
+            streamIdleTimeoutMs: 规划分析流式空闲超时毫秒
         });
         try {
             const value = await 执行规划分析带超时(task);
@@ -283,9 +306,9 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
             deps.规划分析进行中Ref.current = true;
         }
         const probe = 创建工作流性能诊断('规划分析', {
-            timeoutMs: 规划分析请求超时毫秒,
+            firstResponseTimeoutMs: 规划分析首次响应超时毫秒,
+            streamIdleTimeoutMs: 规划分析流式空闲超时毫秒,
             maxAttempts: 规划分析自动重试最大次数,
-            maxPossibleRequestMs: 规划分析请求超时毫秒 * 规划分析自动重试最大次数,
             historyCount: Array.isArray(deps.历史记录) ? deps.历史记录.length : 0,
             gameTime: params.gameTime,
             playerInputLength: typeof params.playerInput === 'string' ? params.playerInput.length : 0
@@ -488,7 +511,7 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
             extraPromptLength: planningExtraPrompt.length
         });
 
-        const result = await probe.timeAsync('规划分析模型请求总耗时', () => 执行规划分析带超时和重试((signal) => textAIService.generatePlanningAnalysis({
+        const result = await probe.timeAsync('规划分析模型请求总耗时', () => 执行规划分析带超时和重试((signal, markStreamActivity) => textAIService.generatePlanningAnalysis({
             playerName: (deps.角色?.姓名 || '').trim() || '未命名',
             currentStoryJson,
             currentHeroinePlanJson,
@@ -503,8 +526,12 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
             fandomEnabled,
             extraPrompt: planningExtraPrompt,
             gptMode: 独立规划分析GPT模式
-        }, planningApi, signal), params.onRetry), {
-            timeoutMs: 规划分析请求超时毫秒,
+        }, planningApi, signal, {
+            stream: true,
+            onDelta: markStreamActivity
+        }), params.onRetry), {
+            firstResponseTimeoutMs: 规划分析首次响应超时毫秒,
+            streamIdleTimeoutMs: 规划分析流式空闲超时毫秒,
             maxAttempts: 规划分析自动重试最大次数
         });
         probe.mark('规划分析模型返回', {
