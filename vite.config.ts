@@ -239,7 +239,8 @@ export default defineConfig(({ mode }) => {
         'tests/e2e-*.spec.mjs',
         'tests/bugfix-*.spec.mjs',
         'tests/battle-*.spec.mjs',
-        'tests/dialogue-*.spec.mjs'
+        'tests/dialogue-*.spec.mjs',
+        'tests/save-*.spec.mjs'
       ]
     }
   };
