@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useGitHubOAuth } from '../../../hooks/useGitHubOAuth';
+import { WebDAVSyncPanel } from './WebDAVSyncPanel';
 import {
     uploadToCloud,
     uploadSettingsToCloud,
@@ -304,10 +305,6 @@ export const GitHubSyncButton: React.FC<GitHubSyncButtonProps> = ({ floating = t
             <button
                 type="button"
                 onClick={() => {
-                    if (!token && !isNativeApp && hasGitHubOAuthClientId) {
-                        void login();
-                        return;
-                    }
                     setShowPanel(true);
                 }}
                 className={`${containerClassName} flex min-h-[40px] items-center gap-2 border px-3 py-2 text-xs md:text-sm font-serif transition-all duration-300 ${
@@ -316,27 +313,23 @@ export const GitHubSyncButton: React.FC<GitHubSyncButtonProps> = ({ floating = t
                         : 'border-[#b88a4a]/50 bg-[#fff8ea]/95 text-[#7a3f12] shadow-[0_10px_28px_rgba(92,45,10,0.12)] hover:border-[#9a5a1f] hover:bg-[#fff1d6]'
                 }`}
                 style={containerStyle}
-                title={token ? '管理 GitHub 云同步' : '登录 GitHub 并同步存档'}
+                title="管理云端同步"
             >
                 <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
                     <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
                 </svg>
-                <span>{token ? '云端同步' : 'GitHub 登录'}</span>
+                <span>云端同步</span>
             </button>
 
             {showPanel && (
                 <div className="github-sync-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[#f8f4e8] p-3 md:p-4">
-                    <div className="github-sync-panel relative flex max-h-[calc(100vh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-24px)] w-full max-w-[430px] flex-col overflow-hidden rounded-2xl border border-[#b88a4a]/45 bg-[#fffaf0] shadow-[0_24px_70px_rgba(92,45,10,0.22)]">
+                    <div className="github-sync-panel relative flex max-h-[calc(100vh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-24px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[#b88a4a]/45 bg-[#fffaf0] shadow-[0_24px_70px_rgba(92,45,10,0.22)]">
                         <div className="shrink-0 border-b border-[#d8c4a2] bg-[#fff7e6] px-4 pb-4 pt-[max(env(safe-area-inset-top),16px)] md:px-6 md:pt-5">
                             <div className="flex items-center justify-between gap-4">
                                 <div>
-                                    <div className="text-lg font-serif font-bold tracking-[0.18em] text-[#7a3f12]">GitHub 云同步</div>
+                                    <div className="text-lg font-serif font-bold tracking-[0.18em] text-[#7a3f12]">云端同步</div>
                                     <div className="mt-1 text-xs leading-5 text-[#6f4a26]">
-                                        {token
-                                            ? '登录后可在手机与 PC 之间同步设置、存档与素材。'
-                                            : isNativeApp
-                                                ? 'APK 现已使用标准 GitHub OAuth，授权完成后会通过 Android deep link / app link 自动回到应用。'
-                                                : '网页端会跳转 GitHub OAuth 完成授权。'}
+                                        左侧使用 GitHub 私有仓库，右侧使用自定义 WebDAV。两种方式互不覆盖，可按需选择。
                                     </div>
                                 </div>
                                     <div className="mt-3 rounded-xl border border-amber-700/25 bg-amber-100/65 px-3 py-2 text-[11px] leading-5 text-[#8a3a12]">
@@ -352,7 +345,16 @@ export const GitHubSyncButton: React.FC<GitHubSyncButtonProps> = ({ floating = t
 
                         {!token ? (
                             <div className="min-h-0 flex-1 overflow-y-auto bg-[#fffaf0] px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+16px)] md:px-6">
+                                <div className="grid gap-4 lg:grid-cols-2">
                                 <div className="rounded-2xl border border-[#d8c4a2] bg-[#fffdf6] p-4 shadow-[0_10px_24px_rgba(92,45,10,0.08)]">
+                                    <div className="mb-3 border-b border-[#d8c4a2] pb-3">
+                                        <div className="text-lg font-serif font-bold tracking-[0.18em] text-[#7a3f12]">GitHub 云同步</div>
+                                        <div className="mt-1 text-xs leading-5 text-[#6f4a26]">
+                                            {isNativeApp
+                                                ? 'APK 现已使用标准 GitHub OAuth，授权完成后会自动回到应用。'
+                                                : '网页端会跳转 GitHub OAuth 完成授权。'}
+                                        </div>
+                                    </div>
                                     {isNativeApp ? (
                                         <>
                                             <div className="text-sm leading-6 text-[#4f2d16]">
@@ -434,11 +436,14 @@ export const GitHubSyncButton: React.FC<GitHubSyncButtonProps> = ({ floating = t
                                         {isNativeApp ? '开始 GitHub OAuth 登录' : hasGitHubOAuthClientId ? '前往 GitHub 授权' : '未配置 GitHub Client ID'}
                                     </button>
                                 </div>
+                                <WebDAVSyncPanel />
+                                </div>
                             </div>
                         ) : (
                             <>
                                 <div className="min-h-0 flex-1 overflow-y-auto bg-[#fffaf0] px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+16px)] md:px-6">
-                                    <div className="flex flex-col gap-4 text-sm text-[#4f2d16]">
+                                    <div className="grid gap-4 text-sm text-[#4f2d16] lg:grid-cols-2">
+                                        <div className="flex flex-col gap-4">
                                         <div className="rounded-2xl border border-[#d8c4a2] bg-[#fffdf6] p-4 shadow-[0_10px_24px_rgba(92,45,10,0.08)]">
                                             <div className="flex items-center justify-between gap-3 border-b border-[#d8c4a2] pb-3">
                                                 <span className="text-[#5f3a1e]">GitHub 授权状态</span>
@@ -596,6 +601,8 @@ export const GitHubSyncButton: React.FC<GitHubSyncButtonProps> = ({ floating = t
                                                 </button>
                                             </div>
                                         )}
+                                        </div>
+                                        <WebDAVSyncPanel />
                                     </div>
                                 </div>
 
