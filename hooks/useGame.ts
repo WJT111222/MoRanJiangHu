@@ -141,7 +141,7 @@ import { 按世界演变分流净化响应 } from './useGame/storyResponseGuards
 import { 执行变量自动校准 } from './useGame/variableCalibration';
 import { 执行变量模型校准工作流 } from './useGame/variableModelWorkflow';
 import { 合并变量校准结果到响应 as 合并变量生成结果到响应 } from './useGame/variableCalibrationMerge';
-import { 获取图片展示地址, 压缩图片资源字段 } from '../utils/imageAssets';
+import { 获取图片展示地址, 图片资源记录含可恢复地址, 压缩图片资源字段 } from '../utils/imageAssets';
 import { 设置键 } from '../utils/settingsSchema';
 import { countOpenAIChatMessagesTokens, countOpenAITextTokens } from '../utils/tokenEstimate';
 import { 执行游戏后台重计算 } from '../utils/gameHeavyWorkerClient';
@@ -1942,7 +1942,7 @@ export const useGame = () => {
             item?.状态 === 'success'
             && typeof item?.构图 === 'string'
             && allowed.has(item.构图)
-            && Boolean(获取图片展示地址(item))
+            && 图片资源记录含可恢复地址(item)
         ));
         if (hasSuccessfulHistory) return true;
 
@@ -2016,7 +2016,7 @@ export const useGame = () => {
 
     const NPC是否已有成功香闺秘档部位 = (npc: any, part: 香闺秘档部位类型): boolean => {
         const result = npc?.图片档案?.香闺秘档部位档案?.[part];
-        return result?.状态 === 'success' && Boolean(获取图片展示地址(result));
+        return result?.状态 === 'success' && 图片资源记录含可恢复地址(result);
     };
 
     const 读取NPC香闺秘档缺失部位 = (npc: any): 香闺秘档部位类型[] => {

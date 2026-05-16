@@ -36,6 +36,7 @@
   - If version or timestamp is incorrect, the deployment is incomplete
 - If a release is uploaded to R2 but the website was not deployed, deploy the Cloudflare Worker/site as part of the same release flow or clearly report why it could not be deployed.
 - After deployment, verify the live site and manifest over HTTPS instead of assuming local build output is live.
+- After every deployment and release backup push, check GitHub Actions CI for `ypq123456789/MoRanJiangHu` explicitly, not the upstream repository. Confirm the latest `CI` run for the pushed commit succeeds; if it fails, fetch the logs, fix when possible, and report the blocker before ending.
 
 ## No Auto-Deploy Rule
 

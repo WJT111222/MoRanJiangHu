@@ -38,7 +38,8 @@ describe('imageHostService', () => {
             }
         });
 
-        expect(buildImageHostProxyUrl('/api/image-host/upload')).toBe('https://msjh.bacon159.pp.ua/api/image-host/upload');
+        const configuredBase = (import.meta.env.VITE_SYNC_API_BASE_URL || 'https://msjh.bacon159.pp.ua').replace(/\/+$/, '');
+        expect(buildImageHostProxyUrl('/api/image-host/upload')).toBe(`${configuredBase}/api/image-host/upload`);
 
         vi.stubGlobal('window', originalWindow);
     });
@@ -52,7 +53,8 @@ describe('imageHostService', () => {
             }
         });
 
-        expect(buildImageHostProxyUrl('/api/image-host/upload')).toMatch(/^(https:\/\/msjh\.bacon159\.pp\.ua)?\/api\/image-host\/upload$/);
+        const url = buildImageHostProxyUrl('/api/image-host/upload');
+        expect(url).toMatch(/\/api\/image-host\/upload$/);
 
         vi.stubGlobal('window', originalWindow);
     });

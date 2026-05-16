@@ -117,6 +117,15 @@ export const 获取图片展示地址 = (asset?: 图片资源结构 | null): str
     return '';
 };
 
+export const 图片资源记录含可恢复地址 = (asset?: 图片资源结构 | null): boolean => {
+    if (!asset || typeof asset !== 'object') return false;
+    const local = 读取文本(asset?.本地路径);
+    if (local) return true;
+    const imageUrl = 读取文本(asset?.图片URL);
+    if (imageUrl) return true;
+    return Boolean(获取图片展示地址(asset));
+};
+
 export const 获取图片资源文本地址 = (value: unknown): string => {
     const text = 读取文本(value);
     if (!text) return '';

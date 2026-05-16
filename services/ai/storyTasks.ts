@@ -1603,13 +1603,15 @@ export const generatePlanningAnalysis = async (
         gptMode?: boolean;
     },
     apiConfig: 当前可用接口结构,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    streamOptions?: WorldStreamOptions
 ): Promise<PlanningAnalysisResult> => {
     if (!apiConfig.apiKey) throw new Error('Missing API Key');
     const request = (forceUserTrigger = false) => 请求模型文本(apiConfig, 构建规划分析消息链(params, { forceUserTrigger }), {
         temperature: 0.3,
         signal,
-        errorDetailLimit: Number.POSITIVE_INFINITY
+        errorDetailLimit: Number.POSITIVE_INFINITY,
+        streamOptions
     });
     let rawText = '';
     try {
