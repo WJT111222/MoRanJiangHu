@@ -4,6 +4,7 @@ import { 压缩图片资源字段 } from '../../utils/imageAssets';
 import { 自动装备最佳装备 } from '../../utils/equipmentActions';
 import { 规范化消耗品使用效果 } from '../../utils/itemEffects';
 import { 补齐自动丹药预设 } from '../../utils/autoConsumables';
+import { 归一化六维到境界预算 } from '../../utils/attributeBudget';
 
 const 深拷贝 = <T,>(data: T): T => JSON.parse(JSON.stringify(data)) as T;
 const 默认装备模板 = {
@@ -1292,8 +1293,6 @@ const 标准化NPC基础属性 = (npc: any): {
 } => {
     const rank = 读取NPC境界阶位(npc);
     const text = [npc?.姓名, npc?.性别, npc?.身份, npc?.境界, npc?.简介].map((value) => 规范化文本(value)).join(' ');
-    const eliteBonus = /寨主|庄主|掌门|宗主|长老|供奉|统领|首领|天骄|圣女|公子|小姐/.test(text) ? 2 : 0;
-    const base = Math.max(3, 6 + rank * 2 + eliteBonus);
     const style = {
         力量: /刀|斧|锤|拳|力|壮|魁|猛|护卫|镖/.test(text) ? 3 : 0,
         敏捷: /剑|刺|影|盗|弓|暗器|轻功|斥候|快/.test(text) ? 3 : 0,
@@ -1302,18 +1301,14 @@ const 标准化NPC基础属性 = (npc: any): {
         悟性: /书|谋|师|医|丹|阵|符|术|智|谋士/.test(text) ? 3 : 0,
         福源: /贵|小姐|公子|少主|圣女|机缘|祥|幸运/.test(text) ? 2 : 0
     };
-    const read = (key: keyof typeof style, fallback: number) => {
-        const raw = Number(npc?.[key]);
-        return Number.isFinite(raw) && raw > 0 ? Math.ceil(raw) : Math.max(1, Math.ceil(fallback));
-    };
+    const realmLevel = Math.max(1, Math.ceil(规范化数值(npc?.境界层级, rank)), rank);
+    const attrs = 归一化六维到境界预算(npc, {
+        境界层级: realmLevel,
+        偏向权重: style
+    });
     return {
-        力量: read('力量', base + style.力量),
-        敏捷: read('敏捷', base + style.敏捷),
-        体质: read('体质', base + style.体质),
-        根骨: read('根骨', base + style.根骨),
-        悟性: read('悟性', base + style.悟性),
-        福源: read('福源', Math.max(1, base - 1 + style.福源)),
-        境界层级: Math.max(1, Math.ceil(规范化数值(npc?.境界层级, rank)))
+        ...attrs,
+        境界层级: realmLevel
     };
 };
 
