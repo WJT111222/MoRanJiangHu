@@ -255,6 +255,7 @@
           <div>
             <h2>进入工作区等待自动启动</h2>
             <p>进入自己 Fork 后的仓库页面，打开 CNB 工作区。正常情况下不需要手动执行命令，只要等待系统自动执行启动流程即可。终端里看到 <code>[Startup] 正在启动 ComfyUI: ...</code>，说明启动脚本已经跑到最后一步；随后如果看到 <code>ComfyUI 8188 ready</code>、<code>Detected ComfyUI URL: ...</code>、<code>initial sync ok</code>，就表示 ComfyUI 已经启动并把地址上报给 <a class="app-link" href="https://msjh.bacon159.pp.ua/" target="_blank" rel="noopener noreferrer">墨色江湖 bacon159 二创版</a>。没有报错时，CNB 通常也会自动弹出打开 ComfyUI 的提示。</p>
+            <p>如果终端最后停在 <code>torch.AcceleratorError: CUDA error: uncorrectable ECC error encountered</code>，这通常不是你操作错了，也不是模型没有下载完，而是 CNB 分配到的 GPU 节点出现硬件或驱动级 CUDA ECC 异常。建议关闭当前工作区后重新创建或重启一个 L40 工作区；如果重开后仍然同样报错，把这段报错发给左侧侧边栏里的 <code>CodeBuddy</code> 或 CNB 反馈，让他们更换/修复 GPU 节点。</p>
             <p>如果终端明确报错，才尝试手动执行下面这条命令。仍然不行时，可以问问左侧侧边栏里的 <code>CodeBuddy</code>，让它根据报错帮你排查。</p>
             <pre><code>cd /workspace && \
 npm install && \
@@ -304,6 +305,7 @@ npm run cnb:start -- "python main.py --listen 0.0.0.0 --port 8188 --enable-cors-
 
       <div class="tip">
         如果后端已经启动，但 <a class="app-link" href="https://msjh.bacon159.pp.ua/" target="_blank" rel="noopener noreferrer">墨色江湖 bacon159 二创版</a> 里还没出现在线地址，先确认客户端填写的是 CNB 个人主页头像下方的用户名称，再点一次“刷新列表”。正常情况下，启动成功后系统会自动发现并展示匹配用户名称的 <code>8188</code> ComfyUI 域名。使用期间请保持 CNB 的 VS Code / workspace 页面打开；如果页面关闭或休眠，生图可能提示连接不到服务器或跨域失败。
+        如果报错包含 <code>uncorrectable ECC error encountered</code>，优先按 CNB GPU 节点异常处理：重开工作区或联系 CNB/CodeBuddy，不需要反复重装模型。
       </div>
     </section>
   </main>

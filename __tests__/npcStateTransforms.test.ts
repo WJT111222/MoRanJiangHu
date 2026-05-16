@@ -118,6 +118,31 @@ describe('NPC old save compatibility', () => {
         expect(positiveSkills.some((item: any) => item.名称 !== '采集' || item.熟练度 !== 10)).toBe(true);
     });
 
+    it('keeps NPC six attributes on the realm budget instead of inflating low realm enemies', () => {
+        const [npc] = 规范化社交列表([
+            {
+                id: 'npc_overstated_enemy',
+                姓名: '慕容氏精锐水鬼',
+                性别: '男',
+                身份: '水鬼精锐',
+                境界: '聚息境四重',
+                境界层级: 4,
+                力量: 14,
+                敏捷: 14,
+                体质: 14,
+                根骨: 17,
+                悟性: 4,
+                福源: 0
+            }
+        ], { 合并同名: false });
+
+        const total = npc.力量 + npc.敏捷 + npc.体质 + npc.根骨 + npc.悟性 + npc.福源;
+
+        expect(npc.境界层级).toBe(8);
+        expect(total).toBe(37);
+        expect(Math.max(npc.力量, npc.敏捷, npc.体质, npc.根骨, npc.悟性, npc.福源)).toBeLessThan(14);
+    });
+
     it('drops dialogue narration fragments that were mistaken for NPC names', () => {
         const list = 规范化社交列表([
             {

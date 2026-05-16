@@ -16,6 +16,7 @@ import type {
 } from '../../types';
 import { 补齐世界地图空间字段 } from '../../utils/mapSpatial';
 import { 职位等级排序 } from '../../models/sect';
+import { 归一化六维到境界预算 } from '../../utils/attributeBudget';
 
 export type 开场命令基态 = {
     角色: 角色数据结构;
@@ -708,19 +709,42 @@ export const 创建开场空白战斗 = (): 战斗状态结构 => ({
 
 const 读取敌方境界阶位 = (enemy: any): number => {
     const text = [enemy?.境界, enemy?.简介, enemy?.名字].map((value) => 取文本(value)).join(' ');
+    const compact = text.replace(/\s+/g, '');
+    const 四段境界名称 = ['开脉', '聚息', '归元', '御劲', '化罡'];
+    const realmBase: Record<string, number> = { 开脉: 0, 聚息: 4, 归元: 8, 御劲: 12, 化罡: 16 };
+    const stageTextMap: Record<string, number> = {
+        初期: 1,
+        前期: 1,
+        中期: 2,
+        后期: 3,
+        圆满: 4,
+        一: 1,
+        二: 2,
+        两: 2,
+        三: 3,
+        四: 4,
+        '1': 1,
+        '2': 2,
+        '3': 3,
+        '4': 4
+    };
+    const stageMatch = compact.match(new RegExp(`(${四段境界名称.join('|')})境?(初期|前期|中期|后期|圆满|第?[一二两三四1-4](?:重|层))`));
+    if (stageMatch) {
+        const stageRaw = stageMatch[2].replace(/^第/, '').replace(/[重层]$/, '');
+        return Math.max(1, (realmBase[stageMatch[1]] || 0) + (stageTextMap[stageRaw] || 1));
+    }
     let rank = 1;
     [
         [/凡人|普通|未入道|无修为/, 1],
-        [/炼体|锻体/, 2],
-        [/开脉|通脉/, 3],
-        [/聚息|聚气|凝气/, 4],
-        [/筑基|归元/, 5],
-        [/凝真|玄照/, 6],
-        [/金丹|玄丹/, 8],
-        [/元婴/, 10],
-        [/化神/, 13],
-        [/炼虚/, 16],
-        [/合体/, 20],
+        [/炼体|锻体|开脉|通脉/, 1],
+        [/聚息|聚气|凝气/, 5],
+        [/筑基|归元/, 9],
+        [/御劲|凝真|玄照/, 13],
+        [/化罡|金丹|玄丹/, 17],
+        [/通玄|元婴/, 21],
+        [/神照|化神/, 27],
+        [/返真|炼虚/, 33],
+        [/合体/, 38],
         [/大乘|渡劫/, 24]
     ].forEach(([pattern, value]) => {
         if ((pattern as RegExp).test(text)) rank = Math.max(rank, value as number);
@@ -732,19 +756,20 @@ const 读取敌方境界阶位 = (enemy: any): number => {
 const 规范化敌方基础属性 = (rawEnemy: any) => {
     const rank = 读取敌方境界阶位(rawEnemy);
     const text = [rawEnemy?.名字, rawEnemy?.境界, rawEnemy?.简介, ...(Array.isArray(rawEnemy?.技能) ? rawEnemy.技能 : [])].map((value) => 取文本(value)).join(' ');
-    const base = Math.max(3, 6 + rank * 2);
-    const read = (key: string, fallback: number) => {
-        const value = 取数字(rawEnemy?.[key], NaN);
-        return Number.isFinite(value) && value > 0 ? Math.ceil(value) : Math.max(1, Math.ceil(fallback));
-    };
+    const realmLevel = Math.max(1, Math.ceil(取数字(rawEnemy?.境界层级, rank)), rank);
+    const attrs = 归一化六维到境界预算(rawEnemy, {
+        境界层级: realmLevel,
+        偏向权重: {
+            力量: /刀|斧|锤|拳|猛|力/.test(text) ? 3 : 0,
+            敏捷: /剑|刺|影|弓|暗器|快/.test(text) ? 3 : 0,
+            体质: /盾|甲|体|横练|护/.test(text) ? 3 : 0,
+            根骨: /内功|道|术|气|长老/.test(text) ? 3 : 0,
+            悟性: /术|阵|符|谋|智|师/.test(text) ? 3 : 0
+        }
+    });
     return {
-        力量: read('力量', base + (/刀|斧|锤|拳|猛|力/.test(text) ? 3 : 0)),
-        敏捷: read('敏捷', base + (/剑|刺|影|弓|暗器|快/.test(text) ? 3 : 0)),
-        体质: read('体质', base + (/盾|甲|体|横练|护/.test(text) ? 3 : 0)),
-        根骨: read('根骨', base + (/内功|道|术|气|长老/.test(text) ? 3 : 0)),
-        悟性: read('悟性', base + (/术|阵|符|谋|智|师/.test(text) ? 3 : 0)),
-        福源: read('福源', Math.max(1, base - 1)),
-        境界层级: Math.max(1, Math.ceil(取数字(rawEnemy?.境界层级, rank)))
+        ...attrs,
+        境界层级: realmLevel
     };
 };
 
