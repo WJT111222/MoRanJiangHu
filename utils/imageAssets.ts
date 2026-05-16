@@ -86,6 +86,10 @@ export const 注册远程图片兜底引用 = (remoteUrl: unknown, assetIdOrRef:
     写入远程图片兜底缓存(fallbacks);
 };
 
+export const 读取远程图片兜底映射 = (): Record<string, string> => ({
+    ...读取远程图片兜底缓存()
+});
+
 export const 读取远程图片兜底资源ID = (remoteUrl: unknown): string => {
     const remote = 读取文本(remoteUrl);
     if (!remote) return '';
@@ -98,7 +102,10 @@ export const 读取远程图片兜底资源ID集合 = (): Set<string> => (
 
 export const 获取图片展示地址 = (asset?: 图片资源结构 | null): string => {
     const local = 读取文本(asset?.本地路径);
-    if (local) return 获取图片资源文本地址(local);
+    if (local) {
+        const localUrl = 获取图片资源文本地址(local);
+        if (localUrl) return localUrl;
+    }
     const imageUrl = 读取文本(asset?.图片URL);
     if (imageUrl) return 获取图片资源文本地址(imageUrl);
     return '';
