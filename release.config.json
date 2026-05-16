@@ -1,17 +1,31 @@
 {
-  "versionCode": 173,
-  "versionName": "1.0.172",
+  "versionCode": 174,
+  "versionName": "1.0.173",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "v1.0.172 正式发布：接入图床链接式图片存储，并优化 WebDAV 存档同步体积。",
-    "新生成或导入的本地 data URL 图片会优先上传到图床，成功后保存为在线链接，失败时自动回退本地缓存。",
-    "图床上传改为无损文件通道，保留图片扩展名但按 application/octet-stream 上传，避免 Telegram 压缩图片。",
-    "WebDAV 同步存档不再打包图片文件，只保存图床链接，大幅减少云存档体积和上传下载时间。",
-    "WebDAV 大包分片从 512KiB 调整为 768KiB，在避开 1MiB 限制的同时减少分片数量。",
-    "已完成本地端到端验证：图床链接下载 SHA 一致，同步 ZIP 不含图片目录且保留图床链接。",
-    "网页端、APK 包和更新清单同步提升到 v1.0.172 / CODE 173。"
+    "v1.0.173 正式发布：旧存档本地图片现在会全自动迁移到图床链接，并修复线上图床代理 multipart 转发。",
+    "应用启动后会在后台扫描旧版 wuxia-asset 本地图片引用，自动上传到图床并回写存档与设置，不需要用户手动操作。",
+    "迁移成功后会自动清理已不再引用的本地图片缓存，后续 WebDAV 存档同步只保存图床链接，进一步减少上传下载体积。",
+    "图床代理现在会保留 multipart/form-data boundary 转发给上游，修复线上上传提示“请求必须使用 multipart/form-data 格式”的问题。",
+    "迁移过程静默运行；如果图床或网络暂时不可用，会保留原本地图片并在后续启动自动重试，避免影响正常读档。",
+    "已完成真实端到端验证：旧本地图片引用自动变为图床下载链接，本地图片缓存清零，下载回来的图片 SHA 与原图一致。",
+    "网页端、APK 包和更新清单同步提升到 v1.0.173 / CODE 174。"
   ],
   "releaseHistory": [
+    {
+      "versionCode": 174,
+      "versionName": "1.0.173",
+      "changes": [
+        "v1.0.173 正式发布：旧存档本地图片现在会全自动迁移到图床链接，并修复线上图床代理 multipart 转发。",
+        "应用启动后会在后台扫描旧版 wuxia-asset 本地图片引用，自动上传到图床并回写存档与设置，不需要用户手动操作。",
+        "迁移成功后会自动清理已不再引用的本地图片缓存，后续 WebDAV 存档同步只保存图床链接，进一步减少上传下载体积。",
+        "图床代理现在会保留 multipart/form-data boundary 转发给上游，修复线上上传提示“请求必须使用 multipart/form-data 格式”的问题。",
+        "迁移过程静默运行；如果图床或网络暂时不可用，会保留原本地图片并在后续启动自动重试，避免影响正常读档。",
+        "已完成真实端到端验证：旧本地图片引用自动变为图床下载链接，本地图片缓存清零，下载回来的图片 SHA 与原图一致。",
+        "网页端、APK 包和更新清单同步提升到 v1.0.173 / CODE 174。"
+      ],
+      "publishedAt": "2026-05-16T14:32:44.682+08:00"
+    },
     {
       "versionCode": 173,
       "versionName": "1.0.172",
@@ -1845,6 +1859,6 @@
   "updateManifestUrl": "https://download.bacon.de5.net/moranjianghu/latest.json",
   "r2Bucket": "quark-downloads-bacon",
   "r2Prefix": "moranjianghu",
-  "releasePublishedAt": "2026-05-16T14:08:31.744+08:00",
-  "backupWebsiteUrl": "https://msjh.bacon.de5.net"
+  "backupWebsiteUrl": "https://msjh.bacon.de5.net",
+  "releasePublishedAt": "2026-05-16T14:32:44.682+08:00"
 }

@@ -20,6 +20,7 @@ const 设置记录版本 = 2;
 const 深拷贝 = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const 文本编码器 = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
 const 图片资源签名缓存 = new Map<string, string>();
+let 正在自动迁移本地图片到图床 = false;
 const 是DataUrl图片 = (value: string): boolean => /^data:image\//i.test(value);
 const 是远程地址 = (value: string): boolean => /^https?:\/\//i.test(value);
 const safeNumber = (value: unknown, fallback: number): number => {
@@ -419,6 +420,179 @@ const 读取已引用图片资源ID集合 = async (): Promise<Set<string>> => {
     saves.forEach((save) => 收集图片资源引用ID(save, refs));
     settings.forEach((item) => 收集图片资源引用ID(item?.value, refs));
     return refs;
+};
+
+const 替换本地图片资源引用 = (value: unknown, replacements: Map<string, string>): { value: unknown; changed: boolean } => {
+    if (typeof value === 'string') {
+        const replacement = replacements.get(value);
+        return replacement ? { value: replacement, changed: true } : { value, changed: false };
+    }
+    if (!value || typeof value !== 'object') {
+        return { value, changed: false };
+    }
+    if (Array.isArray(value)) {
+        let changed = false;
+        const next = value.map((item) => {
+            const result = 替换本地图片资源引用(item, replacements);
+            if (result.changed) changed = true;
+            return result.value;
+        });
+        return changed ? { value: next, changed } : { value, changed: false };
+    }
+
+    let changed = false;
+    const next: Record<string, unknown> = {};
+    Object.entries(value as Record<string, unknown>).forEach(([key, child]) => {
+        const result = 替换本地图片资源引用(child, replacements);
+        if (result.changed) changed = true;
+        next[key] = result.value;
+    });
+    return changed ? { value: next, changed } : { value, changed: false };
+};
+
+export interface 本地图片图床自动迁移结果 {
+    scannedAssets: number;
+    migratedAssets: number;
+    updatedSaves: number;
+    updatedSettings: number;
+    cleanedAssets: number;
+    failedAssets: Array<{ id: string; message: string }>;
+    skipped: boolean;
+}
+
+export const 自动迁移本地图片到图床 = async (): Promise<本地图片图床自动迁移结果> => {
+    if (正在自动迁移本地图片到图床) {
+        return {
+            scannedAssets: 0,
+            migratedAssets: 0,
+            updatedSaves: 0,
+            updatedSettings: 0,
+            cleanedAssets: 0,
+            failedAssets: [],
+            skipped: true
+        };
+    }
+
+    正在自动迁移本地图片到图床 = true;
+    try {
+        const [referencedIds, assetEntries] = await Promise.all([
+            读取已引用图片资源ID集合(),
+            读取全部图片资源记录()
+        ]);
+        const candidates = assetEntries.filter((item) => (
+            referencedIds.has(item.id) && typeof item.dataUrl === 'string' && 是DataUrl图片(item.dataUrl)
+        ));
+        if (candidates.length <= 0) {
+            return {
+                scannedAssets: assetEntries.length,
+                migratedAssets: 0,
+                updatedSaves: 0,
+                updatedSettings: 0,
+                cleanedAssets: 0,
+                failedAssets: [],
+                skipped: false
+            };
+        }
+
+        const replacements = new Map<string, string>();
+        const failedAssets: Array<{ id: string; message: string }> = [];
+        for (const item of candidates) {
+            try {
+                const uploaded = await 上传DataUrl到图床(item.dataUrl || '', { fileName: `${item.id}.png` });
+                if (uploaded.url) {
+                    replacements.set(创建图片资源引用(item.id), uploaded.url);
+                    const signature = 生成图片资源签名(item.dataUrl || '');
+                    if (signature) 图片资源签名缓存.set(signature, uploaded.url);
+                }
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                failedAssets.push({ id: item.id, message });
+                if (failedAssets.length >= 3) break;
+            }
+        }
+
+        let updatedSaves = 0;
+        let updatedSettings = 0;
+        if (replacements.size > 0) {
+            const db = await 初始化数据库();
+            const [saves, settings] = await Promise.all([
+                new Promise<any[]>((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(Array.isArray(request.result) ? request.result : []);
+                    request.onerror = () => reject(request.error);
+                }),
+                new Promise<Array<{ key: string; value: any; updatedAt?: number | null; category?: string }>>((resolve, reject) => {
+                    const transaction = db.transaction([SETTINGS_STORE], 'readonly');
+                    const store = transaction.objectStore(SETTINGS_STORE);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(Array.isArray(request.result) ? request.result : []);
+                    request.onerror = () => reject(request.error);
+                })
+            ]);
+
+            for (const save of saves) {
+                const result = 替换本地图片资源引用(save, replacements);
+                if (!result.changed) continue;
+                await new Promise<void>((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.put(result.value);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+                updatedSaves += 1;
+            }
+
+            for (const item of settings) {
+                const result = 替换本地图片资源引用(item?.value, replacements);
+                if (!result.changed || typeof item?.key !== 'string') continue;
+                await new Promise<void>((resolve, reject) => {
+                    const transaction = db.transaction([SETTINGS_STORE], 'readwrite');
+                    const store = transaction.objectStore(SETTINGS_STORE);
+                    const request = store.put({
+                        ...item,
+                        value: result.value,
+                        updatedAt: Date.now()
+                    });
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+                updatedSettings += 1;
+            }
+        }
+
+        const cleanedAssets = replacements.size > 0 ? await 清理未引用图片资源() : 0;
+        if (replacements.size > 0) {
+            await 预热图片资源缓存().catch((error) => {
+                console.warn('本地图片自动迁移后预热缓存失败，已跳过缓存刷新:', error);
+            });
+        }
+        let remainingFailedAssets = failedAssets;
+        if (failedAssets.length > 0 && replacements.size > 0) {
+            const failedIds = new Set(failedAssets.map((item) => item.id));
+            const [remainingReferencedIds, remainingAssetEntries] = await Promise.all([
+                读取已引用图片资源ID集合(),
+                读取全部图片资源记录()
+            ]);
+            const remainingLocalImageIds = new Set(remainingAssetEntries
+                .filter((item) => failedIds.has(item.id) && remainingReferencedIds.has(item.id) && 是DataUrl图片(item.dataUrl || ''))
+                .map((item) => item.id));
+            remainingFailedAssets = failedAssets.filter((item) => remainingLocalImageIds.has(item.id));
+        }
+        return {
+            scannedAssets: assetEntries.length,
+            migratedAssets: replacements.size,
+            updatedSaves,
+            updatedSettings,
+            cleanedAssets,
+            failedAssets: remainingFailedAssets,
+            skipped: false
+        };
+    } finally {
+        正在自动迁移本地图片到图床 = false;
+    }
 };
 
 export const 清理未引用图片资源 = async (): Promise<number> => {

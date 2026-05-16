@@ -283,6 +283,10 @@ export const useGameState = () => {
             try {
                 await dbService.迁移图片资源到独立存储();
                 await dbService.预热图片资源缓存();
+                void dbService.自动迁移本地图片到图床()
+                    .catch((error) => {
+                        console.error('旧存档本地图片自动图床化失败:', error);
+                    });
                 const savedTheme = await dbService.读取设置(设置键.应用主题);
                 if (savedTheme && THEMES[savedTheme as ThemePreset]) setCurrentTheme(savedTheme as ThemePreset);
                 const savedApi = await dbService.读取设置(设置键.API配置);
