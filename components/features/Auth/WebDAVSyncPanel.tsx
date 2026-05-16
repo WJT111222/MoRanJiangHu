@@ -1,0 +1,183 @@
+import React, { useEffect, useState } from 'react';
+import * as dbService from '../../../services/dbService';
+import {
+    保存WebDAV同步配置,
+    下载WebDAV云存档,
+    下载设置自WebDAV,
+    列出WebDAV云存档,
+    增量同步到WebDAV,
+    上传设置到WebDAV,
+    测试WebDAV连接,
+    读取WebDAV同步摘要,
+    读取WebDAV同步配置,
+    type WebDAV云存档元数据,
+    type WebDAV同步配置,
+    type WebDAV同步摘要
+} from '../../../services/webdavSync';
+
+const 初始配置: WebDAV同步配置 = { url: '', username: '', password: '' };
+
+const formatTime = (value?: string | null): string => {
+    if (!value) return '从未同步';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    const pad2 = (n: number) => Math.trunc(n).toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+};
+
+const buildCloudSaveLabel = (item: WebDAV云存档元数据): string => {
+    const device = item.deviceLabel || (item.deviceType === 'phone' ? '手机' : '电脑');
+    return `${item.title || '未知角色'} · ${device} · ${formatTime(item.syncedAt || item.savedAt)} · v${item.appVersion || '未知版本'}`;
+};
+
+const readConfig = (config: WebDAV同步配置): WebDAV同步配置 => ({
+    url: config.url.trim(),
+    username: config.username.trim(),
+    password: config.password
+});
+
+export const WebDAVSyncPanel: React.FC = () => {
+    const [config, setConfig] = useState<WebDAV同步配置>(初始配置);
+    const [cloudSaves, setCloudSaves] = useState<WebDAV云存档元数据[]>([]);
+    const [selectedCloudSaveId, setSelectedCloudSaveId] = useState('');
+    const [summary, setSummary] = useState<WebDAV同步摘要 | null>(null);
+    const [status, setStatus] = useState('填写 WebDAV 信息后即可同步');
+    const [busy, setBusy] = useState(false);
+
+    useEffect(() => {
+        void (async () => {
+            const saved = await 读取WebDAV同步配置();
+            if (!saved) return;
+            setConfig(saved);
+            setStatus('已读取本机 WebDAV 配置');
+        })();
+    }, []);
+
+    const persistConfig = async (): Promise<WebDAV同步配置> => {
+        const next = readConfig(config);
+        await 保存WebDAV同步配置(next);
+        setConfig(next);
+        return next;
+    };
+
+    const refreshCloud = async (nextConfig?: WebDAV同步配置) => {
+        const active = nextConfig || await persistConfig();
+        const [nextSummary, list] = await Promise.all([
+            读取WebDAV同步摘要(active),
+            列出WebDAV云存档(active)
+        ]);
+        setSummary(nextSummary);
+        setCloudSaves(list);
+        setSelectedCloudSaveId((current) => current && list.some((item) => item.id === current) ? current : (list[0]?.id || ''));
+        setStatus(`已读取云端：${list.length} 个存档${nextSummary.settings ? '，有设置包' : '，暂无设置包'}`);
+    };
+
+    const runTask = async (task: () => Promise<void>, failPrefix: string) => {
+        if (busy) return;
+        setBusy(true);
+        try {
+            await task();
+        } catch (error: any) {
+            console.error(error);
+            window.alert(`${failPrefix}：${error?.message || '未知错误'}`);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const handleSaveConfig = () => runTask(async () => {
+        await persistConfig();
+        setStatus('WebDAV 配置已保存到本机');
+    }, '保存 WebDAV 配置失败');
+
+    const handleTest = () => runTask(async () => {
+        const active = await persistConfig();
+        await 测试WebDAV连接(active);
+        await refreshCloud(active);
+        setStatus('WebDAV 连接成功');
+    }, 'WebDAV 连接失败');
+
+    const handleUploadSaves = () => runTask(async () => {
+        if (!window.confirm('这会把当前本机的全部存档增量同步到 WebDAV，已存在的相同内容会自动跳过。是否继续？')) return;
+        const active = await persistConfig();
+        const result = await 增量同步到WebDAV(active);
+        await refreshCloud(active);
+        window.alert(`WebDAV 存档同步完成：上传 ${result.uploaded} 个，跳过 ${result.skipped} 个。`);
+    }, 'WebDAV 存档同步失败');
+
+    const handleUploadSettings = () => runTask(async () => {
+        if (!window.confirm('这会把当前本机的全部游戏设置和设置引用的素材上传到 WebDAV，不包含存档。是否继续？')) return;
+        const active = await persistConfig();
+        const metadata = await 上传设置到WebDAV(active);
+        await refreshCloud(active);
+        window.alert(`WebDAV 设置上传完成：${formatTime(metadata.syncedAt)}。`);
+    }, 'WebDAV 设置上传失败');
+
+    const handleImportSave = () => runTask(async () => {
+        const selected = cloudSaves.find((item) => item.id === selectedCloudSaveId);
+        if (!selected) {
+            window.alert('请先选择一个云端存档。');
+            return;
+        }
+        if (!window.confirm(`将云端存档导入本地：${buildCloudSaveLabel(selected)}。是否继续？`)) return;
+        const active = await persistConfig();
+        const { save } = await 下载WebDAV云存档(active, selected);
+        const result = await dbService.导入存档数据({ saves: [save] }, { 覆盖现有: false });
+        window.alert(`云端存档已导入本地：新增 ${result.imported} 条，跳过 ${result.skipped} 条。`);
+    }, 'WebDAV 存档读取失败');
+
+    const handleRestoreSettings = () => runTask(async () => {
+        if (!window.confirm('这会下载 WebDAV 云端设置并覆盖当前本机全部设置，且不可撤销。是否继续？')) return;
+        const active = await persistConfig();
+        const result = await 下载设置自WebDAV(active);
+        if (result.success) {
+            window.alert(`WebDAV 设置恢复完成：设置 ${result.importedSettingCount}/${result.settingCount}，页面即将刷新。`);
+            window.location.reload();
+            return;
+        }
+        window.alert(`WebDAV 设置恢复失败：${result.stageLabel} - ${result.error || '未知错误'}`);
+    }, 'WebDAV 设置恢复失败');
+
+    return (
+        <div className="rounded-2xl border border-sky-700/25 bg-sky-50/80 p-4 shadow-[0_10px_24px_rgba(12,74,110,0.08)]">
+            <div className="flex items-start justify-between gap-3 border-b border-sky-900/10 pb-3">
+                <div>
+                    <div className="text-lg font-serif font-bold tracking-[0.18em] text-sky-950">WebDAV 云同步</div>
+                    <div className="mt-1 text-xs leading-5 text-sky-900/75">同步存档，也可单独同步全部游戏设置。</div>
+                </div>
+                <span className="rounded-full border border-sky-700/25 bg-white/70 px-2 py-1 text-[10px] tracking-[0.16em] text-sky-900">WEBDAV</span>
+            </div>
+
+            <div className="mt-4 grid gap-2">
+                <input value={config.url} onChange={(event) => setConfig((prev) => ({ ...prev, url: event.target.value }))} placeholder="WebDAV 地址" className="rounded-lg border border-sky-800/20 bg-white/85 px-3 py-2 text-sm text-sky-950 outline-none focus:border-sky-700" />
+                <input value={config.username} onChange={(event) => setConfig((prev) => ({ ...prev, username: event.target.value }))} placeholder="用户名" autoComplete="username" className="rounded-lg border border-sky-800/20 bg-white/85 px-3 py-2 text-sm text-sky-950 outline-none focus:border-sky-700" />
+                <input value={config.password} onChange={(event) => setConfig((prev) => ({ ...prev, password: event.target.value }))} placeholder="密码" type="password" autoComplete="current-password" className="rounded-lg border border-sky-800/20 bg-white/85 px-3 py-2 text-sm text-sky-950 outline-none focus:border-sky-700" />
+            </div>
+
+            <div className="mt-3 rounded-xl border border-sky-900/10 bg-white/70 px-3 py-2 text-xs leading-5 text-sky-950/75">
+                <div>{status}</div>
+                <div>云端存档：{summary ? `${summary.saveCount} 个` : '未读取'} · 云端设置：{summary?.settings ? `${formatTime(summary.settings.syncedAt)} · v${summary.settings.appVersion}` : '暂无'}</div>
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <button onClick={handleSaveConfig} disabled={busy} className="rounded-lg border border-sky-700/30 bg-white/80 px-3 py-2 text-xs font-semibold tracking-[0.14em] text-sky-900 hover:bg-sky-100 disabled:opacity-50">保存配置</button>
+                <button onClick={handleTest} disabled={busy} className="rounded-lg border border-sky-700/30 bg-white/80 px-3 py-2 text-xs font-semibold tracking-[0.14em] text-sky-900 hover:bg-sky-100 disabled:opacity-50">测试/刷新</button>
+                <button onClick={handleUploadSaves} disabled={busy} className="rounded-lg border border-emerald-700/30 bg-emerald-100/80 px-3 py-2 text-xs font-semibold tracking-[0.14em] text-emerald-900 hover:bg-emerald-200 disabled:opacity-50">上传全部存档</button>
+                <button onClick={handleUploadSettings} disabled={busy} className="rounded-lg border border-amber-700/30 bg-amber-100/80 px-3 py-2 text-xs font-semibold tracking-[0.14em] text-amber-900 hover:bg-amber-200 disabled:opacity-50">上传全部设置</button>
+            </div>
+
+            <div className="mt-4 grid gap-2">
+                <select value={selectedCloudSaveId} onChange={(event) => setSelectedCloudSaveId(event.target.value)} className="min-w-0 rounded-lg border border-sky-800/20 bg-white/85 px-3 py-2 text-xs text-sky-950 outline-none focus:border-sky-700">
+                    <option value="">选择云端存档</option>
+                    {cloudSaves.map((item) => (
+                        <option key={item.id} value={item.id}>{buildCloudSaveLabel(item)}</option>
+                    ))}
+                </select>
+                <div className="grid gap-2 sm:grid-cols-2">
+                    <button onClick={handleImportSave} disabled={busy || !selectedCloudSaveId} className="rounded-lg border border-sky-700/30 bg-sky-100/80 px-3 py-2 text-xs font-semibold tracking-[0.14em] text-sky-900 hover:bg-sky-200 disabled:opacity-50">导入所选存档</button>
+                    <button onClick={handleRestoreSettings} disabled={busy || !summary?.settings} className="rounded-lg border border-violet-700/30 bg-violet-100/80 px-3 py-2 text-xs font-semibold tracking-[0.14em] text-violet-900 hover:bg-violet-200 disabled:opacity-50">恢复全部设置</button>
+                </div>
+            </div>
+        </div>
+    );
+};

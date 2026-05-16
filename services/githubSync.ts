@@ -1144,6 +1144,10 @@ export async function extractSyncData(): Promise<Uint8Array> {
     return await 构建云同步ZIP二进制();
 }
 
+export async function extractSettingsSyncData(): Promise<Uint8Array> {
+    return await 构建设置云同步ZIP二进制();
+}
+
 export async function restoreSyncData(zipBytes: Uint8Array): Promise<云同步恢复结果> {
     let stage: 云同步恢复阶段 = 'reading_archive';
     let saveCount = 0;
