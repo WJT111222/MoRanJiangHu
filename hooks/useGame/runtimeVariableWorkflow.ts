@@ -1,6 +1,7 @@
 import type { TavernCommand } from '../../types';
 import { applyStateCommand, normalizeStateCommandKey } from '../../utils/stateHelpers';
 import { 同步剧情小说分解时间校准 } from '../../services/novelDecompositionCalibration';
+import { preserveInventoryOnUnsafeRoleReplace, sanitizeInventoryCommand } from './inventoryCommandGuard';
 
 export type 运行时变量分区类型 =
     | '角色'
@@ -161,7 +162,9 @@ export const 创建运行时变量工作流 = (deps: 运行时变量工作流依
         const 当前状态 = deps.获取当前状态();
         switch (section) {
             case '角色': {
-                const nextValue = deps.规范化角色物品容器映射(value || {});
+                const nextValue = deps.规范化角色物品容器映射(
+                    preserveInventoryOnUnsafeRoleReplace(value || {}, 当前状态.角色)
+                );
                 deps.设置角色(nextValue);
                 void deps.performAutoSave({ char: nextValue, history: 历史记录, force: true });
                 return;
@@ -272,6 +275,8 @@ export const 创建运行时变量工作流 = (deps: 运行时变量工作流依
             void deps.performAutoSave({ memory: nextMemory, history: 历史记录, force: true });
             return;
         }
+        const safeCommand = sanitizeInventoryCommand(command, 当前状态.角色);
+        if (!safeCommand) return;
         const result = applyStateCommand(
             当前状态.角色,
             当前状态.环境,
@@ -286,9 +291,9 @@ export const 创建运行时变量工作流 = (deps: 运行时变量工作流依
             当前状态.玩家门派,
             当前状态.任务列表,
             当前状态.约定列表,
-            command.key,
-            command.value,
-            command.action
+            safeCommand.key,
+            safeCommand.value,
+            safeCommand.action
         );
         const nextChar = deps.规范化角色物品容器映射(result.char);
         const nextEnv = deps.规范化环境信息(result.env);
