@@ -1562,6 +1562,7 @@ export const useGame = () => {
     const NPC符合自动生图条件 = (npc: any): boolean => {
         const config = 读取文生图功能配置();
         if (!config.总开关 || !config.NPC开关) return false;
+        if (npc?.自动生图禁用 === true) return false;
         if (config.性别筛选 !== '全部') {
             const gender = typeof npc?.性别 === 'string' ? npc.性别.trim() : '';
             if (gender !== config.性别筛选) return false;
@@ -2085,6 +2086,8 @@ export const useGame = () => {
     };
 
     const 触发对白NPC头像补全 = (npcListRaw: any[]) => {
+        const config = 读取文生图功能配置();
+        if (!config.总开关 || !config.NPC开关) return;
         const npcList = (Array.isArray(npcListRaw) ? npcListRaw : [])
             .filter((npc: any) => npc?.对白登场 === true || npc?.自动补全头像 === true);
         if (npcList.length === 0) return;
@@ -2122,12 +2125,15 @@ export const useGame = () => {
         const npcList = (Array.isArray(targetNpcList) ? targetNpcList : 社交)
             .filter((npc: any) => npc?.是否主要角色 === true && typeof npc?.id === 'string' && npc.id.trim());
         if (npcList.length === 0) return;
+        const config = 读取文生图功能配置();
+        const 自动补图已启用 = config.总开关 && config.NPC开关;
 
         for (const npc of npcList) {
             const npcId = typeof npc?.id === 'string' ? npc.id.trim() : '';
             if (!npcId) continue;
 
             await 确保NPC生图前角色锚点(npc);
+            if (!自动补图已启用) continue;
 
             if (!NPC是否已有成功构图(npc, ['头像'])) {
                 try {

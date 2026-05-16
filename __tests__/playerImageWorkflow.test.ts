@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { 创建主角图片工作流 } from '../hooks/useGame/playerImageWorkflow';
 
-const 创建依赖 = (执行生图: ReturnType<typeof vi.fn>) => ({
+const 创建依赖 = (执行生图: ReturnType<typeof vi.fn>, featureOverride?: Record<string, unknown>) => ({
     获取角色: () => ({ 姓名: '刀哥', 头像图片URL: '' }),
     设置角色: vi.fn(),
     规范化角色物品容器映射: (value: any) => value,
@@ -19,7 +19,7 @@ const 创建依赖 = (执行生图: ReturnType<typeof vi.fn>) => ({
     自动角色锚点已启用: () => false,
     获取词组转化器预设提示词: vi.fn(),
     接口配置是否可用: vi.fn(),
-    读取文生图功能配置: () => ({ 总开关: true }),
+    读取文生图功能配置: () => ({ 总开关: true, NPC开关: true, ...featureOverride }),
     主角生图进行中集合: new Set<string>(),
     提取主角生图基础数据: (character: any) => character,
     创建NPC生图任务: (params: any) => params,
@@ -56,5 +56,15 @@ describe('playerImageWorkflow', () => {
 
         expect(执行生图).toHaveBeenCalledTimes(1);
         warnSpy.mockRestore();
+    });
+
+    it('does not run automatic player补图 when NPC automatic image switch is off', async () => {
+        const 执行生图 = vi.fn(async () => undefined);
+        const workflow = 创建主角图片工作流(创建依赖(执行生图, { NPC开关: false }) as any);
+
+        await workflow.generatePlayerImagesAutomatically({ 姓名: '刀哥', 头像图片URL: '' } as any);
+        await workflow.ensurePlayerAvatarEachTurn({ 姓名: '刀哥', 头像图片URL: '' } as any);
+
+        expect(执行生图).not.toHaveBeenCalled();
     });
 });

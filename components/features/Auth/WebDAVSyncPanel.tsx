@@ -121,7 +121,7 @@ export const WebDAVSyncPanel: React.FC = () => {
         const active = await persistConfig();
         const result = await 增量同步到WebDAV(active, undefined, readProgress);
         await refreshCloud(active);
-        window.alert(`WebDAV 存档同步完成：上传 ${result.uploaded} 个，跳过 ${result.skipped} 个。`);
+        window.alert(`WebDAV 存档同步完成：上传 ${result.uploaded} 个（其中更新 ${result.updated || 0} 个），跳过 ${result.skipped} 个，云端去重 ${result.deduped || 0} 个。`);
     }, 'WebDAV 存档同步失败');
 
     const handleUploadSettings = () => runTask('upload-settings', async () => {

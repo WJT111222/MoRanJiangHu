@@ -250,12 +250,14 @@ export const 执行NPC生图工作流 = async (
 
     const imageApi = deps.获取文生图接口配置(deps.apiConfig);
     const imageFeature = deps.读取文生图功能配置();
+    const taskSource: 生图任务来源类型 = options?.source || 'auto';
+    const 可绕过自动开关 = options?.force === true && taskSource !== 'auto';
     const backendType = imageApi?.图片后端类型;
     const shouldUsePromptTransformer = backendType === 'novelai' || imageFeature.使用词组转化器 !== false;
     const promptApi = shouldUsePromptTransformer ? deps.获取生图词组转化器接口配置(deps.apiConfig) : null;
     if (!imageFeature.总开关) return;
-    if (!options?.force && !imageFeature.NPC开关) return;
-    if (!options?.force && !deps.NPC符合自动生图条件(npc)) return;
+    if (!可绕过自动开关 && !imageFeature.NPC开关) return;
+    if (!可绕过自动开关 && !deps.NPC符合自动生图条件(npc)) return;
     if (!imageApi || !deps.接口配置是否可用(imageApi)) {
         const message = '未配置可用的文生图接口，无法执行 NPC 生图。';
         if (options?.force) {
@@ -280,7 +282,6 @@ export const 执行NPC生图工作流 = async (
     const npcName = typeof npc?.姓名 === 'string' ? npc.姓名.trim() : '未命名NPC';
     const npcImageBaseData = deps.提取NPC生图基础数据(npc);
     const modelName = 获取图片后端显示名(imageApi);
-    const taskSource: 生图任务来源类型 = options?.source || 'auto';
     const 构图: '头像' | '半身' | '立绘' = options?.构图 || '头像';
     const 画风 = options?.画风 || imageFeature.NPC画风;
     const 画师串预设 = deps.获取生图画师串预设(deps.apiConfig, 'npc', options?.画师串预设ID);
