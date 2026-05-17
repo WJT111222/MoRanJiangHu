@@ -1,7 +1,10 @@
 package com.moranjianghu.game;
 
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -22,6 +25,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.MessageDigest;
+import java.util.List;
 import java.util.Locale;
 
 @CapacitorPlugin(name = "ApkUpdater")
@@ -172,23 +176,44 @@ public class ApkUpdaterPlugin extends Plugin {
             apkFile
         );
 
+        grantApkUriReadPermission(apkUri);
+
         Intent installIntent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-        installIntent.setData(apkUri);
-        installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        installIntent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
-        installIntent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
+        prepareApkInstallIntent(installIntent, apkUri);
 
         try {
             getContext().startActivity(installIntent);
             return;
         } catch (ActivityNotFoundException | SecurityException firstError) {
             Intent viewIntent = new Intent(Intent.ACTION_VIEW);
-            viewIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
-            viewIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            viewIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            viewIntent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+            prepareApkInstallIntent(viewIntent, apkUri);
             getContext().startActivity(viewIntent);
+        }
+    }
+
+    private void prepareApkInstallIntent(Intent intent, Uri apkUri) {
+        intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+        intent.setClipData(ClipData.newUri(getContext().getContentResolver(), "apk", apkUri));
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+        intent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
+    }
+
+    private void grantApkUriReadPermission(Uri apkUri) {
+        Intent probeIntent = new Intent(Intent.ACTION_VIEW);
+        probeIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+        probeIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        PackageManager packageManager = getContext().getPackageManager();
+        List<ResolveInfo> resolvedActivities = packageManager.queryIntentActivities(probeIntent, PackageManager.MATCH_DEFAULT_ONLY);
+        for (ResolveInfo resolveInfo : resolvedActivities) {
+            if (resolveInfo.activityInfo == null || resolveInfo.activityInfo.packageName == null) continue;
+            getContext().grantUriPermission(
+                resolveInfo.activityInfo.packageName,
+                apkUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            );
         }
     }
 
