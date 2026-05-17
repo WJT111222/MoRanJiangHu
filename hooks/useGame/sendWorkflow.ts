@@ -71,10 +71,11 @@ type 地图更新进度 = {
 const 格式化命令展示路径 = (key: string): string => key.replace(/^gameState\./, '');
 const 队列命令展示数量上限 = 120;
 const 队列命令展示单行上限 = 1800;
+const 主剧情首次响应超时毫秒 = 90_000;
 const 主剧情流式空闲超时毫秒 = 10_000;
 
-const 创建主剧情流式超时错误 = (stage: string): Error => {
-    const error = new Error(`主剧情乾坤推演${stage}（${Math.max(1, Math.ceil(主剧情流式空闲超时毫秒 / 1000))} 秒无流式输出）`);
+const 创建主剧情流式超时错误 = (stage: string, timeoutMs: number): Error => {
+    const error = new Error(`主剧情乾坤推演${stage}（${Math.max(1, Math.ceil(timeoutMs / 1000))} 秒无流式输出）`);
     error.name = 'TimeoutError';
     return error;
 };
@@ -103,10 +104,11 @@ const 执行主剧情流式请求带空闲超时 = async <T,>(
     };
     const startTimer = () => {
         clearTimer();
+        const timeoutMs = hasStreamActivity ? 主剧情流式空闲超时毫秒 : 主剧情首次响应超时毫秒;
         timer = setTimeout(() => {
-            const timeoutError = 创建主剧情流式超时错误(hasStreamActivity ? '流式输出空闲超时' : '等待首次响应超时');
+            const timeoutError = 创建主剧情流式超时错误(hasStreamActivity ? '流式输出空闲超时' : '等待首次响应超时', timeoutMs);
             console.warn('[主剧情流式超时] 乾坤推演无流式输出，准备中止本次请求并交给自动重试', {
-                timeoutMs: 主剧情流式空闲超时毫秒,
+                timeoutMs,
                 hasStreamActivity,
                 reason: timeoutError.message
             });
@@ -116,7 +118,7 @@ const 执行主剧情流式请求带空闲超时 = async <T,>(
                 requestController.abort();
             }
             rejectTimeout?.(timeoutError);
-        }, 主剧情流式空闲超时毫秒);
+        }, timeoutMs);
     };
     const markStreamActivity = () => {
         hasStreamActivity = true;
