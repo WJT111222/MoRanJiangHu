@@ -24,6 +24,7 @@ export const 设置键 = {
     自定义开局预设: 自定义开局预设存储键,
     存档保护: 'storage_save_protection',
     WebDAV同步配置: 'webdav_sync_settings',
+    对象存储同步配置: 'object_storage_sync_settings',
     图片资源迁移版本: 'image_asset_migration_v2'
 } as const;
 
@@ -253,6 +254,14 @@ export const 设置项定义列表: 设置项定义[] = [
         category: 'system',
         description: '用户本机保存的 WebDAV 地址、用户名和密码，用于云存档同步。',
         order: 155,
+        internal: true
+    },
+    {
+        key: 设置键.对象存储同步配置,
+        label: '对象存储云同步配置',
+        category: 'system',
+        description: '用户本机保存的对象存储端点、存储桶和访问密钥，用于云存档同步。',
+        order: 156,
         internal: true
     },
     {

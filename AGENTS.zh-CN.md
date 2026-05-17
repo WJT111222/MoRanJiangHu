@@ -232,3 +232,21 @@
   `curl -fsS http://localhost:8085/actuator/health`
   `codex mcp list`
   `codex mcp get discord-mcp`
+
+## 对象存储同步说明
+
+- 用户可能会使用 hi168 的 S3 兼容对象存储做存档同步。
+- 对象存储凭据只能保存在本机用户环境变量中；不要把 Access Key 或 Secret Key 写入仓库文件、提交、日志、更新说明或聊天回复。
+- 本机环境变量名称：
+  - `MORAN_OSS_USERNAME`
+  - `MORAN_OSS_ACCESS_KEY`
+  - `MORAN_OSS_SECRET_KEY`
+  - `MORAN_OSS_ENDPOINT`
+  - `MORAN_OSS_BUCKET`
+- 当前非敏感默认值：
+  - 端点：`https://s3.hi168.com`
+  - 存储桶：`hi168-19275-07130td3`
+- hi168 使用 S3 兼容 API，调用时使用 path-style 地址：`https://s3.hi168.com/<bucket>/<key>`。
+- 应用内对象存储同步应走 `/api/object-storage-proxy` 运行时端点，使用 AWS Signature V4 签名，region 使用 `auto`，service 使用 `s3`，并复用 WebDAV 的清单、分片和增量同步语义。
+- 默认存储前缀为 `MoRanJiangHu`；存档包放在 `MoRanJiangHu/saves`，分片放在 `MoRanJiangHu/chunks`，清单文件是 `MoRanJiangHu/manifest.json`。
+- 本地端到端测试时，从用户环境变量读取凭据，在 `MoRanJiangHu/e2e/` 下 PUT 一个小对象，GET 回来校验内容，然后 DELETE 该测试对象。
