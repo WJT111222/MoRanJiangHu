@@ -261,8 +261,10 @@
         <li class="step">
           <div class="num">5</div>
           <div>
-            <h2>进入工作区等待自动启动</h2>
-            <p>进入自己 Fork 后的仓库页面，打开 CNB 工作区。正常情况下不需要手动执行命令，只要等待系统自动执行启动流程即可。终端里看到 <code>[Startup] 正在启动 ComfyUI: ...</code>，说明启动脚本已经跑到最后一步；随后如果看到 <code>ComfyUI 8188 ready</code>、<code>Detected ComfyUI URL: ...</code>、<code>initial sync ok</code>，就表示 ComfyUI 已经启动并把地址上报给 <a class="app-link" href="https://msjh.bacon159.pp.ua/" target="_blank" rel="noopener noreferrer">墨色江湖 bacon159 二创版</a>。没有报错时，CNB 通常也会自动弹出打开 ComfyUI 的提示。</p>
+            <h2>点击橙色按钮启动 L40 预装环境</h2>
+            <p>进入自己 Fork 后的仓库页面后，点击右上角橙色的 <code>启动 L40 预装环境</code> 按钮。请认准橙色按钮，不要点旁边白色的下拉入口；L40 预装环境已经准备好运行 ComfyUI 所需的模型、依赖和启动脚本。</p>
+            <img class="guide-image" src="/assets/tutorial/cnb-l40-start-guide.png" alt="CNB 仓库页面右上角橙色启动 L40 预装环境按钮示意图" />
+            <p>打开 CNB 工作区后，正常情况下不需要手动执行命令，只要等待系统自动执行启动流程即可。终端里看到 <code>[Startup] 正在启动 ComfyUI: ...</code>，说明启动脚本已经跑到最后一步；随后如果看到 <code>ComfyUI 8188 ready</code>、<code>Detected ComfyUI URL: ...</code>、<code>initial sync ok</code>，就表示 ComfyUI 已经启动并把地址上报给 <a class="app-link" href="https://msjh.bacon159.pp.ua/" target="_blank" rel="noopener noreferrer">墨色江湖 bacon159 二创版</a>。没有报错时，CNB 通常也会自动弹出打开 ComfyUI 的提示。</p>
             <p>如果终端最后停在 <code>torch.AcceleratorError: CUDA error: uncorrectable ECC error encountered</code>，这通常不是你操作错了，也不是模型没有下载完，而是 CNB 分配到的 GPU 节点出现硬件或驱动级 CUDA ECC 异常。建议关闭当前工作区后重新创建或重启一个 L40 工作区；如果重开后仍然同样报错，把这段报错发给左侧侧边栏里的 <code>CodeBuddy</code> 或 CNB 反馈，让他们更换/修复 GPU 节点。</p>
             <p>如果终端明确报错，才尝试手动执行下面这条命令。仍然不行时，可以问问左侧侧边栏里的 <code>CodeBuddy</code>，让它根据报错帮你排查。</p>
             <pre><code>cd /workspace && \
