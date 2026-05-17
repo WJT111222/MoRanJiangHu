@@ -1,9 +1,14 @@
+import { recordDiagnosticLog } from './diagnosticLog';
+
 const IMAGE_HOST_UPLOAD_PROXY_PATH = '/api/image-host/upload';
 const DEFAULT_IMAGE_HOST_BASE = 'https://image.bacon159.pp.ua';
 const DEFAULT_SYNC_API_BASE = 'https://msjh.bacon159.pp.ua';
-const MAX_DIRECT_UPLOAD_BYTES = 2.5 * 1024 * 1024;
-const MAX_OPTIMIZED_IMAGE_EDGE = 1600;
-const OPTIMIZED_IMAGE_QUALITY = 0.82;
+const MAX_DIRECT_UPLOAD_BYTES = 1.5 * 1024 * 1024;
+const MAX_MOBILE_UPLOAD_BYTES = 900 * 1024;
+const MAX_OPTIMIZED_IMAGE_EDGE = 1440;
+const MAX_MOBILE_IMAGE_EDGE = 1080;
+const OPTIMIZED_IMAGE_QUALITY = 0.78;
+const MOBILE_OPTIMIZED_IMAGE_QUALITY = 0.68;
 
 export interface 图床上传结果 {
     url: string;
@@ -30,6 +35,17 @@ const 读取文本 = (value: unknown): string => (
 );
 
 const 是否DataUrl = (value: string): boolean => /^data:[^;,]+;base64,/i.test(value);
+
+const 是否原生或移动端 = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    const protocol = window.location?.protocol || '';
+    const userAgent = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+    return !/^https?:$/i.test(protocol) || /Android|iPhone|iPad|Mobile/i.test(userAgent);
+};
+
+const 截断诊断文本 = (value: string, limit = 500): string => (
+    value.length > limit ? `${value.slice(0, limit)}...(${value.length} chars)` : value
+);
 
 const 推断扩展名 = (mimeType: string): string => {
     const normalized = mimeType.toLowerCase();
@@ -73,8 +89,11 @@ const 加载DataUrl图片 = (dataUrl: string): Promise<HTMLImageElement> => new 
     image.src = dataUrl;
 });
 
-const 优化待上传DataUrl = async (dataUrl: string): Promise<string> => {
-    if (估算DataUrl字节数(dataUrl) <= MAX_DIRECT_UPLOAD_BYTES) return dataUrl;
+const 压缩DataUrl图片 = async (
+    dataUrl: string,
+    maxEdge: number,
+    quality: number
+): Promise<string> => {
     if (typeof document === 'undefined' || typeof Image === 'undefined' || typeof HTMLCanvasElement === 'undefined') {
         return dataUrl;
     }
@@ -84,7 +103,7 @@ const 优化待上传DataUrl = async (dataUrl: string): Promise<string> => {
     const sourceHeight = image.naturalHeight || image.height;
     if (!sourceWidth || !sourceHeight) return dataUrl;
 
-    const scale = Math.min(1, MAX_OPTIMIZED_IMAGE_EDGE / Math.max(sourceWidth, sourceHeight));
+    const scale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight));
     const targetWidth = Math.max(1, Math.round(sourceWidth * scale));
     const targetHeight = Math.max(1, Math.round(sourceHeight * scale));
     const canvas = document.createElement('canvas');
@@ -95,12 +114,41 @@ const 优化待上传DataUrl = async (dataUrl: string): Promise<string> => {
     context.drawImage(image, 0, 0, targetWidth, targetHeight);
 
     const optimizedBlob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob(resolve, 'image/webp', OPTIMIZED_IMAGE_QUALITY);
+        canvas.toBlob(resolve, 'image/webp', quality);
     });
     if (!optimizedBlob || optimizedBlob.size <= 0 || optimizedBlob.size >= 估算DataUrl字节数(dataUrl)) {
         return dataUrl;
     }
     return blob转DataUrl(optimizedBlob);
+};
+
+const 优化待上传DataUrl = async (dataUrl: string): Promise<{ dataUrl: string; originalBytes: number; optimizedBytes: number; mobileMode: boolean; optimized: boolean }> => {
+    const originalBytes = 估算DataUrl字节数(dataUrl);
+    const mobileMode = 是否原生或移动端();
+    const directLimit = mobileMode ? MAX_MOBILE_UPLOAD_BYTES : MAX_DIRECT_UPLOAD_BYTES;
+    if (originalBytes <= directLimit) {
+        return { dataUrl, originalBytes, optimizedBytes: originalBytes, mobileMode, optimized: false };
+    }
+
+    let optimized = await 压缩DataUrl图片(
+        dataUrl,
+        mobileMode ? MAX_MOBILE_IMAGE_EDGE : MAX_OPTIMIZED_IMAGE_EDGE,
+        mobileMode ? MOBILE_OPTIMIZED_IMAGE_QUALITY : OPTIMIZED_IMAGE_QUALITY
+    );
+    let optimizedBytes = 估算DataUrl字节数(optimized);
+
+    if (mobileMode && optimizedBytes > directLimit) {
+        optimized = await 压缩DataUrl图片(optimized, 900, 0.6);
+        optimizedBytes = 估算DataUrl字节数(optimized);
+    }
+
+    return {
+        dataUrl: optimized,
+        originalBytes,
+        optimizedBytes,
+        mobileMode,
+        optimized: optimized !== dataUrl
+    };
 };
 
 const 读取下载链接 = (payload: any): string => {
@@ -146,18 +194,39 @@ export const 上传DataUrl到图床 = async (dataUrl: string, options?: { fileNa
         throw new Error('只支持上传 data URL 图片');
     }
 
-    const uploadDataUrl = await 优化待上传DataUrl(normalized).catch(() => normalized);
-    const { blob, mimeType } = dataUrl转Blob(uploadDataUrl);
+    const uploadPlan = await 优化待上传DataUrl(normalized).catch((error) => {
+        recordDiagnosticLog('warn', '图床上传图片压缩失败，改用原图上传', {
+            error: error?.message || String(error),
+            originalBytes: 估算DataUrl字节数(normalized)
+        });
+        const originalBytes = 估算DataUrl字节数(normalized);
+        return { dataUrl: normalized, originalBytes, optimizedBytes: originalBytes, mobileMode: 是否原生或移动端(), optimized: false };
+    });
+    const { blob, mimeType } = dataUrl转Blob(uploadPlan.dataUrl);
     const extension = 推断扩展名(mimeType);
     const fileName = 读取文本(options?.fileName) || `moranjianghu-image-${Date.now()}.${extension}`;
     const form = new FormData();
     form.append('file', blob, fileName);
+    const uploadUrl = buildImageHostProxyUrl(IMAGE_HOST_UPLOAD_PROXY_PATH);
+    const uploadStartedAt = Date.now();
 
-    const response = await fetch(buildImageHostProxyUrl(IMAGE_HOST_UPLOAD_PROXY_PATH), {
+    recordDiagnosticLog('info', '图床上传开始', {
+        fileName,
+        mimeType,
+        originalBytes: uploadPlan.originalBytes,
+        uploadBytes: blob.size,
+        optimizedBytes: uploadPlan.optimizedBytes,
+        optimized: uploadPlan.optimized,
+        mobileMode: uploadPlan.mobileMode,
+        proxyUrl: uploadUrl
+    });
+
+    const response = await fetch(uploadUrl, {
         method: 'POST',
         body: form
     });
     const text = await response.text();
+    const elapsedMs = Date.now() - uploadStartedAt;
     let payload: any = null;
     try {
         payload = text ? JSON.parse(text) : null;
@@ -166,13 +235,41 @@ export const 上传DataUrl到图床 = async (dataUrl: string, options?: { fileNa
     }
     if (!response.ok || payload?.success === false) {
         const message = 读取文本(payload?.error?.message) || 读取文本(payload?.error) || text.slice(0, 160) || `HTTP ${response.status}`;
-        throw new Error(`图床上传失败：${message}`);
+        recordDiagnosticLog('error', '图床上传失败', {
+            status: response.status,
+            statusText: response.statusText,
+            elapsedMs,
+            fileName,
+            originalBytes: uploadPlan.originalBytes,
+            uploadBytes: blob.size,
+            optimized: uploadPlan.optimized,
+            mobileMode: uploadPlan.mobileMode,
+            proxyRequestId: response.headers.get('X-Moran-Image-Proxy-Request-Id') || '',
+            upstreamStatus: response.headers.get('X-Moran-Image-Upstream-Status') || '',
+            responseSnippet: 截断诊断文本(text)
+        });
+        throw new Error(`图床上传失败：${message}（HTTP ${response.status}，上传 ${Math.round(blob.size / 1024)}KB，耗时 ${elapsedMs}ms）`);
     }
 
     const url = 构建稳定下载链接(payload);
     if (!url) {
+        recordDiagnosticLog('error', '图床上传响应缺少下载链接', {
+            status: response.status,
+            elapsedMs,
+            fileName,
+            responseSnippet: 截断诊断文本(text)
+        });
         throw new Error('图床上传失败：响应中没有下载链接');
     }
+    recordDiagnosticLog('info', '图床上传成功', {
+        elapsedMs,
+        fileName,
+        originalBytes: uploadPlan.originalBytes,
+        uploadBytes: blob.size,
+        optimized: uploadPlan.optimized,
+        id: 读取文件ID(payload) || '',
+        storage: 读取文本(payload?.file?.storage) || ''
+    });
     return {
         url,
         id: 读取文件ID(payload) || undefined,

@@ -230,6 +230,12 @@ const MobileSettingsModal: React.FC<Props> = ({
                             <div className="text-[10px] text-gray-500 mt-1">移动端面板</div>
                         </div>
                         <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => onTabChange('logs')}
+                                className="px-2.5 py-1 text-[10px] rounded border border-wuxia-cyan/50 text-wuxia-cyan bg-wuxia-cyan/10"
+                            >
+                                上报日志
+                            </button>
                             {!isHome && onReturnToHome && (
                                 <button
                                     onClick={onReturnToHome}
