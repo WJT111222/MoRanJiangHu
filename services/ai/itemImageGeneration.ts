@@ -13,6 +13,7 @@ export interface 物品图标生成选项 {
     sourceLocation?: 物品生图来源位置;
     force?: boolean;
     size?: string;
+    extraPrompt?: string;
     imageApi?: 当前可用接口结构 | null;
     signal?: AbortSignal;
     recordId?: string;
@@ -381,7 +382,11 @@ export const 生成物品图标 = async (
         渲染风格: renderStyle,
         来源位置: sourceLocation
     });
-    const rawResult = await generateImageByPrompt(prompt, imageApi, options?.signal, {
+    const extraPrompt = 读取文本(options?.extraPrompt);
+    const finalPrompt = extraPrompt
+        ? `${prompt}\n\nuser requested extra visual direction:\n${extraPrompt}`
+        : prompt;
+    const rawResult = await generateImageByPrompt(finalPrompt, imageApi, options?.signal, {
         构图: '物品图标',
         尺寸: size,
         附加正向提示词: enrichedItemIsLivingMount
@@ -400,7 +405,7 @@ export const 生成物品图标 = async (
         id: options?.recordId || `item_img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         图片URL: localResult.图片URL,
         本地路径: localResult.本地路径,
-        生图词组: prompt,
+        生图词组: finalPrompt,
         最终正向提示词: localResult.最终正向提示词,
         最终负向提示词: localResult.最终负向提示词,
         原始描述: JSON.stringify(enrichedItem, null, 2),

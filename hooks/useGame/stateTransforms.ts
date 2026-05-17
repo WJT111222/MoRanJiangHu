@@ -185,20 +185,25 @@ const 标准化角色技艺 = (raw: any): Array<{ 名称: string; 等级: string
     return Array.from(byName.values());
 };
 
-const 标准化天赋列表 = (raw: any): Array<{ 名称: string; 描述: string; 效果: string }> => (
-    Array.isArray(raw)
-        ? raw
-            .map((item: any) => {
-                if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
-                const 名称 = 规范化文本(item?.名称);
-                const 描述 = 规范化文本(item?.描述);
-                const 效果 = 规范化文本(item?.效果);
-                if (!名称 && !描述 && !效果) return null;
-                return { 名称, 描述, 效果 };
-            })
-            .filter(Boolean) as Array<{ 名称: string; 描述: string; 效果: string }>
-        : []
-);
+const 标准化天赋列表 = (raw: any): Array<{ 名称: string; 描述: string; 效果: string }> => {
+    if (!Array.isArray(raw)) return [];
+    const byKey = new Map<string, { 名称: string; 描述: string; 效果: string }>();
+    raw.forEach((item: any) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return;
+        const 名称 = 规范化文本(item?.名称);
+        const 描述 = 规范化文本(item?.描述);
+        const 效果 = 规范化文本(item?.效果);
+        if (!名称 && !描述 && !效果) return;
+        const key = 名称 || `${描述}|${效果}`;
+        const existing = byKey.get(key);
+        byKey.set(key, {
+            名称: 名称 || existing?.名称 || '',
+            描述: 取更优文本(描述, existing?.描述 || ''),
+            效果: 取更优文本(效果, existing?.效果 || '')
+        });
+    });
+    return Array.from(byKey.values());
+};
 
 const 标准化出身背景 = (raw: any, fallback = 默认背景模板): { 名称: string; 描述: string; 效果: string } => {
     const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};

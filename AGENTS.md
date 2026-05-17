@@ -76,6 +76,12 @@
 - Use `/` in paths, including Windows paths.
 - Write explanations in normal prose; keep file refs standalone.
 
+## Shell Encoding Rule
+
+- When reading or writing UTF-8 JSON/text on PowerShell, do not rely on the default console encoding.
+- Prefer `node`, explicit UTF-8 file reads/writes, or commands that preserve Unicode text.
+- If a shell workaround is needed, solve the underlying decoding issue once and record the fix, rather than repeatedly narrating the same encoding detour.
+
 ## Local UI Debug Path
 
 When the target is UI verification, layout validation, mobile top-bar checks, or APK/web consistency checks, do not block on model or API configuration first. Prefer entering a real in-game view from an existing save.

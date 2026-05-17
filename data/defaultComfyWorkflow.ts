@@ -143,60 +143,20 @@ const 默认NunchakuQwenImageComfyUI工作流 = {
 };
 
 const 默认ZImageTurboComfyUI工作流 = {
-  "2": {
+  "3": {
     "inputs": {
-      "shift": 3,
-      "model": [
-        "41",
-        0
-      ]
-    },
-    "class_type": "ModelSamplingAuraFlow",
-    "_meta": {
-      "title": "采样算法（AuraFlow）"
-    }
-  },
-  "6": {
-    "inputs": {
-      "width": "__WIDTH__",
-      "height": "__HEIGHT__",
-      "batch_size": 1
-    },
-    "class_type": "EmptyLatentImage",
-    "_meta": {
-      "title": "空Latent图像"
-    }
-  },
-  "11": {
-    "inputs": {
-      "samples": [
-        "17",
-        0
-      ],
-      "vae": [
-        "34",
-        2
-      ]
-    },
-    "class_type": "VAEDecode",
-    "_meta": {
-      "title": "VAE解码"
-    }
-  },
-  "17": {
-    "inputs": {
-      "seed": "__SEED__",
-      "steps": "__STEPS__",
-      "cfg": "__CFG__",
-      "sampler_name": "__SAMPLER__",
-      "scheduler": "__SCHEDULER__",
+      "seed": 31718977384718,
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
       "denoise": 1,
       "model": [
-        "2",
+        "57",
         0
       ],
       "positive": [
-        "20",
+        "16",
         0
       ],
       "negative": [
@@ -204,7 +164,7 @@ const 默认ZImageTurboComfyUI工作流 = {
         0
       ],
       "latent_image": [
-        "6",
+        "53",
         0
       ]
     },
@@ -213,70 +173,106 @@ const 默认ZImageTurboComfyUI工作流 = {
       "title": "K采样器"
     }
   },
-  "20": {
-    "inputs": {
-      "text": "__PROMPT__",
-      "clip": [
-        "41",
-        1
-      ]
-    },
-    "class_type": "CLIPTextEncode",
-    "_meta": {
-      "title": "CLIP Text Encode (Positive Prompt)"
-    }
-  },
-  "34": {
+  "4": {
     "inputs": {
       "ckpt_name": "zImageTurboBaseAIO_zImageTurboFP8AIO.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
-      "title": "加载Checkpoint"
+      "title": "Checkpoint加载器（简易）"
     }
   },
-  "40": {
+  "8": {
     "inputs": {
-      "conditioning": [
-        "20",
-        0
-      ]
-    },
-    "class_type": "ConditioningZeroOut",
-    "_meta": {
-      "title": "负向提示词占位（自动替换）"
-    }
-  },
-  "41": {
-    "inputs": {
-      "lora_name": "Mystic-XXX-ZIT-v3.safetensors",
-      "strength_model": 0.5,
-      "strength_clip": 1,
-      "model": [
-        "34",
+      "samples": [
+        "3",
         0
       ],
-      "clip": [
-        "34",
-        1
+      "vae": [
+        "4",
+        2
       ]
     },
-    "class_type": "LoraLoader",
+    "class_type": "VAEDecode",
     "_meta": {
-      "title": "Mystic ZIT LoRA"
+      "title": "VAE解码"
     }
   },
-  "51": {
+  "9": {
     "inputs": {
-      "filename_prefix": "z-image/moranjianghu",
+      "filename_prefix": "ComfyUI",
       "images": [
-        "11",
+        "8",
         0
       ]
     },
     "class_type": "SaveImage",
     "_meta": {
       "title": "保存图像"
+    }
+  },
+  "16": {
+    "inputs": {
+      "text": "__PROMPT__",
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "40": {
+    "inputs": {
+      "text": "__NEGATIVE_PROMPT__",
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "53": {
+    "inputs": {
+      "width": "__WIDTH__ ",
+      "height": "__HEIGHT__",
+      "batch_size": 1
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "空Latent图像（SD3）"
+    }
+  },
+  "56": {
+    "inputs": {
+      "lora_name": "Mystic-XXX-ZIT-v3.safetensors",
+      "strength_model": 0.5,
+      "model": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoRA加载器（仅模型）"
+    }
+  },
+  "57": {
+    "inputs": {
+      "shift": 3,
+      "model": [
+        "56",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "采样算法（AuraFlow）"
     }
   }
 };
