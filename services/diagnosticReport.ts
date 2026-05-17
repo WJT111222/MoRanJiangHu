@@ -1,6 +1,7 @@
 import { RELEASE_INFO } from '../data/releaseInfo';
 import { isNativeCapacitorEnvironment } from '../utils/nativeRuntime';
 import { getDiagnosticLogs, type DiagnosticLogEntry } from './diagnosticLog';
+import { recordDiagnosticLog } from './diagnosticLog';
 import { getCurrentAppRelease } from './appUpdate';
 
 const DAILY_LIMIT = 10;
@@ -64,6 +65,80 @@ const buildApiBaseUrl = (): string => {
         return window.location.origin;
     }
     return RELEASE_INFO.websiteUrl || 'https://msjh.bacon.de5.net';
+};
+
+const buildDiagnosticReportEndpoints = (): string[] => {
+    const bases = [
+        buildApiBaseUrl(),
+        RELEASE_INFO.backupWebsiteUrl,
+        RELEASE_INFO.websiteUrl
+    ]
+        .map((value) => (typeof value === 'string' ? value.trim() : ''))
+        .filter(Boolean);
+    const uniqueBases = Array.from(new Set(bases));
+    return uniqueBases.map((base) => new URL('/api/diagnostics/report', base).toString());
+};
+
+const readDiagnosticResponsePayload = async (response: Response): Promise<{ payload: any; rawText: string }> => {
+    const rawText = await response.text().catch(() => '');
+    if (!rawText.trim()) return { payload: null, rawText };
+    try {
+        return { payload: JSON.parse(rawText), rawText };
+    } catch {
+        return { payload: null, rawText };
+    }
+};
+
+const submitDiagnosticPayload = async (
+    payloadBody: unknown,
+    options?: { autoUpload?: boolean }
+): Promise<any> => {
+    const endpoints = buildDiagnosticReportEndpoints();
+    let lastError: Error | null = null;
+    for (let index = 0; index < endpoints.length; index += 1) {
+        const endpoint = endpoints[index];
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payloadBody)
+            });
+            const { payload, rawText } = await readDiagnosticResponsePayload(response);
+            if (response.ok && payload?.ok && payload?.id) {
+                if (index > 0) {
+                    recordDiagnosticLog('info', '诊断日志上报使用备用入口成功', {
+                        endpoint,
+                        status: response.status
+                    });
+                }
+                return payload;
+            }
+
+            const snippet = rawText.slice(0, 240);
+            const message = payload?.error
+                || `诊断日志上报失败：HTTP ${response.status}${snippet ? `，响应：${snippet}` : ''}`;
+            lastError = new Error(message);
+            recordDiagnosticLog(response.ok ? 'warn' : 'error', '诊断日志上报入口返回异常', {
+                endpoint,
+                status: response.status,
+                ok: response.ok,
+                hasJson: Boolean(payload),
+                hasReportId: Boolean(payload?.id),
+                responseSnippet: snippet
+            });
+            if ((!response.ok && response.status < 500) || options?.autoUpload) break;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            lastError = new Error(message);
+            recordDiagnosticLog('warn', '诊断日志上报入口请求失败', {
+                endpoint,
+                message
+            });
+        }
+    }
+    throw lastError || new Error('诊断日志上报失败：网络或服务器无响应');
 };
 
 const getOrCreateDeviceId = (): string => {
@@ -137,18 +212,7 @@ export const submitDiagnosticReport = async (entries?: DiagnosticLogEntry[]): Pr
         throw new Error('暂无可上报的诊断日志。');
     }
 
-    const endpoint = new URL('/api/diagnostics/report', buildApiBaseUrl()).toString();
-    const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(await buildReportPayload(logs))
-    });
-    const payload = await response.json().catch(() => null) as any;
-    if (!response.ok || !payload?.ok || !payload?.id) {
-        throw new Error(payload?.error || `诊断日志上报失败：HTTP ${response.status}`);
-    }
+    const payload = await submitDiagnosticPayload(await buildReportPayload(logs));
 
     const nextState = { date: state.date, count: state.count + 1 };
     writeRateLimitState(nextState);
@@ -192,19 +256,11 @@ export const submitAutomaticErrorDiagnosticReport = async (reason?: string): Pro
         return null;
     }
 
-    const endpoint = new URL('/api/diagnostics/report', buildApiBaseUrl()).toString();
-    const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(await buildReportPayload(logs, {
-            autoUpload: true,
-            triggerReason: reason || latestError.message
-        }))
-    });
-    const payload = await response.json().catch(() => null) as any;
-    if (!response.ok || !payload?.ok || !payload?.id) {
+    const payload = await submitDiagnosticPayload(await buildReportPayload(logs, {
+        autoUpload: true,
+        triggerReason: reason || latestError.message
+    }), { autoUpload: true }).catch(() => null);
+    if (!payload?.ok || !payload?.id) {
         return null;
     }
 
