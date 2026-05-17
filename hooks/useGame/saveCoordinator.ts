@@ -33,6 +33,7 @@ import {
     type 拍卖行状态
 } from '../../services/auctionHouse';
 import { 规范化任务列表自动结算 } from '../../utils/taskCompat';
+import { isNativeCapacitorEnvironment } from '../../utils/nativeRuntime';
 
 const 收集图床图片地址 = (
     value: unknown,
@@ -41,7 +42,7 @@ const 收集图床图片地址 = (
 ): void => {
     if (typeof value === 'string') {
         const text = value.trim();
-        if (/^https?:\/\//i.test(text)) urls.add(text);
+        if (是否可缓存图床图片地址(text)) urls.add(text);
         return;
     }
     if (!value || typeof value !== 'object') return;
@@ -54,6 +55,17 @@ const 收集图床图片地址 = (
     Object.values(value as Record<string, unknown>).forEach((child) => 收集图床图片地址(child, urls, seen));
 };
 
+const 是否可缓存图床图片地址 = (value: string): boolean => {
+    if (!/^https?:\/\//i.test(value)) return false;
+    try {
+        const url = new URL(value);
+        return /(^|\.)image\.bacon159\.pp\.ua$/i.test(url.hostname)
+            || /\.(png|jpe?g|webp|gif|bmp)(?:$|[?#])/i.test(url.pathname);
+    } catch {
+        return false;
+    }
+};
+
 const 后台缓存当前存档图床图片 = (save: 存档结构): void => {
     if (typeof window === 'undefined') return;
     const urls = new Set<string>();
@@ -64,15 +76,16 @@ const 后台缓存当前存档图床图片 = (save: 存档结构): void => {
     收集图床图片地址(save.拍卖行, urls);
     if (urls.size === 0) return;
 
-    const queue = Array.from(urls).slice(0, 120);
+    const native = isNativeCapacitorEnvironment();
+    const queue = Array.from(urls).slice(0, native ? 16 : 60);
     const run = async () => {
-        const poolSize = 2;
+        const poolSize = native ? 1 : 2;
         let cursor = 0;
         const worker = async () => {
             while (cursor < queue.length) {
                 const url = queue[cursor++];
                 await dbService.确保远程图片本地兜底(url).catch(() => undefined);
-                await new Promise(resolve => window.setTimeout(resolve, 80));
+                await new Promise(resolve => window.setTimeout(resolve, native ? 350 : 100));
             }
         };
         await Promise.all(Array.from({ length: poolSize }, () => worker()));
@@ -82,10 +95,10 @@ const 后台缓存当前存档图床图片 = (save: 存档结构): void => {
         requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
     };
     if (typeof win.requestIdleCallback === 'function') {
-        win.requestIdleCallback(() => void run(), { timeout: 5000 });
+        win.requestIdleCallback(() => void run(), { timeout: native ? 12000 : 5000 });
         return;
     }
-    window.setTimeout(() => void run(), 800);
+    window.setTimeout(() => void run(), native ? 8000 : 1200);
 };
 
 export type 自动存档快照结构 = {

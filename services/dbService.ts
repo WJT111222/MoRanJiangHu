@@ -3,6 +3,7 @@ import { 存档结构 } from '../types';
 import { 创建图片资源引用, 解析图片资源引用ID, 是否图片资源引用, 注册图片资源缓存, 批量注册图片资源缓存, 清空图片资源缓存, 注册远程图片兜底引用, 读取远程图片兜底映射, 读取远程图片兜底资源ID集合 } from '../utils/imageAssets';
 import { 获取设置项定义, 设置分类定义表, 设置键, type 设置分类类型 } from '../utils/settingsSchema';
 import { 默认功能模型占位, 规范化接口设置 } from '../utils/apiConfig';
+import { isNativeCapacitorEnvironment } from '../utils/nativeRuntime';
 
 import { recordDiagnosticLog } from './diagnosticLog';
 import { buildImageHostProxyUrl, 上传DataUrl到图床 } from './imageHostService';
@@ -18,6 +19,9 @@ const 存档保护设置键 = 设置键.存档保护;
 const 图片资源迁移版本键 = 设置键.图片资源迁移版本;
 const 设置记录版本 = 2;
 const 远程图片本地备份ID前缀 = 'remote_backup_';
+const 图片缓存预热最大条目数 = 24;
+const 图片缓存预热最大字符数 = 18 * 1024 * 1024;
+const 图床本地兜底最大图片字节数 = 4 * 1024 * 1024;
 
 const 深拷贝 = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const 文本编码器 = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
@@ -406,7 +410,14 @@ const 下载远程图片为DataUrl = async (remoteUrl: string): Promise<string> 
     if (!/^image\//i.test(contentType)) {
         throw new Error(`下载图床图片失败：响应不是图片 (${contentType || 'unknown'})`);
     }
+    const contentLength = Number(response.headers.get('Content-Length') || response.headers.get('content-length') || 0);
+    if (Number.isFinite(contentLength) && contentLength > 图床本地兜底最大图片字节数) {
+        throw new Error(`下载图床图片失败：图片过大 (${Math.round(contentLength / 1024)}KB)`);
+    }
     const blob = await response.blob();
+    if (blob.size > 图床本地兜底最大图片字节数) {
+        throw new Error(`下载图床图片失败：图片过大 (${Math.round(blob.size / 1024)}KB)`);
+    }
     const dataUrl = await blob转DataUrl(blob);
     if (!是DataUrl图片(dataUrl)) throw new Error('下载图床图片失败：图片内容无效');
     return dataUrl;
@@ -566,20 +577,36 @@ export const 读取图片资源 = async (refOrId: string): Promise<string> => {
     });
 };
 
-export const 预热图片资源缓存 = async (): Promise<number> => {
+export const 预热图片资源缓存 = async (options?: { limit?: number; maxChars?: number }): Promise<number> => {
     const db = await 初始化数据库();
+    const limit = Math.max(0, Math.floor(options?.limit ?? (isNativeCapacitorEnvironment() ? 0 : 图片缓存预热最大条目数)));
+    const maxChars = Math.max(0, Math.floor(options?.maxChars ?? 图片缓存预热最大字符数));
+    if (limit <= 0 || maxChars <= 0) {
+        清空图片资源缓存();
+        图片资源签名缓存.clear();
+        return 0;
+    }
     const entries = await new Promise<Array<{ id: string; dataUrl: string }>>((resolve, reject) => {
         const transaction = db.transaction([IMAGE_ASSETS_STORE], 'readonly');
         const store = transaction.objectStore(IMAGE_ASSETS_STORE);
-        const request = store.getAll();
-        request.onsuccess = () => resolve(
-            (Array.isArray(request.result) ? request.result : [])
-                .map((item: any) => ({
-                    id: typeof item?.id === 'string' ? item.id.trim() : '',
-                    dataUrl: typeof item?.dataUrl === 'string' ? item.dataUrl.trim() : ''
-                }))
-                .filter((item) => item.id && item.dataUrl)
-        );
+        const request = store.openCursor(null, 'prev');
+        const collected: Array<{ id: string; dataUrl: string }> = [];
+        let usedChars = 0;
+        request.onsuccess = () => {
+            const cursor = request.result;
+            if (!cursor || collected.length >= limit || usedChars >= maxChars) {
+                resolve(collected);
+                return;
+            }
+            const item: any = cursor.value;
+            const id = typeof item?.id === 'string' ? item.id.trim() : '';
+            const dataUrl = typeof item?.dataUrl === 'string' ? item.dataUrl.trim() : '';
+            if (id && dataUrl && usedChars + dataUrl.length <= maxChars) {
+                collected.push({ id, dataUrl });
+                usedChars += dataUrl.length;
+            }
+            cursor.continue();
+        };
         request.onerror = () => reject(request.error);
     });
     清空图片资源缓存();
@@ -1394,27 +1421,33 @@ export const 清理未引用图片资源 = async (): Promise<number> => {
 
 export const 维护自动存档 = async (db: IDBDatabase, maxKeep: number = 自动存档最大保留数): Promise<void> => {
     const keepCount = Math.max(0, Math.floor(maxKeep));
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const toDelete = await new Promise<number[]>((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
         const store = transaction.objectStore(STORE_NAME);
-        const request = store.getAll();
-
+        const request = store.openCursor();
+        const autoSaves: Array<{ id: number; 时间戳: number }> = [];
         request.onsuccess = () => {
-            const allSaves: 存档结构[] = request.result;
-            const autoSaves = allSaves.filter(s => s.类型 === 'auto');
-            
-            // Sort by timestamp asc (oldest first)
-            autoSaves.sort((a, b) => a.时间戳 - b.时间戳);
-
-            if (autoSaves.length > keepCount) {
-                const toDelete = autoSaves.slice(0, autoSaves.length - keepCount);
-                toDelete.forEach(s => {
-                    store.delete(s.id);
-                });
+            const cursor = request.result;
+            if (!cursor) {
+                autoSaves.sort((a, b) => a.时间戳 - b.时间戳);
+                resolve(autoSaves.length > keepCount ? autoSaves.slice(0, autoSaves.length - keepCount).map((item) => item.id) : []);
+                return;
             }
-            resolve();
+            const save = cursor.value as 存档结构;
+            if (save?.类型 === 'auto' && typeof save.id === 'number') {
+                autoSaves.push({ id: save.id, 时间戳: Number(save.时间戳) || 0 });
+            }
+            cursor.continue();
         };
         request.onerror = () => reject(request.error);
+    });
+    if (toDelete.length <= 0) return;
+    await new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        toDelete.forEach((id) => store.delete(id));
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
     });
 };
 
@@ -1424,16 +1457,18 @@ const 删除重复自动存档签名 = async (db: IDBDatabase, signature: string
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        const request = store.getAll();
+        const request = store.openCursor();
         request.onsuccess = () => {
-            const allSaves: 存档结构[] = request.result;
-            allSaves
-                .filter((s) => s.类型 === 'auto' && (s.元数据?.自动存档签名 || '').trim() === target)
-                .forEach((s) => {
-                    store.delete(s.id);
-                });
-            resolve();
+            const cursor = request.result;
+            if (!cursor) return;
+            const save = cursor.value as 存档结构;
+            if (save?.类型 === 'auto' && (save.元数据?.自动存档签名 || '').trim() === target) {
+                cursor.delete();
+            }
+            cursor.continue();
         };
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
         request.onerror = () => reject(request.error);
     });
 };
@@ -1592,6 +1627,68 @@ export const 读取存档列表 = async (): Promise<存档结构[]> => {
             list.sort((a, b) => b.时间戳 - a.时间戳);
             resolve(list);
         };
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export type 存档摘要结构 = Pick<存档结构, 'id' | '类型' | '时间戳' | '元数据' | '游戏初始时间' | '角色数据' | '环境信息'>;
+
+export const 读取存档摘要列表 = async (): Promise<存档摘要结构[]> => {
+    const db = await 初始化数据库();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.openCursor();
+        const list: 存档摘要结构[] = [];
+        request.onsuccess = () => {
+            const cursor = request.result;
+            if (!cursor) {
+                list.sort((a, b) => (Number(b.时间戳) || 0) - (Number(a.时间戳) || 0));
+                resolve(list);
+                return;
+            }
+            const save = cursor.value as 存档结构;
+            list.push({
+                id: save.id,
+                类型: save.类型,
+                时间戳: save.时间戳,
+                元数据: save.元数据,
+                游戏初始时间: save.游戏初始时间,
+                角色数据: save.角色数据
+                    ? {
+                        姓名: save.角色数据.姓名,
+                        境界: save.角色数据.境界,
+                        境界层级: save.角色数据.境界层级
+                    } as any
+                    : undefined,
+                环境信息: save.环境信息
+                    ? {
+                        时间: (save.环境信息 as any).时间,
+                        年: (save.环境信息 as any).年,
+                        月: (save.环境信息 as any).月,
+                        日: (save.环境信息 as any).日,
+                        时: (save.环境信息 as any).时,
+                        分: (save.环境信息 as any).分,
+                        大地点: save.环境信息.大地点,
+                        中地点: save.环境信息.中地点,
+                        小地点: save.环境信息.小地点,
+                        具体地点: save.环境信息.具体地点
+                    } as any
+                    : undefined
+            });
+            cursor.continue();
+        };
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const 读取存档数量 = async (): Promise<number> => {
+    const db = await 初始化数据库();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.count();
+        request.onsuccess = () => resolve(Number(request.result) || 0);
         request.onerror = () => reject(request.error);
     });
 };

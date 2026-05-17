@@ -1,3 +1,5 @@
+import { isNativeCapacitorEnvironment } from '../utils/nativeRuntime';
+
 export type DiagnosticLogLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';
 
 export type DiagnosticLogEntry = {
@@ -24,21 +26,36 @@ declare global {
 
 const MAX_LOGS = 500;
 const PERSISTED_LOG_LIMIT = 200;
+const NATIVE_PERSISTED_LOG_LIMIT = 60;
+const MAX_RENDERED_VALUE_CHARS = 4000;
+const MAX_MESSAGE_CHARS = 800;
+const MAX_DETAIL_CHARS = 6000;
+const MAX_PERSISTED_MESSAGE_CHARS = 600;
+const MAX_PERSISTED_DETAIL_CHARS = 2500;
 const STORAGE_KEY = 'moranjianghu.diagnosticLogs';
 const logs: DiagnosticLogEntry[] = [];
 const listeners = new Set<Listener>();
 let installed = false;
 let restoredPersistedLogs = false;
 
+const truncateString = (value: string, maxLength: number): string => {
+    if (value.length <= maxLength) return value;
+    return `${value.slice(0, Math.max(0, maxLength - 20))}\n...日志内容已截断`;
+};
+
+const getPersistedLogLimit = (): number => (
+    isNativeCapacitorEnvironment() ? NATIVE_PERSISTED_LOG_LIMIT : PERSISTED_LOG_LIMIT
+);
+
 const stringifyValue = (value: unknown): string => {
-    if (typeof value === 'string') return value;
+    if (typeof value === 'string') return truncateString(value, MAX_RENDERED_VALUE_CHARS);
     if (value instanceof Error) {
-        return `${value.name}: ${value.message}${value.stack ? `\n${value.stack}` : ''}`;
+        return truncateString(`${value.name}: ${value.message}${value.stack ? `\n${value.stack}` : ''}`, MAX_RENDERED_VALUE_CHARS);
     }
     try {
-        return JSON.stringify(value, null, 2);
+        return truncateString(JSON.stringify(value, null, 2), MAX_RENDERED_VALUE_CHARS);
     } catch {
-        return String(value);
+        return truncateString(String(value), MAX_RENDERED_VALUE_CHARS);
     }
 };
 
@@ -61,13 +78,24 @@ const isDiagnosticLogEntry = (value: unknown): value is DiagnosticLogEntry => {
         && typeof entry.message === 'string';
 };
 
+const sanitizeDiagnosticLogEntry = (entry: DiagnosticLogEntry, persisted = false): DiagnosticLogEntry => ({
+    ...entry,
+    message: truncateString(entry.message, persisted ? MAX_PERSISTED_MESSAGE_CHARS : MAX_MESSAGE_CHARS),
+    detail: entry.detail
+        ? truncateString(entry.detail, persisted ? MAX_PERSISTED_DETAIL_CHARS : MAX_DETAIL_CHARS)
+        : undefined
+});
+
 const restorePersistedLogs = () => {
     if (restoredPersistedLogs || typeof localStorage === 'undefined') return;
     restoredPersistedLogs = true;
     try {
         const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         if (!Array.isArray(parsed)) return;
-        logs.push(...parsed.filter(isDiagnosticLogEntry).slice(0, PERSISTED_LOG_LIMIT));
+        logs.push(...parsed
+            .filter(isDiagnosticLogEntry)
+            .slice(0, getPersistedLogLimit())
+            .map(entry => sanitizeDiagnosticLogEntry(entry)));
         if (logs.length > MAX_LOGS) {
             logs.length = MAX_LOGS;
         }
@@ -79,7 +107,10 @@ const restorePersistedLogs = () => {
 const persistLogs = () => {
     if (typeof localStorage === 'undefined') return;
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(logs.slice(0, PERSISTED_LOG_LIMIT)));
+        const persistedLogs = logs
+            .slice(0, getPersistedLogLimit())
+            .map(entry => sanitizeDiagnosticLogEntry(entry, true));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedLogs));
     } catch {
         // Ignore quota/storage failures; in-memory logs are still available.
     }
@@ -91,8 +122,10 @@ export const recordDiagnosticLog = (level: DiagnosticLogLevel, valuesOrFirst: un
         ? valuesOrFirst
         : [valuesOrFirst, ...restValues];
     const rendered = values.map(stringifyValue).filter(Boolean);
-    const message = rendered[0] || '(empty log)';
-    const detail = rendered.length > 1 ? rendered.slice(1).join('\n') : undefined;
+    const message = truncateString(rendered[0] || '(empty log)', MAX_MESSAGE_CHARS);
+    const detail = rendered.length > 1
+        ? truncateString(rendered.slice(1).join('\n'), MAX_DETAIL_CHARS)
+        : undefined;
     const entry = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         level,

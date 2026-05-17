@@ -13,8 +13,10 @@ interface Props {
     requestConfirm?: (options: { title?: string; message: string; confirmText?: string; cancelText?: string; danger?: boolean }) => Promise<boolean>;
 }
 
+type 存档列表项 = dbService.存档摘要结构;
+
 const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode, requestConfirm }) => {
-    const [saves, setSaves] = useState<存档结构[]>([]);
+    const [saves, setSaves] = useState<存档列表项[]>([]);
     const [activeTab, setActiveTab] = useState<'auto' | 'manual'>('manual');
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
@@ -30,7 +32,7 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         setLoading(true);
         try {
             const [list, protect] = await Promise.all([
-                dbService.读取存档列表(),
+                dbService.读取存档摘要列表(),
                 dbService.读取存档保护状态()
             ]);
             setSaves(list);
@@ -42,7 +44,7 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         }
     };
 
-    const 读取地点文本 = (save: 存档结构): string => {
+    const 读取地点文本 = (save: 存档列表项): string => {
         const env = save.环境信息 || ({} as any);
         const list = [env.具体地点, env.小地点, env.中地点, env.大地点]
             .map((item: any) => (typeof item === 'string' ? item.trim() : ''))
@@ -50,7 +52,7 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         return list[0] || '未知地点';
     };
 
-    const 读取时间文本 = (save: 存档结构): string => {
+    const 读取时间文本 = (save: 存档列表项): string => {
         const env = save.环境信息 || ({} as any);
         const timeText = typeof (env as any)?.时间 === 'string' ? (env as any).时间.trim() : '';
         if (timeText) return timeText;
@@ -68,7 +70,7 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         return `${saveDate.getFullYear()}:${pad2(saveDate.getMonth() + 1)}:${pad2(saveDate.getDate())}:${pad2(saveDate.getHours())}:${pad2(saveDate.getMinutes())}`;
     };
 
-    const 构建存档标题 = (save: 存档结构): string => {
+    const 构建存档标题 = (save: 存档列表项): string => {
         const roleName = typeof save.角色数据?.姓名 === 'string' ? save.角色数据.姓名.trim() : '';
         return roleName || '未知角色';
     };
@@ -83,7 +85,7 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         return normalized || fallback;
     };
 
-    const 构建存档摘要 = (save: 存档结构): string => {
+    const 构建存档摘要 = (save: 存档列表项): string => {
         const historyCount = typeof save.元数据?.历史记录条数 === 'number'
             ? save.元数据.历史记录条数
             : (Array.isArray(save.历史记录) ? save.历史记录.length : 0);
@@ -111,7 +113,15 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         await loadSaves();
     };
 
-    const handleLoadClick = async (save: 存档结构) => {
+    const 读取完整存档 = async (save: 存档列表项): Promise<存档结构> => {
+        const id = typeof save.id === 'number' ? save.id : 0;
+        if (!id) throw new Error('存档 ID 缺失，无法读取完整存档。');
+        const fullSave = await dbService.读取存档(id);
+        if (!fullSave) throw new Error('存档不存在或已被删除。');
+        return fullSave;
+    };
+
+    const handleLoadClick = async (save: 存档列表项) => {
         if (mode !== 'load') return;
         const ok = requestConfirm
             ? await requestConfirm({
@@ -122,10 +132,16 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
             : true;
         if (!ok) return;
         try {
-            await Promise.resolve(onLoadGame(save));
+            setSyncing(true);
+            setTransferMessage(`正在读取：${构建存档标题(save)}`);
+            const fullSave = await 读取完整存档(save);
+            await Promise.resolve(onLoadGame(fullSave));
         } catch (error: any) {
             console.error(error);
             alert(`读取失败：${error?.message || '未知错误'}`);
+        } finally {
+            setSyncing(false);
+            setTransferMessage('');
         }
     };
 
@@ -209,14 +225,15 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         }
     };
 
-    const handleExportOne = async (save: 存档结构, event: React.MouseEvent) => {
+    const handleExportOne = async (save: 存档列表项, event: React.MouseEvent) => {
         event.stopPropagation();
         if (syncing) return;
         setSyncing(true);
         const title = 构建存档标题(save);
         setTransferMessage(`正在整理单个存档：${title}`);
         try {
-            const blob = await 导出ZIP存档文件({ saves: [save] });
+            const fullSave = await 读取完整存档(save);
+            const blob = await 导出ZIP存档文件({ saves: [fullSave] });
             const stamp = new Date(save.时间戳 || Date.now()).toISOString().replace(/[:]/g, '-');
             const titlePart = 构建安全文件名片段(title, 'save');
             const typePart = save.类型 === 'auto' ? 'auto' : 'manual';

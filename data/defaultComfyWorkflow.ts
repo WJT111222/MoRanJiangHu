@@ -143,123 +143,11 @@ const 默认NunchakuQwenImageComfyUI工作流 = {
 };
 
 const 默认ZImageTurboComfyUI工作流 = {
-  "9": {
-    "inputs": {
-      "filename_prefix": "z-image/non-nsfw",
-      "images": [
-        "43",
-        0
-      ]
-    },
-    "class_type": "SaveImage",
-    "_meta": {
-      "title": "保存图像"
-    }
-  },
-  "39": {
-    "inputs": {
-      "clip_name": "qwen_3_4b.safetensors",
-      "type": "lumina2",
-      "device": "default"
-    },
-    "class_type": "CLIPLoader",
-    "_meta": {
-      "title": "加载CLIP"
-    }
-  },
-  "40": {
-    "inputs": {
-      "vae_name": "ae.safetensors"
-    },
-    "class_type": "VAELoader",
-    "_meta": {
-      "title": "加载VAE"
-    }
-  },
-  "41": {
-    "inputs": {
-      "width": "__WIDTH__",
-      "height": "__HEIGHT__",
-      "batch_size": 1
-    },
-    "class_type": "EmptySD3LatentImage",
-    "_meta": {
-      "title": "空Latent图像（SD3）"
-    }
-  },
-  "43": {
-    "inputs": {
-      "samples": [
-        "44",
-        0
-      ],
-      "vae": [
-        "40",
-        0
-      ]
-    },
-    "class_type": "VAEDecode",
-    "_meta": {
-      "title": "VAE解码"
-    }
-  },
-  "44": {
-    "inputs": {
-      "seed": "__SEED__",
-      "steps": "__STEPS__",
-      "cfg": "__CFG__",
-      "sampler_name": "__SAMPLER__",
-      "scheduler": "__SCHEDULER__",
-      "denoise": 1,
-      "model": [
-        "47",
-        0
-      ],
-      "positive": [
-        "45",
-        0
-      ],
-      "negative": [
-        "54",
-        0
-      ],
-      "latent_image": [
-        "41",
-        0
-      ]
-    },
-    "class_type": "KSampler",
-    "_meta": {
-      "title": "K采样器"
-    }
-  },
-  "45": {
-    "inputs": {
-      "text": "__PROMPT__",
-      "clip": [
-        "39",
-        0
-      ]
-    },
-    "class_type": "CLIPTextEncode",
-    "_meta": {
-      "title": "正面提示词编码"
-    }
-  },
-  "46": {
-    "inputs": {
-      "model_name": "z_image_turbo_bf16.safetensors"
-    },
-    "class_type": "NunchakuZImageDiTLoader",
-    "_meta": {
-      "title": "默认非NSFW主模型 - Nunchaku Z-Image Turbo"
-    }
-  },
-  "47": {
+  "2": {
     "inputs": {
       "shift": 3,
       "model": [
-        "46",
+        "41",
         0
       ]
     },
@@ -268,17 +156,127 @@ const 默认ZImageTurboComfyUI工作流 = {
       "title": "采样算法（AuraFlow）"
     }
   },
-  "54": {
+  "6": {
     "inputs": {
-      "text": "__NEGATIVE_PROMPT__",
-      "clip": [
-        "39",
+      "width": "__WIDTH__",
+      "height": "__HEIGHT__",
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "空Latent图像"
+    }
+  },
+  "11": {
+    "inputs": {
+      "samples": [
+        "17",
         0
+      ],
+      "vae": [
+        "34",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "17": {
+    "inputs": {
+      "seed": "__SEED__",
+      "steps": "__STEPS__",
+      "cfg": "__CFG__",
+      "sampler_name": "__SAMPLER__",
+      "scheduler": "__SCHEDULER__",
+      "denoise": 1,
+      "model": [
+        "2",
+        0
+      ],
+      "positive": [
+        "20",
+        0
+      ],
+      "negative": [
+        "40",
+        0
+      ],
+      "latent_image": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "K采样器"
+    }
+  },
+  "20": {
+    "inputs": {
+      "text": "__PROMPT__",
+      "clip": [
+        "41",
+        1
       ]
     },
     "class_type": "CLIPTextEncode",
     "_meta": {
-      "title": "负面提示词编码"
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "34": {
+    "inputs": {
+      "ckpt_name": "zImageTurboBaseAIO_zImageTurboFP8AIO.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "加载Checkpoint"
+    }
+  },
+  "40": {
+    "inputs": {
+      "conditioning": [
+        "20",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "负向提示词占位（自动替换）"
+    }
+  },
+  "41": {
+    "inputs": {
+      "lora_name": "Mystic-XXX-ZIT-v3.safetensors",
+      "strength_model": 0.5,
+      "strength_clip": 1,
+      "model": [
+        "34",
+        0
+      ],
+      "clip": [
+        "34",
+        1
+      ]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "Mystic ZIT LoRA"
+    }
+  },
+  "51": {
+    "inputs": {
+      "filename_prefix": "z-image/moranjianghu",
+      "images": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
     }
   }
 };
@@ -439,22 +437,7 @@ const 默认ZImageTurboNSFWComfyUI工作流 = {
   }
 };
 
-const 默认稳定普通ComfyUI工作流 = {
-  ...默认ZImageTurboNSFWComfyUI工作流,
-  "9": {
-    ...默认ZImageTurboNSFWComfyUI工作流["9"],
-    "inputs": {
-      ...默认ZImageTurboNSFWComfyUI工作流["9"].inputs,
-      "filename_prefix": "z-image/non-nsfw"
-    }
-  },
-  "46": {
-    ...默认ZImageTurboNSFWComfyUI工作流["46"],
-    "_meta": {
-      "title": "普通主模型加载 - mPMix"
-    }
-  }
-};
+const 默认稳定普通ComfyUI工作流 = 默认ZImageTurboComfyUI工作流;
 
 export const 默认ComfyUI工作流JSON = JSON.stringify(默认稳定普通ComfyUI工作流, null, 2);
 export const 默认NSFWComfyUI工作流JSON = JSON.stringify(默认ZImageTurboNSFWComfyUI工作流, null, 2);
