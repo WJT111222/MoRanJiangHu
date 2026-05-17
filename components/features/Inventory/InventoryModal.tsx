@@ -22,6 +22,7 @@ interface Props {
     onDiscardItem?: (itemId: string) => { ok: boolean; message: string } | void;
     onSellAllMisc?: () => { ok: boolean; message: string } | void;
     onDiscardAllMisc?: () => { ok: boolean; message: string } | void;
+    onRegenerateItemImage?: (item: any, extraPrompt?: string) => Promise<void> | void;
 }
 
 type ItemCategory = '全部' | '装备' | '任务道具' | '消耗品' | '材料' | '秘籍' | '杂物';
@@ -181,11 +182,12 @@ const renderItemIcon = (type: string, className: string) => {
     return icons[type] || icons.杂物;
 };
 
-const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange, onSellItem, onDiscardItem, onSellAllMisc, onDiscardAllMisc }) => {
+const InventoryModal: React.FC<Props> = ({ character, onClose, onCharacterChange, onSellItem, onDiscardItem, onSellAllMisc, onDiscardAllMisc, onRegenerateItemImage }) => {
     const [activeCategory, setActiveCategory] = useState<ItemCategory>('全部');
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [actionMessage, setActionMessage] = useState('');
     const [imageViewer, setImageViewer] = useState<{ src: string; alt: string } | null>(null);
+    const [customPrompt, setCustomPrompt] = useState('');
 
     const items = Array.isArray(character?.物品列表) ? character.物品列表 : [];
     const totalWeight = getSafeNumber(character?.当前负重);
@@ -310,6 +312,13 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
         const result = onDiscardItem(itemRef);
         setActionMessage(result?.message || '已丢弃物品');
         if (!result || result.ok) setSelectedItem(null);
+    };
+
+    const handleRegenerateSelectedImage = async () => {
+        if (!selectedItem || !onRegenerateItemImage) return;
+        const extraPrompt = customPrompt.trim();
+        await onRegenerateItemImage(selectedItem, extraPrompt);
+        setActionMessage(extraPrompt ? '已提交自定义提示词重生图' : '已提交物品重生图');
     };
 
     const handleSellAllMisc = () => {
@@ -590,17 +599,33 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
 
                                     <div className="col-start-1 row-start-2 rounded-xl border border-emerald-400/20 bg-emerald-500/5 p-3">
                                         <div className="mb-2 flex items-center justify-between gap-3">
-                                            <span className="text-sm font-bold tracking-[0.12em] text-emerald-100">拍卖行出售</span>
-                                            <span className="truncate text-xs text-gray-300">按市场价寄售，下回合入账</span>
+                                            <span className="text-sm font-bold tracking-[0.12em] text-emerald-100">图标操作</span>
+                                            <span className="truncate text-xs text-gray-300">可重生图或进入拍卖行</span>
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={handleSellSelected}
-                                            disabled={!onSellItem}
-                                            className="w-full rounded-lg border border-emerald-400/35 bg-emerald-500/10 px-3 py-2.5 text-sm font-semibold text-emerald-50 transition hover:border-emerald-300/60 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-                                        >
-                                            出售
-                                        </button>
+                                        <textarea
+                                            value={customPrompt}
+                                            onChange={(event) => setCustomPrompt(event.target.value)}
+                                            placeholder="可选：输入额外提示词，例如“更古朴、木纹更明显、背景更淡”"
+                                            className="mb-2 h-16 w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs leading-5 text-gray-100 outline-none placeholder:text-gray-500 focus:border-cyan-400/50"
+                                        />
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleRegenerateSelectedImage}
+                                                disabled={!onRegenerateItemImage}
+                                                className="rounded-lg border border-cyan-400/35 bg-cyan-500/10 px-3 py-2.5 text-sm font-semibold text-cyan-50 transition hover:border-cyan-300/60 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                重生图
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleSellSelected}
+                                                disabled={!onSellItem}
+                                                className="rounded-lg border border-emerald-400/35 bg-emerald-500/10 px-3 py-2.5 text-sm font-semibold text-emerald-50 transition hover:border-emerald-300/60 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                出售
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="col-start-1 row-start-5 rounded-xl border border-red-400/20 bg-red-500/5 p-3">

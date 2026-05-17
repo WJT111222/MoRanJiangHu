@@ -250,3 +250,9 @@
 - 应用内对象存储同步应走 `/api/object-storage-proxy` 运行时端点，使用 AWS Signature V4 签名，region 使用 `auto`，service 使用 `s3`，并复用 WebDAV 的清单、分片和增量同步语义。
 - 默认存储前缀为 `MoRanJiangHu`；存档包放在 `MoRanJiangHu/saves`，分片放在 `MoRanJiangHu/chunks`，清单文件是 `MoRanJiangHu/manifest.json`。
 - 本地端到端测试时，从用户环境变量读取凭据，在 `MoRanJiangHu/e2e/` 下 PUT 一个小对象，GET 回来校验内容，然后 DELETE 该测试对象。
+
+## Shell Encoding Rule
+
+- 在 PowerShell 里读取或写入 UTF-8 JSON/文本时，不要依赖默认控制台编码。
+- 优先使用 `node`、显式 UTF-8 文件读写，或其它能保留 Unicode 文本的命令。
+- 如果必须临时绕过 shell 编码问题，要一次性解决底层解码方式并把诀窍记录下来，不要反复描述同一个编码绕路。

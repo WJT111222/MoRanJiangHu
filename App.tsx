@@ -1786,6 +1786,40 @@ const App: React.FC = () => {
         actions.pushNotification({ title: '杂物已丢弃', message, tone: 'success' });
         return { ok: true as const, message };
     }, [actions, setters, state.角色]);
+    const handleRegenerateBagItemImage = React.useCallback(async (targetItem: 游戏物品, extraPrompt?: string) => {
+        const itemRef = String((targetItem as any)?.ID || (targetItem as any)?.名称 || '');
+        if (!itemRef) return;
+        const sourceItems = Array.isArray(state.角色?.物品列表) ? state.角色.物品列表 : [];
+        const freshItem = sourceItems.find((item: any) => item?.ID === itemRef || item?.名称 === itemRef) || targetItem;
+        actions.pushNotification({
+            title: '物品重生图',
+            message: `正在为「${(freshItem as any)?.名称 || '无名物品'}」重新生成图标。`,
+            tone: 'info'
+        });
+        try {
+            const result = await 生成物品图标(freshItem, state.apiConfig, {
+                source: 'manual',
+                sourceLocation: '背包',
+                force: true,
+                extraPrompt
+            });
+            const nextItems = sourceItems.map((item: any) => (
+                item?.ID === itemRef || item?.名称 === itemRef ? result.nextItem : item
+            ));
+            const nextCharacter = { ...state.角色, 物品列表: nextItems };
+            setters.setCharacter(nextCharacter);
+            void actions.performAutoSave?.({ role: nextCharacter, force: true });
+            actions.pushNotification({
+                title: '物品图标已更新',
+                message: `「${(result.nextItem as any)?.名称 || (freshItem as any)?.名称 || '无名物品'}」的新图标已写入背包。`,
+                tone: 'success'
+            });
+        } catch (error) {
+            const message = 读取生图错误文本(error, '物品重生图失败');
+            actions.pushNotification({ title: '物品重生图失败', message, tone: 'error' });
+            throw error;
+        }
+    }, [actions, setters, state.apiConfig, state.角色]);
     const handleDeleteMemory = React.useCallback((round: number) => {
         const prevMemorySystem = state.记忆系统;
         if (!prevMemorySystem) return;
@@ -3388,6 +3422,7 @@ const App: React.FC = () => {
                                     onDiscardItem={handleDiscardBagItem}
                                     onSellAllMisc={handleSellAllMiscItems}
                                     onDiscardAllMisc={handleDiscardAllMiscItems}
+                                    onRegenerateItemImage={handleRegenerateBagItemImage}
                                     onClose={() => setters.setShowInventory(false)} 
                                 />
                             ) : (
@@ -3401,6 +3436,7 @@ const App: React.FC = () => {
                                     onDiscardItem={handleDiscardBagItem}
                                     onSellAllMisc={handleSellAllMiscItems}
                                     onDiscardAllMisc={handleDiscardAllMiscItems}
+                                    onRegenerateItemImage={handleRegenerateBagItemImage}
                                     onClose={() => setters.setShowInventory(false)} 
                                 />
                             )}
