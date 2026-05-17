@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useGitHubOAuth } from '../../../hooks/useGitHubOAuth';
 import { WebDAVSyncPanel } from './WebDAVSyncPanel';
+import { ObjectStorageSyncPanel } from './ObjectStorageSyncPanel';
 import {
     uploadToCloud,
     uploadSettingsToCloud,
@@ -329,7 +330,7 @@ export const GitHubSyncButton: React.FC<GitHubSyncButtonProps> = ({ floating = t
                                 <div>
                                     <div className="text-lg font-serif font-bold tracking-[0.18em] text-[#7a3f12]">云端同步</div>
                                     <div className="mt-1 text-xs leading-5 text-[#6f4a26]">
-                                        左侧使用 GitHub 私有仓库，右侧使用自定义 WebDAV。两种方式互不覆盖，可按需选择。
+                                        左侧使用 GitHub 私有仓库，右侧可使用自定义 WebDAV 或 S3 兼容对象存储。三种方式互不覆盖，可按需选择。
                                     </div>
                                 </div>
                                     <div className="mt-3 rounded-xl border border-amber-700/25 bg-amber-100/65 px-3 py-2 text-[11px] leading-5 text-[#8a3a12]">
@@ -436,7 +437,10 @@ export const GitHubSyncButton: React.FC<GitHubSyncButtonProps> = ({ floating = t
                                         {isNativeApp ? '开始 GitHub OAuth 登录' : hasGitHubOAuthClientId ? '前往 GitHub 授权' : '未配置 GitHub Client ID'}
                                     </button>
                                 </div>
-                                <WebDAVSyncPanel />
+                                <div className="flex flex-col gap-4">
+                                    <WebDAVSyncPanel />
+                                    <ObjectStorageSyncPanel />
+                                </div>
                                 </div>
                             </div>
                         ) : (
@@ -602,7 +606,10 @@ export const GitHubSyncButton: React.FC<GitHubSyncButtonProps> = ({ floating = t
                                             </div>
                                         )}
                                         </div>
-                                        <WebDAVSyncPanel />
+                                        <div className="flex flex-col gap-4">
+                                    <WebDAVSyncPanel />
+                                    <ObjectStorageSyncPanel />
+                                </div>
                                     </div>
                                 </div>
 

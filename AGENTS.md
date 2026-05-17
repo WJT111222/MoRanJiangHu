@@ -239,3 +239,21 @@ If the task is "confirm this UI works" and the opening flow depends on external 
   `curl -fsS http://localhost:8085/actuator/health`
   `codex mcp list`
   `codex mcp get discord-mcp`
+
+## Object Storage Sync Notes
+
+- The user may use hi168 S3-compatible object storage for save sync.
+- Keep object storage credentials only in local user environment variables; never write Access Key or Secret Key into repository files, commits, logs, release notes, or chat responses.
+- Local environment variable names:
+  - `MORAN_OSS_USERNAME`
+  - `MORAN_OSS_ACCESS_KEY`
+  - `MORAN_OSS_SECRET_KEY`
+  - `MORAN_OSS_ENDPOINT`
+  - `MORAN_OSS_BUCKET`
+- Current non-secret defaults:
+  - endpoint: `https://s3.hi168.com`
+  - bucket: `hi168-19275-07130td3`
+- hi168 uses an S3-compatible API and should be called with path-style URLs: `https://s3.hi168.com/<bucket>/<key>`.
+- The app-side object storage sync should use the `/api/object-storage-proxy` runtime endpoint, AWS Signature V4 signing, region `auto`, service `s3`, and the same manifest/chunk/incremental-sync semantics as WebDAV.
+- The storage prefix defaults to `MoRanJiangHu`; save packages live under `MoRanJiangHu/saves`, chunks under `MoRanJiangHu/chunks`, and the manifest is `MoRanJiangHu/manifest.json`.
+- For local end-to-end testing, load the credentials from user env vars, PUT a small object under `MoRanJiangHu/e2e/`, GET it back, verify content, then DELETE the test object.
