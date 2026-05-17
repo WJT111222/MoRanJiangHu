@@ -169,4 +169,22 @@ describe('item image prompt classification', () => {
         expect(prompt).toContain('fine armor prop');
         expect(prompt).not.toContain('soft textile clothing item');
     });
+
+    it('treats mystical lotus materials as botanical herbs instead of generic game props', () => {
+        const item = {
+            名称: '幽冥冰莲',
+            类型: '材料',
+            品质: '传说',
+            描述: '生长在极寒幽潭中的奇异莲花，花瓣如冰，散发幽蓝寒气。'
+        };
+        const prompt = 构建物品图提示词(item);
+        const negativePrompt = 构建物品负面提示词(item);
+
+        expect(prompt).toContain('ice lotus flower');
+        expect(prompt).toContain('strict botanical herb or flower');
+        expect(prompt).not.toContain('game prop');
+        expect(negativePrompt).toContain('game controller');
+        expect(negativePrompt).toContain('electronic device');
+        expect(negativePrompt).toContain('manufactured object');
+    });
 });

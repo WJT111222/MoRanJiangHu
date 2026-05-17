@@ -5,6 +5,9 @@ type 图片资源结构 = {
 
 const 图片资源引用前缀 = 'wuxia-asset://';
 const 图片资源缓存 = new Map<string, string>();
+const 图片资源缓存最大条目数 = 80;
+const 图片资源缓存最大字符数 = 42 * 1024 * 1024;
+let 图片资源缓存字符数 = 0;
 const 远程图片兜底缓存键 = 'moranjianghu.remoteImageFallbacks.v1';
 const 远程图片兜底最大数量 = 600;
 let 远程图片兜底缓存: Record<string, string> | null = null;
@@ -31,7 +34,23 @@ export const 注册图片资源缓存 = (assetId: string, dataUrl: string): void
     const ref = 创建图片资源引用(assetId);
     const normalized = 读取文本(dataUrl);
     if (!ref || !normalized) return;
+    const existing = 图片资源缓存.get(ref);
+    if (existing) {
+        图片资源缓存字符数 -= existing.length;
+        图片资源缓存.delete(ref);
+    }
     图片资源缓存.set(ref, normalized);
+    图片资源缓存字符数 += normalized.length;
+    while (
+        图片资源缓存.size > 图片资源缓存最大条目数
+        || 图片资源缓存字符数 > 图片资源缓存最大字符数
+    ) {
+        const oldestKey = 图片资源缓存.keys().next().value;
+        if (!oldestKey) break;
+        const oldestValue = 图片资源缓存.get(oldestKey) || '';
+        图片资源缓存.delete(oldestKey);
+        图片资源缓存字符数 -= oldestValue.length;
+    }
 };
 
 export const 批量注册图片资源缓存 = (entries: Array<{ id: string; dataUrl: string }>): void => {
@@ -41,11 +60,18 @@ export const 批量注册图片资源缓存 = (entries: Array<{ id: string; data
 
 export const 清空图片资源缓存 = (): void => {
     图片资源缓存.clear();
+    图片资源缓存字符数 = 0;
 };
 
 export const 读取图片资源缓存 = (value: unknown): string => {
     const ref = 读取文本(value);
-    return ref ? (图片资源缓存.get(ref) || '') : '';
+    if (!ref) return '';
+    const cached = 图片资源缓存.get(ref) || '';
+    if (cached) {
+        图片资源缓存.delete(ref);
+        图片资源缓存.set(ref, cached);
+    }
+    return cached;
 };
 
 const 读取远程图片兜底缓存 = (): Record<string, string> => {

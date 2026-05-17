@@ -1,16 +1,33 @@
 {
-  "versionCode": 219,
-  "versionName": "1.0.218",
+  "versionCode": 220,
+  "versionName": "1.0.219",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "v1.0.218 正式发布：修复手机端拍卖行本地缓存占满后导致应用界面加载失败的问题。",
-    "拍卖行本地缓存现在会自动压缩，并在手机存储空间不足时自动清理旧拍卖行缓存，不再因为 QuotaExceededError 卡死在加载页。",
-    "APK 使用 CNB/ComfyUI 生图时改为先直连真实 8188 地址，只有直连被网络或跨域拦截时才走线上代理，避免误请求到本地前端页面。",
-    "ComfyUI 地址返回网页 HTML 时会被识别为错误路由，并临时避开该后端，避免连续撞同一个异常地址。",
-    "合并在线心跳优化，减少手机端周期性后台扫描和重复心跳造成的卡顿。",
-    "本次同步提升网页端、APK 包和更新清单到 v1.0.218 / CODE 219。"
+    "v1.0.219 正式发布：更新默认 ComfyUI 预设工作流，并继续修复 APK 手机端读档、回合运行和生图稳定性问题。",
+    "默认 ComfyUI 普通生图切换为 Z-Image Turbo AIO + Mystic ZIT LoRA 工作流；CNB 启动时会自动预下载所需 checkpoint 与 LoRA 模型。",
+    "ComfyUI 后端类型现在固定使用原生 /prompt 路由，旧的 OpenAI /v1/images/generations 路径会自动纠正，减少“未返回 prompt_id”和误跳前端页面的问题。",
+    "普通生图提示词增强叙事构图、角色一致性、光影和空间描述；成人向细节只作用于 NSFW 私密部位特写，不污染普通物品、NPC 和场景图。",
+    "修复幽冥冰莲等药草类物品误生成游戏手柄的问题，药草、莲花、人参、灵芝等会优先按植物药材图标生成。",
+    "APK 读取存档列表改为先加载轻量摘要，点击读取或导出单个存档时再读取完整内容，降低大存档导致卡住或闪退的概率。",
+    "APK 图片缓存、远程图床兜底下载、旧图片迁移和运行日志持久化进一步限流，减少回合运行时的内存压力。",
+    "本次同步提升网页端、APK 包和更新清单到 v1.0.219 / CODE 220。"
   ],
   "releaseHistory": [
+    {
+      "versionCode": 220,
+      "versionName": "1.0.219",
+      "changes": [
+        "v1.0.219 正式发布：更新默认 ComfyUI 预设工作流，并继续修复 APK 手机端读档、回合运行和生图稳定性问题。",
+        "默认 ComfyUI 普通生图切换为 Z-Image Turbo AIO + Mystic ZIT LoRA 工作流；CNB 启动时会自动预下载所需 checkpoint 与 LoRA 模型。",
+        "ComfyUI 后端类型现在固定使用原生 /prompt 路由，旧的 OpenAI /v1/images/generations 路径会自动纠正，减少“未返回 prompt_id”和误跳前端页面的问题。",
+        "普通生图提示词增强叙事构图、角色一致性、光影和空间描述；成人向细节只作用于 NSFW 私密部位特写，不污染普通物品、NPC 和场景图。",
+        "修复幽冥冰莲等药草类物品误生成游戏手柄的问题，药草、莲花、人参、灵芝等会优先按植物药材图标生成。",
+        "APK 读取存档列表改为先加载轻量摘要，点击读取或导出单个存档时再读取完整内容，降低大存档导致卡住或闪退的概率。",
+        "APK 图片缓存、远程图床兜底下载、旧图片迁移和运行日志持久化进一步限流，减少回合运行时的内存压力。",
+        "本次同步提升网页端、APK 包和更新清单到 v1.0.219 / CODE 220。"
+      ],
+      "publishedAt": "2026-05-17T17:38:46+08:00"
+    },
     {
       "versionCode": 219,
       "versionName": "1.0.218",
@@ -2385,5 +2402,5 @@
   "r2Bucket": "quark-downloads-bacon",
   "r2Prefix": "moranjianghu",
   "backupWebsiteUrl": "https://msjh.bacon.de5.net",
-  "releasePublishedAt": "2026-05-17T16:23:30+08:00"
+  "releasePublishedAt": "2026-05-17T17:38:46+08:00"
 }

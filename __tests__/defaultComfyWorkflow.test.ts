@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { 默认ComfyUI工作流JSON, 默认NSFWComfyUI工作流JSON } from '../data/defaultComfyWorkflow';
+import { 构建最终图片提示词 } from '../services/ai/imageTasks';
 import { 默认功能模型占位, 获取NSFW文生图接口配置, 获取文生图接口配置, 获取场景文生图接口配置, 规范化接口设置 } from '../utils/apiConfig';
 
 const 构建ComfyUI测试设置 = (功能模型占位: Record<string, unknown> = {}) => 规范化接口设置({
@@ -24,7 +25,7 @@ const 构建ComfyUI测试设置 = (功能模型占位: Record<string, unknown> =
 });
 
 describe('默认 ComfyUI 生图配置', () => {
-    it('uses separate bundled z-image turbo workflows for normal and NSFW ComfyUI images', () => {
+    it('uses bundled Z-Image Turbo AIO workflow for normal images and keeps the NSFW workflow separate', () => {
         const workflow = JSON.parse(默认ComfyUI工作流JSON);
         const nsfwWorkflow = JSON.parse(默认NSFWComfyUI工作流JSON);
         const settings = 构建ComfyUI测试设置({
@@ -36,6 +37,7 @@ describe('默认 ComfyUI 生图配置', () => {
         const nsfwConfig = 获取NSFW文生图接口配置(settings);
 
         expect(默认功能模型占位.文生图后端类型).toBe('comfyui');
+        expect(默认功能模型占位.文生图预设接口路径).toBe('comfyui_prompt');
         expect(默认功能模型占位.使用默认ComfyUI工作流).toBe(true);
         expect(默认功能模型占位.使用默认场景ComfyUI工作流).toBe(true);
         expect(默认功能模型占位.使用默认NSFWComfyUI工作流).toBe(true);
@@ -46,27 +48,28 @@ describe('默认 ComfyUI 生图配置', () => {
         expect(nsfwConfig?.ComfyUI工作流JSON).toBe(默认NSFWComfyUI工作流JSON);
         expect(默认ComfyUI工作流JSON).not.toBe(默认NSFWComfyUI工作流JSON);
         expect(workflow).not.toEqual(nsfwWorkflow);
-        expect(workflow['9'].inputs.filename_prefix).toBe('z-image/non-nsfw');
+        expect(workflow['51'].inputs.filename_prefix).toBe('z-image/moranjianghu');
         expect(nsfwWorkflow['9'].inputs.filename_prefix).toBe('z-image/nsfw');
-        expect(workflow['46'].class_type).toBe('UNETLoader');
-        expect(workflow['46'].inputs.unet_name).toBe('mPMix_NSFW_V9_fp8.safetensors');
-        expect(workflow['47'].inputs.model).toEqual(['53', 0]);
-        expect(workflow['53'].class_type).toBe('LoraLoaderModelOnly');
-        expect(workflow['53'].inputs.lora_name).toBe('Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors');
-        expect(workflow['40'].inputs.vae_name).toBe('ae.safetensors');
-        expect(workflow['45'].inputs.text).toBe('__PROMPT__');
-        expect(workflow['54'].inputs.text).toBe('__NEGATIVE_PROMPT__');
-        expect(workflow['41'].inputs.width).toBe('__WIDTH__');
-        expect(workflow['41'].inputs.height).toBe('__HEIGHT__');
-        expect(workflow['44'].inputs.seed).toBe('__SEED__');
-        expect(workflow['44'].inputs.steps).toBe('__STEPS__');
-        expect(workflow['44'].inputs.cfg).toBe('__CFG__');
-        expect(workflow['44'].inputs.sampler_name).toBe('__SAMPLER__');
-        expect(workflow['44'].inputs.scheduler).toBe('__SCHEDULER__');
+        expect(workflow['34'].class_type).toBe('CheckpointLoaderSimple');
+        expect(workflow['34'].inputs.ckpt_name).toBe('zImageTurboBaseAIO_zImageTurboFP8AIO.safetensors');
+        expect(workflow['41'].class_type).toBe('LoraLoader');
+        expect(workflow['41'].inputs.lora_name).toBe('Mystic-XXX-ZIT-v3.safetensors');
+        expect(workflow['41'].inputs.strength_model).toBe(0.5);
+        expect(workflow['41'].inputs.strength_clip).toBe(1);
+        expect(workflow['20'].inputs.text).toBe('__PROMPT__');
+        expect(workflow['40'].class_type).toBe('ConditioningZeroOut');
+        expect(workflow['6'].inputs.width).toBe('__WIDTH__');
+        expect(workflow['6'].inputs.height).toBe('__HEIGHT__');
+        expect(workflow['17'].inputs.seed).toBe('__SEED__');
+        expect(workflow['17'].inputs.steps).toBe('__STEPS__');
+        expect(workflow['17'].inputs.cfg).toBe('__CFG__');
+        expect(workflow['17'].inputs.sampler_name).toBe('__SAMPLER__');
+        expect(workflow['17'].inputs.scheduler).toBe('__SCHEDULER__');
         expect(JSON.stringify(workflow)).not.toContain('qwen-image-2512-Q6_K.gguf');
         expect(JSON.stringify(workflow)).not.toContain('UnetLoaderGGUF');
         expect(JSON.stringify(workflow)).not.toContain('NunchakuZImageDiTLoader');
         expect(JSON.stringify(workflow)).not.toContain('z_image_turbo_bf16.safetensors');
+        expect(JSON.stringify(workflow)).not.toContain('mPMix_NSFW_V9_fp8.safetensors');
         expect(nsfwWorkflow['46'].inputs.unet_name).toBe('mPMix_NSFW_V9_fp8.safetensors');
         expect(nsfwWorkflow['47'].inputs.model).toEqual(['53', 0]);
         expect(nsfwWorkflow['53'].class_type).toBe('LoraLoaderModelOnly');
@@ -83,6 +86,51 @@ describe('默认 ComfyUI 生图配置', () => {
         expect(nsfwWorkflow['44'].inputs.scheduler).toBe('__SCHEDULER__');
         expect(JSON.stringify(nsfwWorkflow)).not.toContain('qwen-image-2512-Q6_K.gguf');
         expect(JSON.stringify(nsfwWorkflow)).not.toContain('UnetLoaderGGUF');
+    });
+
+    it('forces ComfyUI image requests to the native /prompt route when old settings keep OpenAI image paths', () => {
+        const settings = 构建ComfyUI测试设置({
+            文生图后端类型: 'comfyui',
+            文生图预设接口路径: 'openai_images',
+            文生图接口路径模式: 'preset'
+        });
+        const config = 获取文生图接口配置(settings);
+
+        expect(config?.图片后端类型).toBe('comfyui');
+        expect(config?.图片预设接口路径).toBe('comfyui_prompt');
+        expect(config?.图片接口路径).toBe('/prompt');
+    });
+
+    it('sanitizes stale custom OpenAI paths when the selected image backend is ComfyUI', () => {
+        const settings = 构建ComfyUI测试设置({
+            文生图后端类型: 'comfyui',
+            文生图接口路径模式: 'custom',
+            文生图接口路径: '/v1/images/generations'
+        });
+        const config = 获取文生图接口配置(settings);
+
+        expect(config?.图片后端类型).toBe('comfyui');
+        expect(config?.图片接口路径).toBe('/prompt');
+    });
+
+    it('adds Z-Image prompt guidance only to ComfyUI and keeps explicit NSFW detail scoped to close-ups', () => {
+        const comfyConfig = {
+            图片后端类型: 'comfyui',
+            词组转化输出策略: 'plain'
+        } as any;
+        const openAIConfig = {
+            图片后端类型: 'openai',
+            词组转化输出策略: 'plain'
+        } as any;
+
+        const normalComfy = 构建最终图片提示词('幽冥冰莲', comfyConfig, { 构图: '场景' });
+        const normalOpenAI = 构建最终图片提示词('幽冥冰莲', openAIConfig, { 构图: '场景' });
+        const nsfwCloseup = 构建最终图片提示词('私密部位特写', comfyConfig, { 构图: '部位特写' });
+
+        expect(normalComfy.最终正向提示词).toContain('Z-Image-Turbo narrative prompt');
+        expect(normalComfy.最终正向提示词).not.toContain('露骨性器、体液、性行为细节');
+        expect(normalOpenAI.最终正向提示词).not.toContain('Z-Image-Turbo narrative prompt');
+        expect(nsfwCloseup.最终正向提示词).toContain('露骨性器、体液、性行为细节');
     });
 
     it('fills the default workflow when old settings have no ComfyUI workflow', () => {

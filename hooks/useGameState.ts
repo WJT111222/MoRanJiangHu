@@ -40,6 +40,7 @@ import {
     创建空剧情规划,
     创建空门派状态
 } from './useGame/storyState';
+import { isNativeCapacitorEnvironment } from '../utils/nativeRuntime';
 
 const 加载默认提示词 = async (): Promise<提示词结构[]> => {
     const mod = await import('../prompts');
@@ -267,8 +268,8 @@ export const useGameState = () => {
     useEffect(() => {
         const checkSaves = async () => {
              try {
-                 const saves = await dbService.读取存档列表();
-                 setHasSave(saves.length > 0);
+                 const saveCount = await dbService.读取存档数量();
+                 setHasSave(saveCount > 0);
              } catch (e) { console.error(e); }
         };
         checkSaves();
@@ -281,7 +282,9 @@ export const useGameState = () => {
     useEffect(() => {
         const init = async () => {
             try {
-                await dbService.迁移图片资源到独立存储();
+                if (!isNativeCapacitorEnvironment()) {
+                    await dbService.迁移图片资源到独立存储();
+                }
                 await dbService.预热图片资源缓存();
                 const savedTheme = await dbService.读取设置(设置键.应用主题);
                 if (savedTheme && THEMES[savedTheme as ThemePreset]) setCurrentTheme(savedTheme as ThemePreset);

@@ -163,6 +163,17 @@ const 物品是否古代药物 = (item: any): boolean => {
     return /丹药|药丸|药散|散剂|药粉|药膏|膏药|药液|伤药|止血|凝血|金疮|解毒|疗伤|丸|散\b|膏\b/.test(text);
 };
 
+const 物品是否草药植物 = (item: any): boolean => {
+    const text = [
+        item?.名称,
+        item?.类型,
+        item?.描述,
+        item?.视觉描述,
+        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
+    ].map((value) => 读取文本(value)).join(' ');
+    return /冰莲|雪莲|莲花|莲\b|灵芝|人参|血参|药草|灵草|仙草|毒草|药材|草药|花瓣|花蕊|花朵|花\b|灵花|异花|奇花|根茎|藤蔓|叶片|果实|灵果/.test(text);
+};
+
 const 物品品质转英文 = (quality: string): string => {
     const map: Record<string, string> = {
         '传说': 'legendary', '绝世': 'mythic', '极品': 'top grade',
@@ -215,6 +226,12 @@ const 物品名称转英文描述 = (name: string): string => {
         '金疮药': 'ancient wound medicine powder in a small ceramic medicine bottle or folded paper packet',
         '止血散': 'ancient hemostatic powder in a folded paper packet, herbal medicinal powder',
         '解毒散': 'ancient antidote powder in a folded paper packet or ceramic medicine vial',
+        '幽冥冰莲': 'rare mystical ice lotus flower, dark blue translucent lotus petals, frosted botanical herb, glowing cold aura, intact flower bloom and stem',
+        '冰莲': 'ice lotus flower, translucent blue white lotus petals, frosted botanical herb, intact flower bloom and stem',
+        '雪莲': 'snow lotus flower, pale white alpine medicinal flower, layered petals, botanical herb specimen',
+        '血参': 'red ginseng root medicinal herb, branching natural root shape, organic plant texture',
+        '人参': 'ginseng root medicinal herb, branching natural root shape, organic plant texture',
+        '灵芝': 'lingzhi mushroom medicinal herb, glossy red brown fungus cap, organic botanical specimen',
         '骏马': 'real living horse, full body animal, natural coat and mane',
         '马匹': 'real living horse, full body animal, natural coat and mane',
         '黑马': 'real living black horse, full body animal, natural coat and mane',
@@ -240,6 +257,7 @@ const 物品名称转英文描述 = (name: string): string => {
     if (/书|卷|册|经/.test(name)) return 'ancient book or scroll';
     if (/袋|囊|包/.test(name)) return 'cloth pouch or bag';
     if (/丹|药|散|丸|膏/.test(name)) return 'ancient medicinal item, herbal powder or pills stored in a folded paper packet, cloth sachet, or small ceramic medicine vial';
+    if (/冰莲|雪莲|莲|花|草|参|芝|根|藤|果|叶/.test(name)) return 'botanical medicinal herb specimen, natural plant or flower form, organic petals leaves roots or stems';
     if (/软甲|内甲|宝甲|甲衣|护身甲|护心甲|胸甲|背甲|护甲|铠甲|甲胄|皮甲|锁子甲|链甲|鳞甲/.test(name)) return 'wearable torso armor vest, protective garment shape, arm openings, shoulder straps, chest and back panels, waist hem';
     if (物品名称是否柔性服装(name)) return 'soft cloth martial arts garment, folded fabric clothing';
     return '';
@@ -251,7 +269,8 @@ const 构建物品视觉主体描述 = (item: any): string => {
     const isSoftGarment = 物品是否柔性服装(item);
     const isWearableArmor = !isSoftGarment && 物品是否可穿戴护甲(item);
     const isAncientMedicine = 物品是否古代药物(item);
-    const typeEn = isLivingMount ? 'living mount animal' : isSoftGarment ? 'cloth garment' : isWearableArmor ? 'wearable torso armor vest' : isAncientMedicine ? 'ancient medicinal powder or pills' : 物品类型转英文(读取文本(item?.类型, '物品'));
+    const isBotanicalHerb = !isAncientMedicine && 物品是否草药植物(item);
+    const typeEn = isLivingMount ? 'living mount animal' : isSoftGarment ? 'cloth garment' : isWearableArmor ? 'wearable torso armor vest' : isAncientMedicine ? 'ancient medicinal powder or pills' : isBotanicalHerb ? 'botanical medicinal herb' : 物品类型转英文(读取文本(item?.类型, '物品'));
     const qualityEn = 物品品质转英文(读取文本(item?.品质, '普通'));
     const nameEn = 物品名称转英文描述(name);
     const description = 读取文本(item?.视觉描述 || item?.描述);
@@ -266,6 +285,7 @@ const 构建物品视觉主体描述 = (item: any): string => {
         isSoftGarment ? 'soft textile clothing item, fabric seams, cloth folds, woven texture, flexible silhouette' : '',
         isWearableArmor ? 'strict wearable armor garment: torso vest shape, chest panel, back panel, shoulder straps, arm openings, waist hem, fitted to human upper body silhouette, displayed flat or on a simple invisible dress form' : '',
         isAncientMedicine ? 'ancient Chinese medicine presentation, herbal powder or pills, folded paper packet, cloth sachet, small ceramic medicine vial, apothecary prop, pre-modern wuxia era' : '',
+        isBotanicalHerb ? 'strict botanical herb or flower specimen: organic petals, leaves, roots or stems, natural plant anatomy, no manufactured device, no electronics' : '',
         description ? `form and materials: ${description}` : '',
         tags ? `material cues: ${tags}` : ''
     ].filter(Boolean).join('\n');
@@ -277,17 +297,20 @@ export const 构建物品负面提示词 = (item: any): string => {
     const isClothShoe = 物品是否布鞋(item);
     const isLivingMount = 物品是否坐骑生物(item);
     const isAncientMedicine = 物品是否古代药物(item);
+    const isBotanicalHerb = !isAncientMedicine && 物品是否草药植物(item);
     return [
         isLivingMount ? 'rider, saddle covering the body, harness covering the body, cart, carriage, vehicle, boat' : 'person, human, face, hand',
         isLivingMount ? 'toy horse, plastic horse, resin figurine, statue, sculpture, ceramic, porcelain, model horse, miniature, collectible figurine, carousel horse, rocking horse, fake animal, mannequin, doll, glossy plastic, product prop, studio toy photography' : '',
         isLivingMount ? '' : 'toy, plastic figurine, resin model, statue, sculpture, mannequin',
         'text, typography, letters, words, numbers, caption, label, plaque, sign, inscription, Chinese characters, English letters, calligraphy, seal, stamp, logo, watermark, signature, title, poster text',
+        'game controller, gamepad, joystick, console controller, d-pad, analog stick, buttons, electronic device, gadget, plastic controller, remote control, keyboard, mouse',
         'modern weapon, firearm, gun, rifle, pistol, shotgun, assault rifle, sniper rifle, machine gun, firearm stock, trigger guard, gun barrel, magazine, bullet, ammunition, grenade, rocket launcher, cannon, sci-fi weapon, futuristic weapon, tactical gear, modern military, plastic gun, mechanical firearm',
         isWearableArmor ? 'sword, saber, knife, dagger, blade, spear, staff, scabbard, sheath, hilt, handle, pommel, long narrow weapon, umbrella, baton, column, tower, statue, helmet only, shield only' : '',
         'item card, game card, trading card, UI overlay, interface, badge, quality badge, rarity badge, speech bubble, dialogue box, border frame, decorative frame',
         'white background, cluttered background, ink wash, guofeng illustration, Chinese painting, brush strokes, anime, cartoon, flat illustration',
         isSoftGarment ? 'armor, cuirass, breastplate, metal armor, metal plates, gauntlet, shield, helmet, hard shell, leather jacket, shiny leather garment' : '',
         isAncientMedicine ? 'weapon, blade, sword, dagger, knife, armor plate, metal weapon, hardware tool, industrial object, modern container, syringe, capsule bottle, plastic medical bottle, laboratory vial' : '',
+        isBotanicalHerb ? 'machine, mechanism, tool, container, box, bottle, vial, weapon, armor, toy, controller, manufactured object, plastic, metal gadget' : '',
         isClothShoe ? 'leather dress shoe, polished leather shoe, oxford shoe, loafer, business shoe, high heel, glossy leather, hard stacked heel' : ''
     ].filter(Boolean).join(', ');
 };
@@ -302,6 +325,7 @@ export const 构建物品图提示词 = (
     const isSoftGarment = 物品是否柔性服装(item);
     const isWearableArmor = !isSoftGarment && 物品是否可穿戴护甲(item);
     const isAncientMedicine = 物品是否古代药物(item);
+    const isBotanicalHerb = !isAncientMedicine && 物品是否草药植物(item);
     const softGarmentGuard = isSoftGarment
         ? 'for clothing items: soft fabric garment laid flat or neatly folded, visible cloth weave, seams, wrinkles, flexible drape'
         : '';
@@ -317,11 +341,12 @@ export const 构建物品图提示词 = (
     // 精简 prompt：正向只描述目标画面，排除项交给独立负面提示词。
     return [
         renderStyle === '写实道具'
-            ? 'photorealistic product photo of a single physical game prop, centered on a plain neutral background, realistic materials and soft shadow'
-            : 'single game prop asset on a plain neutral background, centered composition, clean silhouette',
+            ? 'photorealistic product photo of a single physical wuxia inventory item, centered on a plain neutral background, realistic materials and soft shadow'
+            : 'single wuxia inventory item asset on a plain neutral background, centered composition, clean silhouette',
         获取渲染风格要求(renderStyle),
         style === '写实' ? 'photorealistic' : style,
         isAncientMedicine ? 'strict ancient wuxia medicine prop only: folded paper medicine packet, small cloth sachet, ceramic medicine vial, herbal powder or pills; absolutely pre-modern, no modern technology' : '',
+        isBotanicalHerb ? 'strict botanical herb or flower only: natural plant specimen, visible petals leaves roots or stems, organic plant anatomy, not a manufactured object' : '',
         isWearableArmor ? 'strict wearable armor item: upper-body vest or cuirass garment shape, sleeveless torso armor with arm holes, shoulder straps, chest and back panels, waist hem; product photo of clothing-shaped protective gear' : '',
         构建物品视觉主体描述(item),
         softGarmentGuard,
@@ -361,10 +386,12 @@ export const 生成物品图标 = async (
         尺寸: size,
         附加正向提示词: enrichedItemIsLivingMount
             ? 'real living animal, alive mount, full body animal portrait, natural fur, organic anatomy, standing on real ground, no toy, no statue'
+            : !enrichedItemIsAncientMedicine && 物品是否草药植物(enrichedItem)
+            ? 'botanical medicinal herb specimen, natural plant anatomy, petals leaves roots or stems, single organic flower or herb, pre-modern wuxia material, photorealistic product photo, neutral matte studio background'
             : enrichedItemIsAncientMedicine
             ? 'ancient Chinese medicine prop, folded paper medicine packet, ceramic medicine vial, herbal powder or pills, pre-modern wuxia era, single physical object, photorealistic product photo, neutral matte studio background'
             : renderStyle === '写实道具'
-            ? `single physical object, photorealistic product photo, centered product composition, neutral matte studio background, clean silhouette, realistic material${enrichedItemIsSoftGarment ? ', soft fabric garment, cloth folds, flexible drape' : ''}`
+            ? `single physical wuxia inventory item, photorealistic product photo, centered product composition, neutral matte studio background, clean silhouette, realistic material${enrichedItemIsSoftGarment ? ', soft fabric garment, cloth folds, flexible drape' : ''}`
             : 'single physical object, centered composition, clean silhouette, plain asset presentation',
         附加负面提示词: 构建物品负面提示词(enrichedItem),
     });

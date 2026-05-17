@@ -101,6 +101,8 @@ class ComfyUI后端不可用错误 extends Error {
 const 自动去水印负面提示词 = 'text, typography, letters, words, numbers, caption, label, plaque, sign, inscription, Chinese characters, English letters, calligraphy, seal, stamp, watermark, signature, username, logo, artist name, web address, url, copyright, subtitle, subtitles, title, poster text, comic text, manga text, dialogue text, speech bubble, dialogue box, word balloon, UI overlay, interface text, date stamp, QR code, barcode, poster layout, magazine cover, comic page, comic panel, manga panel, callout, text box, white oval bubble, black outline bubble, overlay, title card, credits, framed text, floating label, name tag';
 const 全局无文字正向提示词 = 'plain single image, clean composition, uncluttered visual presentation, natural subject focus, clear silhouette';
 const 部位特写单图正向提示词 = 'single image, one frame, one subject only, extreme close-up macro crop, target fills the frame, plain blurred background, cohesive macro composition';
+const ZImageTurbo叙事构图增强提示词 = 'Z-Image-Turbo narrative prompt, translate the story beat into one clear visual moment, preserve fixed character features across images, use absolute screen positions such as left side, right side, foreground, middle ground and background, describe concrete action, expression, material, lighting, color palette and atmosphere, one complete image only';
+const NSFW生图细节增强提示词 = 'adult characters only, consensual adult NSFW scene when the source prompt explicitly asks for it, 露骨性器、体液、性行为细节, explicit genital details, body fluid details, and sex act details only for NSFW close-up generation, keep the image focused on the requested private anatomy or adult interaction, no minors, no coercion';
 const 部位特写反拼贴负面提示词 = 'multiple views, split screen, panel layout, comic panel, comic page, manga panel, story panels, collage, contact sheet, reference sheet, character sheet, turnaround, comparison sheet, montage, triptych, diptych, quadriptych, grid layout, tiled composition, thumbnails, bottom strip, inset image, duplicate anatomy, mirrored anatomy, repeated organ, multiple organs, multiple nipples, extra nipples, multiple genitals, extra genitals';
 const 默认NovelAI负面提示词 = 'photorealistic, realistic, 3d, rendering, unreal engine, octane render, real life, photography, bokeh, lowres, bad anatomy, bad hands, text, typography, letters, words, numbers, caption, label, plaque, sign, inscription, Chinese characters, English letters, calligraphy, seal, stamp, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, logo, blurry, artist name, border, out of frame, subtitles, title, poster text, speech bubble, dialogue box, word balloon, UI overlay, date stamp, QR code, barcode';
 const 默认分词器AI角色提示词 = [
@@ -1397,10 +1399,12 @@ export const 提取角色锚点提示词 = async (
 };
 
 const 构建后置正向提示词 = (
-    options?: { 构图?: '头像' | '半身' | '立绘' | '场景' | '部位特写'; 场景类型?: 场景生成类型; 尺寸?: string }
+    options?: { 构图?: '头像' | '半身' | '立绘' | '场景' | '部位特写'; 场景类型?: 场景生成类型; 尺寸?: string; 后端类型?: string }
 ): string => {
     return 合并正向提示词片段(
         全局无文字正向提示词,
+        options?.后端类型 === 'comfyui' ? ZImageTurbo叙事构图增强提示词 : '',
+        options?.构图 === '部位特写' ? NSFW生图细节增强提示词 : '',
         options?.构图 === '部位特写' ? 部位特写单图正向提示词 : ''
     );
 };
@@ -1449,7 +1453,8 @@ export const 构建最终图片提示词 = (
     const 后置正向提示词 = 构建后置正向提示词({
         构图: options?.构图,
         场景类型: options?.场景类型,
-        尺寸: size
+        尺寸: size,
+        后端类型: apiConfig.图片后端类型
     });
     const 使用NAI角色分段 = apiConfig.词组转化输出策略 === 'nai_character_segments' && /\|/.test(主体正向提示词);
     const 最终正向提示词 = 规范化Artist标签大小写(使用NAI角色分段
