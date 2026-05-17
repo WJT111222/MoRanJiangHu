@@ -26,6 +26,24 @@ describe('imageGenerationDiagnostics', () => {
         expect(message).toContain('原始错误：Failed to fetch');
     });
 
+    it('uses local deployment wording for loopback ComfyUI addresses', () => {
+        const message = 构建ComfyUI连接失败提示('http://127.0.0.1:8188', new Error('Failed to fetch'));
+
+        expect(message).toContain('本机 ComfyUI');
+        expect(message).toContain('手机/APK 里误填了 127.0.0.1');
+        expect(message).toContain('电脑的局域网 IP');
+        expect(message).not.toContain('CNB 的 VS Code 页面保持打开');
+    });
+
+    it('uses LAN deployment wording for private ComfyUI addresses', () => {
+        const message = 构建ComfyUI连接失败提示('http://192.168.1.23:8188', new Error('Failed to fetch'));
+
+        expect(message).toContain('局域网 IP');
+        expect(message).toContain('防火墙');
+        expect(message).toContain('--listen 0.0.0.0');
+        expect(message).not.toContain('CNB 工作区页面地址');
+    });
+
     it('uses backend-specific wording for SD WebUI', () => {
         const message = 构建通用生图连接失败提示('sd_webui', 'http://127.0.0.1:7860', new Error('NetworkError'));
 

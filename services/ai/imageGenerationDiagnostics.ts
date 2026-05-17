@@ -68,6 +68,62 @@ export const 判断疑似网络或跨域错误 = (error: any): boolean => {
 
 const 清理末尾斜杠 = (value: string): string => value.replace(/\/+$/, '');
 
+type ComfyUI地址类型 = 'cnb' | 'loopback' | 'lan' | 'public' | 'unknown';
+
+const 判断局域网主机 = (hostname: string): boolean => {
+    const host = hostname.toLowerCase();
+    if (host === 'localhost' || host.endsWith('.localhost') || host === '[::1]' || host === '::1') return true;
+    if (/^127\./.test(host)) return true;
+    if (/^10\./.test(host)) return true;
+    if (/^192\.168\./.test(host)) return true;
+    const match172 = host.match(/^172\.(\d+)\./);
+    if (match172) {
+        const second = Number(match172[1]);
+        return second >= 16 && second <= 31;
+    }
+    return /\.local$/i.test(host);
+};
+
+const 识别ComfyUI地址类型 = (baseUrlRaw: string): ComfyUI地址类型 => {
+    try {
+        const url = new URL((baseUrlRaw || '').trim());
+        const host = url.hostname.toLowerCase();
+        if (/(^|\.)cnb\.run$/i.test(host) || /(^|\.)cnb\.space$/i.test(host)) return 'cnb';
+        if (host === 'localhost' || host.endsWith('.localhost') || host === '::1' || /^127\./.test(host)) return 'loopback';
+        if (判断局域网主机(host)) return 'lan';
+        return /^https?:$/i.test(url.protocol) ? 'public' : 'unknown';
+    } catch {
+        return 'unknown';
+    }
+};
+
+const 构建ComfyUI连接失败排查说明 = (baseUrl: string): string[] => {
+    const addressType = 识别ComfyUI地址类型(baseUrl);
+    if (addressType === 'loopback') {
+        return [
+            '可能原因：本机 ComfyUI 没有启动、端口填错、浏览器跨域 CORS 被拦截，或在手机/APK 里误填了 127.0.0.1/localhost。',
+            '请确认：1. 在运行 ComfyUI 的同一台电脑浏览器打开该地址，确认页面或 /system_stats 能访问；2. ComfyUI 启动参数包含 --listen 0.0.0.0 --port 8188 --enable-cors-header "*"；3. 如果是手机/APK 连接电脑本地 ComfyUI，不要填 127.0.0.1，请改填电脑的局域网 IP，例如 http://192.168.1.23:8188。'
+        ];
+    }
+    if (addressType === 'lan') {
+        return [
+            '可能原因：局域网 IP 或端口不可达、ComfyUI 没有监听 0.0.0.0、电脑防火墙拦截 8188，手机和电脑不在同一网络，或 ComfyUI 没有开启 CORS。',
+            '请确认：1. 在同一局域网另一台设备浏览器打开该地址；2. ComfyUI 启动参数包含 --listen 0.0.0.0 --port 8188 --enable-cors-header "*"；3. Windows 防火墙允许 Python/ComfyUI 的 8188 端口入站。'
+        ];
+    }
+    if (addressType === 'cnb') {
+        return [
+            '可能原因：服务器未启动、地址已失效、CNB 工作区或 VS Code 页面被关闭导致后端休眠、浏览器被跨域限制拦截，或 ComfyUI 启动时没有开启 CORS。',
+            '请确认：1. CNB 的 VS Code 页面保持打开并在线；2. 自动发现列表里的 8188 地址仍可访问；3. ComfyUI 启动参数包含 --listen 0.0.0.0 --enable-cors-header "*"；4. 如果刚重启过后端，请刷新列表后重新选择地址。',
+            'CNB 工作区页面地址通常类似：https://cnb-xxxx-xxxx-001.cnb.space/?folder=/workspace。'
+        ];
+    }
+    return [
+        '可能原因：服务器没有启动、地址或端口填错、网络不可达、浏览器跨域 CORS 被拦截，或远程后端已经休眠。',
+        '请确认：1. 先在浏览器直接打开该 ComfyUI 地址；2. ComfyUI 启动参数包含 --listen 0.0.0.0 --port 8188 --enable-cors-header "*"；3. 如果是远程服务器，请确认安全组/防火墙已放行 8188。'
+    ];
+};
+
 const 获取运行时代理基础地址 = (): string => {
     if (typeof window !== 'undefined' && /^https?:$/i.test(window.location.protocol) && !isNativeCapacitorEnvironment()) {
         return window.location.origin.replace(/\/+$/, '');
@@ -180,9 +236,7 @@ export const 构建ComfyUI连接失败提示 = (baseUrlRaw: string, error?: any)
     const rawMessage = typeof error?.message === 'string' && error.message.trim() ? error.message.trim() : '';
     return [
         `ComfyUI 连接失败，当前地址：${baseUrl}。`,
-        '可能原因：服务器未启动、地址已失效、CNB 工作区或 VS Code 页面被关闭导致后端休眠、浏览器被跨域限制拦截，或 ComfyUI 启动时没有开启 CORS。',
-        '请确认：1. CNB 的 VS Code 页面保持打开并在线；2. 自动发现列表里的 8188 地址仍可访问；3. ComfyUI 启动参数包含 --listen 0.0.0.0 --enable-cors-header "*"；4. 如果刚重启过后端，请刷新列表后重新选择地址。',
-        'CNB 工作区页面地址通常类似：https://cnb-xxxx-xxxx-001.cnb.space/?folder=/workspace。',
+        ...构建ComfyUI连接失败排查说明(baseUrl),
         rawMessage ? `原始错误：${rawMessage}` : ''
     ].filter(Boolean).join('\n');
 };
@@ -233,6 +287,15 @@ export const 构建ComfyUI精确连接失败提示 = async (baseUrlRaw: string, 
     }
 
     if (probe?.reachable === false) {
+        const addressType = 识别ComfyUI地址类型(baseUrl);
+        if (addressType === 'loopback' || addressType === 'lan') {
+            return [
+                `ComfyUI 服务器不可达，当前地址：${baseUrl}。`,
+                ...构建ComfyUI连接失败排查说明(baseUrl),
+                probe.error ? `远程探测错误：${probe.error}` : '',
+                rawMessage ? `浏览器原始错误：${rawMessage}` : ''
+            ].filter(Boolean).join('\n');
+        }
         const reasonText = probe.reason === 'timeout'
             ? '远程探测超时，后端大概率已休眠、正在启动或网络不可达。'
             : probe.reason === 'dns_error'
@@ -251,6 +314,14 @@ export const 构建ComfyUI精确连接失败提示 = async (baseUrlRaw: string, 
     }
 
     if (isNativeCapacitorEnvironment()) {
+        const addressType = 识别ComfyUI地址类型(baseUrl);
+        if (addressType === 'loopback' || addressType === 'lan') {
+            return [
+                `ComfyUI 连接失败，当前地址：${baseUrl}。`,
+                ...构建ComfyUI连接失败排查说明(baseUrl),
+                rawMessage ? `原始错误：${rawMessage}` : ''
+            ].filter(Boolean).join('\n');
+        }
         return [
             `ComfyUI 连接失败，当前地址：${baseUrl}。`,
             '当前在 APK 内，已尝试远程诊断但没有拿到明确结果。最常见原因仍是 CNB 工作区页面关闭导致后端休眠，或地址已经变化。',
