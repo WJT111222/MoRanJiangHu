@@ -58,4 +58,22 @@ describe('imageHostService', () => {
 
         vi.stubGlobal('window', originalWindow);
     });
+
+    it('includes upload diagnostics when the image host rejects a request', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+            success: false,
+            error: 'error code: 1102',
+            requestId: 'imgup_test',
+            upstreamStatus: 500
+        }), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Moran-Image-Proxy-Request-Id': 'imgup_test',
+                'X-Moran-Image-Upstream-Status': '500'
+            }
+        })));
+
+        await expect(上传DataUrl到图床('data:image/png;base64,aGVsbG8=')).rejects.toThrow(/HTTP 500/);
+    });
 });
