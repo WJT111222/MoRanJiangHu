@@ -10,7 +10,7 @@ type 场景生图触发参数 = {
     autoApply?: boolean;
     画师串预设ID?: string;
     PNG画风预设ID?: string;
-    构图要求?: '纯场景' | '故事快照';
+    构图要求?: '纯场景' | '故事快照' | '剧照';
     尺寸?: string;
     额外要求?: string;
     强制执行?: boolean;
@@ -19,7 +19,7 @@ type 场景生图触发参数 = {
 type 手动场景生图参数 = {
     画师串预设ID?: string;
     PNG画风预设ID?: string;
-    构图要求?: '纯场景' | '故事快照';
+    构图要求?: '纯场景' | '故事快照' | '剧照';
     尺寸?: string;
     额外要求?: string;
     后台处理?: boolean;
@@ -39,7 +39,7 @@ type 场景生图触发工作流依赖 = {
     提取NPC生图基础数据: (npc: any) => any;
     读取文生图功能配置: () => {
         场景画风?: any;
-        场景构图要求: '纯场景' | '故事快照';
+        场景构图要求: '纯场景' | '故事快照' | '剧照';
         场景尺寸: string;
     };
     场景模式已开启: () => boolean;
@@ -183,7 +183,7 @@ export const 创建场景生图触发工作流 = (deps: 场景生图触发工作
         const envSnapshot = deps.规范化环境信息(deps.深拷贝(params.env || deps.获取环境()));
         const imageFeature = deps.读取文生图功能配置();
         const effectiveComposition = params.构图要求 || imageFeature.场景构图要求;
-        const characterSnapshot = effectiveComposition === '故事快照'
+        const characterSnapshot = effectiveComposition === '故事快照' || effectiveComposition === '剧照'
             ? 构建场景人物快照(bodyText, params.response)
             : null;
         const sceneContext = {
@@ -196,9 +196,11 @@ export const 创建场景生图触发工作流 = (deps: 场景生图触发工作
             天气: envSnapshot?.天气?.天气 || '',
             玩家输入: params.playerInput || '',
             最新正文: bodyText,
-            场景目标: effectiveComposition === '故事快照'
-                ? '基于当前正文还原这一刻的场景快照，包含环境、动作、站位、人物关系和在场角色外观，不是空背景。'
-                : '生成纯环境壁纸：完整描绘地点、建筑、自然物、天气与光影层次，让环境成为唯一主体。',
+            场景目标: effectiveComposition === '剧照'
+                ? '基于当前正文生成电影剧照感画面：人物、环境、动作和光影同时成立，像一帧可截取的影视镜头，不能只有人物或只有背景。'
+                : effectiveComposition === '故事快照'
+                    ? '基于当前正文还原这一刻的场景快照，包含环境、动作、站位、人物关系和在场角色外观，不是空背景。'
+                    : '生成纯环境壁纸：完整描绘地点、建筑、自然物、天气与光影层次，让环境成为唯一主体。',
             ...(characterSnapshot ? { 人物快照: characterSnapshot } : {})
         };
         const requestId = `scene_apply_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

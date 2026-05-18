@@ -2577,7 +2577,8 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                                     value={form.功能模型占位.自动场景生图构图要求 || '纯场景'}
                                     options={[
                                         { value: '纯场景', label: '纯场景' },
-                                        { value: '故事快照', label: '故事快照' }
+                                        { value: '故事快照', label: '故事快照' },
+                                        { value: '剧照', label: '剧照' }
                                     ]}
                                     onChange={(value) => updatePlaceholder('自动场景生图构图要求', value as 功能模型占位配置结构['自动场景生图构图要求'])}
                                     buttonClassName="bg-black/50 border-gray-600 py-2.5"

@@ -42,7 +42,7 @@ interface Props {
     onGenerateImage?: (npcId: string, options?: { 构图?: '头像' | '半身' | '立绘'; 画风?: '通用' | '二次元' | '写实' | '国风'; 画师串?: string; 画师串预设ID?: string; PNG画风预设ID?: string; 额外要求?: string; 尺寸?: string; 后台处理?: boolean }) => Promise<void> | void;
     onGenerateSecretPartImage?: (npcId: string, part: 香闺秘档部位类型 | '全部', options?: { 画风?: '通用' | '二次元' | '写实' | '国风'; 画师串?: string; 画师串预设ID?: string; PNG画风预设ID?: string; 额外要求?: string; 尺寸?: string; 后台处理?: boolean }) => Promise<void> | void;
     onRetryImage?: (npcId: string) => Promise<void> | void;
-    onGenerateSceneImage?: (options?: { 画师串预设ID?: string; PNG画风预设ID?: string; 构图要求?: '纯场景' | '故事快照'; 尺寸?: string; 额外要求?: string; 后台处理?: boolean }) => Promise<void> | void;
+    onGenerateSceneImage?: (options?: { 画师串预设ID?: string; PNG画风预设ID?: string; 构图要求?: '纯场景' | '故事快照' | '剧照'; 尺寸?: string; 额外要求?: string; 后台处理?: boolean }) => Promise<void> | void;
     onSetPersistentWallpaper?: (imageUrl: string) => Promise<void> | void;
     onClearPersistentWallpaper?: () => Promise<void> | void;
     onSelectAvatarImage?: (npcId: string, imageId: string) => Promise<void> | void;
@@ -1320,7 +1320,7 @@ const SceneTabContent: React.FC<TabProps> = ({
         return scenePngStylePresets[0]?.id || '';
     }, [currentScenePngStylePresetId, scenePngStylePresets]);
     const defaultSceneCompositionRequirement = React.useMemo(
-        () => (presetFeature?.自动场景生图构图要求 === '故事快照' ? '故事快照' : '纯场景'),
+        () => (presetFeature?.自动场景生图构图要求 === '故事快照' || presetFeature?.自动场景生图构图要求 === '剧照' ? presetFeature.自动场景生图构图要求 : '纯场景'),
         [presetFeature]
     );
     const defaultSceneOrientation = React.useMemo(
@@ -1333,7 +1333,7 @@ const SceneTabContent: React.FC<TabProps> = ({
     }, [defaultSceneOrientation, presetFeature]);
     const [sceneManualArtistPresetId, setSceneManualArtistPresetId] = React.useState('');
     const [sceneManualPngPresetId, setSceneManualPngPresetId] = React.useState('');
-    const [sceneCompositionRequirement, setSceneCompositionRequirement] = React.useState<'纯场景' | '故事快照'>(defaultSceneCompositionRequirement);
+    const [sceneCompositionRequirement, setSceneCompositionRequirement] = React.useState<'纯场景' | '故事快照' | '剧照'>(defaultSceneCompositionRequirement);
     const [sceneOrientation, setSceneOrientation] = React.useState<'横屏' | '竖屏'>(defaultSceneOrientation);
     const [sceneResolution, setSceneResolution] = React.useState(defaultSceneResolution);
     const [sceneExtraRequirement, setSceneExtraRequirement] = React.useState('');
@@ -1435,8 +1435,8 @@ const SceneTabContent: React.FC<TabProps> = ({
                 )}
                 <div className="space-y-2">
                     <label className={小标题样式}>场景构图要求</label>
-                    <div className="grid grid-cols-2 gap-2">
-                        {(['纯场景', '故事快照'] as const).map((mode) => (
+                    <div className="grid grid-cols-3 gap-2">
+                        {(['纯场景', '故事快照', '剧照'] as const).map((mode) => (
                             <button
                                 key={mode}
                                 type="button"
@@ -1447,7 +1447,7 @@ const SceneTabContent: React.FC<TabProps> = ({
                             </button>
                         ))}
                     </div>
-                    <div className="text-[10px] text-gray-500">纯场景为景观环境，故事快照包含人物互动。</div>
+                    <div className="text-[10px] text-gray-500">纯场景偏景观，故事快照抓互动，剧照保留人物、环境与电影镜头感。</div>
                 </div>
                 <div className="space-y-2">
                     <label className={小标题样式}>画面方向</label>

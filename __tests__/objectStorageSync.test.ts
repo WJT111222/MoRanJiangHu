@@ -183,6 +183,64 @@ describe('对象存储同步', () => {
         );
     });
 
+    it('上传遇到同同步键但不同哈希的存档时保留两个版本', async () => {
+        const local = makeSave(1);
+        const remoteMetadata = {
+            id: 'manual_old_hash',
+            fileName: 'manual_old_hash.json',
+            syncKey: 'manual|1779000000001|测试角色1',
+            title: '测试角色1',
+            type: 'manual',
+            saveTimestamp: 1779000000001,
+            savedAt: new Date(1779000000001).toISOString(),
+            syncedAt: new Date(1779000001000).toISOString(),
+            deviceType: 'phone',
+            deviceLabel: '手机',
+            appVersion: '1.0.test',
+            versionCode: 998,
+            hash: 'remotehash0001',
+            size: 1234,
+            location: '手机地点',
+            gameTime: '手机时间'
+        };
+        let writtenManifest: any = null;
+        const dbService = await import('../services/dbService');
+        vi.mocked(dbService.读取存档列表).mockResolvedValueOnce([local]);
+
+        vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+            const headers = new Headers(init?.headers);
+            const method = headers.get('X-Object-Storage-Method') || '';
+            const key = headers.get('X-Object-Storage-Key') || '';
+            if (!method) {
+                throw new TypeError('CORS blocked direct object storage request');
+            }
+            if (method === 'GET' && key.endsWith('/manifest.json')) {
+                return new Response(JSON.stringify({
+                    format: 'moranjianghu-object-storage-manifest',
+                    version: 1,
+                    updatedAt: new Date().toISOString(),
+                    saves: [remoteMetadata]
+                }), { status: 200 });
+            }
+            if (method === 'PUT' && key.includes('/saves/')) {
+                return new Response('', { status: 200 });
+            }
+            if (method === 'PUT' && key.endsWith('/manifest.json')) {
+                writtenManifest = JSON.parse(String(init?.body || '{}'));
+                return new Response('', { status: 200 });
+            }
+            return new Response('', { status: 200 });
+        }));
+
+        const { 增量同步到对象存储 } = await import('../services/objectStorageSync');
+        const result = await 增量同步到对象存储(config);
+
+        expect(result.uploaded).toBe(1);
+        expect(result.skipped).toBe(0);
+        expect(writtenManifest.saves).toHaveLength(2);
+        expect(new Set(writtenManifest.saves.map((item: any) => item.hash)).size).toBe(2);
+    });
+
     it('增量导入会用云端哈希跳过本地已有存档，避免重复下载', async () => {
         const local = {
             ...makeSave(1),
