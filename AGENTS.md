@@ -435,3 +435,10 @@ If the task is "confirm this UI works" and the opening flow depends on external 
 - `npm.cmd run build` passed after NPC gameplay location update changes.
 - Each build touched release metadata via `release:sync`; generated `data/releaseInfo.ts` and `public/release-info.json` were restored because this was not a release.
 - User confirmed the map NPC placement display was correct after the placement fix.
+
+## 2026-05-18 GitHub Actions Disabled And Direct Cloudflare Release Rule
+
+- GitHub Actions automatic CI and automatic Cloudflare Worker deploy are disabled. The workflow files should keep only `workflow_dispatch` manual triggers unless the user explicitly asks to re-enable automatic CI/deploy.
+- Do not rely on GitHub Actions for normal releases. Future release publishing should be performed from the local machine with direct Cloudflare commands.
+- For Cloudflare deploys, clear proxy environment variables first and use explicit command timeouts, following the existing release deployment coverage rules.
+- Pushing to `main` is now only a source backup step; it should not be treated as the deployment mechanism.
