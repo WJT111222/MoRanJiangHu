@@ -105,7 +105,7 @@ const 无材质物品: 结构化物品条目[] = [
     { 名称: '兽皮', 物品: '兽皮', 类型: '材料', 品质: '凡品', 视觉标签: ['animal hide', 'rough leather'], 生图描述: 'rough cured animal hide used as crafting leather' },
     { 名称: '千年灵芝', 物品: '千年灵芝', 类型: '材料', 品质: '极品', 视觉标签: ['lingzhi mushroom', 'rare herb'], 生图描述: 'single thousand year lingzhi mushroom with glossy red cap and golden spores, botanical specimen only, no label' },
     { 名称: '百年何首乌', 物品: '百年何首乌', 类型: '材料', 品质: '上品', 视觉标签: ['he shou wu root', 'medicinal herb'], 生图描述: 'century old he shou wu root with fibrous natural texture' },
-    { 名称: '蛇胆', 物品: '蛇胆', 类型: '材料', 品质: '良品', 视觉标签: ['snake gall', 'small vial'], 生图描述: 'dark green snake gall medicinal ingredient in a small vial' },
+    { 名称: '蛇胆', 物品: '蛇胆', 类型: '材料', 品质: '良品', 视觉标签: ['snake gallbladder organ', 'translucent dark green bile sac', 'medicinal ingredient', 'small porcelain dish'], 生图描述: 'one translucent dark green snake gallbladder organ, oval bile sac medicinal ingredient, placed on a small shallow white porcelain dish, wet glossy membrane, no snake body, no worm, no eel, no vial, no bottle' },
     { 名称: '基础剑法残卷', 物品: '秘籍残卷', 类型: '秘籍', 品质: '凡品', 视觉标签: ['torn scroll', 'faded ink diagram'], 生图描述: 'torn incomplete martial arts manual scroll with abstract faded practice diagrams, no readable writing' },
     { 名称: '吐纳心法', 物品: '秘籍', 类型: '秘籍', 品质: '良品', 视觉标签: ['paper scroll', 'breathing manual'], 生图描述: 'well preserved blank cultivation scroll tied with silk ribbon, subtle abstract line diagrams only, no readable writing' },
     { 名称: '轻身术', 物品: '秘籍', 类型: '秘籍', 品质: '良品', 视觉标签: ['silk scroll', 'movement manual'], 生图描述: 'thin silk martial arts scroll with abstract movement diagram silhouettes, no readable writing' },

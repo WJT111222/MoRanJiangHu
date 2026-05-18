@@ -118,6 +118,25 @@ const typeMap = {
   '杂物': 'miscellaneous prop'
 };
 
+const itemSpecificPrompt = (item) => {
+  if (item.名称 === '蛇胆') {
+    return [
+      'must look like one real snake gallbladder organ, a small oval dark green translucent bile sac',
+      'placed on a shallow white porcelain dish',
+      'wet glossy membrane, organic medicinal ingredient',
+      'no snake body, no snake head, no curled worm, no eel, no vial, no bottle, no necklace'
+    ].join(', ');
+  }
+  if (item.物品 === '弩' || item.名称.endsWith('弩')) {
+    return [
+      'must look like a handheld crossbow, horizontal bow limbs, central stock, trigger mechanism, short bolt groove',
+      'clear crossbow silhouette viewed from a three quarter top angle',
+      'not a longbow, not a staff, not a gun, not a sword, not armor'
+    ].join(', ');
+  }
+  return '';
+};
+
 const stableSeed = (name) => {
   let hash = 2166136261;
   for (const ch of name) {
@@ -131,6 +150,7 @@ const buildPrompt = (item) => [
   common,
   `single ${qualityMap[item.品质] || 'common'} ${typeMap[item.类型] || 'prop'}`,
   `form and materials: ${item.生图描述}`,
+  itemSpecificPrompt(item),
   Array.isArray(item.视觉标签) && item.视觉标签.length > 0 ? `visual tags: ${item.视觉标签.join(', ')}` : '',
   'inventory icon source image, product photography, object fills most of the frame, readable silhouette, ancient Chinese wuxia prop, plain background',
   'absolutely no text, no letters, no numbers, no Chinese characters, no calligraphy, no captions, no labels, no watermarks, no logos, no writing on the object'
@@ -354,7 +374,10 @@ async function syncPresetRegistry(generatedItems) {
 
 await fs.mkdir(outDir, { recursive: true });
 if (!DRY_RUN) {
-  const statsText = await fetch(`${COMFY_URL}/system_stats`).then((r) => r.text());
+  let statsText = await fetch(`${COMFY_URL}/system_stats`).then((r) => r.text()).catch(() => '');
+  if (!statsText.trim().startsWith('{')) {
+    statsText = await fetch(`${COMFY_URL}/api/system_stats`).then((r) => r.text());
+  }
   const stats = JSON.parse(statsText.replace(/^\uFEFF/, ''));
   console.log(`ComfyUI ${stats.system?.comfyui_version || 'unknown'} ready`);
 }
