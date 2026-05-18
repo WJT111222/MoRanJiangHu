@@ -450,7 +450,7 @@ const MobileSocial: React.FC<Props> = ({
                                     }}
                                     onClick={() => 打开图片查看器(当前背景, `${currentNPC?.姓名 || '角色'} 背景`)}
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/20 pointer-events-none"></div>
+                                    <div className="social-background-image-dim absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/20 pointer-events-none"></div>
                                 </div>
                             ) : (
                                 <div className="w-full h-full bg-ink-wash/5 bg-cover bg-center opacity-70"></div>
