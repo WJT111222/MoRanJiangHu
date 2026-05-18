@@ -23,7 +23,8 @@
     "apk:debug": "npm run apk:sync && cd android && gradlew.bat assembleDebug",
     "apk:release": "npm run apk:sync && cd android && gradlew.bat assembleRelease",
     "stress:test": "node scripts/promptStressTest.js",
-    "preset:images": "node scripts/generate-preset-item-images.mjs"
+    "preset:images": "node scripts/generate-preset-item-images.mjs",
+    "preset:feedback": "node scripts/sync-item-preset-feedback-data.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
