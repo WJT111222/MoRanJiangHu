@@ -460,7 +460,10 @@ const 构建存档去重键 = (save: {
     角色数据?: any;
     环境信息?: any;
     历史记录?: unknown;
+    元数据?: any;
 }): string => {
+    const metadataHash = 计算存档同步哈希(save as Partial<存档结构>);
+    if (metadataHash) return `hash|${metadataHash}`;
     const type = save?.类型 === 'auto' ? 'auto' : 'manual';
     const ts = Math.max(0, Math.floor(safeNumber(save?.时间戳, 0)));
     const name = typeof save?.角色数据?.姓名 === 'string' ? save.角色数据.姓名.trim() : '';
@@ -478,10 +481,43 @@ const 计算文本短哈希 = (text: string): string => {
     return (hash >>> 0).toString(16).padStart(8, '0');
 };
 
-export const 计算存档摘要短哈希 = (save: Partial<存档结构> | null | undefined): string => {
+const 稳定序列化 = (value: any): any => {
+    if (Array.isArray(value)) return value.map((item) => 稳定序列化(item));
+    if (!value || typeof value !== 'object') return value;
+    const result: Record<string, any> = {};
+    Object.keys(value).sort().forEach((key) => {
+        if (key === 'id') return;
+        if (key === '存档哈希') return;
+        if (key.startsWith('对象存储')) return;
+        if (key.startsWith('WebDAV')) return;
+        result[key] = 稳定序列化(value[key]);
+    });
+    return result;
+};
+
+const 计算稳定文本哈希 = (text: string): string => {
+    let left = 2166136261;
+    let right = 2166136261 ^ 0x9e3779b9;
+    for (let index = 0; index < text.length; index += 1) {
+        const code = text.charCodeAt(index);
+        left ^= code;
+        left = Math.imul(left, 16777619);
+        right ^= code + index;
+        right = Math.imul(right, 2246822519);
+    }
+    return `${(left >>> 0).toString(16).padStart(8, '0')}${(right >>> 0).toString(16).padStart(8, '0')}`;
+};
+
+export const 计算存档同步哈希 = (save: Partial<存档结构> | null | undefined): string => {
     const metadataHash = typeof save?.元数据?.存档哈希 === 'string' && save.元数据.存档哈希.trim()
-        ? save.元数据.存档哈希.trim()
-        : (typeof save?.元数据?.对象存储哈希 === 'string' ? save.元数据.对象存储哈希.trim() : '');
+        ? save.元数据.存档哈希.trim().replace(/[^a-f0-9]/gi, '').toLowerCase()
+        : '';
+    if (metadataHash) return metadataHash;
+    return 计算稳定文本哈希(JSON.stringify(稳定序列化(save || {})));
+};
+
+export const 计算存档摘要短哈希 = (save: Partial<存档结构> | null | undefined): string => {
+    const metadataHash = 计算存档同步哈希(save);
     if (metadataHash) return metadataHash.replace(/[^a-f0-9]/gi, '').slice(-8).toLowerCase() || metadataHash.slice(-8);
     return 计算文本短哈希(JSON.stringify({
         id: typeof save?.id === 'number' ? save.id : null,
@@ -576,6 +612,10 @@ const 清洗导入存档 = (raw: any): Omit<存档结构, 'id'> | null => {
         拍卖行: raw.拍卖行 && typeof raw.拍卖行 === 'object' ? 深拷贝(raw.拍卖行) : undefined
     };
 
+    normalized.元数据 = {
+        ...(normalized.元数据 || {}),
+        存档哈希: 计算存档同步哈希(normalized)
+    };
     return normalized;
 };
 

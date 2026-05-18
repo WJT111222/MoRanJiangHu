@@ -25,6 +25,7 @@ vi.mock('../services/dbService', () => ({
     保存设置: vi.fn(),
     读取存档列表: vi.fn(async () => [makeSave(1), makeSave(2), makeSave(3)]),
     导入存档数据: vi.fn(),
+    计算存档同步哈希: vi.fn((save: any) => save?.元数据?.存档哈希 || `sync${String(save?.时间戳 || '').slice(-4)}_${save?.环境信息?.具体地点 || ''}_${Array.isArray(save?.历史记录) ? save.历史记录.length : 0}`),
     计算存档摘要短哈希: vi.fn((save: any) => `hash${String(save?.时间戳 || '').slice(-4)}`)
 }));
 
@@ -180,5 +181,36 @@ describe('对象存储同步', () => {
             { saves: [expect.objectContaining({ 环境信息: expect.objectContaining({ 具体地点: '手机新增地点' }) })] },
             { 覆盖现有: false }
         );
+    });
+
+    it('增量导入会用云端哈希跳过本地已有存档，避免重复下载', async () => {
+        const local = {
+            ...makeSave(1),
+            元数据: { 存档哈希: 'abcdef1234567890' }
+        };
+        const cloudMetadata = {
+            id: 'manual_existing_hash',
+            fileName: 'manual_existing_hash.json',
+            syncKey: 'manual|1779000000001|测试角色1',
+            title: '测试角色1',
+            type: 'manual',
+            saveTimestamp: 1779000000001,
+            savedAt: new Date(1779000000001).toISOString(),
+            syncedAt: new Date(1779000001000).toISOString(),
+            hash: 'abcdef1234567890',
+            size: 1234
+        };
+
+        const dbService = await import('../services/dbService');
+        vi.mocked(dbService.读取存档列表).mockResolvedValueOnce([local]);
+        vi.stubGlobal('fetch', vi.fn(async () => {
+            throw new Error('不应下载本地已有哈希的云存档');
+        }));
+
+        const { 增量导入对象存储云存档 } = await import('../services/objectStorageSync');
+        const result = await 增量导入对象存储云存档(config, [cloudMetadata as any]);
+
+        expect(result).toEqual({ total: 1, imported: 0, skipped: 1 });
+        expect(dbService.导入存档数据).not.toHaveBeenCalled();
     });
 });
