@@ -505,7 +505,7 @@ const SocialModal: React.FC<Props> = ({
                                     className="absolute inset-0 w-full h-full bg-center opacity-90 bg-no-repeat"
                                     style={{ backgroundImage: `url(${当前背景})`, backgroundPosition: 'center 10%', backgroundSize: '100% auto' }}
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-black/10"></div>
+                                    <div className="social-background-image-dim absolute inset-0 bg-gradient-to-t from-black via-black/45 to-black/10"></div>
                                 </div>
                             ) : (
                                 <div className="absolute inset-0 bg-ink-wash/5 bg-cover bg-center opacity-70"></div>
