@@ -29,7 +29,8 @@ const formatTime = (value?: string | null): string => {
 
 const buildCloudSaveLabel = (item: 对象存储云存档元数据): string => {
     const device = item.deviceLabel || (item.deviceType === 'phone' ? '手机' : '电脑');
-    return `${item.title || '未知角色'} · ${device} · ${formatTime(item.syncedAt || item.savedAt)} · v${item.appVersion || '未知版本'}`;
+    const hashTail = (item.hash || '').replace(/[^a-f0-9]/gi, '').slice(-8);
+    return `${item.title || '未知角色'} · #${hashTail || '--------'} · ${device} · ${formatTime(item.syncedAt || item.savedAt)} · v${item.appVersion || '未知版本'}`;
 };
 
 const readConfig = (config: 对象存储同步配置): 对象存储同步配置 => ({

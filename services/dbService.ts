@@ -469,6 +469,28 @@ const 构建存档去重键 = (save: {
     return `${type}|${ts}|${name}|${envTime}|${historyCount}`;
 };
 
+const 计算文本短哈希 = (text: string): string => {
+    let hash = 2166136261;
+    for (let index = 0; index < text.length; index += 1) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, '0');
+};
+
+export const 计算存档摘要短哈希 = (save: Partial<存档结构> | null | undefined): string => {
+    const metadataHash = typeof save?.元数据?.存档哈希 === 'string' && save.元数据.存档哈希.trim()
+        ? save.元数据.存档哈希.trim()
+        : (typeof save?.元数据?.对象存储哈希 === 'string' ? save.元数据.对象存储哈希.trim() : '');
+    if (metadataHash) return metadataHash.replace(/[^a-f0-9]/gi, '').slice(-8).toLowerCase() || metadataHash.slice(-8);
+    return 计算文本短哈希(JSON.stringify({
+        id: typeof save?.id === 'number' ? save.id : null,
+        key: 构建存档去重键(save || {}),
+        realSavedAt: save?.元数据?.现实保存时间戳 || null,
+        schemaVersion: save?.元数据?.schemaVersion || null
+    }));
+};
+
 export type 存档摘要结构 = Pick<存档结构, 'id' | '类型' | '时间戳' | '元数据' | '游戏初始时间' | '角色数据' | '环境信息'>;
 
 const 构建存档摘要记录 = (save: Partial<存档结构> | null | undefined, id?: number): 存档摘要结构 | null => {

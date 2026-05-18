@@ -24,7 +24,8 @@ vi.mock('../services/dbService', () => ({
     读取设置: vi.fn(),
     保存设置: vi.fn(),
     读取存档列表: vi.fn(async () => [makeSave(1), makeSave(2), makeSave(3)]),
-    导入存档数据: vi.fn()
+    导入存档数据: vi.fn(),
+    计算存档摘要短哈希: vi.fn((save: any) => `hash${String(save?.时间戳 || '').slice(-4)}`)
 }));
 
 vi.mock('../services/saveArchiveService', () => ({
@@ -115,5 +116,69 @@ describe('对象存储同步', () => {
         expect(directSaveKeys.size).toBe(3);
         expect(fallbackChunkUploads).toBeGreaterThan(3);
         expect(maxActiveWholeUploads).toBeGreaterThan(1);
+    });
+
+    it('增量导入会下载同同步键云存档，再交给本地精确去重', async () => {
+        const local = makeSave(1);
+        const cloud = {
+            ...makeSave(1),
+            环境信息: { 具体地点: '手机新增地点', 时间: '手机新增时间' },
+            历史记录: [
+                { role: 'user', parts: [{ text: '手机新增回合' }] },
+                { role: 'assistant', content: '新内容' }
+            ]
+        };
+        const packagePayload = {
+            format: 'moranjianghu-object-storage-save-package',
+            version: 1,
+            metadata: {
+                id: 'manual_same_sync_key_hash',
+                fileName: 'manual_same_sync_key_hash.json',
+                syncKey: 'manual|1779000000001|测试角色1',
+                title: '测试角色1',
+                type: 'manual',
+                saveTimestamp: 1779000000001,
+                savedAt: new Date(1779000000001).toISOString(),
+                syncedAt: new Date(1779000001000).toISOString(),
+                deviceType: 'phone',
+                deviceLabel: '手机',
+                appVersion: '1.0.test',
+                versionCode: 999,
+                hash: 'abcdef1234567890',
+                size: 1234,
+                location: '手机新增地点',
+                gameTime: '手机新增时间'
+            },
+            archiveBase64: 'ZmFrZS16aXA='
+        };
+
+        const dbService = await import('../services/dbService');
+        vi.mocked(dbService.读取存档列表).mockResolvedValueOnce([local]);
+        vi.mocked(dbService.导入存档数据).mockResolvedValueOnce({ total: 1, imported: 1, skipped: 0 });
+        const archiveService = await import('../services/saveArchiveService');
+        vi.mocked(archiveService.解析ZIP存档文件).mockResolvedValueOnce({ saves: [cloud] } as any);
+
+        vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+            const headers = new Headers(init?.headers);
+            const method = headers.get('X-Object-Storage-Method') || '';
+            const key = headers.get('X-Object-Storage-Key') || '';
+            if (!method) {
+                throw new TypeError('CORS blocked direct object storage request');
+            }
+            if (method === 'GET' && key.endsWith('/saves/manual_same_sync_key_hash.json')) {
+                return new Response(JSON.stringify(packagePayload), { status: 200 });
+            }
+            throw new Error(`unexpected request ${method} ${key}`);
+        }));
+
+        const { 增量导入对象存储云存档 } = await import('../services/objectStorageSync');
+        const result = await 增量导入对象存储云存档(config, [packagePayload.metadata as any]);
+
+        expect(result).toEqual({ total: 1, imported: 1, skipped: 0 });
+        expect(archiveService.解析ZIP存档文件).toHaveBeenCalledTimes(1);
+        expect(dbService.导入存档数据).toHaveBeenCalledWith(
+            { saves: [expect.objectContaining({ 环境信息: expect.objectContaining({ 具体地点: '手机新增地点' }) })] },
+            { 覆盖现有: false }
+        );
     });
 });

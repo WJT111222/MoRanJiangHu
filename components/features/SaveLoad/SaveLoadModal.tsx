@@ -217,6 +217,8 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         return tags.join(' · ');
     };
 
+    const 读取存档短哈希 = (save: 存档列表项): string => dbService.计算存档摘要短哈希(save);
+
     const handleDelete = async (id: number, e: React.MouseEvent) => {
         e.stopPropagation();
         if (saveProtectionEnabled) {
@@ -619,6 +621,9 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
                                             <span className="font-bold text-gray-200 text-sm">{构建存档标题(save)}</span>
                                             <span className="text-xs text-gray-500">
                                                 {save.角色数据?.境界 || '未知境界'}
+                                            </span>
+                                            <span className="rounded border border-gray-700 bg-black/35 px-1.5 py-0.5 font-mono text-[10px] text-wuxia-cyan/80" title="存档短哈希，用于区分同名同时间附近的存档">
+                                                #{读取存档短哈希(save)}
                                             </span>
                                         </div>
                                         <div className="text-[10px] text-gray-600 font-mono text-right" style={{ fontFamily: 'var(--ui-等宽信息-font-family, inherit)', fontSize: 'var(--ui-等宽信息-font-size, 12px)' }}>
