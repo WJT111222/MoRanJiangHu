@@ -443,9 +443,6 @@ const objectStorageFetch = async (
     try {
         const methodUpper = method.toUpperCase();
         const directUrl = 构建直连对象存储地址(config, segments);
-        if (methodUpper === 'GET' || methodUpper === 'HEAD') {
-            directUrl.searchParams.set('_msjh_nocache', `${Date.now()}-${Math.random().toString(16).slice(2)}`);
-        }
         const body = methodUpper === 'GET' || methodUpper === 'HEAD' ? undefined : init?.body ?? null;
         const bodyBuffer = await body转ArrayBuffer(body);
         const contentType = 读取文本(init?.headers?.['Content-Type']) || (body ? 'application/octet-stream' : '');
