@@ -276,7 +276,7 @@ const MobileSocial: React.FC<Props> = ({
 
     const 当前头像 = 提取头像图片地址(currentNPC);
     const 当前立绘 = 提取立绘图片地址(currentNPC);
-    const 当前详情主图 = 当前立绘 || 当前头像;
+    const 当前详情主图 = 当前头像 || 当前立绘;
     const 当前背景 = 提取背景图片地址(currentNPC) || 当前立绘 || 当前头像;
     const 打开图片查看器 = (src?: string, alt?: string) => {
         const normalizedSrc = typeof src === 'string' ? src.trim() : '';
@@ -492,8 +492,7 @@ const MobileSocial: React.FC<Props> = ({
                                         >
                                             {当前详情主图 ? (
                                                 <>
-                                                    <img src={当前详情主图} alt={currentNPC.姓名} className={`w-full h-full object-cover ${当前角色已死亡 ? 'grayscale opacity-65' : ''}`} />
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/10 pointer-events-none"></div>
+                                                    <img src={当前详情主图} alt={currentNPC.姓名} className={`w-full h-full object-cover object-top ${当前角色已死亡 ? 'grayscale opacity-65' : ''}`} />
                                                     {当前角色已死亡 && (
                                                         <div className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-[10px] tracking-[0.25em] text-gray-200">
                                                             已故
