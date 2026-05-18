@@ -120,6 +120,64 @@
       display: none;
       white-space: pre-wrap;
     }
+    .viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(32, 24, 16, .72);
+      padding: 24px;
+    }
+    .viewer.open { display: flex; }
+    .viewer-inner {
+      max-width: min(92vw, 920px);
+      max-height: 92vh;
+      background: #fffaf0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, .32);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+    .viewer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .viewer-close {
+      width: 40px;
+      min-width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      background: #b42318;
+      color: #fff;
+      border-color: #fff;
+      font-size: 22px;
+      line-height: 1;
+      box-shadow: 0 0 0 2px rgba(180, 35, 24, .25);
+    }
+    .viewer-img-wrap {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      padding: 12px;
+      background: #efe2c5;
+    }
+    .viewer img {
+      max-width: 100%;
+      max-height: calc(92vh - 86px);
+      object-fit: contain;
+      display: block;
+    }
     @media (max-width: 640px) {
       .panel { grid-template-columns: 1fr; }
     }
@@ -150,6 +208,17 @@
   <div class="grid" id="grid"></div>
 </main>
 <div class="toast" id="toast"></div>
+<div class="viewer" id="viewer" aria-hidden="true">
+  <div class="viewer-inner" role="dialog" aria-modal="true" aria-label="物品图放大预览">
+    <div class="viewer-head">
+      <span id="viewerTitle">物品图预览</span>
+      <button id="viewerClose" class="viewer-close" type="button" aria-label="关闭预览">×</button>
+    </div>
+    <div class="viewer-img-wrap">
+      <img id="viewerImg" alt="" />
+    </div>
+  </div>
+</div>
 <script>
 const storageKey = 'msjh-public-item-preset-feedback-v1';
 let items = [];
@@ -162,6 +231,10 @@ const source = document.getElementById('source');
 const stat = document.getElementById('stat');
 const toast = document.getElementById('toast');
 const submitBtn = document.getElementById('submitBtn');
+const viewer = document.getElementById('viewer');
+const viewerTitle = document.getElementById('viewerTitle');
+const viewerImg = document.getElementById('viewerImg');
+const viewerClose = document.getElementById('viewerClose');
 
 function save() { localStorage.setItem(storageKey, JSON.stringify(marks)); }
 function showToast(message) {
@@ -175,6 +248,18 @@ function el(tag, className, text) {
   if (className) node.className = className;
   if (text != null) node.textContent = text;
   return node;
+}
+function openViewer(item) {
+  viewerTitle.textContent = item.name;
+  viewerImg.src = item.src;
+  viewerImg.alt = item.name;
+  viewer.classList.add('open');
+  viewer.setAttribute('aria-hidden', 'false');
+}
+function closeViewer() {
+  viewer.classList.remove('open');
+  viewer.setAttribute('aria-hidden', 'true');
+  viewerImg.removeAttribute('src');
 }
 function currentProblemItems() {
   return items
@@ -210,6 +295,9 @@ function render() {
     img.loading = 'lazy';
     img.src = item.src;
     img.alt = item.name;
+    img.title = '点击放大';
+    img.style.cursor = 'zoom-in';
+    img.onclick = () => openViewer(item);
     img.onerror = () => {
       img.remove();
       if (!imgbox.querySelector('.fail')) imgbox.appendChild(el('div', 'fail', '图片加载失败'));
@@ -330,6 +418,13 @@ document.getElementById('clearBtn').onclick = () => {
     render();
   }
 };
+viewerClose.onclick = closeViewer;
+viewer.onclick = (event) => {
+  if (event.target === viewer) closeViewer();
+};
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeViewer();
+});
 loadData().catch(error => {
   stat.textContent = error.message || '载入失败';
   showToast(stat.textContent);
