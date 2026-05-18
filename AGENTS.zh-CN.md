@@ -428,3 +428,10 @@
 - NPC 游玩过程位置更新修复后，`npm.cmd run build` 已通过。
 - 每次构建都会因 `release:sync` 修改 release 元数据；由于本次不是发布，已恢复 `data/releaseInfo.ts` 与 `public/release-info.json`。
 - 用户已确认 NPC 在地图上的显示位置修复后是正确的。
+
+## 2026-05-18 GitHub Actions 已关闭与本机直连 Cloudflare 发布规则
+
+- GitHub Actions 的自动 CI 和自动 Cloudflare Worker 部署已经关闭。除非用户明确要求恢复自动 CI/自动部署，否则 workflow 文件只保留 `workflow_dispatch` 手动触发。
+- 后续正常发布新版本不要依赖 GitHub Actions，应从本机执行直连 Cloudflare 的发布命令。
+- 执行 Cloudflare 部署时，先清空代理环境变量，并使用明确的命令超时，继续遵守现有发布覆盖验证规则。
+- 推送到 `main` 现在只作为源码备份步骤，不再视为部署机制。
