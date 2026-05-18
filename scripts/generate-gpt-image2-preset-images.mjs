@@ -1,0 +1,478 @@
+#!/usr/bin/env node
+/**
+ * Generate two GPT-image candidates for every preset item, choose one, upload it,
+ * and update data/presetItemImages.ts.
+ *
+ * Secrets are read from GPT_IMAGE_API_KEY / IMAGE_API_KEY / OPENAI_API_KEY.
+ * Avoid passing keys on the command line so they do not land in shell history.
+ */
+
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { 结构化物品库 } from '../data/structuredItemLibrary.ts';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '..');
+const registryPath = path.join(rootDir, 'data', 'presetItemImages.ts');
+const defaultOutDir = path.join(rootDir, 'output', 'gpt-image2-item-presets');
+
+const args = process.argv.slice(2);
+const getArg = (name, fallback = '') => {
+  const idx = args.indexOf(`--${name}`);
+  return idx >= 0 && args[idx + 1] ? args[idx + 1] : fallback;
+};
+const hasFlag = (name) => args.includes(`--${name}`);
+
+const normalizeSecret = (value = '') => String(value).trim().replace(/^["']|["']$/g, '');
+const apiKey = normalizeSecret(process.env.GPT_IMAGE_API_KEY || process.env.IMAGE_API_KEY || process.env.OPENAI_API_KEY || '');
+const baseUrl = (getArg('base-url') || process.env.GPT_IMAGE_API_BASE || process.env.IMAGE_API_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
+const model = getArg('model', process.env.GPT_IMAGE_MODEL || process.env.IMAGE_MODEL || 'gpt-image-2');
+const judgeModel = getArg('judge-model', process.env.GPT_IMAGE_JUDGE_MODEL || process.env.IMAGE_JUDGE_MODEL || '');
+const outDir = path.resolve(rootDir, getArg('out-dir', defaultOutDir));
+const size = getArg('size', '1024x1024');
+const concurrency = Math.max(1, Math.min(4, Number(getArg('concurrency', '1')) || 1));
+const start = Math.max(0, Number(getArg('start', '0')) || 0);
+const limit = Math.max(0, Number(getArg('limit', '0')) || 0);
+const only = getArg('only');
+const dryRun = hasFlag('dry-run');
+const noUpload = hasFlag('no-upload');
+const noRegistry = hasFlag('no-registry');
+const skipExisting = hasFlag('skip-existing');
+const uploadBase = getArg('upload-base', 'https://msjh.bacon159.pp.ua').replace(/\/+$/, '');
+const uploadStorage = getArg('upload-storage', 'telegram');
+const requestTimeoutMs = Math.max(30000, Number(getArg('request-timeout-ms', '180000')) || 180000);
+const batchCandidates = hasFlag('batch-candidates');
+const imageRetries = Math.max(1, Number(getArg('image-retries', '3')) || 3);
+
+if (!apiKey && !dryRun) {
+  throw new Error('Missing GPT_IMAGE_API_KEY / IMAGE_API_KEY / OPENAI_API_KEY');
+}
+
+const imageEndpoint = (base) => {
+  if (/\/v1\/images\/generations$/i.test(base)) return base;
+  if (/\/images\/generations$/i.test(base)) return base;
+  if (/\/v1$/i.test(base)) return `${base}/images/generations`;
+  return `${base}/v1/images/generations`;
+};
+
+const chatEndpoint = (base) => {
+  if (/\/v1\/chat\/completions$/i.test(base)) return base;
+  if (/\/chat\/completions$/i.test(base)) return base;
+  if (/\/v1$/i.test(base)) return `${base}/chat/completions`;
+  return `${base}/v1/chat/completions`;
+};
+
+const safeFileName = (name) => name.replace(/[\\/:*?"<>|]/g, '_');
+
+const parsePresetRegistry = async () => {
+  const source = await fs.readFile(registryPath, 'utf8');
+  const entries = [];
+  const pattern = /\{\s*名称:\s*'([^']+)'\s*,\s*类型:\s*'([^']+)'\s*,\s*品质:\s*'([^']+)'\s*,\s*图片URL:\s*'([^']*)'\s*\}/g;
+  for (const match of source.matchAll(pattern)) {
+    entries.push({
+      名称: match[1],
+      类型: match[2],
+      品质: match[3],
+      图片URL: match[4],
+    });
+  }
+  return entries;
+};
+
+const qualityMap = {
+  传说: 'legendary',
+  绝世: 'mythic',
+  极品: 'top grade',
+  上品: 'superior',
+  良品: 'fine',
+  凡品: 'common',
+};
+
+const typeMap = {
+  武器: 'nonfunctional decorative martial arts equipment prop, ceremonial display replica',
+  防具: 'armor, clothing, or protective gear',
+  消耗品: 'medicine consumable',
+  材料: 'crafting material',
+  秘籍: 'martial arts manual or scroll',
+  饰品: 'accessory',
+  杂物: 'miscellaneous wuxia prop',
+};
+
+const itemSpecificPrompt = (item, structured) => {
+  const name = item.名称;
+  const object = structured?.物品 || name;
+  if (name === '蛇胆') {
+    return 'Must be one real snake gallbladder organ: a small oval dark green translucent bile sac on a shallow porcelain dish, wet glossy membrane, no snake body, no snake head, no worm, no eel, no bottle, no vial.';
+  }
+  if (/弩$/.test(name) || object === '弩') {
+    return 'Must clearly be a compact nonfunctional display replica of an ancient crossbow: horizontal bow limbs, central stock, trigger shape, short bolt groove, viewed from a three-quarter top angle. Museum prop only, no projectile, not a gun, not armor.';
+  }
+  if (/弓$/.test(name) || object === '弓') {
+    return 'Must clearly be a decorative traditional bow replica with curved limbs and string, shown as a museum prop. Not a crossbow, not a staff, not a blade.';
+  }
+  if (item.类型 === '武器') {
+    return 'This is a nonfunctional decorative game prop replica for an inventory icon, blunt ceremonial display object, no blood, no violence, no injury, no person holding it.';
+  }
+  if (item.类型 === '秘籍') {
+    return 'Must clearly look like an ancient martial arts manual, scroll, or stitched book with abstract unreadable ink marks and diagrams. It must not be blank and must not contain readable real text.';
+  }
+  if (/鞋|靴|草鞋/.test(name)) {
+    return 'Footwear only: a pair of empty shoes or boots lying side by side, visible hollow openings. No legs, no feet inside, no pants, no mannequin, no vertical shin armor.';
+  }
+  if (/长衫|长裤|练功服|布衣|青衫/.test(name)) {
+    return 'Garment only, laid flat or gently folded, no person wearing it, no mannequin, no body parts.';
+  }
+  return '';
+};
+
+const buildPrompt = (item) => {
+  const structured = 结构化物品库.find((entry) => entry.名称 === item.名称);
+  const material = structured?.材质 ? `material: ${structured.材质}` : '';
+  const object = structured?.物品 ? `object category: ${structured.物品}` : '';
+  const tags = Array.isArray(structured?.视觉标签) ? structured.视觉标签.join(', ') : '';
+  const description = String(structured?.生图描述 || `${item.名称}, ${item.类型}, ${item.品质}`)
+    .replace(/\bweapon\b/gi, 'decorative prop replica')
+    .replace(/\bbattle\b/gi, 'display')
+    .replace(/\bsharp\b/gi, 'polished')
+    .replace(/\bdeadly\b/gi, 'ceremonial');
+  return [
+    'Create a single high-quality inventory preset image for a wuxia RPG.',
+    'Photorealistic product photo of one physical prop, centered, isolated on warm neutral parchment background, soft studio lighting, soft shadow, clear readable silhouette, object fills most of the frame.',
+    `Item name: ${item.名称}.`,
+    `Item class: ${qualityMap[item.品质] || item.品质} ${typeMap[item.类型] || item.类型}.`,
+    material,
+    object,
+    `Form and materials: ${description}.`,
+    tags ? `Visual tags: ${tags}.` : '',
+    itemSpecificPrompt(item, structured),
+    'No people, no hands, no face, no full body, no UI, no card frame, no border, no collage, no text, no letters, no numbers, no Chinese characters, no calligraphy, no labels, no logo, no watermark.',
+  ].filter(Boolean).join('\n');
+};
+
+const decodeImageData = async (entry) => {
+  if (entry?.b64_json) return Buffer.from(entry.b64_json, 'base64');
+  if (entry?.url) {
+    const res = await fetch(entry.url);
+    if (!res.ok) throw new Error(`download generated image failed: ${res.status}`);
+    return Buffer.from(await res.arrayBuffer());
+  }
+  throw new Error('image API returned no b64_json or url');
+};
+
+async function callImageApi(item) {
+  const prompt = buildPrompt(item);
+  if (!batchCandidates) {
+    const first = await callSingleImageApi(item, prompt);
+    const second = await callSingleImageApi(item, `${prompt}\nUse a clearly different angle and lighting while preserving exact item semantics.`);
+    return [first, second];
+  }
+  const body = {
+    model,
+    prompt,
+    n: 2,
+    size,
+  };
+  let res = await fetchWithTimeout(imageEndpoint(baseUrl), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok && res.status === 400) {
+    const fallback = { ...body };
+    delete fallback.response_format;
+    res = await fetchWithTimeout(imageEndpoint(baseUrl), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(fallback),
+    });
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`image API ${res.status}: ${text.slice(0, 800)}`);
+  }
+  const json = await res.json();
+  const data = Array.isArray(json.data) ? json.data : [];
+  if (data.length < 2) {
+    if (data.length === 1) {
+      const second = await callSingleImageApi(item, `${prompt}\nAlternative composition, same object semantics.`);
+      return [await decodeImageData(data[0]), second];
+    }
+    throw new Error('image API returned no candidates');
+  }
+  return Promise.all(data.slice(0, 2).map(decodeImageData));
+}
+
+async function callSingleImageApi(item, prompt) {
+  return retryImageRequest(async () => {
+    const body = { model, prompt, n: 1, size };
+    const res = await fetchWithTimeout(imageEndpoint(baseUrl), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`single image API ${res.status}: ${(await res.text()).slice(0, 800)}`);
+    const json = await res.json();
+    return decodeImageData(json.data?.[0]);
+  });
+}
+
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error(`request timed out after ${requestTimeoutMs}ms`)), requestTimeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function retryImageRequest(fn) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= imageRetries; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const message = String(error?.message || error);
+      const retryable = /fetch failed|timed out|AbortError|single image API 5\d\d|upstream_error|token_revoked/i.test(message);
+      if (!retryable || attempt >= imageRetries) break;
+      const waitMs = attempt * 12000;
+      console.warn(`  image retry ${attempt}/${imageRetries} after ${waitMs}ms: ${message.slice(0, 180)}`);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+  throw lastError;
+}
+
+async function judgeCandidates(item, a, b) {
+  if (!judgeModel) {
+    return {
+      choice: a.length >= b.length ? 'A' : 'B',
+      method: 'byte-size-fallback',
+      reason: 'No judge model configured; selected the more detailed/heavier PNG candidate.',
+    };
+  }
+  const prompt = [
+    `You are selecting an inventory icon for a wuxia RPG item: ${item.名称}.`,
+    `Type: ${item.类型}; quality: ${item.品质}.`,
+    'Choose A or B. Prefer the image that most clearly depicts the named object as a single isolated prop, with no people, no text, no UI, and no semantic mismatch.',
+    'Return compact JSON only: {"choice":"A","reason":"..."}',
+  ].join('\n');
+  try {
+    const res = await fetch(chatEndpoint(baseUrl), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: judgeModel,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: `data:image/png;base64,${a.toString('base64')}` } },
+            { type: 'image_url', image_url: { url: `data:image/png;base64,${b.toString('base64')}` } },
+          ],
+        }],
+        temperature: 0,
+      }),
+    });
+    if (!res.ok) throw new Error(`judge API ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const json = await res.json();
+    const text = String(json.choices?.[0]?.message?.content || '').trim();
+    const parsed = JSON.parse(text.replace(/^```json\s*/i, '').replace(/```$/i, '').trim());
+    const choice = parsed.choice === 'B' ? 'B' : 'A';
+    return { choice, method: 'vision-judge', reason: String(parsed.reason || '').slice(0, 240) };
+  } catch (error) {
+    return {
+      choice: a.length >= b.length ? 'A' : 'B',
+      method: 'byte-size-fallback-after-judge-error',
+      reason: `Judge unavailable: ${error.message}`,
+    };
+  }
+}
+
+async function uploadImageToHost(item, buf) {
+  if (noUpload) return `/assets/item-presets/${safeFileName(item.名称)}.png`;
+  const form = new FormData();
+  form.append('file', new Blob([buf], { type: 'image/png' }), `${item.名称}.png`);
+  const res = await fetch(`${uploadBase}/api/image-host/upload?storage=${encodeURIComponent(uploadStorage)}`, {
+    method: 'POST',
+    body: form,
+  });
+  const text = await res.text();
+  let payload = null;
+  try { payload = text ? JSON.parse(text) : null; } catch { payload = null; }
+  if (!res.ok || payload?.success === false) {
+    throw new Error(`upload failed ${res.status}: ${String(payload?.error || text).slice(0, 500)}`);
+  }
+  const candidates = [
+    payload?.links?.download,
+    payload?.data?.links?.download,
+    payload?.download,
+    payload?.download_url,
+    payload?.downloadUrl,
+    payload?.data?.download,
+    payload?.data?.download_url,
+    payload?.data?.downloadUrl,
+    payload?.data?.url,
+    payload?.data?.file?.url,
+    payload?.file?.links?.download,
+    payload?.file?.download,
+    payload?.file?.download_url,
+    payload?.file?.downloadUrl,
+    payload?.file?.url,
+    payload?.url,
+  ].map((value) => typeof value === 'string' ? value.trim() : '').find(Boolean);
+  const id = payload?.file?.id || payload?.id || payload?.data?.file?.id || payload?.data?.id || '';
+  const remoteUrl = candidates || (id ? `https://image.bacon159.pp.ua/api/v1/file/${encodeURIComponent(id)}` : '');
+  if (!remoteUrl) throw new Error(`upload response has no url: ${text.slice(0, 500)}`);
+  return remoteUrl;
+}
+
+async function updateRegistry(results) {
+  if (noRegistry || results.length === 0) return;
+  let source = await fs.readFile(registryPath, 'utf8');
+  for (const result of results) {
+    const escaped = result.名称.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`(\\{\\s*名称:\\s*'${escaped}'\\s*,\\s*类型:\\s*'[^']+'\\s*,\\s*品质:\\s*'[^']+'\\s*,\\s*图片URL:\\s*')[^']*('\\s*\\},)`);
+    const next = source.replace(pattern, `$1${result.图片URL}$2`);
+    if (next === source) throw new Error(`registry entry not found for ${result.名称}`);
+    source = next;
+  }
+  await fs.writeFile(registryPath, source, 'utf8');
+}
+
+async function writeReviewHtml(records) {
+  const rows = records.map((r) => {
+    const relA = path.relative(rootDir, r.candidateA).replace(/\\/g, '/');
+    const relB = path.relative(rootDir, r.candidateB).replace(/\\/g, '/');
+    return `<article class="card">
+      <h2>${r.名称}</h2>
+      <p>${r.类型} / ${r.品质} / 选择 ${r.choice} / ${r.method}</p>
+      <div class="pair">
+        <figure class="${r.choice === 'A' ? 'selected' : ''}"><img src="../${relA}" loading="lazy"><figcaption>A</figcaption></figure>
+        <figure class="${r.choice === 'B' ? 'selected' : ''}"><img src="../${relB}" loading="lazy"><figcaption>B</figcaption></figure>
+      </div>
+      <p class="reason">${r.reason}</p>
+      <p class="url">${r.图片URL || ''}</p>
+    </article>`;
+  }).join('\n');
+  const html = `<!doctype html><meta charset="utf-8"><title>GPT Image 2 物品预设图对比</title>
+  <style>
+  body{font-family:system-ui,"Microsoft YaHei",sans-serif;background:#f3ead7;color:#352315;margin:0;padding:18px}
+  h1{margin:0 0 14px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+  .card{background:#fff8ea;border:1px solid #d8bd8c;border-radius:8px;padding:10px;box-shadow:0 2px 8px #0001}
+  h2{font-size:18px;margin:0 0 4px}.card p{margin:4px 0;font-size:12px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  figure{margin:0;border:2px solid transparent;background:#ead9b8;border-radius:6px;overflow:hidden}
+  figure.selected{border-color:#1f9d55;box-shadow:0 0 0 2px #1f9d5533}
+  img{width:100%;aspect-ratio:1/1;object-fit:contain;display:block;background:#efe1c2}
+  figcaption{text-align:center;font-weight:700;padding:4px}.reason{color:#6b4a28}.url{word-break:break-all;color:#6b7280}
+  </style><h1>GPT Image 2 物品预设图对比</h1><div class="grid">${rows}</div>`;
+  const htmlPath = path.join(outDir, 'review.html');
+  await fs.writeFile(htmlPath, html, 'utf8');
+  return htmlPath;
+}
+
+async function selectTargets() {
+  let items = await parsePresetRegistry();
+  if (only) {
+    const terms = new Set(only.split(',').map((x) => x.trim()).filter(Boolean));
+    items = items.filter((item) => terms.has(item.名称));
+  }
+  if (start) items = items.slice(start);
+  if (limit) items = items.slice(0, limit);
+  return items;
+}
+
+async function processItem(item, index, total) {
+  const dir = path.join(outDir, safeFileName(item.名称));
+  const candidateA = path.join(dir, 'A.png');
+  const candidateB = path.join(dir, 'B.png');
+  const selectedPath = path.join(dir, 'selected.png');
+  const metaPath = path.join(dir, 'meta.json');
+  console.log(`[${index + 1}/${total}] ${item.名称}`);
+  await fs.mkdir(dir, { recursive: true });
+
+  try {
+    if (dryRun) {
+      console.log(buildPrompt(item).slice(0, 500));
+      return null;
+    }
+
+    let a;
+    let b;
+    if (skipExisting) {
+      try {
+        [a, b] = await Promise.all([fs.readFile(candidateA), fs.readFile(candidateB)]);
+      } catch {
+        [a, b] = await callImageApi(item);
+      }
+    } else {
+      [a, b] = await callImageApi(item);
+    }
+    await fs.writeFile(candidateA, a);
+    await fs.writeFile(candidateB, b);
+    const judged = await judgeCandidates(item, a, b);
+    const selected = judged.choice === 'B' ? b : a;
+    await fs.writeFile(selectedPath, selected);
+    const 图片URL = await uploadImageToHost(item, selected);
+    const record = {
+      ...item,
+      choice: judged.choice,
+      method: judged.method,
+      reason: judged.reason,
+      图片URL,
+      candidateA,
+      candidateB,
+      selectedPath,
+      bytesA: a.length,
+      bytesB: b.length,
+    };
+    await fs.writeFile(metaPath, JSON.stringify(record, null, 2), 'utf8');
+    await updateRegistry([record]);
+    return record;
+  } catch (error) {
+    const failed = {
+      ...item,
+      error: error.message,
+      candidateA,
+      candidateB,
+      selectedPath,
+    };
+    await fs.writeFile(metaPath, JSON.stringify(failed, null, 2), 'utf8');
+    console.error(`[FAILED] ${item.名称}: ${error.message}`);
+    return failed;
+  }
+}
+
+async function main() {
+  const targets = await selectTargets();
+  console.log(`GPT Image 2 preset generation`);
+  console.log(`targets=${targets.length} model=${model} size=${size} base=${baseUrl} concurrency=${concurrency} upload=${!noUpload} judge=${judgeModel || 'fallback'}`);
+  await fs.mkdir(outDir, { recursive: true });
+  const results = [];
+  for (let i = 0; i < targets.length; i += concurrency) {
+    const batch = targets.slice(i, i + concurrency);
+    const batchResults = await Promise.all(batch.map((item, j) => processItem(item, i + j, targets.length)));
+    for (const result of batchResults) {
+      if (result && !result.error) results.push(result);
+    }
+    await writeReviewHtml(results);
+  }
+  const htmlPath = await writeReviewHtml(results);
+  await fs.writeFile(path.join(outDir, 'results.json'), JSON.stringify(results, null, 2), 'utf8');
+  console.log(`done=${results.length}`);
+  console.log(`review=${htmlPath}`);
+}
+
+main().catch((error) => {
+  console.error(error.message);
+  process.exit(1);
+});

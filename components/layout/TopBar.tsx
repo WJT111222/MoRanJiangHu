@@ -3,6 +3,7 @@ import { 环境信息结构, 节日结构, 视觉设置结构 } from '../../type
 import { 构建区域文字样式 } from '../../utils/visualSettings';
 import { normalizeCanonicalGameTime } from '../../hooks/useGame/timeUtils';
 import { setNativeSystemBarsHidden } from '../../utils/nativeRuntime';
+import { 计算游戏历程天数 } from '../../utils/gameTimeJourney';
 
 interface Props {
     环境: 环境信息结构;
@@ -295,11 +296,6 @@ const MobileInfoCard: React.FC<{
     );
 };
 
-const toGameMinuteValue = (time: { year: number; month: number; day: number; hour: number; minute: number } | null): number | null => {
-    if (!time) return null;
-    return (((time.year * 12 + time.month) * 31 + time.day) * 24 + time.hour) * 60 + time.minute;
-};
-
 type ExpandedType = 'weather' | 'environment' | 'time' | 'location' | 'festival' | 'journey' | null;
 
 const MobileInfoButton: React.FC<{
@@ -333,11 +329,7 @@ const TopBar: React.FC<Props> = ({ 环境, 游戏初始时间, timeFormat, festi
 
     const parsedTime = parseEnvTime(环境);
     const derivedDayCount = useMemo(() => {
-        const current = toGameMinuteValue(parsedTime);
-        const initial = toGameMinuteValue(parseCanonicalGameTime(游戏初始时间));
-        if (current == null || initial == null) return 1;
-        const diffMinutes = Math.max(0, current - initial);
-        return Math.floor(diffMinutes / (24 * 60)) + 1;
+        return 计算游戏历程天数(parsedTime, parseCanonicalGameTime(游戏初始时间));
     }, [parsedTime, 游戏初始时间]);
     const month = parsedTime?.month ?? null;
     const day = parsedTime?.day ?? null;

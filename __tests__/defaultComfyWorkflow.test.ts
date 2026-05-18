@@ -92,6 +92,24 @@ describe('默认 ComfyUI 生图配置', () => {
         expect(JSON.stringify(nsfwWorkflow)).not.toContain('UnetLoaderGGUF');
     });
 
+    it('keeps the cinematic still scene composition option through settings and prompt assembly', () => {
+        const settings = 构建ComfyUI测试设置({
+            自动场景生图构图要求: '剧照'
+        });
+        expect(settings.功能模型占位.自动场景生图构图要求).toBe('剧照');
+
+        const prompt = 构建最终图片提示词('rainy wuxia inn, two adults facing each other under lantern light', {
+            图片后端类型: 'comfyui',
+            词组转化输出策略: 'flat'
+        } as any, {
+            构图: '场景',
+            场景类型: '剧照场景'
+        });
+
+        expect(prompt.最终正向提示词).toContain('cinematic still');
+        expect(prompt.最终正向提示词).toContain('characters and environment both clearly visible');
+    });
+
     it('forces ComfyUI image requests to the native /prompt route when old settings keep OpenAI image paths', () => {
         const settings = 构建ComfyUI测试设置({
             文生图后端类型: 'comfyui',

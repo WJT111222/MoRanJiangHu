@@ -426,6 +426,8 @@
     const setToken = (token) => sessionStorage.setItem(TOKEN_KEY, token);
     const clearToken = () => sessionStorage.removeItem(TOKEN_KEY);
 
+    let consecutiveLoadFailures = 0;
+
     async function loadData() {
       const token = getToken();
       if (!token) {
@@ -433,19 +435,34 @@
         return;
       }
       statusText.textContent = '刷新中...';
-      const response = await fetch('/api/admin/online', {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store'
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.success) {
-        clearToken();
-        setView(false);
-        loginMessage.textContent = response.status === 401 ? '密码错误或登录已失效。' : (data.error || '读取失败。');
-        return;
+      try {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 12000);
+        const response = await fetch('/api/admin/online', {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        window.clearTimeout(timeout);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          if (response.status === 401) {
+            clearToken();
+            setView(false);
+            loginMessage.textContent = '密码错误或登录已失效。';
+            return;
+          }
+          consecutiveLoadFailures += 1;
+          statusText.textContent = `刷新失败（${consecutiveLoadFailures}）：${data.error || response.status || '网络异常'}，保留当前列表。`;
+          return;
+        }
+        consecutiveLoadFailures = 0;
+        renderData(data);
+        setView(true);
+      } catch (error) {
+        consecutiveLoadFailures += 1;
+        statusText.textContent = `刷新失败（${consecutiveLoadFailures}）：${error && error.name === 'AbortError' ? '请求超时' : '网络中断'}，保留当前列表。`;
       }
-      renderData(data);
-      setView(true);
     }
 
     function renderData(data) {

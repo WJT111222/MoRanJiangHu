@@ -51,7 +51,7 @@ interface Props {
     onGenerateImage?: (npcId: string, options?: { 构图?: '头像' | '半身' | '立绘'; 画风?: '通用' | '二次元' | '写实' | '国风'; 画师串?: string; 画师串预设ID?: string; PNG画风预设ID?: string; 额外要求?: string; 尺寸?: string; 后台处理?: boolean }) => Promise<void> | void;
     onGenerateSecretPartImage?: (npcId: string, part: 香闺秘档部位类型 | '全部', options?: { 画风?: '通用' | '二次元' | '写实' | '国风'; 画师串?: string; 画师串预设ID?: string; PNG画风预设ID?: string; 额外要求?: string; 尺寸?: string; 后台处理?: boolean }) => Promise<void> | void;
     onRetryImage?: (npcId: string) => Promise<void> | void;
-    onGenerateSceneImage?: (options?: { 画师串预设ID?: string; PNG画风预设ID?: string; 构图要求?: '纯场景' | '故事快照'; 尺寸?: string; 额外要求?: string; 后台处理?: boolean }) => Promise<void> | void;
+    onGenerateSceneImage?: (options?: { 画师串预设ID?: string; PNG画风预设ID?: string; 构图要求?: '纯场景' | '故事快照' | '剧照'; 尺寸?: string; 额外要求?: string; 后台处理?: boolean }) => Promise<void> | void;
     onSetPersistentWallpaper?: (imageUrl: string) => Promise<void> | void;
     onClearPersistentWallpaper?: () => Promise<void> | void;
     onSelectAvatarImage?: (npcId: string, imageId: string) => Promise<void> | void;
@@ -375,7 +375,7 @@ const ImageManagerModal: React.FC<Props> = ({
     const [manualComposition, setManualComposition] = React.useState<'头像' | '半身' | '立绘' | '自定义'>('头像');
     const [sceneManualArtistPresetId, setSceneManualArtistPresetId] = React.useState('');
     const [sceneManualPngPresetId, setSceneManualPngPresetId] = React.useState('');
-    const [sceneCompositionRequirement, setSceneCompositionRequirement] = React.useState<'纯场景' | '故事快照'>('纯场景');
+    const [sceneCompositionRequirement, setSceneCompositionRequirement] = React.useState<'纯场景' | '故事快照' | '剧照'>('纯场景');
     const [sceneOrientation, setSceneOrientation] = React.useState<'横屏' | '竖屏'>('横屏');
     const [sceneResolution, setSceneResolution] = React.useState('1024x576');
     const [sceneExtraRequirement, setSceneExtraRequirement] = React.useState('');
@@ -3164,8 +3164,8 @@ const ImageManagerModal: React.FC<Props> = ({
                     <div className="mt-5 pt-4 border-t border-wuxia-gold/10 flex flex-col gap-3">
                         <div className="space-y-2">
                             <label className={小标题样式}>场景构图要求</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {(['纯场景', '故事快照'] as const).map((mode) => (
+                            <div className="grid grid-cols-3 gap-2">
+                                {(['纯场景', '故事快照', '剧照'] as const).map((mode) => (
                                     <button
                                         key={mode}
                                         type="button"
@@ -3176,7 +3176,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                     </button>
                                 ))}
                             </div>
-                            <div className="text-[10px] text-gray-500">选择场景画面是纯景观还是带人物互动的故事快照。</div>
+                            <div className="text-[10px] text-gray-500">纯场景偏景观，故事快照抓互动，剧照同时保留人物、环境与电影镜头感。</div>
                         </div>
                         <div className="space-y-2">
                             <label className={小标题样式}>画面方向</label>

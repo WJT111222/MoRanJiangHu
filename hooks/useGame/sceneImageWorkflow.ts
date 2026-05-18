@@ -93,7 +93,7 @@ export const 执行场景生图工作流 = async (
         强制执行?: boolean;
         额外要求?: string;
         尺寸?: string;
-        构图要求?: '纯场景' | '故事快照';
+        构图要求?: '纯场景' | '故事快照' | '剧照';
         signal?: AbortSignal;
     },
     deps: 场景生图依赖
@@ -249,7 +249,9 @@ export const 执行场景生图工作流 = async (
             进度阶段: 'generating',
             进度文本: 场景类型 === '风景场景'
                 ? '当前正文不适合直接做场景快照，已转为风景场景生成。'
-                : '词组转换完成，正在生成场景快照。'
+                : 场景类型 === '剧照场景'
+                    ? '词组转换完成，正在生成剧照场景。'
+                    : '词组转换完成，正在生成场景快照。'
         }));
         deps.更新场景图片档案((archive) => ({
             ...archive,
@@ -296,7 +298,7 @@ export const 执行场景生图工作流 = async (
                         重试次数: Math.max(0, attempt - 1),
                         最大重试次数: 生图最大自动重试次数,
                         进度阶段: 'generating',
-                        进度文本: `词组转换完成，正在生成场景快照（第 ${attempt}/${totalAttempts} 次尝试）。`
+                        进度文本: `词组转换完成，正在生成${场景类型 === '剧照场景' ? '剧照场景' : '场景快照'}（第 ${attempt}/${totalAttempts} 次尝试）。`
                     }));
                 },
                 onRetry: (attempt, totalAttempts, errorMessage) => {
