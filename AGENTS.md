@@ -11,6 +11,7 @@
 - After each meaningful update, also provide a short customer-facing changelog in Chinese.
 - Keep it suitable for direct forwarding to customers.
 - Prefer plain-language benefit statements over internal implementation detail.
+- After publishing a new version, customer-facing changelog text must include the primary website domain: `https://msjh.bacon159.pp.ua/`.
 
 ## Admin/Internal Changelog Rule
 

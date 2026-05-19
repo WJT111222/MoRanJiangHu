@@ -1,13 +1,12 @@
 {
-  "versionCode": 245,
-  "versionName": "1.0.244",
+  "versionCode": 246,
+  "versionName": "1.0.245",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "优化玩家输入承接：玩家明确说出的原话会进入正文，不再只出现对方反应导致上下文割裂。",
-    "优化指令型输入承接：让、吩咐、安排某人做事时，会自然写出指示已传达以及对方理解、迟疑、拒绝或执行。",
-    "优化男娘/男性主要角色图片生成：支持自动补齐展示图，并在手动与后台补图中生成肉棒、屁穴等对应特写。",
-    "图像管理器桌面端和移动端已开放男性主要角色私密档案入口，生成状态会按两处/三处等真实数量显示。",
-    "同步更新 Web、APK 与更新清单到 v1.0.244。"
+    "新增教程中心：世界书导入、多端同步、CNB ComfyUI 教程整合到一个页面，可用选项卡快速切换。",
+    "附加世界书导入支持 SillyTavern / 酒馆 World Info JSON，自己的世界书更容易直接导入。",
+    "世界书管理新增生效检查提示，说明保存、启用、作用域、关键词命中等常见原因，减少“添加了没反应”的困惑。",
+    "同步更新 Web、APK 与更新清单到 v1.0.245。"
   ],
   "releaseHistory": [
     {
@@ -2580,13 +2579,14 @@
   ],
   "websiteUrl": "https://msjh.bacon159.pp.ua",
   "githubRepoUrl": "https://github.com/ypq123456789/MoRanJiangHu",
-  "cnbGuideUrl": "https://msjh.bacon159.pp.ua/cnb-comfyui-guide.html",
+  "cnbGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#comfy",
   "releaseNotesUrl": "https://msjh.bacon159.pp.ua/changelog.html",
   "apkDownloadUrl": "https://download.bacon.de5.net/moranjianghu/latest.apk",
   "updateManifestUrl": "https://download.bacon.de5.net/moranjianghu/latest.json",
   "r2Bucket": "quark-downloads-bacon",
   "r2Prefix": "moranjianghu",
   "backupWebsiteUrl": "https://msjh.bacon.de5.net",
-  "releasePublishedAt": "2026-05-19T12:50:43+08:00",
-  "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/multi-device-sync-guide.html"
+  "releasePublishedAt": "2026-05-19T13:27:42+08:00",
+  "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
+  "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html"
 }

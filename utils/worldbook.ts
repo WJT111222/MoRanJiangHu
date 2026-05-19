@@ -941,13 +941,77 @@ const 旧版条目转世界书 = (entries: unknown[]): 世界书结构[] => {
     }];
 };
 
+const 读取世界书条目集合 = (value: unknown): unknown[] | null => {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === 'object') return Object.values(value as Record<string, unknown>);
+    return null;
+};
+
+const 转换酒馆世界书条目 = (entry: any, index: number): Partial<世界书条目结构> => {
+    const keys = [
+        ...读取字符串数组(entry?.key),
+        ...读取字符串数组(entry?.keys),
+        ...读取字符串数组(entry?.关键词)
+    ];
+    const content = 读取文本(entry?.content ?? entry?.内容 ?? '');
+    const title = 读取文本(entry?.comment ?? entry?.name ?? entry?.标题).trim()
+        || keys[0]
+        || `SillyTavern 世界书条目 ${index + 1}`;
+    const orderRaw = Number(entry?.order ?? entry?.优先级 ?? 50);
+    const isConstant = entry?.constant === true;
+    const rawId = entry?.uid ?? entry?.id;
+    const id = (typeof rawId === 'string' || typeof rawId === 'number') ? String(rawId).trim() : '';
+    return {
+        id: id || 生成ID('worldbook_entry'),
+        标题: title,
+        内容: content,
+        类型: 规范化类型(entry?.类型),
+        作用域: ['all'],
+        注入模式: isConstant || keys.length <= 0 ? 'always' : 'match_any',
+        关键词: 去重字符串数组(keys),
+        优先级: Number.isFinite(orderRaw) ? Math.max(0, Math.min(999, Math.floor(orderRaw))) : 50,
+        启用: entry?.disable === true || entry?.disabled === true ? false : entry?.enabled !== false
+    };
+};
+
+const 尝试转换酒馆世界书 = (raw: unknown): 世界书结构[] | null => {
+    const source = raw && typeof raw === 'object' ? raw as any : null;
+    if (!source) return null;
+    const tavernBook = source.character_book
+        || source.characterBook
+        || source.data?.character_book
+        || source.data?.characterBook
+        || source.lorebook
+        || source.world_book
+        || source.worldBook;
+    const entries = 读取世界书条目集合(source.entries) || 读取世界书条目集合(tavernBook?.entries);
+    if (!entries || entries.length <= 0) return null;
+    const now = Date.now();
+    const name = 读取文本(source.name ?? source.title ?? source.名称 ?? source.data?.name ?? source.extensions?.world).trim();
+    return [{
+        id: 读取文本(source.id).trim() || 生成ID('worldbook'),
+        标题: name || '导入的 SillyTavern 世界书',
+        描述: '由 SillyTavern / 酒馆 World Info JSON 或角色卡 character_book 自动转换',
+        常驻大纲: 读取文本(source.description ?? source.desc ?? ''),
+        启用: true,
+        内置: false,
+        条目: entries.map((item: any, index: number) => 规范化世界书条目(转换酒馆世界书条目(item, index))),
+        创建时间: now,
+        更新时间: now
+    }];
+};
+
 export const 规范化世界书列表 = (raw: unknown): 世界书结构[] => {
     const list = (() => {
         if (Array.isArray(raw)) {
+            const tavernBooks = raw.flatMap((item) => 尝试转换酒馆世界书(item) || []);
+            if (tavernBooks.length > 0) return tavernBooks;
             const looksLikeBook = raw.some((item) => item && typeof item === 'object' && (Array.isArray((item as any).条目) || Array.isArray((item as any).entries)));
             return looksLikeBook ? raw : 旧版条目转世界书(raw);
         }
         if (raw && typeof raw === 'object') {
+            const tavernBooks = 尝试转换酒馆世界书(raw);
+            if (tavernBooks) return tavernBooks;
             const maybeBooks = (raw as any).books;
             if (Array.isArray(maybeBooks)) return maybeBooks;
             const maybeEntries = (raw as any).entries;

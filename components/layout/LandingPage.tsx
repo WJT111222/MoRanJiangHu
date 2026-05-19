@@ -273,10 +273,10 @@ const LandingPage: React.FC<Props> = ({
                     </button>
                     <button
                         type="button"
-                        onClick={() => { void openExternalUrl((RELEASE_INFO as any).multiDeviceSyncGuideUrl || '/multi-device-sync-guide.html'); }}
+                        onClick={() => { void openExternalUrl((RELEASE_INFO as any).tutorialsUrl || '/tutorials.html'); }}
                         className="min-h-[40px] border border-wuxia-gold/25 bg-wuxia-gold/10 px-4 py-2 text-xs tracking-[0.16em] text-wuxia-gold transition-colors hover:bg-wuxia-gold/15"
                     >
-                        多端同步教程
+                        教程中心
                     </button>
                 </div>
             </div>
