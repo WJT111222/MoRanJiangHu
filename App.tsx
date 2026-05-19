@@ -1977,6 +1977,7 @@ const App: React.FC = () => {
                 世界: state.世界,
                 社交: state.社交,
                 角色: safeCharacter,
+                gameConfig: state.gameConfig,
                 记忆系统: memory,
                 worldbooks: meta.worldbooks,
                 onDelta: (delta: string) => {
