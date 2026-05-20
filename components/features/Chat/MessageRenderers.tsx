@@ -283,11 +283,13 @@ export const NarratorRenderer: React.FC<{ text: string; visualConfig?: 视觉设
     );
 };
 
+const 规范化称呼 = (value: string): string => value.trim().replace(/^[【\[\(（「『]+/, '').replace(/[】\]\)）」』]+$/, '').trim();
+
 const 获取NPC头像地址 = (sender: string, socialList?: NPC结构[]): string => {
-    const normalizedSender = (sender || '').trim();
+    const normalizedSender = 规范化称呼(sender || '');
     if (!normalizedSender) return '';
     const candidates = (Array.isArray(socialList) ? socialList : []).filter((npc) => {
-        const name = typeof npc?.姓名 === 'string' ? npc.姓名.trim() : '';
+        const name = typeof npc?.姓名 === 'string' ? 规范化称呼(npc.姓名) : '';
         return name === normalizedSender;
     });
     for (const npc of candidates) {
@@ -305,6 +307,23 @@ const 获取NPC头像地址 = (sender: string, socialList?: NPC结构[]): string
         if (获取图片展示地址(avatarRecord)) {
             return 获取图片展示地址(avatarRecord);
         }
+        const selectedPortraitImageId = typeof npc?.图片档案?.已选立绘图片ID === 'string'
+            ? npc.图片档案.已选立绘图片ID.trim()
+            : '';
+        const selectedPortraitRecord = selectedPortraitImageId
+            ? history.find((item) => item?.id === selectedPortraitImageId && item?.状态 === 'success' && 获取图片展示地址(item))
+            : undefined;
+        if (获取图片展示地址(selectedPortraitRecord)) {
+            return 获取图片展示地址(selectedPortraitRecord);
+        }
+        const portraitRecord = history.find((item) => item?.状态 === 'success' && (item?.构图 === '半身' || item?.构图 === '立绘') && 获取图片展示地址(item));
+        if (获取图片展示地址(portraitRecord)) {
+            return 获取图片展示地址(portraitRecord);
+        }
+        const profileUrl = 获取图片资源文本地址(npc?.头像图片URL || (npc as any)?.立绘图片URL);
+        if (profileUrl) {
+            return profileUrl;
+        }
         const recent = npc?.图片档案?.最近生图结果 || npc?.最近生图结果;
         if (recent?.状态 === 'success' && 获取图片展示地址(recent)) {
             return 获取图片展示地址(recent);
@@ -312,8 +331,6 @@ const 获取NPC头像地址 = (sender: string, socialList?: NPC结构[]): string
     }
     return '';
 };
-
-const 规范化称呼 = (value: string): string => value.trim().replace(/^[【\[\(（「『]+/, '').replace(/[】\]\)）」』]+$/, '').trim();
 
 const 是否主角称呼 = (sender: string, playerName?: string): boolean => {
     const normalized = 规范化称呼(sender);
@@ -329,11 +346,11 @@ type 玩家资料 = {
 };
 
 const 获取匹配NPC = (sender: string, socialList?: NPC结构[]): NPC结构 | null => {
-    const normalizedSender = (sender || '').trim();
+    const normalizedSender = 规范化称呼(sender || '');
     if (!normalizedSender) return null;
     const list = Array.isArray(socialList) ? socialList : [];
     return list.find((npc) => {
-        const name = typeof npc?.姓名 === 'string' ? npc.姓名.trim() : '';
+        const name = typeof npc?.姓名 === 'string' ? 规范化称呼(npc.姓名) : '';
         return name === normalizedSender;
     }) || null;
 };

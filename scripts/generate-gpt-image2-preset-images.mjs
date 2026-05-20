@@ -98,7 +98,10 @@ const typeMap = {
   材料: 'crafting material',
   秘籍: 'martial arts manual or scroll',
   饰品: 'accessory',
+  法宝: 'xianxia cultivation magic treasure artifact',
+  任务道具: 'quest key item prop',
   杂物: 'miscellaneous wuxia prop',
+  杂项: 'miscellaneous wuxia prop',
 };
 
 const itemSpecificPrompt = (item, structured) => {
@@ -112,6 +115,33 @@ const itemSpecificPrompt = (item, structured) => {
   }
   if (/弓$/.test(name) || object === '弓') {
     return 'Must clearly be a decorative traditional bow replica with curved limbs and string, shown as a museum prop. Not a crossbow, not a staff, not a blade.';
+  }
+  if (/扇/.test(name) || /扇/.test(object)) {
+    return 'Must clearly be a Chinese hand fan: folded or half-open fan leaf, visible ribs, jade bamboo or wood spine, tassel. Absolutely no sword blade, no knife, no spearhead, no weapon shaft.';
+  }
+  if (/符|符箓/.test(name) || object === '符箓') {
+    return 'Must be one talisman paper charm: yellow, blue, gold, silver, or pale paper with abstract unreadable ink strokes. No readable characters, no real text, no person.';
+  }
+  if (/玉简|诀|术|心得|初解|入门/.test(name) || object === '玉简') {
+    return 'Must be a bundle of jade slips tied with silk cord, with abstract unreadable etched marks and diagrams. Not a paper book, not blank, no readable real text.';
+  }
+  if (/灵石|灵晶/.test(name) || object === '灵石' || object === '灵晶') {
+    return 'Must be one raw translucent spirit crystal or mineral stone with inner glow. Mineral specimen only, no jewelry setting, no text.';
+  }
+  if (/阵盘|罗盘/.test(name) || /阵盘|罗盘/.test(object)) {
+    return 'Must be a round array disk or compass artifact with abstract geometric grooves and a clear physical disk silhouette. No readable text or characters.';
+  }
+  if (/丹炉/.test(name) || object === '丹炉') {
+    return 'Must be a small three-legged alchemy furnace with lid and handles, tabletop bronze or iron object. No fire scene, no person, no readable text.';
+  }
+  if (/储物袋|灵兽袋/.test(name) || /储物袋|灵兽袋/.test(object)) {
+    return 'Must be a small drawstring pouch or brocade bag, isolated product still life. No animal visible, no person, no readable text.';
+  }
+  if (/储物戒/.test(name) || object === '储物戒') {
+    return 'Must be one ring artifact photographed alone, no hand or finger, no readable text.';
+  }
+  if (item.类型 === '法宝') {
+    return 'This is a xianxia cultivation magical artifact inventory prop: a single physical treasure object, elegant ancient Chinese materials, no person, no readable text.';
   }
   if (item.类型 === '武器') {
     return 'This is a nonfunctional decorative game prop replica for an inventory icon, blunt ceremonial display object, no blood, no violence, no injury, no person holding it.';

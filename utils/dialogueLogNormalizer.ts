@@ -149,9 +149,20 @@ const 是否无效角色对白 = (sender: string, text: string): boolean => {
     return false;
 };
 
+const 是否有效角色说话人 = (sender: string): boolean => {
+    const normalizedSender = 清理说话人(sender);
+    return Boolean(normalizedSender && !非单一说话人正则.test(normalizedSender) && !泛称说话人正则.test(normalizedSender));
+};
+
+const 含有引号对白 = (text: string): boolean => {
+    const source = (text || '').trim();
+    if (!source) return false;
+    return /[“"「『][^”"」』\n]{1,500}[”"」』]/.test(source);
+};
+
 export const 规范化可渲染对白日志 = (logs: GameLog[] | undefined): GameLog[] => {
     const normalized = (Array.isArray(logs) ? logs : []).flatMap((item) => {
-        const sender = (item?.sender || '旁白').trim() || '旁白';
+        const sender = 清理说话人(item?.sender || '旁白') || '旁白';
         const text = typeof item?.text === 'string' ? item.text.trim() : String(item?.text ?? '').trim();
         if (!text) return [];
         if (sender === '旁白') return [{ sender, text }];
@@ -171,6 +182,10 @@ export const 规范化可渲染对白日志 = (logs: GameLog[] | undefined): Gam
             else if (quoted) parts.push({ sender: '旁白', text: quoted });
             if (rest) parts.push({ sender: '旁白', text: rest });
             return parts;
+        }
+
+        if (是否有效角色说话人(sender) && 含有引号对白(text)) {
+            return [{ sender, text }];
         }
 
         return [{ sender: '旁白', text }];

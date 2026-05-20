@@ -71,6 +71,32 @@ const 默认境界映射: 境界映射项[] = [
     { level: 43, label: '天人境' }
 ];
 
+const 默认仙侠境界映射: 境界映射项[] = [
+    { level: 1, label: '炼气一层' },
+    { level: 2, label: '炼气二层' },
+    { level: 3, label: '炼气三层' },
+    { level: 4, label: '炼气四层' },
+    { level: 5, label: '炼气五层' },
+    { level: 6, label: '炼气六层' },
+    { level: 7, label: '炼气七层' },
+    { level: 8, label: '炼气八层' },
+    { level: 9, label: '炼气九层' },
+    { level: 10, label: '炼气圆满' },
+    { level: 12, label: '筑基初期' },
+    { level: 14, label: '筑基中期' },
+    { level: 16, label: '筑基后期' },
+    { level: 18, label: '筑基圆满' },
+    { level: 21, label: '金丹初期' },
+    { level: 24, label: '金丹中期' },
+    { level: 27, label: '金丹后期' },
+    { level: 30, label: '元婴初期' },
+    { level: 33, label: '元婴中期' },
+    { level: 36, label: '元婴后期' },
+    { level: 40, label: '化神初期' },
+    { level: 43, label: '化神中期' },
+    { level: 46, label: '化神后期' }
+];
+
 export const 默认累计境界映射数值列表 = 默认境界映射.map((item) => item.level);
 export const 默认累计境界阶段推进跳转列表 = [
     '1→2', '2→3', '3→4',
@@ -511,10 +537,17 @@ export const 构建同人运行时提示词包 = (params: {
     realmPrompt?: string;
 }): 同人运行时提示词包 => {
     const fandom = 读取同人配置(params.openingConfig);
-    const realmSchema = 读取境界母板优先级({
+    let realmSchema = 读取境界母板优先级({
         realmPrompt: params.realmPrompt,
         worldPrompt: params.worldPrompt
     });
+    if (params.openingConfig?.题材模式 === '仙侠' && realmSchema.source === 'default') {
+        realmSchema = {
+            strategy: '现体系回退',
+            mapping: 默认仙侠境界映射,
+            source: 'default'
+        };
+    }
     const realmBlocks = 读取境界区块优先级({
         realmPrompt: params.realmPrompt,
         worldPrompt: params.worldPrompt

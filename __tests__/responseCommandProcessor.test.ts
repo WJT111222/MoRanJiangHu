@@ -159,9 +159,13 @@ describe('responseCommandProcessor team companion fallback', () => {
         } as any, state, deps, undefined, { applyState: false });
 
         const companions = result.社交.filter((npc: any) => npc.是否队友 === true);
-        expect(companions).toHaveLength(11);
-        expect(companions.map((npc: any) => npc.姓名)).toEqual(
-            Array.from({ length: 11 }, (_, index) => `随行者${index + 1}`)
+        expect(companions).toHaveLength(10);
+        expect(companions.map((npc: any) => npc.姓名).sort((a: string, b: string) => {
+            const ai = Number(a.replace(/\D/g, ''));
+            const bi = Number(b.replace(/\D/g, ''));
+            return ai - bi;
+        })).toEqual(
+            Array.from({ length: 10 }, (_, index) => `随行者${index + 2}`)
         );
         expect(result.社交.some((npc: any) => npc.身份 === '随行队伍')).toBe(false);
     });

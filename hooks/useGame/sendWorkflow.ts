@@ -25,7 +25,7 @@ type 回忆检索进度 = {
 };
 
 type 正文润色进度 = {
-    phase: 'start' | 'done' | 'error' | 'skipped';
+    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
     commandTexts?: string[];
@@ -48,14 +48,14 @@ type 独立阶段失败决策参数 = {
 };
 
 type 规划分析进度 = {
-    phase: 'start' | 'done' | 'error' | 'skipped';
+    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
     commandTexts?: string[];
 };
 
 type 世界演变进度 = {
-    phase: 'start' | 'done' | 'error' | 'skipped';
+    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
     commandTexts?: string[];
@@ -347,7 +347,7 @@ type 主剧情发送依赖 = {
     执行正文润色: (
         baseResponse: GameResponse,
         rawText: string,
-        options?: { manual?: boolean; playerInput?: string }
+        options?: { manual?: boolean; playerInput?: string; signal?: AbortSignal }
     ) => Promise<{ response: GameResponse; applied: boolean; error?: string; rawText?: string }>;
     执行世界演变更新: (params?: 世界演变触发参数) => Promise<世界演变执行结果>;
     触发新增NPC自动生图: (npcs: any[]) => void;
@@ -407,6 +407,7 @@ type 主剧情发送依赖 = {
         response: GameResponse;
         shouldApply?: () => boolean;
         onRetry?: (attempt: number, maxAttempts: number, reason: string) => void;
+        signal?: AbortSignal;
     }) => Promise<{ updated: boolean; message: string; rawText?: string; commands: any[]; storyPlanCommands?: any[]; heroinePlanCommands?: any[] }>;
     后台执行变量生成: (params: {
         snapshot: 回合快照结构;
@@ -720,6 +721,9 @@ export const 执行主剧情发送工作流 = async (
                         || '未知错误'
                 );
                 params.onError?.(errorText);
+                if (controller.signal.aborted) {
+                    throw controller.signal.reason || new DOMException('Aborted', 'AbortError');
+                }
                 if (params.skipFailureDecision) {
                     params.onSkip?.(errorText);
                     return { completed: false };
@@ -730,6 +734,9 @@ export const 执行主剧情发送工作流 = async (
                     errorText,
                     manualAttempt
                 });
+                if (controller.signal.aborted) {
+                    throw controller.signal.reason || new DOMException('Aborted', 'AbortError');
+                }
                 if (decision === 'retry') {
                     continue;
                 }
@@ -1097,7 +1104,7 @@ export const 执行主剧情发送工作流 = async (
                         run: () => deps.执行正文润色(
                             aiData,
                             rawAiText,
-                            { playerInput: sendInput }
+                            { playerInput: sendInput, signal: controller.signal }
                         ),
                         onError: (errorText) => {
                             options?.onPolishProgress?.({
@@ -1268,7 +1275,8 @@ export const 执行主剧情发送工作流 = async (
                                 动态世界线索: [],
                                 applyCommands: false,
                                 currentResponse: worldContextResponse,
-                                stateBase: simulatedState
+                                stateBase: simulatedState,
+                                signal: controller.signal
                             });
                             if (result.phase === "error") {
                                 const wrappedError = new Error(result.statusText || "动态世界更新失败");
@@ -1372,7 +1380,8 @@ export const 执行主剧情发送工作流 = async (
                                 phase: "start",
                                 text: `规划分析请求失败，正在自动重试（${attempt}/${maxAttempts}）${reason ? `：${reason}` : ""}`
                             });
-                        }
+                        },
+                        signal: controller.signal
                     }),
                     onError: (errorText) => {
                         options?.onPlanningProgress?.({
@@ -1547,6 +1556,9 @@ export const 执行主剧情发送工作流 = async (
                 };
 
                 await 让出主线程();
+                if (controller.signal.aborted) {
+                    throw controller.signal.reason || new DOMException('Aborted', 'AbortError');
+                }
                 finalState = 计时同步队列步骤(
                     "queue.finalApplyResponseCommands",
                     () => deps.processResponseCommands(finalParsedResponse, mainCommandBaseState),
@@ -1619,7 +1631,23 @@ export const 执行主剧情发送工作流 = async (
                 });
             } catch (backgroundError: any) {
                 if (backgroundError?.name === "AbortError") {
+                    options?.onPolishProgress?.({
+                        phase: "cancelled",
+                        text: "后台队列已取消，当前正文保留。"
+                    });
                     options?.onVariableGenerationProgress?.({
+                        phase: "cancelled",
+                        text: "后台队列已取消，当前正文保留。"
+                    });
+                    options?.onWorldEvolutionProgress?.({
+                        phase: "cancelled",
+                        text: "后台队列已取消，当前正文保留。"
+                    });
+                    options?.onPlanningProgress?.({
+                        phase: "cancelled",
+                        text: "后台队列已取消，当前正文保留。"
+                    });
+                    options?.onMapUpdateProgress?.({
                         phase: "cancelled",
                         text: "后台队列已取消，当前正文保留。"
                     });
