@@ -1,4 +1,4 @@
-import { SystemBars, SystemBarType } from '@capacitor/core';
+import { Capacitor, SystemBars, SystemBarType } from '@capacitor/core';
 
 const readEnvString = (value: unknown): string => (
     typeof value === 'string' ? value.trim() : ''
@@ -16,19 +16,40 @@ export const buildSyncApiUrl = (path: string): string => {
 };
 
 export const isNativeCapacitorEnvironment = (): boolean => {
+    try {
+        if (typeof Capacitor?.isNativePlatform === 'function' && Capacitor.isNativePlatform()) {
+            return true;
+        }
+        if (typeof Capacitor?.getPlatform === 'function') {
+            const platform = Capacitor.getPlatform();
+            if (platform && platform !== 'web') return true;
+        }
+    } catch {
+        // Fall through to the window-based runtime probe below.
+    }
+
     if (typeof window === 'undefined') return false;
     const maybeCapacitor = (window as any).Capacitor;
-    if (!maybeCapacitor) return false;
 
     try {
-        if (typeof maybeCapacitor.isNativePlatform === 'function') {
-            return maybeCapacitor.isNativePlatform();
+        if (typeof maybeCapacitor?.isNativePlatform === 'function' && maybeCapacitor.isNativePlatform()) {
+            return true;
         }
-        if (typeof maybeCapacitor.getPlatform === 'function') {
-            return maybeCapacitor.getPlatform() !== 'web';
+        if (typeof maybeCapacitor?.getPlatform === 'function') {
+            const platform = maybeCapacitor.getPlatform();
+            if (platform && platform !== 'web') return true;
         }
     } catch {
         return false;
+    }
+
+    const protocol = readEnvString(window.location?.protocol).toLowerCase();
+    const hostname = readEnvString(window.location?.hostname).toLowerCase();
+    if (
+        protocol === 'capacitor:'
+        || ((protocol === 'https:' || protocol === 'http:') && hostname === 'localhost' && !!maybeCapacitor)
+    ) {
+        return true;
     }
 
     return false;
