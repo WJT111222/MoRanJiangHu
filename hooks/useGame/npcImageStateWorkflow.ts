@@ -273,6 +273,10 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
                     : (nextHistory.find((item: any) => item?.构图 === '头像' && item?.状态 === 'success' && item?.id)?.id
                         || nextHistory.find((item: any) => !['部位特写', '胸部', '小穴', '屁穴', '肉棒'].includes(item?.构图 as string) && item?.状态 === 'success' && item?.id)?.id
                         || undefined);
+                const nextSelectedPortraitImageId = currentSelectedPortraitImageId && nextHistory.some((item: any) => item?.id === currentSelectedPortraitImageId)
+                    ? currentSelectedPortraitImageId
+                    : (nextHistory.find((item: any) => (item?.构图 === '半身' || item?.构图 === '立绘') && item?.状态 === 'success' && item?.id)?.id
+                        || undefined);
                 return {
                     ...npc,
                     图片档案: {
@@ -280,7 +284,7 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
                         最近生图结果: nextRecent,
                         生图历史: nextHistory,
                         已选头像图片ID: nextSelectedAvatarImageId,
-                        已选立绘图片ID: currentSelectedPortraitImageId,
+                        已选立绘图片ID: nextSelectedPortraitImageId,
                         已选背景图片ID: currentSelectedBackgroundImageId
                     },
                     最近生图结果: nextRecent

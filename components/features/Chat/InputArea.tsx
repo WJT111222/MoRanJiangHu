@@ -24,7 +24,7 @@ type RecallProgress = {
 };
 
 type PolishProgress = {
-    phase: 'start' | 'done' | 'error' | 'skipped';
+    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
 };

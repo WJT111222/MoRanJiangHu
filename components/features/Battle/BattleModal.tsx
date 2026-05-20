@@ -204,7 +204,7 @@ const 战斗指标条: React.FC<{ label: keyof typeof 指标说明; value: React
     </div>
 );
 
-const 全境界速查 = '凡人/普通人/未入境；开脉一至四重；聚息一至四重；归元一至四重；御劲一至四重；化罡一至四重；通玄初期/中期/圆满；神照境；返真境；天人境';
+const 境界速查提示 = '境界划分以本存档开局生成、导入或手动设置的境界体系为准；战斗面板仅展示角色当前境界与数值层级。';
 
 const 构建战场单位 = (
     params: {
@@ -489,7 +489,7 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                     <div className="flex-1 p-6 overflow-y-auto custom-scrollbar relative">
                         <section className="mb-4 rounded-xl border border-wuxia-gold/20 bg-black/35 p-4">
                             <div className="mb-3 rounded-lg border border-wuxia-gold/15 bg-wuxia-gold/5 px-3 py-2 text-[11px] leading-5 text-wuxia-gold/80">
-                                <span className="font-bold text-wuxia-gold">本存档境界划分：</span>{全境界速查}
+                                <span className="font-bold text-wuxia-gold">本存档境界划分：</span>{境界速查提示}
                             </div>
                             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                                 <div className="text-xs font-bold tracking-[0.22em] text-wuxia-gold/80">本存档境界与站位</div>

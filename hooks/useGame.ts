@@ -235,7 +235,7 @@ type 回忆检索进度 = {
 };
 
 type 正文润色进度 = {
-    phase: 'start' | 'done' | 'error' | 'skipped';
+    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
     commandTexts?: string[];
@@ -258,14 +258,14 @@ type 独立阶段失败决策参数 = {
 };
 
 type 规划分析进度 = {
-    phase: 'start' | 'done' | 'error' | 'skipped';
+    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
     commandTexts?: string[];
 };
 
 type 世界演变进度 = {
-    phase: 'start' | 'done' | 'error' | 'skipped';
+    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
     commandTexts?: string[];
@@ -2345,7 +2345,7 @@ export const useGame = () => {
     const 执行正文润色 = async (
         baseResponse: GameResponse,
         rawText: string,
-        options?: { manual?: boolean; playerInput?: string }
+        options?: { manual?: boolean; playerInput?: string; signal?: AbortSignal }
     ): Promise<{ response: GameResponse; applied: boolean; error?: string; rawText?: string }> => 执行正文润色工作流(
         baseResponse,
         rawText,
@@ -2566,6 +2566,7 @@ export const useGame = () => {
         到期摘要?: string[];
         force?: boolean;
         currentResponse?: GameResponse;
+        signal?: AbortSignal;
         stateBase?: {
             角色: typeof 角色;
             环境: typeof 环境;

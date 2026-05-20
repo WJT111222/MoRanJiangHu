@@ -137,7 +137,7 @@ export const 执行正文润色 = async (
     baseResponse: GameResponse,
     rawText: string,
     deps: 正文润色依赖,
-    options?: { manual?: boolean; playerInput?: string }
+    options?: { manual?: boolean; playerInput?: string; signal?: AbortSignal }
 ): Promise<{ response: GameResponse; applied: boolean; error?: string; rawText?: string }> => {
     if (!deps.文章优化已开启) {
         return { response: baseResponse, applied: false, error: '文章优化已关闭。' };
@@ -293,7 +293,7 @@ export const 执行正文润色 = async (
         sourceBody,
         effectivePolishPrompt,
         polishApi,
-        undefined,
+        options?.signal,
         polishExtraPrompt,
         polishCotPseudoPrompt
     );

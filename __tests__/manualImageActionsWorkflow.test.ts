@@ -7,7 +7,8 @@ const 创建依赖 = (socialList: any[]) => ({
     记录后台私密生图监控: vi.fn(),
     推送右下角提示: vi.fn(),
     执行单个NPC生图: vi.fn(async () => undefined),
-    执行NPC香闺秘档部位生图: vi.fn(async () => undefined)
+    执行NPC香闺秘档部位生图: vi.fn(async () => undefined),
+    男娘NSFW内容已启用: () => true
 });
 
 describe('manualImageActionsWorkflow', () => {

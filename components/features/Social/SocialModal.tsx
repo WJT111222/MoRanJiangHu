@@ -414,23 +414,26 @@ const SocialModal: React.FC<Props> = ({
                                 )}
 
                                 <div className={`relative w-12 h-12 shrink-0 rounded-lg overflow-hidden border bg-black/50 group-hover:border-white/30 transition-colors ${npcDead ? 'border-gray-500/50' : 'border-white/10'}`}>
-                                    {提取头像图片地址(npc) ? (
+                                    {(() => {
+                                        const rosterImage = 提取头像图片地址(npc) || 提取立绘图片地址(npc);
+                                        return rosterImage ? (
                                         <button
                                             type="button"
                                             className="block h-full w-full"
                                             title="查看头像"
                                             onClick={(event) => {
                                                 event.stopPropagation();
-                                                打开图片查看器(提取头像图片地址(npc), `${npc.姓名} 头像`);
+                                                打开图片查看器(rosterImage, `${npc.姓名} 头像`);
                                             }}
                                         >
-                                            <img src={提取头像图片地址(npc)} alt={npc.姓名} className={`w-full h-full object-cover ${npcDead ? 'grayscale opacity-60' : ''}`} />
+                                            <img src={rosterImage} alt={npc.姓名} className={`w-full h-full object-cover ${npcDead ? 'grayscale opacity-60' : ''}`} />
                                         </button>
-                                    ) : (
+                                        ) : (
                                         <div className={`w-full h-full flex items-center justify-center font-serif font-bold text-lg ${npcDead ? 'text-gray-500/60 grayscale' : npcIsFemale ? 'text-pink-500/50' : 'text-blue-500/50'}`}>
                                             {npc.姓名[0]}
                                         </div>
-                                    )}
+                                        );
+                                    })()}
                                     {npcDead && (
                                         <div className="absolute inset-x-0 bottom-0 bg-black/70 text-center text-[9px] tracking-widest text-gray-200">
                                             已故

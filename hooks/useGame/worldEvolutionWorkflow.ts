@@ -28,6 +28,7 @@ export type 世界演变触发参数 = {
     applyCommands?: boolean;
     currentResponse?: GameResponse;
     stateBase?: Partial<响应命令处理状态>;
+    signal?: AbortSignal;
 };
 
 export type 世界演变执行结果 = {
@@ -107,10 +108,31 @@ const 创建世界演变超时错误 = (): Error => {
     return error;
 };
 
-const 执行世界演变带超时 = async <T,>(task: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+const 创建世界演变中断错误 = (): DOMException => new DOMException('世界演变请求已取消', 'AbortError');
+
+const 检查世界演变中断 = (signal?: AbortSignal): void => {
+    if (signal?.aborted) {
+        const reason = signal.reason;
+        if (reason instanceof Error || reason instanceof DOMException) throw reason;
+        throw 创建世界演变中断错误();
+    }
+};
+
+const 执行世界演变带超时 = async <T,>(
+    task: (signal: AbortSignal) => Promise<T>,
+    parentSignal?: AbortSignal
+): Promise<T> => {
+    检查世界演变中断(parentSignal);
     const controller = new AbortController();
     let timer: number | undefined;
     const startedAt = Date.now();
+    let rejectAbort: ((reason?: any) => void) | null = null;
+    const abortFromParent = () => {
+        const reason = parentSignal?.reason || 创建世界演变中断错误();
+        if (!controller.signal.aborted) controller.abort(reason);
+        rejectAbort?.(reason);
+    };
+    parentSignal?.addEventListener('abort', abortFromParent, { once: true });
     console.info('[性能诊断][世界演变] 模型请求开始', {
         timeoutMs: 世界演变请求超时毫秒
     });
@@ -122,6 +144,9 @@ const 执行世界演变带超时 = async <T,>(task: (signal: AbortSignal) => Pr
                     controller.abort();
                     reject(创建世界演变超时错误());
                 }, 世界演变请求超时毫秒);
+            }),
+            new Promise<T>((_, reject) => {
+                rejectAbort = reject;
             })
         ]);
         console.info('[性能诊断][世界演变] 模型请求完成', {
@@ -139,6 +164,7 @@ const 执行世界演变带超时 = async <T,>(task: (signal: AbortSignal) => Pr
         if (timer !== undefined) {
             window.clearTimeout(timer);
         }
+        parentSignal?.removeEventListener('abort', abortFromParent);
     }
 };
 
@@ -175,6 +201,7 @@ export const 执行世界演变更新工作流 = async (
     });
 
     try {
+        检查世界演变中断(params?.signal);
         deps.世界演变进行中Ref.current = true;
         deps.set世界演变更新中(true);
         deps.set世界演变状态文本('世界演变更新中...');
@@ -271,6 +298,7 @@ export const 执行世界演变更新工作流 = async (
         deps.世界演变去重签名Ref.current = signature;
 
         await 后台让出主线程();
+        检查世界演变中断(params?.signal);
         const worldContextPayload = {
             worldPrompt,
             worldEvolutionPrompt,
@@ -294,6 +322,7 @@ export const 执行世界演变更新工作流 = async (
             dynamicHints: dynamicHints.length,
             dueHints: dueHints.length
         });
+        检查世界演变中断(params?.signal);
         const worldEvolutionWorldbookParams = {
             books: deps.worldbooks,
             scopes: ['world_evolution'],
@@ -360,13 +389,15 @@ export const 执行世界演变更新工作流 = async (
                 fandomPromptBundle.enabled,
                 独立世界演变GPT模式
             )
-        )), { timeoutMs: 世界演变请求超时毫秒 });
+        ), params?.signal), { timeoutMs: 世界演变请求超时毫秒 });
+        检查世界演变中断(params?.signal);
         probe.mark('世界演变模型返回', {
             rawCommandCount: Array.isArray(result.commands) ? result.commands.length : 0,
             updatesCount: Array.isArray(result.updates) ? result.updates.length : 0,
             rawTextLength: typeof result.rawText === 'string' ? result.rawText.length : 0
         });
         await 后台让出主线程();
+        检查世界演变中断(params?.signal);
         const normalizedCommands = await probe.timeAsync('规范化世界演变命令(worker)', () => 执行游戏后台重计算<any[]>(
             'normalizeWorldEvolutionCommands',
             { commands: result.commands as any },
@@ -377,6 +408,7 @@ export const 执行世界演变更新工作流 = async (
 
         if (normalizedCommands.length > 0) {
             await 后台让出主线程();
+            检查世界演变中断(params?.signal);
             await 后台分段执行(() => probe.time('应用世界演变命令', () => deps.processResponseCommands(
                 {
                     logs: [],
@@ -455,6 +487,9 @@ export const 执行世界演变更新工作流 = async (
             status: error?.status
         });
         deps.set世界演变状态文本(message);
+        if (error?.name === 'AbortError') {
+            throw error;
+        }
         if (params?.force || triggerSource === 'manual') {
             deps.追加系统消息(`[世界演变失败] ${message}`, { position: 'after_last_turn' });
         }

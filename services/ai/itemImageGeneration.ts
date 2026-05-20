@@ -100,6 +100,7 @@ const 物品类型转英文 = (type: string): string => {
         '防具': 'armor', '盔甲': 'armor', '衣服': 'garment',
         '消耗品': 'consumable', '丹药': 'medicinal pill', '药': 'medicine',
         '材料': 'crafting material', '符箓': 'talisman', '秘籍': 'scroll',
+        '法宝': 'xianxia magical artifact', '法器': 'xianxia magical artifact',
         '任务': 'key item', '杂物': 'miscellaneous object',
         '饰品': 'accessory', '暗器': 'hidden weapon'
     };
@@ -190,6 +191,19 @@ const 物品是否武器 = (item: any): boolean => {
     return /武器|武型|主手|副手|暗器|兵器|刀|短刀|匕首|剑|长剑|短剑|弓|弩|箭|枪|矛|戟|棍|棒|杖|斧|锤|鞭|刃|飞刀|袖箭|镖/.test(text);
 };
 
+const 物品是否折扇 = (item: any): boolean => {
+    const text = [
+        item?.名称,
+        item?.类型,
+        item?.装备位置,
+        item?.当前装备部位,
+        item?.描述,
+        item?.视觉描述,
+        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
+    ].map((value) => 读取文本(value)).join(' ');
+    return /扇|折扇|玉骨扇|纸扇|团扇|羽扇|法扇/u.test(text);
+};
+
 const 物品是否古代药物 = (item: any): boolean => {
     const text = [
         item?.名称,
@@ -246,6 +260,29 @@ const 物品名称转英文描述 = (name: string): string => {
         '鞭': 'flexible whip weapon, braided leather or metal chain',
         '剑': 'jian sword, straight metal blade with guard and handle',
         '刀': 'saber knife weapon, curved or single edged metal blade with hilt and handle',
+        '玉骨扇': 'folded jade-rib hand fan, elegant Chinese fan with pale jade ribs and silk or paper fan leaf, decorative tassel, no blade',
+        '折扇': 'folded Chinese hand fan with visible ribs and paper or silk fan leaf, decorative tassel, no blade',
+        '纸扇': 'folded paper hand fan with bamboo ribs, no blade',
+        '羽扇': 'feather fan, layered feathers on a short handle, no blade',
+        '灵石': 'raw translucent spirit stone crystal mineral with soft inner glow',
+        '灵晶': 'dense faceted spirit crystal with concentrated inner glow',
+        '妖丹': 'round beast core crystal with layered inner glow, cultivation material',
+        '玉简': 'bundle of jade slips tied with silk cord, abstract unreadable etched marks',
+        '符箓': 'single talisman paper charm with abstract unreadable ink strokes',
+        '符': 'single talisman paper charm with abstract unreadable ink strokes',
+        '飞剑': 'slender xianxia flying sword artifact, ceremonial decorative prop, no person',
+        '葫芦': 'jade or lacquered gourd magical vessel with cork stopper and silk cord',
+        '铃': 'small bronze magical bell artifact with cord and tassel',
+        '宝镜': 'round bronze magical mirror artifact with polished cloudy surface',
+        '阵盘': 'round jade or bronze array disk with abstract geometric grooves, no readable text',
+        '罗盘': 'bronze spirit compass artifact with central pointer and abstract rings',
+        '丹炉': 'small three-legged alchemy furnace with lid and handles',
+        '储物袋': 'small embroidered drawstring storage pouch, cultivation artifact bag',
+        '储物戒': 'single storage ring artifact with gemstone, photographed alone, no hand',
+        '灵兽袋': 'small spirit beast pouch made of leather and brocade, no animal visible',
+        '法袍': 'soft cultivation robe laid flat, woven fabric and trim, no person',
+        '法冠': 'cultivation hair crown accessory, jade or metal headwear prop, no person',
+        '法靴': 'pair of empty cloth cultivation boots side by side, visible hollow openings',
         '乌金软甲': 'wearable blackened gold soft armor vest, flexible torso protection, fine overlapping dark metal scales sewn onto black cloth, sleeveless martial arts body armor',
         '软甲': 'wearable soft armor vest, flexible torso protection, overlapping small armor scales sewn onto cloth, sleeveless martial arts body armor',
         '内甲': 'wearable inner armor vest, thin flexible torso protection worn under robes, cloth-backed armor panels',
@@ -314,6 +351,15 @@ const 物品名称转英文描述 = (name: string): string => {
         if (name.includes(cn)) return en;
     }
     // 通用关键词推断
+    if (/扇|折扇|玉骨扇|纸扇|团扇|羽扇|法扇/u.test(name)) return 'folded Chinese hand fan prop, visible fan ribs and fan leaf, decorative tassel, no blade';
+    if (/灵石|灵晶|晶石|矿石|妖丹/.test(name)) return 'raw cultivation mineral or crystal core specimen with natural glow, no text';
+    if (/玉简|剑诀|心法|功法|入门|心得/.test(name)) return 'bundle of jade slips tied with silk cord, abstract unreadable etched marks and diagrams';
+    if (/符箓|火球符|冰锥符|雷光符|金刚符|神行符|隐身符|传音符|传送符/.test(name)) return 'single talisman paper charm with abstract unreadable ink strokes, no readable characters';
+    if (/阵盘|罗盘/.test(name)) return 'round cultivation array disk or compass artifact with abstract geometric grooves, no readable text';
+    if (/丹炉/.test(name)) return 'small three-legged alchemy furnace with lid and handles, tabletop bronze or iron cultivation tool';
+    if (/储物袋|灵兽袋/.test(name)) return 'small embroidered drawstring pouch cultivation treasure, no animal visible';
+    if (/储物戒/.test(name)) return 'single ring magical artifact, photographed alone, no hand';
+    if (/葫芦|铃|宝镜|镜|索/.test(name)) return 'xianxia magical artifact treasure prop, ancient Chinese material, clear single object silhouette';
     if (/暗器|兵器|刀|短刀|匕首|剑|弓|弩|箭|枪|矛|戟|棍|棒|杖|斧|锤|鞭|刃|镖/.test(name)) return 'traditional wuxia weapon prop, metal blade or weapon body with visible handle, hilt, shaft or grip';
     if (/牌|令|符/.test(name)) return 'wooden or metal plaque token';
     if (/壶|瓶|罐/.test(name)) return 'ceramic or metal container vessel';
@@ -330,14 +376,15 @@ const 物品名称转英文描述 = (name: string): string => {
 const 构建物品视觉主体描述 = (item: any): string => {
     const name = 读取文本(item?.名称);
     const isLivingMount = 物品是否坐骑生物(item);
-    const isWeapon = 物品是否武器(item);
+    const isFan = 物品是否折扇(item);
+    const isWeapon = !isFan && 物品是否武器(item);
     const isClothShoe = 物品是否布鞋(item);
     const isBandageDressing = 物品是否绷带敷料(item);
     const isSoftGarment = 物品是否柔性服装(item);
     const isWearableArmor = !isSoftGarment && 物品是否可穿戴护甲(item);
     const isAncientMedicine = 物品是否古代药物(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
-    const typeEn = isLivingMount ? 'living mount animal' : isWeapon ? 'traditional wuxia weapon' : isSoftGarment ? 'cloth garment' : isWearableArmor ? 'wearable torso armor vest' : isAncientMedicine ? 'ancient medicinal powder or pills' : isBotanicalHerb ? 'botanical medicinal herb' : 物品类型转英文(读取文本(item?.类型, '物品'));
+    const typeEn = isLivingMount ? 'living mount animal' : isFan ? 'folded Chinese hand fan' : isWeapon ? 'traditional wuxia weapon' : isSoftGarment ? 'cloth garment' : isWearableArmor ? 'wearable torso armor vest' : isAncientMedicine ? 'ancient medicinal powder or pills' : isBotanicalHerb ? 'botanical medicinal herb' : 物品类型转英文(读取文本(item?.类型, '物品'));
     const qualityEn = 物品品质转英文(读取文本(item?.品质, '普通'));
     const nameEn = 物品名称转英文描述(name);
     const description = 读取文本(item?.视觉描述 || item?.描述);
@@ -349,6 +396,7 @@ const 构建物品视觉主体描述 = (item: any): string => {
             ? (nameEn ? `a single real living ${qualityEn} mount animal, ${nameEn}` : `a single real living ${qualityEn} ${typeEn}`)
             : (nameEn ? `a single ${qualityEn} ${nameEn}` : `a single ${qualityEn} ${typeEn} prop`),
         isLivingMount ? 'alive organic animal anatomy, natural fur coat, visible eyes, nostrils, mane or tail, standing on real ground, full body animal portrait' : '',
+        isFan ? 'strict hand fan prop: folded or half-open fan, visible ribs, silk or paper leaf, jade/bamboo/wood spine, decorative tassel; absolutely no sword blade, no knife, no spearhead' : '',
         isWeapon ? 'strict traditional weapon prop: blade, edge, hilt, handle, grip, shaft or scabbard clearly visible; if the name mentions gathering herbs, render the cutting tool itself, not herbs or plants' : '',
         isClothShoe ? 'strict footwear prop: a pair of empty shoes or sandals placed side by side, visible soles and woven fabric or straw texture, unworn product still life' : '',
         isBandageDressing ? 'strict first-aid dressing prop: standalone rolled bandage or folded gauze cloth, white fabric strip spool, clean product still life' : '',
@@ -362,7 +410,8 @@ const 构建物品视觉主体描述 = (item: any): string => {
 };
 
 export const 构建物品负面提示词 = (item: any): string => {
-    const isWeapon = 物品是否武器(item);
+    const isFan = 物品是否折扇(item);
+    const isWeapon = !isFan && 物品是否武器(item);
     const isSoftGarment = 物品是否柔性服装(item);
     const isWearableArmor = !isSoftGarment && 物品是否可穿戴护甲(item);
     const isClothShoe = 物品是否布鞋(item);
@@ -374,6 +423,7 @@ export const 构建物品负面提示词 = (item: any): string => {
         isLivingMount ? 'rider, saddle covering the body, harness covering the body, cart, carriage, vehicle, boat' : 'person, human, face, hand, foot, feet, body part, skin, portrait, headshot, framed portrait, photo frame, picture frame',
         isLivingMount ? 'toy horse, plastic horse, resin figurine, statue, sculpture, ceramic, porcelain, model horse, miniature, collectible figurine, carousel horse, rocking horse, fake animal, mannequin, doll, glossy plastic, product prop, studio toy photography' : '',
         isLivingMount ? '' : 'toy, plastic figurine, resin model, statue, sculpture, mannequin',
+        isFan ? 'sword, saber, knife, dagger, blade, spear, spearhead, arrowhead, metal cutting edge, sharpened weapon, polearm, staff weapon' : '',
         'text, typography, letters, words, numbers, caption, label, plaque, sign, inscription, Chinese characters, English letters, calligraphy, seal, stamp, logo, watermark, signature, title, poster text',
         'game controller, gamepad, joystick, console controller, d-pad, analog stick, buttons, electronic device, gadget, plastic controller, remote control, keyboard, mouse',
         'modern weapon, firearm, gun, rifle, pistol, shotgun, assault rifle, sniper rifle, machine gun, firearm stock, trigger guard, gun barrel, magazine, bullet, ammunition, grenade, rocket launcher, cannon, sci-fi weapon, futuristic weapon, tactical gear, modern military, plastic gun, mechanical firearm',
@@ -396,7 +446,8 @@ export const 构建物品图提示词 = (
     const style = options?.画风 || '写实';
     const renderStyle = options?.渲染风格 || '写实道具';
     const isLivingMount = 物品是否坐骑生物(item);
-    const isWeapon = 物品是否武器(item);
+    const isFan = 物品是否折扇(item);
+    const isWeapon = !isFan && 物品是否武器(item);
     const isClothShoe = 物品是否布鞋(item);
     const isBandageDressing = 物品是否绷带敷料(item);
     const isSoftGarment = 物品是否柔性服装(item);
@@ -422,6 +473,7 @@ export const 构建物品图提示词 = (
             : 'single wuxia inventory item asset on a plain neutral background, centered composition, clean silhouette',
         获取渲染风格要求(renderStyle),
         style === '写实' ? 'photorealistic' : style,
+        isFan ? 'strict Chinese hand fan prop only: folded or half-open fan, visible ribs and fan leaf, jade or bamboo frame, tassel, elegant accessory; no blade, no knife, no sword, no spear' : '',
         isWeapon ? 'strict traditional wuxia weapon prop only: blade, hilt, handle, grip, shaft or scabbard must be the main subject; herb-related words describe use or wear, not the object category' : '',
         isClothShoe ? 'strict empty footwear prop only: two unworn sandals or cloth shoes side by side, product still life' : '',
         isBandageDressing ? 'strict bandage dressing prop only: standalone rolled gauze bandage or folded cloth strips, first-aid supply still life' : '',
