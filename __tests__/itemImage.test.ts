@@ -170,6 +170,29 @@ describe('item image prompt classification', () => {
         expect(prompt).not.toContain('armor prop');
     });
 
+    it('treats moon-white sect disciple clothes as pale cloth uniforms instead of black armor', () => {
+        const item = {
+            名称: '月白内门弟子服',
+            类型: '防具',
+            品质: '良品',
+            装备位置: '胸部',
+            描述: '月白色内门弟子制式服，布料细密，衣襟处有浅色纹饰。'
+        };
+        const prompt = 构建物品图提示词(item);
+        const negativePrompt = 构建物品负面提示词(item);
+
+        expect(prompt).toContain('inner sect disciple uniform robe');
+        expect(prompt).toContain('moon-white pale ivory fabric');
+        expect(prompt).toContain('soft textile clothing item');
+        expect(prompt).toContain('cloth-only garment design');
+        expect(prompt).not.toContain('strict wearable armor item');
+        expect(prompt).not.toContain('cuirass garment shape');
+        expect(negativePrompt).toContain('black armor');
+        expect(negativePrompt).toContain('dark armor');
+        expect(negativePrompt).toContain('black clothing');
+        expect(negativePrompt).toContain('dark robe');
+    });
+
     it('keeps exclusions in the negative prompt for cloth shoes instead of the positive prompt', () => {
         const item = {
             名称: '千层底布鞋',

@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import http from 'node:http';
+import https from 'node:https';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -134,26 +136,44 @@ const buildSignedHeaders = ({ method, url, body, contentType }) => {
   };
 };
 
+const requestWithBody = ({ method, url, headers, body }) => new Promise((resolve, reject) => {
+  const transport = url.protocol === 'http:' ? http : https;
+  const request = transport.request(url, {
+    method,
+    headers: {
+      ...headers,
+      'Content-Length': body.byteLength
+    },
+    timeout: requestTimeoutMs
+  }, (response) => {
+    const chunks = [];
+    response.on('data', (chunk) => chunks.push(chunk));
+    response.on('end', () => {
+      resolve({
+        status: response.statusCode || 0,
+        ok: (response.statusCode || 0) >= 200 && (response.statusCode || 0) < 300,
+        text: Buffer.concat(chunks).toString('utf8')
+      });
+    });
+  });
+  request.on('timeout', () => {
+    request.destroy(new Error(`Request timed out after ${requestTimeoutMs}ms`));
+  });
+  request.on('error', reject);
+  request.end(body);
+});
+
 const putObject = async ({ key, filePath, body, contentType }) => {
   const bytes = body || fs.readFileSync(filePath);
   const url = objectUrl(key);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), requestTimeoutMs);
-  try {
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        ...buildSignedHeaders({ method: 'PUT', url, body: bytes, contentType })
-      },
-      body: bytes,
-      signal: controller.signal
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`PUT ${key} failed (${response.status}): ${text.slice(0, 500)}`);
-    }
-  } finally {
-    clearTimeout(timer);
+  const response = await requestWithBody({
+    method: 'PUT',
+    url,
+    headers: buildSignedHeaders({ method: 'PUT', url, body: bytes, contentType }),
+    body: bytes
+  });
+  if (!response.ok) {
+    throw new Error(`PUT ${key} failed (${response.status}): ${response.text.slice(0, 500)}`);
   }
 };
 

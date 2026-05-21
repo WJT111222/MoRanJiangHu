@@ -2394,7 +2394,8 @@ const 生成NovelAI人物数量标签 = (source: Record<string, unknown>): strin
 const 香闺秘档部位描述字段映射: Record<香闺秘档部位类型, string> = {
     胸部: '胸部描述',
     小穴: '小穴描述',
-    屁穴: '屁穴描述'
+    屁穴: '屁穴描述',
+    肉棒: '肉棒描述'
 };
 
 const 构建香闺秘档部位特写说明 = (部位: 香闺秘档部位类型): string => {
@@ -2404,7 +2405,10 @@ const 构建香闺秘档部位特写说明 = (部位: 香闺秘档部位类型):
     if (部位 === '小穴') {
         return '阴部核心特写 (Crotch/Pussy Macro Focus)。单张画面、单一主体、超近距离紧裁切，目标部位占据 90% 以上画面，聚焦于花径、湿润程度 (Wetness, Pussy juice) 以及皮肤纹理，强调真实的肉感与微距细节，严禁退回全身或半身视角，禁止参考页、拼贴、底部小图、分镜和任何文字水印。';
     }
-    return '后庭局部特写 (Ass/Anus Extreme Close-up)。单张画面、单一主体、超近距离裁切，目标部位占据 90% 以上画面，聚焦于皮肤褶皱、肉感 (Skin texture, Fleshy) 以及后庭细节 (Detailed anus)，强调微距级别的细节呈现，禁止参考页、拼贴、底部小图、分镜和任何文字水印。';
+    if (部位 === '肉棒') {
+        return '男性私密部位局部特写 (Male Intimate Anatomy Macro Focus)。单张画面、单一主体、超近距离裁切，目标部位占据 90% 以上画面，聚焦于形态、肤色、皮肤纹理与光泽细节，禁止退回全身、半身或普通人像，禁止参考页、拼贴、底部小图、分镜和任何文字水印。';
+    }
+    return '后庭屁眼局部特写 (Anus-only Extreme Close-up)。单张画面、单一主体、超近距离裁切，目标部位只能是屁眼/肛门及臀缝必要周边，聚焦于皮肤褶皱、边缘轮廓、肉感与后庭细节 (Detailed anus)，避免把小穴/阴部/前庭拉入画面，禁止参考页、拼贴、底部小图、分镜和任何文字水印。';
 };
 
 const 强化香闺秘档特写词组 = (
@@ -3441,6 +3445,7 @@ export const generateNpcSecretPartImagePrompt = async (
         胸部描述: 读取NPC字段文本(source, '胸部描述'),
         小穴描述: 读取NPC字段文本(source, '小穴描述'),
         屁穴描述: 读取NPC字段文本(source, '屁穴描述'),
+        肉棒描述: 读取NPC字段文本(source, '肉棒描述'),
         性癖: 读取NPC字段文本(source, '性癖'),
         敏感点: 读取NPC字段文本(source, '敏感点')
     };

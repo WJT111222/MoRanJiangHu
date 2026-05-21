@@ -111,7 +111,7 @@ const 物品类型转英文 = (type: string): string => {
 };
 
 const 物品名称是否柔性服装 = (name: string): boolean => (
-    /练功服|武服|劲装|布衣|布衫|青衫|衣服|衣裳|衣物|长衫|短衫|衫|袍|道袍|僧衣|寝衣|内衬|内衣|裤|长裤|短裤|裙|鞋|靴|袜|披风|斗篷|罩衫|外袍|长袍|便服|常服/.test(name)
+    /弟子服|门派服|内门服|外门服|制式服|练功服|武服|劲装|布衣|布衫|青衫|衣服|衣裳|衣物|服装|长衫|短衫|衫|袍|法袍|道袍|僧衣|寝衣|内衬|内衣|裤|长裤|短裤|裙|鞋|靴|袜|披风|斗篷|罩衫|外袍|长袍|便服|常服/.test(name)
 );
 
 const 物品是否柔性服装 = (item: any): boolean => {
@@ -125,6 +125,26 @@ const 物品是否柔性服装 = (item: any): boolean => {
     ].map((value) => 读取文本(value)).join(' ');
     return /衣服|服装|内衬|鞋履/.test(type)
         || (/内衬|腿部|足部|胸部/.test(equipSlot) && 物品名称是否柔性服装(`${name}${equipSlot}`));
+};
+
+const 物品是否浅色月白服装 = (item: any): boolean => {
+    const text = [
+        item?.名称,
+        item?.描述,
+        item?.视觉描述,
+        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
+    ].map((value) => 读取文本(value)).join(' ');
+    return 物品是否柔性服装(item) && /月白|月白色|牙白|霜白|素白|白衣|白袍|白色/.test(text);
+};
+
+const 物品是否门派弟子服 = (item: any): boolean => {
+    const text = [
+        item?.名称,
+        item?.描述,
+        item?.视觉描述,
+        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
+    ].map((value) => 读取文本(value)).join(' ');
+    return 物品是否柔性服装(item) && /弟子服|门派服|内门服|外门服|制式服|门派弟子|内门弟子|外门弟子/.test(text);
 };
 
 const 物品是否可穿戴护甲 = (item: any): boolean => {
@@ -298,6 +318,9 @@ const 物品名称转英文描述 = (name: string): string => {
         '青衫': 'blue green cloth robe, soft fabric garment',
         '长衫': 'long cloth robe, soft fabric garment',
         '道袍': 'taoist cloth robe, soft flowing fabric garment',
+        '内门弟子服': 'inner sect disciple uniform robe, soft cloth garment, folded pale fabric with subtle trim, cloth-only clothing item',
+        '弟子服': 'sect disciple uniform robe, soft cloth garment, folded pale fabric with trim, cloth-only clothing item',
+        '门派服': 'sect uniform robe, soft cloth garment, folded fabric with trim, cloth-only clothing item',
         '外袍': 'outer cloth robe, soft flowing fabric garment',
         '长袍': 'long robe, soft fabric garment',
         '内衬': 'inner cloth lining garment, soft fabric clothing',
@@ -381,6 +404,8 @@ const 构建物品视觉主体描述 = (item: any): string => {
     const isClothShoe = 物品是否布鞋(item);
     const isBandageDressing = 物品是否绷带敷料(item);
     const isSoftGarment = 物品是否柔性服装(item);
+    const isPaleMoonWhiteGarment = 物品是否浅色月白服装(item);
+    const isSectDiscipleUniform = 物品是否门派弟子服(item);
     const isWearableArmor = !isSoftGarment && 物品是否可穿戴护甲(item);
     const isAncientMedicine = 物品是否古代药物(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
@@ -401,6 +426,8 @@ const 构建物品视觉主体描述 = (item: any): string => {
         isClothShoe ? 'strict footwear prop: a pair of empty shoes or sandals placed side by side, visible soles and woven fabric or straw texture, unworn product still life' : '',
         isBandageDressing ? 'strict first-aid dressing prop: standalone rolled bandage or folded gauze cloth, white fabric strip spool, clean product still life' : '',
         isSoftGarment ? 'soft textile clothing item, fabric seams, cloth folds, woven texture, flexible silhouette' : '',
+        isPaleMoonWhiteGarment ? 'moon-white pale ivory fabric, light-colored cloth, clean soft textile surface, bright gentle robe color' : '',
+        isSectDiscipleUniform ? 'Chinese sect disciple uniform robe, ceremonial training clothing, fabric collar and trim, cloth sash, cloth-only garment design' : '',
         isWearableArmor ? 'strict wearable armor garment: torso vest shape, chest panel, back panel, shoulder straps, arm openings, waist hem, fitted to human upper body silhouette, displayed flat or on a simple invisible dress form' : '',
         isAncientMedicine ? 'ancient Chinese medicine presentation, herbal powder or pills, folded paper packet, cloth sachet, small ceramic medicine vial, apothecary prop, pre-modern wuxia era' : '',
         isBotanicalHerb ? 'strict botanical herb or flower specimen: organic petals, leaves, roots or stems, natural plant anatomy, no manufactured device, no electronics' : '',
@@ -413,6 +440,7 @@ export const 构建物品负面提示词 = (item: any): string => {
     const isFan = 物品是否折扇(item);
     const isWeapon = !isFan && 物品是否武器(item);
     const isSoftGarment = 物品是否柔性服装(item);
+    const isPaleMoonWhiteGarment = 物品是否浅色月白服装(item);
     const isWearableArmor = !isSoftGarment && 物品是否可穿戴护甲(item);
     const isClothShoe = 物品是否布鞋(item);
     const isBandageDressing = 物品是否绷带敷料(item);
@@ -431,7 +459,8 @@ export const 构建物品负面提示词 = (item: any): string => {
         isWeapon ? 'flower, plant, potted plant, bonsai, grass, herb specimen, petals, leaves as main subject, vase, flowerpot, medicine bottle, pill packet' : '',
         'item card, game card, trading card, UI overlay, interface, badge, quality badge, rarity badge, speech bubble, dialogue box, border frame, decorative frame',
         'white background, cluttered background, ink wash, guofeng illustration, Chinese painting, brush strokes, anime, cartoon, flat illustration',
-        isSoftGarment ? 'armor, cuirass, breastplate, metal armor, metal plates, gauntlet, shield, helmet, hard shell, leather jacket, shiny leather garment' : '',
+        isSoftGarment ? 'armor, cuirass, breastplate, metal armor, metal plates, gauntlet, shield, helmet, hard shell, leather jacket, shiny leather garment, black armor, dark armor, lamellar armor, scale armor' : '',
+        isPaleMoonWhiteGarment ? 'black clothing, dark outfit, black robe, dark robe, black fabric, dark fabric, black leather, dark leather' : '',
         isAncientMedicine ? 'weapon, blade, sword, dagger, knife, armor plate, metal weapon, hardware tool, industrial object, modern container, syringe, capsule bottle, plastic medical bottle, laboratory vial' : '',
         isBotanicalHerb ? 'machine, mechanism, tool, container, box, bottle, vial, weapon, armor, toy, controller, manufactured object, plastic, metal gadget' : '',
         isClothShoe ? 'feet, toes, legs, socks, person wearing shoes, shoe model, leather dress shoe, polished leather shoe, oxford shoe, loafer, business shoe, high heel, glossy leather, hard stacked heel' : '',
@@ -451,6 +480,8 @@ export const 构建物品图提示词 = (
     const isClothShoe = 物品是否布鞋(item);
     const isBandageDressing = 物品是否绷带敷料(item);
     const isSoftGarment = 物品是否柔性服装(item);
+    const isPaleMoonWhiteGarment = 物品是否浅色月白服装(item);
+    const isSectDiscipleUniform = 物品是否门派弟子服(item);
     const isWearableArmor = !isSoftGarment && 物品是否可穿戴护甲(item);
     const isAncientMedicine = 物品是否古代药物(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
@@ -477,6 +508,8 @@ export const 构建物品图提示词 = (
         isWeapon ? 'strict traditional wuxia weapon prop only: blade, hilt, handle, grip, shaft or scabbard must be the main subject; herb-related words describe use or wear, not the object category' : '',
         isClothShoe ? 'strict empty footwear prop only: two unworn sandals or cloth shoes side by side, product still life' : '',
         isBandageDressing ? 'strict bandage dressing prop only: standalone rolled gauze bandage or folded cloth strips, first-aid supply still life' : '',
+        isPaleMoonWhiteGarment ? 'strict color requirement: moon-white pale ivory cloth, light warm white fabric, soft non-metal textile, bright clean garment surface' : '',
+        isSectDiscipleUniform ? 'strict sect uniform garment: inner-disciple robe or training uniform, cloth collar, sash, woven trim, folded or laid flat as clothing' : '',
         isAncientMedicine ? 'strict ancient wuxia medicine prop only: folded paper medicine packet, small cloth sachet, ceramic medicine vial, herbal powder or pills; absolutely pre-modern, no modern technology' : '',
         isBotanicalHerb ? 'strict botanical herb or flower only: natural plant specimen, visible petals leaves roots or stems, organic plant anatomy, not a manufactured object' : '',
         isWearableArmor ? 'strict wearable armor item: upper-body vest or cuirass garment shape, sleeveless torso armor with arm holes, shoulder straps, chest and back panels, waist hem; product photo of clothing-shaped protective gear' : '',
