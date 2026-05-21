@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { 默认ComfyUI工作流JSON, 默认NSFWComfyUI工作流JSON } from '../data/defaultComfyWorkflow';
-import { 构建最终图片提示词 } from '../services/ai/imageTasks';
+import { buildNpcSecretPartDirectImagePrompt, 构建最终图片提示词 } from '../services/ai/imageTasks';
 import { 默认功能模型占位, 获取NSFW文生图接口配置, 获取文生图接口配置, 获取场景文生图接口配置, 规范化接口设置 } from '../utils/apiConfig';
 
 const 构建ComfyUI测试设置 = (功能模型占位: Record<string, unknown> = {}) => 规范化接口设置({
@@ -246,5 +246,21 @@ describe('默认 ComfyUI 生图配置', () => {
         expect(获取NSFW文生图接口配置(settings)?.ComfyUI工作流JSON).toBe(默认NSFWComfyUI工作流JSON);
         expect(settings.功能模型占位.场景ComfyUI工作流JSON).not.toContain('qwen-image-2512-Q6_K.gguf');
         expect(settings.功能模型占位.NSFWComfyUI工作流JSON).not.toContain('qwen-image-2512-Q6_K.gguf');
+    });
+});
+
+describe('NPC 香闺秘档部位提示词', () => {
+    it('uses 肉棒描述 when generating a male secret-part prompt', () => {
+        const result = buildNpcSecretPartDirectImagePrompt({
+            姓名: '青竹',
+            性别: '男',
+            肉棒描述: '稳定男性私密档案描述。'
+        }, {
+            部位: '肉棒',
+            后端类型: 'comfyui'
+        });
+
+        expect(result.生图词组).toContain('稳定男性私密档案描述');
+        expect(result.原始描述).toContain('"描述字段": "肉棒描述"');
     });
 });

@@ -12,6 +12,53 @@ export function onRequestOptions(): Response {
     return new Response(null, { status: 204, headers: APK_CORS_HEADERS });
 }
 
+const buildVersionedApkHeaders = (fileName: string, sourceHeaders?: Headers, source = 'hi168'): Headers => {
+    const headers = new Headers({
+        'Content-Type': 'application/vnd.android.package-archive',
+        'Cache-Control': APK_VERSIONED_CACHE_CONTROL,
+        'Content-Disposition': `attachment; filename="${fileName}"`,
+        'X-Moran-Apk-Source': source,
+        ...APK_CORS_HEADERS
+    });
+    const contentLength = sourceHeaders?.get('Content-Length');
+    if (contentLength) headers.set('Content-Length', contentLength);
+    const etag = sourceHeaders?.get('ETag');
+    if (etag) headers.set('ETag', etag);
+    const lastModified = sourceHeaders?.get('Last-Modified');
+    if (lastModified) headers.set('Last-Modified', lastModified);
+    return headers;
+};
+
+const buildVersionedCacheKey = (request: Request, fileName: string): Request => {
+    const url = new URL(request.url);
+    url.pathname = `/api/apk/version/${encodeURIComponent(fileName)}`;
+    url.search = '';
+    return new Request(url.toString(), { method: 'GET' });
+};
+
+const cacheGet = async (cacheKey: Request): Promise<Response | null> => {
+    const workerCache = (globalThis as any).caches?.default;
+    if (!workerCache) return null;
+    return workerCache.match(cacheKey);
+};
+
+const cachePut = (cacheKey: Request, response: Response, context: any): void => {
+    const workerCache = (globalThis as any).caches?.default;
+    if (!workerCache || !response.ok || !response.body) return;
+    const task = workerCache.put(cacheKey, response.clone()).catch((error: unknown) => {
+        console.warn('Versioned APK edge cache write failed:', error);
+    });
+    if (typeof context?.waitUntil === 'function') {
+        context.waitUntil(task);
+    } else {
+        void task;
+    }
+};
+
+const toHeadResponse = (response: Response): Response => (
+    new Response(null, { status: response.status, statusText: response.statusText, headers: response.headers })
+);
+
 const pickVersionedFileName = (request: Request, params: any): string => {
     const raw = typeof params?.file === 'string'
         ? params.file
@@ -23,7 +70,8 @@ const pickVersionedFileName = (request: Request, params: any): string => {
     return decoded;
 };
 
-export async function onRequestGet({ request, env, params }: any): Promise<Response> {
+const handleVersionedApkRequest = async (context: any, method: 'GET' | 'HEAD'): Promise<Response> => {
+    const { request, env, params } = context;
     try {
         const fileName = pickVersionedFileName(request, params);
         const manifest = await readManifestPayload(env);
@@ -34,24 +82,23 @@ export async function onRequestGet({ request, env, params }: any): Promise<Respo
             return buildTextResponse('APK version is no longer current', 404);
         }
 
+        const cacheKey = buildVersionedCacheKey(request, fileName);
+        const cached = await cacheGet(cacheKey);
+        if (cached) {
+            return method === 'HEAD' ? toHeadResponse(cached) : cached;
+        }
+
         const key = normalizeObjectKey(`${readReleaseObjectPrefix(env)}/${fileName}`);
         try {
             const signedUrl = await buildSignedObjectUrl(env, key, 1800);
             const upstream = await fetch(signedUrl, { headers: { Accept: 'application/vnd.android.package-archive,*/*' } });
             if (upstream.ok && upstream.body) {
-                const headers = new Headers({
-                    'Content-Type': 'application/vnd.android.package-archive',
-                    'Cache-Control': APK_VERSIONED_CACHE_CONTROL,
-                    'Content-Disposition': `attachment; filename="${fileName}"`,
-                    ...APK_CORS_HEADERS
+                const response = new Response(upstream.body, {
+                    status: 200,
+                    headers: buildVersionedApkHeaders(fileName, upstream.headers, 'hi168')
                 });
-                const contentLength = upstream.headers.get('Content-Length');
-                if (contentLength) headers.set('Content-Length', contentLength);
-                const etag = upstream.headers.get('ETag');
-                if (etag) headers.set('ETag', etag);
-                const lastModified = upstream.headers.get('Last-Modified');
-                if (lastModified) headers.set('Last-Modified', lastModified);
-                return new Response(upstream.body, { status: 200, headers });
+                cachePut(cacheKey, response, context);
+                return method === 'HEAD' ? toHeadResponse(response) : response;
             }
         } catch (error) {
             console.warn('Versioned APK object storage download failed, falling back to R2:', error);
@@ -59,21 +106,20 @@ export async function onRequestGet({ request, env, params }: any): Promise<Respo
 
         const r2Object = env?.CNB_SYNC_R2 ? await env.CNB_SYNC_R2.get(key) : null;
         if (r2Object) {
-            const headers = new Headers({
-                'Content-Type': 'application/vnd.android.package-archive',
-                'Cache-Control': APK_VERSIONED_CACHE_CONTROL,
-                'Content-Disposition': `attachment; filename="${fileName}"`,
-                ...APK_CORS_HEADERS
-            });
+            const headers = buildVersionedApkHeaders(fileName, undefined, 'r2-fallback');
             r2Object.writeHttpMetadata?.(headers);
             if (r2Object.etag) headers.set('ETag', r2Object.etag);
-            return new Response(r2Object.body, { status: 200, headers });
+            const response = new Response(r2Object.body, { status: 200, headers });
+            cachePut(cacheKey, response, context);
+            return method === 'HEAD' ? toHeadResponse(response) : response;
         }
 
         return buildTextResponse('APK version not found', 404);
     } catch (error: any) {
         return buildTextResponse(error?.message || 'Versioned APK download failed', 502);
     }
-}
+};
 
-export const onRequestHead = onRequestGet;
+export const onRequestGet = (context: any): Promise<Response> => handleVersionedApkRequest(context, 'GET');
+
+export const onRequestHead = (context: any): Promise<Response> => handleVersionedApkRequest(context, 'HEAD');

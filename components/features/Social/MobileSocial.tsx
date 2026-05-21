@@ -168,7 +168,12 @@ const MobileSocial: React.FC<Props> = ({
     const 展示男性私密档案 = 当前角色是男性 && Boolean(currentNPC?.是否主要角色) && nsfwEnabled && femboyNsfwEnabled;
     const 取首个非空文本 = (...values: unknown[]): string => {
         for (const value of values) {
-            if (typeof value === 'string' && value.trim().length > 0) return value.trim();
+            if (typeof value !== 'string') continue;
+            const text = value.trim();
+            if (!text) continue;
+            const normalized = text.replace(/\s+/g, '');
+            if (/^(未知|不详|暂无|暂无记录|未记录|待补充|待完善|未提供|未填写|\?+|n\/a)$/i.test(normalized)) continue;
+            return text;
         }
         return '';
     };
@@ -1113,13 +1118,13 @@ const MobileSocial: React.FC<Props> = ({
                                     </div>
                                 ) : 展示男性私密档案 ? (
                                     <div className="space-y-4 animate-fadeIn">
-                                        <div className="bg-gradient-to-br from-indigo-950/20 to-black/60 p-4 border border-indigo-700/30 rounded-xl relative overflow-hidden shadow-lg">
-                                            <h4 className="flex items-center gap-1.5 text-indigo-200 font-serif font-bold mb-2.5 uppercase tracking-widest text-xs">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-300/60"></span>
+                                        <div className="bg-gradient-to-br from-sky-950/20 to-black/60 p-4 border border-sky-700/40 rounded-xl relative overflow-hidden shadow-lg">
+                                            <h4 className="flex items-center gap-1.5 text-sky-200 font-serif font-bold mb-2.5 uppercase tracking-widest text-xs">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-sky-300/70"></span>
                                                 男性秘档
                                             </h4>
                                             <div className="space-y-3">
-                                                <PrivateTag label="男娘设定" value={读取男娘设定(currentNPC) || '暂无记录'} color="text-indigo-200" />
+                                                <PrivateTag label="男娘设定" value={读取男娘设定(currentNPC) || '暂无记录'} color="text-sky-300" />
                                                 <div className="flex flex-col gap-2">
                                                     {香闺部位列表.map((item) => {
                                                         const result = 读取香闺秘档图片结果(currentNPC, item.key);
@@ -1128,14 +1133,14 @@ const MobileSocial: React.FC<Props> = ({
                                                         const mode = 香闺展示模式[modeKey] || 'text';
                                                         const canShowImage = Boolean(imageUrl);
                                                         return (
-                                                            <div key={item.key} className="p-2.5 rounded-lg border bg-black/60 border-indigo-800/40 flex gap-3">
-                                                                <div className="flex flex-col items-center gap-1.5 shrink-0 justify-center min-w-[3.5rem] border-r border-indigo-800/40 pr-3 mr-1">
-                                                                    <div className="text-[10px] text-indigo-200 tracking-widest font-bold whitespace-nowrap">{item.label}</div>
+                                                            <div key={item.key} className="p-2.5 rounded-lg border bg-black/60 border-sky-800/45 flex gap-3">
+                                                                <div className="flex flex-col items-center gap-1.5 shrink-0 justify-center min-w-[3.5rem] border-r border-sky-800/45 pr-3 mr-1">
+                                                                    <div className="text-[10px] text-sky-200 tracking-widest font-bold whitespace-nowrap">{item.label}</div>
                                                                     <button
                                                                         type="button"
                                                                         disabled={!canShowImage}
                                                                         onClick={() => canShowImage && set香闺展示模式(prev => ({ ...prev, [modeKey]: mode === 'image' ? 'text' : 'image' }))}
-                                                                        className={`text-[9px] px-1.5 py-0.5 rounded border whitespace-nowrap ${canShowImage ? 'border-indigo-400/50 text-indigo-200 active:bg-indigo-500/20' : 'border-gray-800 text-gray-600'}`}
+                                                                        className={`text-[9px] px-1.5 py-0.5 rounded border whitespace-nowrap ${canShowImage ? 'border-sky-500/60 text-sky-200 active:bg-sky-500/20' : 'border-gray-800 text-gray-600'}`}
                                                                     >
                                                                         {canShowImage ? (mode === 'image' ? '看文' : '看图') : '无图'}
                                                                     </button>
@@ -1147,7 +1152,7 @@ const MobileSocial: React.FC<Props> = ({
                                                                         </button>
                                                                     ) : (
                                                                         <div className="p-2 py-1 max-h-24 overflow-y-auto no-scrollbar">
-                                                                            <p className="font-serif leading-relaxed text-[11px] text-indigo-100/90 italic">{item.text}</p>
+                                                                            <p className="font-serif leading-relaxed text-[11px] text-sky-100/90 italic">{item.text}</p>
                                                                         </div>
                                                                     )}
                                                                 </div>
