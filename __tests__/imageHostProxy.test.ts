@@ -95,8 +95,10 @@ describe('image host proxy', () => {
 
         expect(response.status).toBe(200);
         expect(response.headers.get('Content-Type')).toBe('image/png');
-        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(fetchMock).toHaveBeenCalledTimes(4);
         expect(fetchMock.mock.calls[0][0]).toBe('https://image.bacon159.pp.ua/api/v1/file/abc123');
-        expect(fetchMock.mock.calls[1][0]).toBe('https://image.bacon159.pp.ua/file/abc123');
+        expect(fetchMock.mock.calls[1][0]).toBe('https://image.bacon159.pp.ua/api/v1/file/abc123');
+        expect(fetchMock.mock.calls[2][0]).toBe('https://image.bacon159.pp.ua/api/v1/file/abc123');
+        expect(fetchMock.mock.calls[3][0]).toBe('https://image.bacon159.pp.ua/file/abc123');
     });
 });
