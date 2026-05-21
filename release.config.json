@@ -1,8 +1,9 @@
 {
-  "versionCode": 275,
-  "versionName": "1.0.274",
+  "versionCode": 276,
+  "versionName": "1.0.275",
   "releaseChannel": "stable",
   "releaseNotes": [
+    "修复参悟、温习等自定义判定分类不渲染判定卡的问题，类似“【参悟】...判定值...结果=成功”的内容会恢复为结构化判定展示。",
     "优化 APK 自动更新下载链路：版本化安装包优先走 hi168 对象存储，并加强旧版客户端的 CDN 缓存命中。",
     "修复男性主要角色的肉棒特写无法自动生图的问题，自动补全会正确读取肉棒描述。",
     "优化男性秘档在白色模式下的文字对比度，浅色界面中也能看清描述内容。",
@@ -10,7 +11,7 @@
     "修复性癖、敏感点等占位值显示为“未知”的问题，未补齐时统一显示为暂无记录。",
     "修复月白内门弟子服等浅色门派服饰被误生成黑色盔甲的问题。",
     "官网：https://msjh.bacon159.pp.ua/",
-    "同步更新 Web、APK 与更新清单到 v1.0.274。"
+    "同步更新 Web、APK 与更新清单到 v1.0.275。"
   ],
   "releaseHistory": [
     {
@@ -2712,7 +2713,7 @@
   "r2Bucket": "quark-downloads-bacon",
   "r2Prefix": "moranjianghu",
   "backupWebsiteUrl": "https://msjh.bacon.de5.net",
-  "releasePublishedAt": "2026-05-21T20:22:23+08:00",
+  "releasePublishedAt": "2026-05-21T20:47:17+08:00",
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html"
 }
