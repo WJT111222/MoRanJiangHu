@@ -4,6 +4,7 @@ import { NarratorRenderer, CharacterRenderer, JudgmentRenderer } from './Message
 import GameButton from '../../ui/GameButton';
 import { 构建区域文字样式 } from '../../../utils/visualSettings';
 import { 规范化可渲染对白日志 } from '../../../utils/dialogueLogNormalizer';
+import { 提取判定日志前缀, 是否判定日志文本 } from '../../../utils/judgmentFormat';
 
 interface Props {
     response: GameResponse;
@@ -154,11 +155,10 @@ const TurnItem: React.FC<Props> = ({
     const judgeBlocks = Array.isArray(response.judge_blocks)
         ? response.judge_blocks.filter(block => ((block?.text || block?.raw || '').trim().length > 0))
         : [];
-    const 判定前缀正则 = /^(【(?:NSFW)?判定】|【先机】|【瞄准】|【接战】|【对撞】|【对抗】|【防御】|【化解】|【伤害】|【态势】|【反击】|【反馈】|【消耗】|【洞察】|【衰退】|\[(?:NSFW)?判定\]|\[先机\]|\[瞄准\]|\[接战\]|\[对撞\]|\[对抗\]|\[防御\]|\[化解\]|\[伤害\]|\[态势\]|\[反击\]|\[反馈\]|\[消耗\]|\[洞察\]|\[衰退\])/;
     const 判定日志索引映射 = useMemo(() => {
         let currentJudgmentIndex = -1;
         return displayLogs.map((log) => {
-            if (判定前缀正则.test(log.sender || '')) {
+            if (是否判定日志文本(log.sender) || 是否判定日志文本(log.text)) {
                 currentJudgmentIndex += 1;
                 return currentJudgmentIndex;
             }
@@ -527,10 +527,12 @@ const TurnItem: React.FC<Props> = ({
                     const matchedJudgeBlock = 判定日志索引映射[idx] >= 0 ? judgeBlocks[判定日志索引映射[idx]] : undefined;
                     const rawSender = log.sender || '';
                     const rawText = log.text || '';
-                    const textStartsWithJudgment = 判定前缀正则.test(rawText);
+                    const textJudgmentPrefix = 提取判定日志前缀(rawText);
+                    const senderJudgmentPrefix = 提取判定日志前缀(rawSender);
+                    const textStartsWithJudgment = Boolean(textJudgmentPrefix);
                     if (rawSender === '旁白' && !textStartsWithJudgment) return <NarratorRenderer key={idx} text={rawText} visualConfig={visualConfig} />;
-                    if (判定前缀正则.test(rawSender) || textStartsWithJudgment) {
-                        const prefix = 判定前缀正则.test(rawSender) ? rawSender : (rawText.match(判定前缀正则)?.[0] || rawSender);
+                    if (senderJudgmentPrefix || textStartsWithJudgment) {
+                        const prefix = senderJudgmentPrefix || textJudgmentPrefix || rawSender;
                         const isNsfw = prefix.includes('NSFW');
                         return <JudgmentRenderer key={idx} text={rawText} thoughtBlock={matchedJudgeBlock} isNsfw={isNsfw} visualConfig={visualConfig} prefix={prefix} />;
                     }

@@ -270,7 +270,8 @@ const parseJudgmentText = (text: string): ParsedJudgment => {
 
 const 提取判定前缀名称 = (prefix?: string): string => {
     const normalized = (prefix || '').trim();
-    const match = normalized.match(/^【([^】]+)】$/);
+    const match = normalized.match(/^(?:【([^】]+)】|\[([^\]]+)\])$/);
+    if (match?.[1] || match?.[2]) return (match[1] || match[2]).trim();
     return match?.[1]?.trim() || normalized;
 };
 
