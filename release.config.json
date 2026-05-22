@@ -1,13 +1,23 @@
 {
-  "versionCode": 284,
-  "versionName": "1.0.283",
+  "versionCode": 285,
+  "versionName": "1.0.284",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "修复主剧情正文可能明显短于设置字数仍被当作成功回合的问题；短正文会进入重试或恢复流程，不再静默落盘。",
+    "增强对象存储云存档时间树同步：新上传的子节点会携带本地可找到的祖先快照，换设备导入后可读取已同步历史节点继续游玩。",
     "官网：https://msjh.bacon159.pp.ua/",
-    "同步更新 Web、APK 与更新清单到 v1.0.283。"
+    "同步更新 Web、APK 与更新清单到 v1.0.284。"
   ],
   "releaseHistory": [
+    {
+      "versionName": "1.0.284",
+      "versionCode": 285,
+      "publishedAt": "2026-05-22T13:12:20+08:00",
+      "changes": [
+        "增强对象存储云存档时间树同步：新上传的子节点会携带本地可找到的祖先快照，换设备导入后可读取已同步历史节点继续游玩。",
+        "官网：https://msjh.bacon159.pp.ua/",
+        "同步更新 Web、APK 与更新清单到 v1.0.284。"
+      ]
+    },
     {
       "versionName": "1.0.283",
       "versionCode": 284,
@@ -2780,7 +2790,7 @@
   "r2Bucket": "quark-downloads-bacon",
   "r2Prefix": "moranjianghu",
   "backupWebsiteUrl": "https://msjh.bacon.de5.net",
-  "releasePublishedAt": "2026-05-22T12:47:38+08:00",
+  "releasePublishedAt": "2026-05-22T13:12:20+08:00",
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html"
 }
