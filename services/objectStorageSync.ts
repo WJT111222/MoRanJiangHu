@@ -424,7 +424,7 @@ const 构建对象存储代理地址列表 = (): string[] => {
     return Array.from(new Set(candidates.filter(Boolean)));
 };
 
-const 等待 = (ms: number): Promise<void> => new Promise((resolve) => window.setTimeout(resolve, ms));
+const 等待 = (ms: number): Promise<void> => new Promise((resolve) => globalThis.setTimeout(resolve, ms));
 
 const 是否可重试代理错误 = (status: number, detail: string): boolean => (
     status === 502 && /network connection lost|fetch failed|networkerror|connection reset|econnreset|timeout/i.test(detail)
@@ -1134,6 +1134,79 @@ export const 下载对象存储云存档 = async (
     });
     onProgress?.({ stage: 'done', message: '对象存储 云存档下载完成' });
     return { save, metadata: payload.metadata || item };
+};
+
+export const 删除对象存储云存档 = async (
+    config: 对象存储同步配置,
+    target: 对象存储云存档元数据,
+    onProgress?: 对象存储同步进度回调
+): Promise<{ removed: boolean; deletedObjects: number; warnings: string[]; saves: 对象存储云存档元数据[] }> => {
+    const normalized = 规范化配置(config);
+    if (!normalized) throw new Error('请填写对象存储端点、存储桶、Access Key 和 Secret Key');
+    const targetId = 读取文本(target.id);
+    const targetHash = 读取文本(target.hash);
+    const targetFileName = 读取文本(target.fileName);
+    if (!targetId && !targetHash && !targetFileName) throw new Error('云存档信息无效，无法删除');
+
+    onProgress?.({ stage: 'manifest', message: '正在读取对象存储云端清单' });
+    const manifest = await 读取远端清单(normalized);
+    const matched = manifest.saves.find((item) => (
+        (targetId && item.id === targetId)
+        || (targetHash && item.hash === targetHash)
+        || (targetFileName && item.fileName === targetFileName)
+    ));
+    if (!matched) {
+        return { removed: false, deletedObjects: 0, warnings: [], saves: manifest.saves };
+    }
+
+    const warnings: string[] = [];
+    let deletedObjects = 0;
+    const deleteObject = async (segments: string[], label: string) => {
+        const response = await objectStorageFetch(normalized, 'DELETE', segments);
+        if (response.ok || response.status === 404 || response.status === 204) {
+            deletedObjects += response.status === 404 ? 0 : 1;
+            return;
+        }
+        warnings.push(`${label} 删除失败：HTTP ${response.status}${await 读取错误详情(response)}`);
+    };
+
+    onProgress?.({ stage: 'download', message: '正在读取云端存档包索引' });
+    const packageResponse = await objectStorageFetch(normalized, 'GET', [OBJECT_STORAGE_SAVES_DIR, matched.fileName]);
+    let packagePayload: 对象存储存档包 | null = null;
+    if (packageResponse.ok) {
+        packagePayload = await packageResponse.json().catch(() => null) as 对象存储存档包 | null;
+    } else if (packageResponse.status !== 404) {
+        warnings.push(`读取待删除存档包失败：HTTP ${packageResponse.status}${await 读取错误详情(packageResponse)}`);
+    }
+
+    if (packagePayload && 是否分片包(packagePayload)) {
+        const total = packagePayload.chunks.length;
+        for (let index = 0; index < total; index += 1) {
+            const chunk = packagePayload.chunks[index];
+            onProgress?.({
+                stage: 'download',
+                current: index + 1,
+                total,
+                message: `正在删除云端分片 ${index + 1}/${total}`
+            });
+            await deleteObject([OBJECT_STORAGE_CHUNKS_DIR, packagePayload.chunkDir, chunk.fileName], `分片 ${chunk.fileName}`);
+        }
+    }
+
+    onProgress?.({ stage: 'download', message: '正在删除云端存档包' });
+    await deleteObject([OBJECT_STORAGE_SAVES_DIR, matched.fileName], '存档包');
+
+    const beforeCount = manifest.saves.length;
+    manifest.saves = manifest.saves.filter((item) => item.id !== matched.id && item.hash !== matched.hash && item.fileName !== matched.fileName);
+    onProgress?.({ stage: 'manifest', message: '正在更新对象存储云端清单' });
+    await 写入远端清单(normalized, manifest);
+    onProgress?.({ stage: 'done', message: '对象存储 云存档删除完成' });
+    return {
+        removed: manifest.saves.length < beforeCount,
+        deletedObjects,
+        warnings,
+        saves: manifest.saves
+    };
 };
 
 export const 增量导入对象存储云存档 = async (

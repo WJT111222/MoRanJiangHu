@@ -321,6 +321,12 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         await loadSaves();
     };
 
+    const 删除按钮类名 = `absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full border transition-all ${
+        saveProtectionEnabled
+            ? 'border-gray-700 bg-black/20 text-gray-700 opacity-50 cursor-not-allowed'
+            : 'border-red-400/35 bg-red-950/40 text-red-200 shadow-[0_0_14px_rgba(248,113,113,0.18)] hover:border-red-300 hover:bg-red-800/55 hover:text-white sm:opacity-75 sm:group-hover:opacity-100'
+    }`;
+
     const 读取完整存档 = async (save: 存档列表项): Promise<存档结构> => {
         const id = typeof save.id === 'number' ? save.id : 0;
         if (!id) throw new Error('存档 ID 缺失，无法读取完整存档。');
@@ -665,15 +671,12 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
 
                 <button
                     onClick={(e) => { void handleDelete(save.id, e); }}
-                    className={`absolute top-4 right-4 transition-colors ${
-                        saveProtectionEnabled
-                            ? 'text-gray-700 opacity-40 cursor-not-allowed'
-                            : 'text-gray-500 opacity-70 hover:text-red-500 group-hover:opacity-100'
-                    }`}
+                    className={删除按钮类名}
                     title={saveProtectionEnabled ? '存档保护已开启' : '删除'}
                     disabled={saveProtectionEnabled}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <span className="sr-only">{saveProtectionEnabled ? '存档保护已开启' : '删除存档'}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" className="w-5 h-5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                     </svg>
                 </button>
@@ -685,7 +688,7 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
     const renderLocalCard = (save: 本地时间树节点): React.ReactNode => (
         <div
             onClick={() => { void handleLoadClick(save); }}
-            className={`relative w-[min(16.5rem,calc(100vw-5rem))] shrink-0 snap-start bg-black/40 border border-gray-700 p-3.5 rounded-lg group transition-all flex flex-col gap-2 ${mode === 'load' ? 'cursor-pointer hover:border-wuxia-gold/50 hover:bg-black/60' : ''}`}
+            className={`relative w-[min(16.5rem,calc(100vw-4rem))] shrink-0 snap-start bg-black/40 border border-gray-700 p-3.5 rounded-lg group transition-all flex flex-col gap-2 ${mode === 'load' ? 'cursor-pointer hover:border-wuxia-gold/50 hover:bg-black/60' : ''}`}
         >
             <div className="flex items-start pr-7">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -717,15 +720,12 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
             </button>
             <button
                 onClick={(e) => { void handleDelete(save.id, e); }}
-                className={`absolute top-4 right-4 transition-colors ${
-                    saveProtectionEnabled
-                        ? 'text-gray-700 opacity-40 cursor-not-allowed'
-                        : 'text-gray-500 opacity-70 hover:text-red-500 group-hover:opacity-100'
-                }`}
+                className={删除按钮类名}
                 title={saveProtectionEnabled ? '存档保护已开启' : '删除'}
                 disabled={saveProtectionEnabled}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                <span className="sr-only">{saveProtectionEnabled ? '存档保护已开启' : '删除存档'}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" className="w-5 h-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                 </svg>
             </button>
@@ -759,7 +759,7 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
             const ordered = [...roots].sort((a, b) => Number(a.元数据?.现实保存时间戳 || a.时间戳 || 0) - Number(b.元数据?.现实保存时间戳 || b.时间戳 || 0));
             return (
                 <div className="-mx-1 max-w-full overflow-x-auto overscroll-x-contain pb-4 touch-pan-x custom-scrollbar">
-                    <div className="inline-flex min-w-full snap-x snap-mandatory items-center gap-0 px-1">
+                    <div className="inline-flex min-w-full snap-x snap-mandatory items-center gap-0 px-1 pr-8">
                         {ordered.map((node, index) => (
                             <React.Fragment key={node.id}>
                                 {index > 0 && (
@@ -777,7 +777,7 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         }
         return (
             <div className="-mx-1 max-w-full overflow-x-auto overscroll-x-contain pb-4 touch-pan-x custom-scrollbar">
-                <div className="inline-flex min-w-full snap-x snap-mandatory items-start gap-4 px-1">
+                <div className="inline-flex min-w-full snap-x snap-mandatory items-start gap-4 px-1 pr-8">
                     {roots.map((root) => renderLocalTimelineNode(root, true))}
                 </div>
             </div>
@@ -936,7 +936,9 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
                                     <div className="mb-3 text-[11px] leading-5 text-gray-500">
                                         横向线路按存档父子关系展开；读取中间节点继续游玩后，后续存档会在这里形成分叉，箭头表示时间推进方向。
                                     </div>
-                                    {renderSeriesTimeline(selectedSeries)}
+                                    <div className="max-h-[calc(100svh-17rem)] overflow-y-auto overscroll-y-contain pr-1 touch-pan-y custom-scrollbar sm:max-h-none sm:overflow-y-visible sm:pr-0">
+                                        {renderSeriesTimeline(selectedSeries)}
+                                    </div>
                                 </div>
                             ) : visibleSaveTrees.map((series) => {
                                 const expanded = expandedSeries.has(series.key);
@@ -975,6 +977,15 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
                                                     disabled={busy}
                                                 >
                                                     导出此档
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={(event) => { void handleDelete(series.latest.id, event); }}
+                                                    disabled={busy || saveProtectionEnabled}
+                                                    className="rounded border border-red-400/35 bg-red-950/35 px-2.5 py-1 text-[11px] font-semibold tracking-wider text-red-200 transition-colors hover:border-red-300 hover:bg-red-800/45 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    title={saveProtectionEnabled ? '存档保护已开启' : '删除此档'}
+                                                >
+                                                    删除此档
                                                 </button>
                                             </div>
                                         )}

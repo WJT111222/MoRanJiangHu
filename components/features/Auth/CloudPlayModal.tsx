@@ -31,6 +31,7 @@ import {
     测试对象存储连接,
     列出对象存储云存档,
     下载对象存储云存档,
+    删除对象存储云存档,
     增量同步到对象存储,
     type 对象存储云存档元数据,
     type 对象存储同步进度,
@@ -494,6 +495,24 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
         }
     };
 
+    const handleDeleteObjectStorageSave = async (item: 对象存储云存档元数据) => {
+        if (!objectStorageConfig) return;
+        if (!window.confirm(`确定删除对象存储云端存档「${item.title || '未知角色'} ${formatTime(item.syncedAt || item.savedAt)}」吗？这会从云端列表移除该节点。`)) return;
+        setBusy(`object-delete:${item.id}`);
+        setMessage('正在删除对象存储云端存档...');
+        try {
+            const result = await 删除对象存储云存档(objectStorageConfig, item, (progress) => setMessage(progress.message));
+            setObjectStorageSaves(result.saves);
+            setMessage(result.removed
+                ? `已删除对象存储云端存档。${result.warnings.length ? `部分旧文件可能需稍后清理：${result.warnings[0]}` : ''}`
+                : '未找到要删除的对象存储云端存档，列表已刷新。');
+        } catch (error: any) {
+            setMessage(`删除失败：${error?.message || '未知错误'}`);
+        } finally {
+            setBusy('');
+        }
+    };
+
     const renderObjectStorageCard = (item: 对象存储时间树节点): React.ReactNode => (
         <div className="w-[min(16rem,calc(100vw-4rem))] shrink-0 snap-start border border-sky-400/15 bg-black/25 px-3 py-3">
             <div className="flex flex-wrap items-center gap-1.5">
@@ -517,6 +536,9 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
                 </button>
                 <button type="button" disabled={busy === `object-export:${item.id}`} onClick={() => { void handleExportObjectStorageSave(item); }} className="border border-sky-400/30 px-2.5 py-1.5 text-xs text-sky-100 hover:bg-sky-500/10 disabled:opacity-50">
                     下载
+                </button>
+                <button type="button" disabled={busy === `object-delete:${item.id}`} onClick={() => { void handleDeleteObjectStorageSave(item); }} className="border border-red-400/30 px-2.5 py-1.5 text-xs text-red-200 hover:bg-red-500/10 disabled:opacity-50">
+                    {busy === `object-delete:${item.id}` ? '删除中...' : '删除'}
                 </button>
             </div>
         </div>

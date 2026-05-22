@@ -44,13 +44,7 @@ export const isNativeCapacitorEnvironment = (): boolean => {
     }
 
     const protocol = readEnvString(window.location?.protocol).toLowerCase();
-    const hostname = readEnvString(window.location?.hostname).toLowerCase();
-    if (
-        protocol === 'capacitor:'
-        || ((protocol === 'https:' || protocol === 'http:') && hostname === 'localhost' && !!maybeCapacitor)
-    ) {
-        return true;
-    }
+    if (protocol === 'capacitor:') return true;
 
     return false;
 };
