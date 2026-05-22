@@ -271,4 +271,68 @@ describe('对象存储同步', () => {
         expect(result).toEqual({ total: 1, imported: 0, skipped: 1 });
         expect(dbService.导入存档数据).not.toHaveBeenCalled();
     });
+
+    it('可以从对象存储清单中删除单个云端存档，并删除对应包文件', async () => {
+        let writtenManifest: any = null;
+        const metadata = {
+            id: 'manual_delete_me',
+            fileName: 'manual_delete_me.json',
+            syncKey: 'manual|1779000000001|测试角色1',
+            title: '测试角色1',
+            type: 'manual',
+            saveTimestamp: 1779000000001,
+            savedAt: new Date(1779000000001).toISOString(),
+            syncedAt: new Date(1779000001000).toISOString(),
+            deviceType: 'phone',
+            deviceLabel: '手机',
+            appVersion: '1.0.test',
+            versionCode: 999,
+            hash: 'deletehash0001',
+            size: 1234,
+            location: '测试地点',
+            gameTime: '测试时间'
+        };
+        const keep = { ...metadata, id: 'manual_keep', fileName: 'manual_keep.json', hash: 'keephash0001' };
+        const deletedKeys: string[] = [];
+
+        vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+            const headers = new Headers(init?.headers);
+            const method = headers.get('X-Object-Storage-Method') || '';
+            const key = headers.get('X-Object-Storage-Key') || '';
+            if (!method) throw new TypeError('CORS blocked direct object storage request');
+            if (method === 'GET' && key.endsWith('/manifest.json')) {
+                return new Response(JSON.stringify({
+                    format: 'moranjianghu-object-storage-manifest',
+                    version: 1,
+                    updatedAt: new Date().toISOString(),
+                    saves: [metadata, keep]
+                }), { status: 200 });
+            }
+            if (method === 'GET' && key.endsWith('/saves/manual_delete_me.json')) {
+                return new Response(JSON.stringify({
+                    format: 'moranjianghu-object-storage-save-package',
+                    version: 1,
+                    metadata,
+                    archiveBase64: 'ZmFrZQ=='
+                }), { status: 200 });
+            }
+            if (method === 'DELETE') {
+                deletedKeys.push(key);
+                return new Response('', { status: 204 });
+            }
+            if (method === 'PUT' && key.endsWith('/manifest.json')) {
+                writtenManifest = JSON.parse(String(init?.body || '{}'));
+                return new Response('', { status: 200 });
+            }
+            return new Response('', { status: 200 });
+        }));
+
+        const { 删除对象存储云存档 } = await import('../services/objectStorageSync');
+        const result = await 删除对象存储云存档(config, metadata as any);
+
+        expect(result.removed).toBe(true);
+        expect(deletedKeys.some((key) => key.endsWith('/saves/manual_delete_me.json'))).toBe(true);
+        expect(writtenManifest.saves).toHaveLength(1);
+        expect(writtenManifest.saves[0].id).toBe('manual_keep');
+    });
 });
