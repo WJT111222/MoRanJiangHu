@@ -241,6 +241,136 @@ describe('对象存储同步', () => {
         expect(new Set(writtenManifest.saves.map((item: any) => item.hash)).size).toBe(2);
     });
 
+    it('上传子节点时会把本地可找到的祖先节点一起打进云包', async () => {
+        const parent = {
+            ...makeSave(1),
+            元数据: {
+                存档哈希: 'parenthash0001',
+                存档系列ID: 'series-a',
+                存档根节点哈希: 'parenthash0001',
+                存档谱系版本: 1,
+                存档谱系深度: 0
+            }
+        };
+        const child = {
+            ...makeSave(2),
+            元数据: {
+                存档哈希: 'childhash0002',
+                存档系列ID: 'series-a',
+                存档父节点哈希: 'parenthash0001',
+                存档根节点哈希: 'parenthash0001',
+                存档谱系版本: 1,
+                存档谱系深度: 1
+            }
+        };
+        const dbService = await import('../services/dbService');
+        vi.mocked(dbService.读取存档列表).mockResolvedValueOnce([parent, child]);
+        const archiveService = await import('../services/saveArchiveService');
+        const exportedBundles: any[][] = [];
+        vi.mocked(archiveService.导出ZIP存档文件).mockImplementation(async ({ saves }: any) => {
+            exportedBundles.push(saves);
+            return new Blob([JSON.stringify({ saves })], { type: 'application/zip' });
+        });
+
+        vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+            const headers = new Headers(init?.headers);
+            const method = headers.get('X-Object-Storage-Method') || '';
+            const key = headers.get('X-Object-Storage-Key') || '';
+            if (!method) throw new TypeError('CORS blocked direct object storage request');
+            if (method === 'GET' && key.endsWith('/manifest.json')) {
+                return new Response(JSON.stringify({
+                    format: 'moranjianghu-object-storage-manifest',
+                    version: 1,
+                    updatedAt: new Date().toISOString(),
+                    saves: [{
+                        id: 'manual_parent',
+                        fileName: 'manual_parent.json',
+                        hash: 'parenthash0001',
+                        saveTimestamp: parent.时间戳,
+                        syncedAt: new Date().toISOString()
+                    }]
+                }), { status: 200 });
+            }
+            if (method === 'PUT' && key.includes('/saves/')) return new Response('', { status: 200 });
+            if (method === 'PUT' && key.endsWith('/manifest.json')) return new Response('', { status: 200 });
+            return new Response('', { status: 200 });
+        }));
+
+        const { 增量同步到对象存储 } = await import('../services/objectStorageSync');
+        const result = await 增量同步到对象存储(config);
+
+        expect(result.uploaded).toBe(1);
+        expect(exportedBundles).toHaveLength(1);
+        expect(exportedBundles[0].map((save) => save.元数据?.存档哈希)).toEqual(['parenthash0001', 'childhash0002']);
+    });
+
+    it('增量导入云包时会恢复包内全部时间树节点', async () => {
+        const parent = {
+            ...makeSave(1),
+            元数据: {
+                存档哈希: 'parenthash0001',
+                存档系列ID: 'series-a',
+                存档根节点哈希: 'parenthash0001',
+                存档谱系版本: 1,
+                存档谱系深度: 0
+            }
+        };
+        const child = {
+            ...makeSave(2),
+            元数据: {
+                存档哈希: 'childhash0002',
+                存档系列ID: 'series-a',
+                存档父节点哈希: 'parenthash0001',
+                存档根节点哈希: 'parenthash0001',
+                存档谱系版本: 1,
+                存档谱系深度: 1
+            }
+        };
+        const metadata = {
+            id: 'manual_child',
+            fileName: 'manual_child.json',
+            syncKey: 'manual|1779000000002|测试角色2',
+            title: '测试角色2',
+            type: 'manual',
+            saveTimestamp: child.时间戳,
+            savedAt: new Date(child.时间戳).toISOString(),
+            syncedAt: new Date().toISOString(),
+            hash: 'childhash0002',
+            size: 1234,
+            bundledSaveCount: 2
+        };
+        const dbService = await import('../services/dbService');
+        vi.mocked(dbService.读取存档列表).mockResolvedValueOnce([]);
+        vi.mocked(dbService.导入存档数据).mockResolvedValueOnce({ total: 2, imported: 2, skipped: 0 });
+        const archiveService = await import('../services/saveArchiveService');
+        vi.mocked(archiveService.解析ZIP存档文件).mockResolvedValueOnce({ saves: [parent, child] } as any);
+
+        vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+            const headers = new Headers(init?.headers);
+            const method = headers.get('X-Object-Storage-Method') || '';
+            const key = headers.get('X-Object-Storage-Key') || '';
+            if (!method) throw new TypeError('CORS blocked direct object storage request');
+            if (method === 'GET' && key.endsWith('/saves/manual_child.json')) {
+                return new Response(JSON.stringify({
+                    format: 'moranjianghu-object-storage-save-package',
+                    version: 1,
+                    metadata,
+                    archiveBase64: 'ZmFrZS16aXA='
+                }), { status: 200 });
+            }
+            throw new Error(`unexpected request ${method} ${key}`);
+        }));
+
+        const { 增量导入对象存储云存档 } = await import('../services/objectStorageSync');
+        const result = await 增量导入对象存储云存档(config, [metadata as any]);
+
+        expect(result).toEqual({ total: 1, imported: 2, skipped: 0 });
+        expect(dbService.导入存档数据).toHaveBeenCalledWith(
+            { saves: [expect.objectContaining({ 元数据: expect.objectContaining({ 存档哈希: 'parenthash0001' }) }), expect.objectContaining({ 元数据: expect.objectContaining({ 存档哈希: 'childhash0002' }) })] },
+            { 覆盖现有: false }
+        );
+    });
+
     it('增量导入会用云端哈希跳过本地已有存档，避免重复下载', async () => {
         const local = {
             ...makeSave(1),
