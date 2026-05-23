@@ -241,6 +241,140 @@ describe('对象存储同步', () => {
         expect(new Set(writtenManifest.saves.map((item: any) => item.hash)).size).toBe(2);
     });
 
+    it('同一自动存档节点再次同步时更新云端节点，不生成平行分支', async () => {
+        const local = {
+            ...makeSave(2),
+            类型: 'auto',
+            时间戳: 1779000005000,
+            角色数据: { 姓名: '杨培强' },
+            元数据: {
+                存档哈希: 'newautohash0002',
+                存档系列ID: 'series-a',
+                存档父节点哈希: 'parenthash0001',
+                存档根节点哈希: 'parenthash0001',
+                存档谱系版本: 1,
+                存档谱系深度: 1,
+                自动存档节点ID: 'turn:7|time:1:01:01:23:00|loc:百草阁后院厢房',
+                自动存档签名: 'node:turn:7|time:1:01:01:23:00|loc:百草阁后院厢房'
+            }
+        };
+        const oldRemote = {
+            id: 'auto_old_hash',
+            fileName: 'auto_old_hash.json',
+            syncKey: 'auto-node|series-a|turn:7/time:1:01:01:23:00/loc:百草阁后院厢房|杨培强',
+            title: '杨培强',
+            type: 'auto',
+            saveTimestamp: 1779000001000,
+            savedAt: new Date(1779000001000).toISOString(),
+            syncedAt: new Date(1779000002000).toISOString(),
+            deviceType: 'phone',
+            deviceLabel: '手机',
+            appVersion: '1.0.test',
+            versionCode: 998,
+            hash: 'oldautohash0001',
+            size: 1234,
+            location: '百草阁后院厢房',
+            gameTime: '1:01:01:23:00',
+            seriesId: 'series-a',
+            parentHash: 'parenthash0001',
+            rootHash: 'parenthash0001',
+            lineageDepth: 1,
+            autoNodeId: 'turn:7|time:1:01:01:23:00|loc:百草阁后院厢房'
+        };
+        let writtenManifest: any = null;
+        const dbService = await import('../services/dbService');
+        vi.mocked(dbService.读取存档列表).mockResolvedValueOnce([local as any]);
+
+        vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+            const headers = new Headers(init?.headers);
+            const method = headers.get('X-Object-Storage-Method') || '';
+            const key = headers.get('X-Object-Storage-Key') || '';
+            if (!method) throw new TypeError('CORS blocked direct object storage request');
+            if (method === 'GET' && key.endsWith('/manifest.json')) {
+                return new Response(JSON.stringify({
+                    format: 'moranjianghu-object-storage-manifest',
+                    version: 1,
+                    updatedAt: new Date().toISOString(),
+                    saves: [oldRemote]
+                }), { status: 200 });
+            }
+            if (method === 'PUT' && key.includes('/saves/')) return new Response('', { status: 200 });
+            if (method === 'PUT' && key.endsWith('/manifest.json')) {
+                writtenManifest = JSON.parse(String(init?.body || '{}'));
+                return new Response('', { status: 200 });
+            }
+            return new Response('', { status: 200 });
+        }));
+
+        const { 增量同步到对象存储 } = await import('../services/objectStorageSync');
+        const result = await 增量同步到对象存储(config);
+
+        expect(result.uploaded).toBe(1);
+        expect(result.updated).toBe(1);
+        expect(writtenManifest.saves).toHaveLength(1);
+        expect(writtenManifest.saves[0]).toEqual(expect.objectContaining({
+            hash: 'newautohash0002',
+            autoNodeId: 'turn:7|time:1:01:01:23:00|loc:百草阁后院厢房'
+        }));
+    });
+
+    it('读取旧对象存储清单时按自动存档语义收敛同回合同地点重复节点', async () => {
+        const oldA = {
+            id: 'auto_old_a',
+            fileName: 'auto_old_a.json',
+            title: '杨培强',
+            type: 'auto',
+            saveTimestamp: 1779000001000,
+            savedAt: new Date(1779000001000).toISOString(),
+            syncedAt: new Date(1779000002000).toISOString(),
+            deviceType: 'phone',
+            deviceLabel: '手机',
+            appVersion: '1.0.test',
+            versionCode: 998,
+            hash: 'oldautohash0001',
+            size: 1234,
+            location: '百草阁后院厢房',
+            gameTime: '1:01:01:23:00',
+            turnCount: 7,
+            seriesId: 'series-a',
+            parentHash: 'parenthash0001',
+            rootHash: 'parenthash0001',
+            lineageDepth: 1
+        };
+        const oldB = {
+            ...oldA,
+            id: 'auto_old_b',
+            fileName: 'auto_old_b.json',
+            hash: 'oldautohash0002',
+            syncedAt: new Date(1779000003000).toISOString()
+        };
+
+        vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+            const headers = new Headers(init?.headers);
+            const method = headers.get('X-Object-Storage-Method') || '';
+            const key = headers.get('X-Object-Storage-Key') || '';
+            if (!method) throw new TypeError('CORS blocked direct object storage request');
+            if (method === 'GET' && key.endsWith('/manifest.json')) {
+                return new Response(JSON.stringify({
+                    format: 'moranjianghu-object-storage-manifest',
+                    version: 1,
+                    updatedAt: new Date().toISOString(),
+                    saves: [oldA, oldB]
+                }), { status: 200 });
+            }
+            return new Response('', { status: 200 });
+        }));
+
+        const { 列出对象存储云存档 } = await import('../services/objectStorageSync');
+        const list = await 列出对象存储云存档(config);
+
+        expect(list).toHaveLength(1);
+        expect(list[0]).toEqual(expect.objectContaining({
+            id: 'auto_old_b',
+            hash: 'oldautohash0002'
+        }));
+    });
+
     it('上传子节点时会把本地可找到的祖先节点一起打进云包', async () => {
         const parent = {
             ...makeSave(1),
