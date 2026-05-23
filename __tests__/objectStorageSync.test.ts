@@ -241,6 +241,61 @@ describe('对象存储同步', () => {
         expect(new Set(writtenManifest.saves.map((item: any) => item.hash)).size).toBe(2);
     });
 
+    it('上传新谱系根节点时从源头写成第0回合', async () => {
+        const local = {
+            ...makeSave(7),
+            类型: 'auto',
+            元数据: {
+                存档哈希: 'roothash0007',
+                存档系列ID: 'series-new',
+                存档谱系深度: 7,
+                游戏回合数: 7
+            },
+            历史记录: [
+                { role: 'assistant', structuredResponse: {}, content: '开局正文' },
+                { role: 'assistant', structuredResponse: {}, content: '后续正文' }
+            ]
+        };
+        let writtenManifest: any = null;
+        const dbService = await import('../services/dbService');
+        vi.mocked(dbService.读取存档列表).mockResolvedValueOnce([local as any]);
+
+        vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+            const headers = new Headers(init?.headers);
+            const method = headers.get('X-Object-Storage-Method') || '';
+            const key = headers.get('X-Object-Storage-Key') || '';
+            if (!method) throw new TypeError('CORS blocked direct object storage request');
+            if (method === 'GET' && key.endsWith('/manifest.json')) {
+                return new Response(JSON.stringify({
+                    format: 'moranjianghu-object-storage-manifest',
+                    version: 1,
+                    updatedAt: new Date().toISOString(),
+                    saves: []
+                }), { status: 200 });
+            }
+            if (method === 'PUT' && key.includes('/saves/')) return new Response('', { status: 200 });
+            if (method === 'PUT' && key.endsWith('/manifest.json')) {
+                writtenManifest = JSON.parse(String(init?.body || '{}'));
+                return new Response('', { status: 200 });
+            }
+            return new Response('', { status: 200 });
+        }));
+
+        const { 增量同步到对象存储 } = await import('../services/objectStorageSync');
+        const result = await 增量同步到对象存储(config);
+
+        expect(result.uploaded).toBe(1);
+        expect(writtenManifest.saves).toHaveLength(1);
+        expect(writtenManifest.saves[0]).toEqual(expect.objectContaining({
+            hash: 'roothash0007',
+            turnCount: 0,
+            parentHash: '',
+            rootHash: 'roothash0007',
+            lineageDepth: 0,
+            branchInput: '开局'
+        }));
+    });
+
     it('同一自动存档节点再次同步时更新云端节点，不生成平行分支', async () => {
         const local = {
             ...makeSave(2),
@@ -372,6 +427,82 @@ describe('对象存储同步', () => {
         expect(list[0]).toEqual(expect.objectContaining({
             id: 'auto_old_b',
             hash: 'oldautohash0002'
+        }));
+    });
+
+    it('读取旧对象存储清单时会把同一谱系的中途开线修回连续进度线并写回', async () => {
+        const brokenRoot = {
+            id: 'auto_root',
+            fileName: 'auto_root.json',
+            title: '杨培强',
+            type: 'auto',
+            saveTimestamp: 1779000000000,
+            savedAt: new Date(1779000000000).toISOString(),
+            syncedAt: new Date(1779000001000).toISOString(),
+            deviceType: 'phone',
+            deviceLabel: '手机',
+            appVersion: '1.0.test',
+            versionCode: 998,
+            hash: 'root000000000001',
+            size: 1234,
+            location: '山门',
+            gameTime: '1:01:01:08:00',
+            turnCount: 0,
+            seriesId: 'series-broken',
+            rootHash: 'root000000000001',
+            branchInput: '开局'
+        };
+        const brokenMiddleRoot = {
+            ...brokenRoot,
+            id: 'auto_middle',
+            fileName: 'auto_middle.json',
+            hash: 'middle0000000002',
+            saveTimestamp: 1779000002000,
+            savedAt: new Date(1779000002000).toISOString(),
+            syncedAt: new Date(1779000003000).toISOString(),
+            location: '藏经阁',
+            gameTime: '1:01:01:09:00',
+            turnCount: 5,
+            rootHash: 'middle0000000002',
+            parentHash: '',
+            branchInput: '继续游玩'
+        };
+        let repairedManifest: any = null;
+
+        vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+            const headers = new Headers(init?.headers);
+            const method = headers.get('X-Object-Storage-Method') || '';
+            const key = headers.get('X-Object-Storage-Key') || '';
+            if (!method) throw new TypeError('CORS blocked direct object storage request');
+            if (method === 'GET' && key.endsWith('/manifest.json')) {
+                return new Response(JSON.stringify({
+                    format: 'moranjianghu-object-storage-manifest',
+                    version: 1,
+                    updatedAt: new Date().toISOString(),
+                    saves: [brokenMiddleRoot, brokenRoot]
+                }), { status: 200 });
+            }
+            if (method === 'PUT' && key.endsWith('/manifest.json')) {
+                repairedManifest = JSON.parse(String(init?.body || '{}'));
+                return new Response('', { status: 200 });
+            }
+            return new Response('', { status: 200 });
+        }));
+
+        const { 列出对象存储云存档 } = await import('../services/objectStorageSync');
+        const list = await 列出对象存储云存档(config);
+        const ordered = [...list].sort((a: any, b: any) => Number(a.turnCount) - Number(b.turnCount));
+
+        expect(repairedManifest.saves).toHaveLength(2);
+        expect(ordered.map((item: any) => item.turnCount)).toEqual([0, 1]);
+        expect(ordered[1]).toEqual(expect.objectContaining({
+            parentHash: 'root000000000001',
+            rootHash: 'root000000000001',
+            lineageDepth: 1
+        }));
+        expect(repairedManifest.saves.find((item: any) => item.hash === 'middle0000000002')).toEqual(expect.objectContaining({
+            turnCount: 1,
+            parentHash: 'root000000000001'
         }));
     });
 
