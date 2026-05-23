@@ -195,8 +195,18 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
     const [uploadProgress, setUploadProgress] = React.useState<云端上传进度 | null>(null);
     const [objectUploadProgress, setObjectUploadProgress] = React.useState<对象存储同步进度 | null>(null);
     const [downloadProgress, setDownloadProgress] = React.useState<云端下载进度 | null>(null);
+    const [selectedCloudSeriesKey, setSelectedCloudSeriesKey] = React.useState<string | null>(null);
+    const [selectedObjectSeriesKey, setSelectedObjectSeriesKey] = React.useState<string | null>(null);
     const cloudSaveTrees = React.useMemo(() => buildCloudSaveTrees(manifest?.saves || []), [manifest]);
     const objectStorageSaveTrees = React.useMemo(() => buildObjectStorageSaveTrees(objectStorageSaves), [objectStorageSaves]);
+    const selectedCloudSeries = React.useMemo(
+        () => cloudSaveTrees.find((series) => series.key === selectedCloudSeriesKey) || null,
+        [cloudSaveTrees, selectedCloudSeriesKey]
+    );
+    const selectedObjectSeries = React.useMemo(
+        () => objectStorageSaveTrees.find((series) => series.key === selectedObjectSeriesKey) || null,
+        [objectStorageSaveTrees, selectedObjectSeriesKey]
+    );
 
     const manifestRef = React.useRef<云端存档清单 | null>(null);
     React.useEffect(() => {
@@ -343,6 +353,9 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
             });
             const save = payload.saves[0];
             if (!save) throw new Error('云端存档包内没有可读取的存档。');
+            await dbService.导入存档数据({ saves: payload.saves }, { 覆盖现有: false }).catch((error) => {
+                console.warn('云端游玩载入时写入本地谱系索引失败:', error);
+            });
             await Promise.resolve(onLoadGame(save));
             onClose();
         } catch (error: any) {
@@ -443,7 +456,10 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
         setBusy(`object-load:${item.id}`);
         setMessage('正在读取对象存储云端存档...');
         try {
-            const { save } = await 下载对象存储云存档(objectStorageConfig, item, (progress) => setMessage(progress.message));
+            const { save, saves } = await 下载对象存储云存档(objectStorageConfig, item, (progress) => setMessage(progress.message));
+            await dbService.导入存档数据({ saves: saves.length > 0 ? saves : [save] }, { 覆盖现有: false }).catch((error) => {
+                console.warn('对象存储云端游玩载入时写入本地谱系索引失败:', error);
+            });
             await Promise.resolve(onLoadGame(save));
             onClose();
         } catch (error: any) {
@@ -706,6 +722,30 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
                                         </button>
                                     )}
                                 </div>
+                            ) : selectedObjectSeries ? (
+                                <div className="min-w-0 border border-sky-400/20 bg-black/15 p-3">
+                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-sky-400/10 pb-2">
+                                        <div>
+                                            <div className="font-serif text-sm font-bold tracking-[0.12em] text-sky-100">{selectedObjectSeries.title}</div>
+                                            <div className="mt-1 text-[11px] text-gray-500">
+                                                时间树 {selectedObjectSeries.count} 个节点 · 云端包合计 {formatBytes(selectedObjectSeries.totalBytes)} · 最新 {formatTime(selectedObjectSeries.latest?.syncedAt || selectedObjectSeries.latest?.savedAt)}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            <button type="button" onClick={() => { void handleLoadObjectStorageSave(selectedObjectSeries.latest); }} className="border border-wuxia-gold/40 bg-wuxia-gold/10 px-3 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/20">
+                                                读取最新
+                                            </button>
+                                            <button type="button" onClick={() => setSelectedObjectSeriesKey(null)} className="border border-gray-500/40 px-3 py-2 text-xs text-gray-200 hover:bg-white/5">
+                                                返回系列列表
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="-mx-1 max-w-full overflow-x-auto overscroll-x-contain pb-3 touch-pan-x custom-scrollbar">
+                                        <div className="inline-flex min-w-full snap-x snap-mandatory items-start gap-4 px-1">
+                                            {selectedObjectSeries.roots.map((root) => renderObjectStorageNode(root, true))}
+                                        </div>
+                                    </div>
+                                </div>
                             ) : (
                                 objectStorageSaveTrees.map((series) => (
                                     <div key={series.key} className="min-w-0 border border-sky-400/20 bg-black/15 p-3">
@@ -716,13 +756,16 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
                                                     时间树 {series.count} 个节点 · 云端包合计 {formatBytes(series.totalBytes)} · 最新 {formatTime(series.latest?.syncedAt || series.latest?.savedAt)}
                                                 </div>
                                             </div>
-                                            <div className="text-[11px] text-gray-500">同一起始存档已归并为一个系列</div>
-                                        </div>
-                                        <div className="-mx-1 max-w-full overflow-x-auto overscroll-x-contain pb-3 touch-pan-x custom-scrollbar">
-                                            <div className="inline-flex min-w-full snap-x snap-mandatory items-start gap-4 px-1">
-                                                {series.roots.map((root) => renderObjectStorageNode(root, true))}
+                                            <div className="flex flex-wrap gap-2">
+                                                <button type="button" onClick={() => { void handleLoadObjectStorageSave(series.latest); }} className="border border-wuxia-gold/40 bg-wuxia-gold/10 px-3 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/20">
+                                                    读取最新
+                                                </button>
+                                                <button type="button" onClick={() => setSelectedObjectSeriesKey(series.key)} className="border border-sky-400/35 px-3 py-2 text-xs text-sky-100 hover:bg-sky-500/10">
+                                                    选择节点
+                                                </button>
                                             </div>
                                         </div>
+                                        <div className="text-[11px] text-gray-500">同一起始存档已归并为一个系列；选择节点后可读取任意时间树节点。</div>
                                     </div>
                                 ))
                             )}
@@ -821,6 +864,30 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
                                         </button>
                                     )}
                                 </div>
+                            ) : selectedCloudSeries ? (
+                                <div className="min-w-0 border border-wuxia-gold/20 bg-black/15 p-3">
+                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-wuxia-gold/10 pb-2">
+                                        <div>
+                                            <div className="font-serif text-sm font-bold tracking-[0.12em] text-wuxia-gold">{selectedCloudSeries.title}</div>
+                                            <div className="mt-1 text-[11px] text-gray-500">
+                                                时间树 {selectedCloudSeries.count} 个节点 · 云端包合计 {formatBytes(selectedCloudSeries.totalBytes)} · 最新 {formatTime(selectedCloudSeries.latest?.savedAt)}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            <button type="button" onClick={() => { void handleLoadCloudSave(selectedCloudSeries.latest); }} className="border border-wuxia-gold/40 bg-wuxia-gold/10 px-3 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/20">
+                                                读取最新
+                                            </button>
+                                            <button type="button" onClick={() => setSelectedCloudSeriesKey(null)} className="border border-gray-500/40 px-3 py-2 text-xs text-gray-200 hover:bg-white/5">
+                                                返回系列列表
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="-mx-1 max-w-full overflow-x-auto overscroll-x-contain pb-3 touch-pan-x custom-scrollbar">
+                                        <div className="inline-flex min-w-full snap-x snap-mandatory items-start gap-4 px-1">
+                                            {selectedCloudSeries.roots.map((root) => renderCloudNode(root, true))}
+                                        </div>
+                                    </div>
+                                </div>
                             ) : (
                                 cloudSaveTrees.map((series) => (
                                     <div key={series.key} className="min-w-0 border border-wuxia-gold/20 bg-black/15 p-3">
@@ -831,13 +898,16 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
                                                     时间树 {series.count} 个节点 · 云端包合计 {formatBytes(series.totalBytes)} · 最新 {formatTime(series.latest?.savedAt)}
                                                 </div>
                                             </div>
-                                            <div className="text-[11px] text-gray-500">同一起始存档已归并为一个系列</div>
-                                        </div>
-                                        <div className="-mx-1 max-w-full overflow-x-auto overscroll-x-contain pb-3 touch-pan-x custom-scrollbar">
-                                            <div className="inline-flex min-w-full snap-x snap-mandatory items-start gap-4 px-1">
-                                                {series.roots.map((root) => renderCloudNode(root, true))}
+                                            <div className="flex flex-wrap gap-2">
+                                                <button type="button" onClick={() => { void handleLoadCloudSave(series.latest); }} className="border border-wuxia-gold/40 bg-wuxia-gold/10 px-3 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/20">
+                                                    读取最新
+                                                </button>
+                                                <button type="button" onClick={() => setSelectedCloudSeriesKey(series.key)} className="border border-sky-400/35 px-3 py-2 text-xs text-sky-100 hover:bg-sky-500/10">
+                                                    选择节点
+                                                </button>
                                             </div>
                                         </div>
+                                        <div className="text-[11px] text-gray-500">同一起始存档已归并为一个系列；选择节点后可读取任意时间树节点。</div>
                                     </div>
                                 ))
                             )}
