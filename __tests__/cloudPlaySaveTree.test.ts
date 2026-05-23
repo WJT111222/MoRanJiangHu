@@ -68,6 +68,18 @@ describe('对象存储云端游玩进度线', () => {
         expect(trees[0].latest.hash).toBe('turn8');
     });
 
+    it('新谱系只按 seriesId 分组，不再被每回合分支输入或开局片段拆成多条线', () => {
+        const trees = 构建对象存储云存档时间树([
+            makeItem({ hash: 'root', rootHash: 'root', seriesId: 'series-recovered', turnCount: 0, branchInput: '开局', openingSnippet: '第一段正文', saveTimestamp: 1779520000000 }),
+            makeItem({ hash: 'turn1', rootHash: 'root', parentHash: 'root', seriesId: 'series-recovered', turnCount: 1, branchInput: '拿出青木诀', openingSnippet: '第二段正文', saveTimestamp: 1779520100000 }),
+            makeItem({ hash: 'turn2', rootHash: 'root', parentHash: 'turn1', seriesId: 'series-recovered', turnCount: 2, branchInput: '前往藏经阁', openingSnippet: '第三段正文', saveTimestamp: 1779520200000 })
+        ]);
+
+        expect(trees).toHaveLength(1);
+        expect(trees[0].count).toBe(3);
+        expect(展开对象存储进度线(trees[0].roots).map((item) => item.hash)).toEqual(['root', 'turn1', 'turn2']);
+    });
+
     it('旧云端元数据缺根哈希时，用首回合片段区分同名开局', () => {
         const trees = 构建对象存储云存档时间树([
             makeItem({ hash: 'a1', seriesId: '', rootHash: '', openingSnippet: '晨雾压着青石小巷', turnCount: 1, saveTimestamp: 1779520000000 }),

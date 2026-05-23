@@ -16,8 +16,8 @@ describe('存档回合数统计', () => {
         ];
 
         expect(history).toHaveLength(9);
-        expect(计算历史游玩回合数(history)).toBe(3);
-        expect(读取存档游玩回合数({ 历史记录: history } as any)).toBe(3);
+        expect(计算历史游玩回合数(history)).toBe(2);
+        expect(读取存档游玩回合数({ 历史记录: history } as any)).toBe(2);
     });
 
     it('优先使用存档元数据里的回合数，兼容摘要列表不带完整历史', () => {
@@ -33,6 +33,25 @@ describe('存档回合数统计', () => {
             { role: 'system', content: '[世界推演] 更新' },
             { role: 'assistant', structuredResponse: { logs: [] } }
         ];
-        expect(读取存档游玩回合数({ 元数据: { 游戏回合数: 8 }, 历史记录: history } as any)).toBe(3);
+        expect(读取存档游玩回合数({ 元数据: { 游戏回合数: 8 }, 历史记录: history } as any)).toBe(2);
+    });
+
+    it('开局第一段正文作为第 0 回合，避免新谱系根节点从第 1 回合开始', () => {
+        const history: any[] = [
+            { role: 'user', content: '开局' },
+            { role: 'assistant', structuredResponse: { logs: [{ sender: '旁白', text: '开局正文' }] } }
+        ];
+
+        expect(计算历史游玩回合数(history)).toBe(0);
+        expect(读取存档游玩回合数({ 历史记录: history } as any)).toBe(0);
+    });
+
+    it('完整开局存档即使带有旧元数据 1，也以正文历史判定为第 0 回合', () => {
+        const history: any[] = [
+            { role: 'user', content: '开局' },
+            { role: 'assistant', structuredResponse: { logs: [{ sender: '旁白', text: '开局正文' }] } }
+        ];
+
+        expect(读取存档游玩回合数({ 元数据: { 游戏回合数: 1 }, 历史记录: history } as any)).toBe(0);
     });
 });

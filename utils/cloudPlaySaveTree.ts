@@ -94,7 +94,6 @@ const 读取对象存储展示系列键 = (item: 对象存储云存档元数据)
     const seriesId = 读取文本(item.seriesId);
     const rootHash = 读取文本(item.rootHash);
     const openingSnippet = 读取开局片段(item);
-    if (seriesId && openingSnippet) return `series:${seriesId}|opening:${openingSnippet}`;
     if (seriesId) return `series:${seriesId}`;
     if (rootHash && openingSnippet) return `root:${rootHash}|opening:${openingSnippet}`;
     if (rootHash) return `root:${rootHash}`;
