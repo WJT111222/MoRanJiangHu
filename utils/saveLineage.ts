@@ -1,4 +1,5 @@
 import type { 存档结构 } from '../types';
+import { 读取存档游玩回合数 } from './saveTurn';
 
 const readText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
@@ -12,6 +13,12 @@ const 读取历史用户输入 = (save: Partial<存档结构>, startIndex = 0): 
     const history = Array.isArray(save.历史记录) ? save.历史记录 : [];
     const user = history.slice(Math.max(0, startIndex)).find((item: any) => item?.role === 'user' && readText(item.content));
     return 截断连线文本((user as any)?.content || '');
+};
+
+const 读取谱系回合数 = (save: Partial<存档结构>): number => {
+    const explicit = Number((save.元数据 as any)?.游戏回合数);
+    if (Number.isFinite(explicit) && explicit >= 0) return Math.floor(explicit);
+    return 读取存档游玩回合数(save);
 };
 
 export const 计算谱系短哈希 = (value: string): string => {
@@ -95,15 +102,197 @@ export const 补全存档谱系元数据 = <T extends Partial<存档结构>>(
     const rootHash = parent
         ? readText((parent.元数据 as any)?.存档根节点哈希) || parentHash
         : explicitRootHash || readText(metadata.存档哈希) || parentHash;
-    metadata.存档父节点哈希 = parentHash || '';
-    metadata.存档根节点哈希 = rootHash || readText(metadata.存档哈希);
-    metadata.存档谱系深度 = parent
-        ? Math.max(0, Number((parent.元数据 as any)?.存档谱系深度 || 0) + 1)
-        : (Number.isFinite(explicitDepth) && explicitDepth > 0 ? Math.floor(explicitDepth) : 0);
-    metadata.存档分支输入 = branchInput || existingBranchInput || (parentHash ? '继续游玩' : '开局');
+    if (parentHash) {
+        metadata.存档父节点哈希 = parentHash;
+        metadata.存档根节点哈希 = rootHash || readText(metadata.存档哈希);
+        metadata.存档谱系深度 = parent
+            ? Math.max(0, Number((parent.元数据 as any)?.存档谱系深度 || 0) + 1)
+            : (Number.isFinite(explicitDepth) && explicitDepth > 0 ? Math.floor(explicitDepth) : 1);
+        metadata.存档分支输入 = branchInput || existingBranchInput || '继续游玩';
+    } else {
+        const selfHash = readText(metadata.存档哈希);
+        metadata.存档父节点哈希 = '';
+        metadata.存档根节点哈希 = selfHash || rootHash || '';
+        metadata.存档谱系深度 = 0;
+        metadata.游戏回合数 = 0;
+        metadata.存档分支输入 = '开局';
+    }
     metadata.存档谱系版本 = 1;
     return {
         ...save,
         元数据: metadata as any
+    };
+};
+
+export interface 本地存档谱系修复结果<T extends Partial<存档结构>> {
+    saves: T[];
+    changed: boolean;
+    repairedGroups: number;
+    repairedNodes: number;
+}
+
+const 比较谱系顺序 = (a: Partial<存档结构>, b: Partial<存档结构>): number => {
+    const turnDiff = 读取谱系回合数(a) - 读取谱系回合数(b);
+    if (turnDiff !== 0) return turnDiff;
+    const depthDiff = Number((a.元数据 as any)?.存档谱系深度 || 0) - Number((b.元数据 as any)?.存档谱系深度 || 0);
+    if (depthDiff !== 0) return depthDiff;
+    return Number(a.时间戳 || 0) - Number(b.时间戳 || 0);
+};
+
+const 是可信谱系根 = (item: Partial<存档结构>): boolean => (
+    !readText((item.元数据 as any)?.存档父节点哈希)
+    && 读取谱系回合数(item) === 0
+    && Number((item.元数据 as any)?.存档谱系深度 || 0) === 0
+);
+
+const 构建恢复系列ID = (seriesId: string, rootHash: string): string => (
+    `${seriesId}-root-${rootHash.slice(0, 12)}`
+);
+
+const 收集谱系子树 = <T extends Partial<存档结构>>(
+    root: T,
+    childrenByParent: Map<string, T[]>
+): T[] => {
+    const collected: T[] = [];
+    const seen = new Set<string>();
+    const walk = (item: T) => {
+        const hash = 读取存档谱系哈希(item);
+        if (!hash || seen.has(hash)) return;
+        seen.add(hash);
+        collected.push(item);
+        const children = [...(childrenByParent.get(hash) || [])].sort(比较谱系顺序);
+        children.forEach(walk);
+    };
+    walk(root);
+    return collected;
+};
+
+const 写入谱系节点元数据 = <T extends Partial<存档结构>>(
+    ordered: T[],
+    rootHash: string,
+    seriesId: string,
+    startIndex = 0,
+    parentBeforeFirst = ''
+): number => {
+    let repairedNodes = 0;
+    ordered.forEach((save, offset) => {
+        const metadata = save.元数据 as any;
+        const index = startIndex + offset;
+        const nextParentHash = index === 0 ? '' : (offset === 0 ? parentBeforeFirst : 读取存档谱系哈希(ordered[offset - 1]));
+        const nextBranchInput = index === 0 ? '开局' : (readText(metadata.存档分支输入) || 读取历史用户输入(save, 0) || '继续游玩');
+        if (
+            metadata.存档系列ID !== seriesId
+            || metadata.存档根节点哈希 !== rootHash
+            || metadata.存档父节点哈希 !== nextParentHash
+            || metadata.存档谱系深度 !== index
+            || metadata.游戏回合数 !== index
+            || metadata.存档分支输入 !== nextBranchInput
+            || metadata.存档谱系版本 !== 1
+        ) {
+            repairedNodes += 1;
+        }
+        metadata.存档系列ID = seriesId;
+        metadata.存档根节点哈希 = rootHash;
+        metadata.存档父节点哈希 = nextParentHash;
+        metadata.存档谱系深度 = index;
+        metadata.游戏回合数 = index;
+        metadata.存档分支输入 = nextBranchInput;
+        metadata.存档谱系版本 = 1;
+    });
+    return repairedNodes;
+};
+
+export const 修复本地存档谱系列表 = <T extends Partial<存档结构>>(
+    saves: T[]
+): 本地存档谱系修复结果<T> => {
+    const next = saves.map((save) => ({
+        ...save,
+        元数据: {
+            ...((save.元数据 && typeof save.元数据 === 'object') ? save.元数据 : {})
+        }
+    })) as T[];
+    const bySeries = new Map<string, T[]>();
+    next.forEach((save) => {
+        const seriesId = readText((save.元数据 as any)?.存档系列ID);
+        const hash = 读取存档谱系哈希(save);
+        if (!seriesId || !hash) return;
+        bySeries.set(seriesId, [...(bySeries.get(seriesId) || []), save]);
+    });
+
+    let repairedGroups = 0;
+    let repairedNodes = 0;
+    bySeries.forEach((items) => {
+        const hashToItem = new Map(items.map((item) => [读取存档谱系哈希(item), item]).filter(([hash]) => Boolean(hash)) as Array<[string, T]>);
+        const childrenByParent = new Map<string, T[]>();
+        items.forEach((item) => {
+            const parentHash = readText((item.元数据 as any)?.存档父节点哈希);
+            if (!parentHash || !hashToItem.has(parentHash)) return;
+            childrenByParent.set(parentHash, [...(childrenByParent.get(parentHash) || []), item]);
+        });
+
+        const trueRoots = items.filter(是可信谱系根).sort(比较谱系顺序);
+        if (trueRoots.length <= 0) {
+            const ordered = [...items].sort(比较谱系顺序);
+            const first = ordered[0];
+            const rootHash = 读取存档谱系哈希(first);
+            const seriesId = readText((first?.元数据 as any)?.存档系列ID);
+            if (!rootHash || !seriesId) return;
+            if (ordered.length <= 1 && 读取谱系回合数(first) > 0) return;
+            const groupChanged = 写入谱系节点元数据(ordered, rootHash, seriesId, 0, '');
+            if (groupChanged > 0) {
+                repairedNodes += groupChanged;
+                repairedGroups += 1;
+            }
+            return;
+        }
+
+        const used = new Set<string>();
+        let groupChanged = 0;
+        trueRoots.forEach((root, rootIndex) => {
+            const rootHash = 读取存档谱系哈希(root);
+            if (!rootHash) return;
+            const component = 收集谱系子树(root, childrenByParent);
+            component.forEach((item) => used.add(读取存档谱系哈希(item)));
+            const currentSeriesId = readText((root.元数据 as any)?.存档系列ID);
+            const nextSeriesId = trueRoots.length > 1 && rootIndex > 0
+                ? 构建恢复系列ID(currentSeriesId, rootHash)
+                : currentSeriesId;
+            groupChanged += 写入谱系节点元数据(component, rootHash, nextSeriesId, 0, '');
+        });
+
+        const primaryRoot = trueRoots[0];
+        const primaryRootHash = 读取存档谱系哈希(primaryRoot);
+        const primarySeriesId = readText((primaryRoot.元数据 as any)?.存档系列ID);
+        const unattachedRoots = items
+            .filter((item) => {
+                const hash = 读取存档谱系哈希(item);
+                if (!hash || used.has(hash)) return false;
+                const parentHash = readText((item.元数据 as any)?.存档父节点哈希);
+                if (!parentHash) return true;
+                return !hashToItem.has(parentHash);
+            })
+            .sort(比较谱系顺序);
+        let previousHash = primaryRootHash;
+        let nextIndex = 收集谱系子树(primaryRoot, childrenByParent).length;
+        unattachedRoots.forEach((root) => {
+            if (!primaryRootHash || !previousHash) return;
+            const component = 收集谱系子树(root, childrenByParent);
+            component.forEach((item) => used.add(读取存档谱系哈希(item)));
+            groupChanged += 写入谱系节点元数据(component, primaryRootHash, primarySeriesId, nextIndex, previousHash);
+            previousHash = 读取存档谱系哈希(component[component.length - 1]) || previousHash;
+            nextIndex += component.length;
+        });
+
+        if (groupChanged > 0) {
+            repairedNodes += groupChanged;
+            repairedGroups += 1;
+        }
+    });
+
+    return {
+        saves: next,
+        changed: repairedNodes > 0,
+        repairedGroups,
+        repairedNodes
     };
 };
