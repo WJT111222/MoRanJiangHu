@@ -1521,7 +1521,8 @@ export const 构建系统提示词 = ({
                 statePayload?.环境?.小地点,
                 statePayload?.环境?.具体地点
             ].filter(Boolean).join('|'),
-            count: 100
+            count: 100,
+            fandomEnabled: openingConfig?.同人融合?.enabled === true
         }),
         fandomSummaryPrompt,
         genreModePrompt,

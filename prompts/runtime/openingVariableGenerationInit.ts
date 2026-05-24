@@ -43,6 +43,7 @@ export const 开局变量生成附加提示词 = [
 export const 构建开局变量生成承接提示 = (params: {
     currentGameTime?: string;
     openingRoleSetupText?: string;
+    openingPartnerSetupText?: string;
     openingConfigText?: string;
 }): string => [
     '【开局承接提示】',
@@ -54,6 +55,9 @@ export const 构建开局变量生成承接提示 = (params: {
     '【主角建档承接信息】',
     (params.openingRoleSetupText || '').trim() || '未提供显式主角建档信息。',
     '',
+    '【开局同伴建档承接信息】',
+    (params.openingPartnerSetupText || '').trim() || '未启用或未提供显式开局同伴建档信息。',
+    '',
     '【本次开局配置】',
     (params.openingConfigText || '').trim() || '未提供额外开局配置。'
 ].join('\n');
@@ -63,6 +67,7 @@ export const 构建开局变量生成正文上下文 = (params: {
     openingVariablePlanText?: string;
     currentGameTime?: string;
     openingRoleSetupText?: string;
+    openingPartnerSetupText?: string;
     openingConfigText?: string;
 }): string => [
     '【第0回合开局变量生成上下文】',

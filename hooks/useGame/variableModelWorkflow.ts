@@ -44,6 +44,7 @@ export type 变量模型校准参数 = {
     openingTaskContext?: {
         currentGameTime?: string;
         openingRoleSetupText?: string;
+        openingPartnerSetupText?: string;
         openingConfigText?: string;
     };
     onStreamDelta?: (delta: string, accumulated: string) => void;
@@ -249,7 +250,7 @@ export const 构建正文对白人物审计提示 = (
     return [
         '【本回合正文对白人物审计】',
         '- 变量生成必须逐个核对本回合 `【角色名】` 对话框人物；凡是非旁白、非判定、非主角的人物，都必须在 `社交[]` 中有长期可承接档案。',
-        '- 有对白框的人物一律优先视为持续承接对象；未建档就完整建档，半残档就补齐字段。正文中可用代称，但变量里必须落真实姓名，并把代称写入 `曾用名/身份/简介/记忆`。',
+        '- 有对白框的人物一律优先视为持续承接对象；未建档就完整建档，半残档就补齐字段。正文中可用代称，但变量里必须落真实姓名，并把代称优先写入 `身份/简介/记忆`；只有确有旧称、化名、曾用称呼时才写 `曾用名`，不要给每个 NPC 强行生成曾用名。',
         '- 若该人物已被判定为女性主要角色或长期关系对象，还要按 NPC 协议补齐外貌、身材、衣着、称呼、关系突破、私密档案和名器档案；不要等后续回合再补。',
         '',
         ...lines
@@ -508,7 +509,8 @@ export const 执行变量模型校准工作流 = async (
             params.baseState?.环境?.小地点,
             params.baseState?.环境?.具体地点
         ].filter(Boolean).join('|'),
-        count: 100
+        count: 100,
+        fandomEnabled: params.openingConfig?.同人融合?.enabled === true
     });
     const mergedExtraPrompt = [
         runtimeExtraPrompt,

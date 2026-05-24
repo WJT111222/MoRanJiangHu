@@ -87,6 +87,32 @@ describe('云端游玩存储模式', () => {
         await vi.waitFor(() => expect(syncToObjectStorage).toHaveBeenCalledTimes(1));
     });
 
+    it('从云端游玩开启新存档时会覆盖旧的本地游玩标记并恢复 TG 同步', async () => {
+        const service = await import('../services/cloudPlayService');
+        localStorage.setItem('moranjianghu.cloudPlay.session.v1', JSON.stringify({
+            expiresAt: Date.now() + 60_000,
+            session: {
+                userId: 'u1',
+                username: 'tg-user',
+                password: 'pw',
+                clientSalt: 'salt'
+            }
+        }));
+        service.设置云端游玩存储模式('local');
+
+        expect(service.读取云端游玩存储模式()).toBeNull();
+        expect(service.准备开启云端新存档('tg')).toBe('tg');
+        expect(service.读取云端游玩存储模式()).toBe('tg');
+    });
+
+    it('从对象存储云端游玩开启新存档时会恢复对象存储自动同步模式', async () => {
+        const service = await import('../services/cloudPlayService');
+        service.设置云端游玩存储模式('local');
+
+        expect(service.准备开启云端新存档('object')).toBe('object');
+        expect(service.读取云端游玩存储模式()).toBe('object');
+    });
+
     it('返回首页前可以等待云端自动同步队列完成', async () => {
         const service = await import('../services/cloudPlayService');
         localStorage.setItem('moranjianghu.cloudPlay.session.v1', JSON.stringify({

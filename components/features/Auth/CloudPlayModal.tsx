@@ -13,6 +13,7 @@ import {
     已启用对象存储云端游玩模式,
     设置云端游玩存储模式,
     读取云端游玩存储模式,
+    准备开启云端新存档,
     读取云端存档清单,
     读取缓存云端存档清单,
     复制全部本地存档到云端,
@@ -278,6 +279,17 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
         setManifest(null);
         setMessage('已退出云端游玩。');
     };
+
+    const handleStartNewCloudSave = React.useCallback(() => {
+        if (!onStartNewGame) return;
+        const prepared = 准备开启云端新存档(storageMode);
+        if (!prepared) {
+            setMessage('请先登录 TG 图床云端账号，或切换到对象存储后再开启新存档。');
+            return;
+        }
+        setStorageMode(prepared);
+        onStartNewGame();
+    }, [onStartNewGame, storageMode]);
 
     const handleCopyLocal = async () => {
         if (!session) return;
@@ -688,7 +700,7 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {onStartNewGame && (
-                                    <button type="button" onClick={onStartNewGame} className="border border-wuxia-gold/40 bg-wuxia-gold/10 px-3 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/20">
+                                    <button type="button" onClick={handleStartNewCloudSave} className="border border-wuxia-gold/40 bg-wuxia-gold/10 px-3 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/20">
                                         开启新存档
                                     </button>
                                 )}
@@ -729,7 +741,7 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
                                 <div className="border border-dashed border-sky-400/25 px-4 py-8 text-center text-sm text-gray-400">
                                     对象存储云端暂无存档。这里不混入本地存档；可以开启新存档，或先把本地存档复制到对象存储。
                                     {onStartNewGame && (
-                                        <button type="button" onClick={onStartNewGame} className="mx-auto mt-4 block border border-wuxia-gold/40 bg-wuxia-gold/10 px-4 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/20">
+                                        <button type="button" onClick={handleStartNewCloudSave} className="mx-auto mt-4 block border border-wuxia-gold/40 bg-wuxia-gold/10 px-4 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/20">
                                             开启新存档
                                         </button>
                                     )}
@@ -817,7 +829,7 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {onStartNewGame && (
-                                    <button type="button" onClick={onStartNewGame} className="border border-wuxia-gold/40 bg-wuxia-gold/10 px-3 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/20">
+                                    <button type="button" onClick={handleStartNewCloudSave} className="border border-wuxia-gold/40 bg-wuxia-gold/10 px-3 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/20">
                                         开启新存档
                                     </button>
                                 )}
@@ -875,7 +887,7 @@ const CloudPlayModal: React.FC<Props> = ({ onClose, onLoadGame, onStartNewGame, 
                                 <div className="border border-dashed border-wuxia-gold/25 px-4 py-8 text-center text-sm text-gray-400">
                                     暂无云端存档。这里不混入本地存档；可以开启新存档，或先把本地存档复制到云端。
                                     {onStartNewGame && (
-                                        <button type="button" onClick={onStartNewGame} className="mx-auto mt-4 block border border-wuxia-gold/40 bg-wuxia-gold/10 px-4 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/20">
+                                        <button type="button" onClick={handleStartNewCloudSave} className="mx-auto mt-4 block border border-wuxia-gold/40 bg-wuxia-gold/10 px-4 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/20">
                                             开启新存档
                                         </button>
                                     )}

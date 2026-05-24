@@ -40,7 +40,7 @@ type 运行时变量工作流依赖 = {
     };
     规范化角色物品容器映射: (value: any, options?: { 当前时间?: unknown; 事件文本?: string }) => any;
     规范化环境信息: (value: any) => any;
-    规范化社交列表: (value: any[], options?: { 合并同名?: boolean }) => any[];
+    规范化社交列表: (value: any[], options?: { 合并同名?: boolean; 保留非姓名库主要女性名?: boolean }) => any[];
     规范化世界状态: (value: any) => any;
     规范化战斗状态: (value: any) => any;
     规范化剧情状态: (value: any) => any;
@@ -177,7 +177,7 @@ export const 创建运行时变量工作流 = (deps: 运行时变量工作流依
                 return;
             }
             case '社交': {
-                const nextValue = deps.规范化社交列表(Array.isArray(value) ? value : [], { 合并同名: false });
+                const nextValue = deps.规范化社交列表(Array.isArray(value) ? value : [], { 合并同名: false, 保留非姓名库主要女性名: true });
                 deps.设置社交(nextValue);
                 void deps.performAutoSave({ social: nextValue, history: 历史记录, force: true });
                 return;
@@ -296,7 +296,7 @@ export const 创建运行时变量工作流 = (deps: 运行时变量工作流依
         );
         const nextEnv = deps.规范化环境信息(result.env);
         const nextChar = deps.规范化角色物品容器映射(result.char, { 当前时间: nextEnv });
-        const nextSocial = deps.规范化社交列表(result.social, { 合并同名: false });
+        const nextSocial = deps.规范化社交列表(result.social, { 合并同名: false, 保留非姓名库主要女性名: true });
         const nextWorld = deps.规范化世界状态(result.world);
         const nextBattle = deps.规范化战斗状态(result.battle);
         const nextStory = await 同步剧情时间校准({

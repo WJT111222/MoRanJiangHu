@@ -27,7 +27,7 @@ const 过滤世界数据 = (worldData: unknown): Record<string, unknown> => {
 
 interface Props {
     runtimeState: Record<变量根键, unknown>;
-    onReplaceSection: (section: 变量根键, value: unknown) => void;
+    onReplaceSection: (section: 变量根键, value: unknown) => void | Promise<void>;
     onApplyCommand: (command: TavernCommand) => void;
 }
 
@@ -53,6 +53,13 @@ const 分区列表: Array<{ key: 变量根键; label: string; description: strin
 
 const 深拷贝 = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const 格式化JSON = (value: unknown): string => JSON.stringify(value, null, 2);
+const 安全指纹 = (value: unknown): string => {
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return String(value);
+    }
+};
 
 const 解析JSON输入 = (raw: string): unknown => {
     const text = raw.trim();
@@ -199,6 +206,13 @@ const VariableManager: React.FC<Props> = ({ runtimeState, onReplaceSection, onAp
 
     // 保留地图系统草稿，防止被 runtimeState 更新覆盖
     const mapDraftRef = React.useRef<any>(null);
+    const pendingSavedDraftsRef = React.useRef<Record<string, { value: any; previousFingerprint: string }>>({});
+    const 读取运行时分区 = React.useCallback((section: 变量根键, source: Record<变量根键, unknown> = runtimeState) => {
+        if (section === '地图系统') return 提取地图数据(source['世界']);
+        if (section === '世界') return 过滤世界数据(source['世界']);
+        return source[section];
+    }, [runtimeState]);
+
     React.useEffect(() => {
         const nextDrafts = 深拷贝(runtimeState);
         if (mapDraftRef.current) {
@@ -206,8 +220,17 @@ const VariableManager: React.FC<Props> = ({ runtimeState, onReplaceSection, onAp
         } else {
             nextDrafts['地图系统'] = 提取地图数据(runtimeState['世界']);
         }
+        Object.entries(pendingSavedDraftsRef.current).forEach(([section, pending]) => {
+            const sectionKey = section as 变量根键;
+            const currentFingerprint = 安全指纹(读取运行时分区(sectionKey));
+            if (currentFingerprint === pending.previousFingerprint) {
+                nextDrafts[section] = 深拷贝(pending.value);
+                return;
+            }
+            delete pendingSavedDraftsRef.current[section];
+        });
         setDrafts(nextDrafts);
-    }, [runtimeState]);
+    }, [runtimeState, 读取运行时分区]);
 
     React.useEffect(() => {
         setJsonDraft(格式化JSON(activeValue));
@@ -216,6 +239,13 @@ const VariableManager: React.FC<Props> = ({ runtimeState, onReplaceSection, onAp
     const updateActiveDraft = (value: any) => {
         if (activeSection === '地图系统') mapDraftRef.current = value;
         setDrafts((prev) => ({ ...prev, [activeSection === '地图系统' ? '地图系统' : activeSection]: value }));
+    };
+
+    const markPendingSavedDraft = (section: 变量根键, value: any) => {
+        pendingSavedDraftsRef.current[section] = {
+            value: 深拷贝(value),
+            previousFingerprint: 安全指纹(读取运行时分区(section))
+        };
     };
 
     const handleSaveSection = () => {
@@ -228,6 +258,7 @@ const VariableManager: React.FC<Props> = ({ runtimeState, onReplaceSection, onAp
                 Object.keys(currentMapData).forEach(key => {
                     (worldData as any)[key] = (currentMapData as any)[key];
                 });
+                markPendingSavedDraft('世界', worldData);
                 setDrafts((prev) => ({ ...prev, 世界: worldData, 地图系统: currentMapData }));
                 onReplaceSection('世界', worldData);
             } else if (activeSection === '世界') {
@@ -236,9 +267,11 @@ const VariableManager: React.FC<Props> = ({ runtimeState, onReplaceSection, onAp
                 地图系统字段.forEach(key => {
                     (worldData as any)[key] = (runtimeState['世界'] as any)?.[key] ?? [];
                 });
+                markPendingSavedDraft('世界', worldData);
                 setDrafts((prev) => ({ ...prev, 世界: worldData }));
                 onReplaceSection('世界', worldData);
             } else {
+                markPendingSavedDraft(activeSection, parsed);
                 setDrafts((prev) => ({ ...prev, [activeSection]: parsed }));
                 onReplaceSection(activeSection, parsed);
             }

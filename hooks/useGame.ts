@@ -106,6 +106,7 @@ import { 规范化游戏设置 } from '../utils/gameSettings';
 import { 规范化视觉设置 } from '../utils/visualSettings';
 import { 默认图片管理设置, 规范化图片管理设置 } from '../utils/imageManagerSettings';
 import { 规范化可选开局配置 } from '../utils/openingConfig';
+import { 修复开局伙伴社交列表 } from '../utils/openingCompanion';
 import {
     构建COT伪装提示词,
     构建酒馆预设消息链,
@@ -2380,9 +2381,12 @@ export const useGame = () => {
     const 规范化同人剧情规划状态 = (raw?: any): 同人剧情规划结构 | undefined => 基础规范化同人剧情规划状态(raw);
     const 规范化同人女主剧情规划状态 = (raw?: any): 同人女主剧情规划结构 | undefined => 基础规范化同人女主剧情规划状态(raw);
 
-    function 规范化社交列表安全(raw?: any[], options?: { 合并同名?: boolean }) {
+    function 规范化社交列表安全(raw?: any[], options?: { 合并同名?: boolean; 保留非姓名库主要女性名?: boolean }) {
         const list = Array.isArray(raw) ? raw : [];
-        return 规范化社交列表(list, options);
+        return 规范化社交列表(list, {
+            ...options,
+            保留非姓名库主要女性名: options?.保留非姓名库主要女性名 === true || 开局配置?.同人融合?.enabled === true
+        });
     }
 
     const 构建门派同门社交档案 = (member: any, index: number) => ({
@@ -2549,10 +2553,14 @@ export const useGame = () => {
             设置同人剧情规划,
             设置同人女主剧情规划,
             命令后校准: (nextState) => {
+                const 修复开局伙伴 = (state: typeof nextState): typeof nextState => ({
+                    ...state,
+                    社交: 修复开局伙伴社交列表(state.社交, 开局配置, state.角色 || 角色)
+                });
                 if (!变量生成功能已启用(apiConfig)) {
-                    return nextState;
+                    return 修复开局伙伴(nextState);
                 }
-                return 执行变量自动校准(nextState, {
+                const calibrated = 执行变量自动校准(nextState, {
                     规范化环境信息,
                     规范化社交列表: 规范化社交列表安全,
                     规范化世界状态,
@@ -2565,6 +2573,10 @@ export const useGame = () => {
                     规范化同人女主剧情规划状态,
                     规范化角色物品容器映射
                 });
+                return {
+                    ...calibrated,
+                    state: 修复开局伙伴(calibrated.state)
+                };
             }
         },
         baseState,

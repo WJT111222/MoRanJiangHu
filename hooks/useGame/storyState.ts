@@ -18,6 +18,7 @@ import { 补齐世界地图空间字段 } from '../../utils/mapSpatial';
 import { 职位等级排序 } from '../../models/sect';
 import { 归一化六维到境界预算 } from '../../utils/attributeBudget';
 import { 重命名重复女性NPC列表 } from '../../utils/femaleNameSelector';
+import { 修复开局伙伴社交列表 } from '../../utils/openingCompanion';
 
 export type 开场命令基态 = {
     角色: 角色数据结构;
@@ -1319,11 +1320,12 @@ export const 规范化同人女主剧情规划状态 = (raw?: any): 同人女主
 export const 创建开场基础状态 = (charData: 角色数据结构, _worldConfig: WorldGenConfig, openingConfig?: OpeningConfig) => {
     const 玩家门派 = 创建开局门派状态(charData, openingConfig);
     const 角色 = 补齐开局仙侠字段(补齐开局角色功法(深拷贝(charData), 玩家门派), openingConfig);
+    const 社交 = 修复开局伙伴社交列表([], openingConfig, 角色);
     return {
         角色,
         环境: 创建开场空白环境(),
         游戏初始时间: '',
-        社交: [],
+        社交,
         世界: 创建开场空白世界(),
         战斗: 创建开场空白战斗(),
         玩家门派,

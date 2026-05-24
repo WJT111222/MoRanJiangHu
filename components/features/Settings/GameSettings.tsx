@@ -103,7 +103,7 @@ const GameSettings: React.FC<Props> = ({ settings, onSave }) => {
         const parsed = Number(normalizedText);
         const nextValue = Number.isFinite(parsed) && parsed > 0
             ? Math.max(50, Math.floor(parsed))
-            : (Number.isFinite(Number(form.字数要求)) ? Math.max(50, Math.floor(Number(form.字数要求))) : 450);
+            : (Number.isFinite(Number(form.字数要求)) ? Math.max(50, Math.floor(Number(form.字数要求))) : 1500);
         setWordCountDraft(String(nextValue));
         实时应用更新({ 字数要求: nextValue });
     };
