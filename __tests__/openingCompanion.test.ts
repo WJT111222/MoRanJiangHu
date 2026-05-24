@@ -1,0 +1,109 @@
+import { describe, expect, it } from 'vitest';
+import { 创建开场基础状态 } from '../hooks/useGame/storyState';
+import { 修复开局伙伴社交列表 } from '../utils/openingCompanion';
+import { 构建开局变量生成承接提示 } from '../prompts/runtime/openingVariableGenerationInit';
+
+const 创建开局配置 = (name = '沈青萝') => ({
+    题材模式: '武侠',
+    初始关系模板: '青梅旧识',
+    关系侧重: ['情缘'],
+    开局切入偏好: '在途起手',
+    开局生成门派: false,
+    开局生成同门: false,
+    初始伙伴: {
+        enabled: true,
+        姓名: name,
+        性别: '女',
+        年龄: 19,
+        出生月: 3,
+        出生日: 12,
+        外貌: '青衣负剑，眉眼清冷。',
+        性格: '谨慎但护短。',
+        属性: {
+            力量: 11,
+            敏捷: 13,
+            体质: 12,
+            根骨: 14,
+            悟性: 15,
+            福源: 10
+        },
+        背景名称: '旧雨同舟',
+        背景描述: '自幼与主角相识，一路同行。',
+        背景效果: '更容易信任主角。',
+        天赋列表: [
+            { 名称: '听风辨意', 描述: '善察言观色。', 效果: '更容易发现伏笔。' }
+        ],
+        关系: '青梅竹马',
+        备注: '玩家指定姓名必须保留。'
+    },
+    同人融合: {
+        enabled: false,
+        作品名: '',
+        来源类型: '小说',
+        融合强度: '轻度映射',
+        保留原著角色: true,
+        启用角色替换: false,
+        替换目标角色名: '',
+        附加替换角色名列表: [],
+        附加角色替换规则列表: [],
+        启用附加小说: false,
+        附加小说数据集ID: ''
+    }
+} as any);
+
+describe('开局伙伴姓名保护', () => {
+    it('开场基础状态会直接创建玩家指定姓名的伙伴', () => {
+        const openingConfig = 创建开局配置('沈青萝');
+        const base = 创建开场基础状态(
+            { 姓名: '陆行舟', 当前地点: '青石渡口' } as any,
+            {} as any,
+            openingConfig
+        );
+
+        expect(base.社交).toHaveLength(1);
+        expect(base.社交[0].姓名).toBe('沈青萝');
+        expect(base.社交[0].是否队友).toBe(true);
+        expect(base.社交[0].是否主要角色).toBe(true);
+        expect(base.社交[0].关系状态).toBe('青梅竹马');
+    });
+
+    it('AI 把同一伙伴改名时会合并回玩家填写姓名', () => {
+        const openingConfig = 创建开局配置('沈青萝');
+        const fixed = 修复开局伙伴社交列表([
+            {
+                id: 'npc_ai_wrong_name',
+                姓名: '苏婉儿',
+                性别: '女',
+                年龄: 19,
+                生日: '3月12日',
+                身份: '青梅竹马',
+                是否在场: true,
+                是否队友: true,
+                是否主要角色: true,
+                好感度: 70,
+                关系状态: '青梅竹马',
+                简介: '主角的青梅竹马，随行同伴。',
+                记忆: []
+            }
+        ], openingConfig, { 姓名: '陆行舟' } as any);
+
+        expect(fixed).toHaveLength(1);
+        expect(fixed[0].姓名).toBe('沈青萝');
+        expect(fixed[0].曾用名).toContain('苏婉儿');
+        expect(fixed[0].是否队友).toBe(true);
+        expect(fixed[0].是否主要角色).toBe(true);
+    });
+
+    it('开局变量生成承接提示会携带同伴姓名硬约束', () => {
+        const prompt = 构建开局变量生成承接提示({
+            currentGameTime: '第0回合',
+            openingRoleSetupText: '主角：陆行舟',
+            openingPartnerSetupText: '【开局同伴建档信息】\n- 同伴姓名：沈青萝\n- 【姓名硬约束】该同伴的正式姓名只能是「沈青萝」',
+            openingConfigText: '开局切入：在途起手'
+        });
+
+        expect(prompt).toContain('开局同伴建档承接信息');
+        expect(prompt).toContain('沈青萝');
+        expect(prompt).toContain('姓名硬约束');
+    });
+});

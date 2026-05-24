@@ -77,4 +77,44 @@ describe('playerImageWorkflow', () => {
 
         expect(执行生图).not.toHaveBeenCalled();
     });
+
+    it('binds a successful generated player avatar so it remains visible after refresh/load', async () => {
+        const avatarRecord = {
+            id: 'player-avatar-1',
+            构图: '头像',
+            状态: 'success',
+            图片URL: 'https://img.example/player-avatar.webp',
+            生成时间: 1000
+        };
+        let role: any = { 姓名: '刀哥', 头像图片URL: '' };
+        const 执行生图 = vi.fn(async (_npc: any, _options: any, imageDeps: any) => {
+            imageDeps.更新NPC最近生图结果('player', (player: any) => ({
+                ...player,
+                最近生图结果: avatarRecord,
+                图片档案: {
+                    最近生图结果: avatarRecord,
+                    生图历史: [avatarRecord]
+                }
+            }));
+        });
+        const deps = 创建依赖(执行生图);
+        deps.获取角色 = () => role;
+        deps.设置角色 = vi.fn((updater: any) => {
+            role = updater(role);
+        });
+        const workflow = 创建主角图片工作流(deps as any);
+
+        await workflow.generatePlayerImageManually({ 构图: '头像' });
+
+        expect(role.图片档案?.已选头像图片ID).toBe('player-avatar-1');
+        expect(role.图片档案?.生图历史?.[0]?.id).toBe('player-avatar-1');
+        expect(deps.执行自动存档).toHaveBeenCalledWith(expect.objectContaining({
+            role: expect.objectContaining({
+                图片档案: expect.objectContaining({
+                    已选头像图片ID: 'player-avatar-1'
+                })
+            }),
+            force: true
+        }));
+    });
 });

@@ -1,0 +1,84 @@
+import { describe, expect, it, vi } from 'vitest';
+import { 创建运行时变量工作流 } from '../hooks/useGame/runtimeVariableWorkflow';
+import { 规范化社交列表 } from '../hooks/useGame/stateTransforms';
+
+const 创建依赖 = () => {
+    let social: any[] = [];
+    const state = {
+        角色: {},
+        环境: {},
+        社交: social,
+        世界: {},
+        战斗: {},
+        剧情: {},
+        剧情规划: {},
+        女主剧情规划: undefined,
+        同人剧情规划: undefined,
+        同人女主剧情规划: undefined,
+        玩家门派: {},
+        任务列表: [],
+        约定列表: [],
+        记忆系统: {}
+    };
+    const performAutoSave = vi.fn();
+    const deps = {
+        获取历史记录: () => [],
+        深拷贝: <T,>(value: T): T => JSON.parse(JSON.stringify(value)),
+        获取当前状态: () => ({ ...state, 社交: social }),
+        规范化角色物品容器映射: (value: any) => value || {},
+        规范化环境信息: (value: any) => value || {},
+        规范化社交列表,
+        规范化世界状态: (value: any) => value || {},
+        规范化战斗状态: (value: any) => value || {},
+        规范化剧情状态: (value: any) => value || {},
+        规范化剧情规划状态: (value: any) => value || {},
+        规范化女主剧情规划状态: (value: any) => value,
+        规范化同人剧情规划状态: (value: any) => value,
+        规范化同人女主剧情规划状态: (value: any) => value,
+        规范化门派状态: (value: any) => value || {},
+        规范化记忆系统: (value: any) => value || {},
+        环境时间转标准串: () => '',
+        获取开局配置: () => ({}),
+        设置角色: (value: any) => { state.角色 = value; },
+        设置环境: (value: any) => { state.环境 = value; },
+        设置社交: (value: any) => { social = value; state.社交 = value; },
+        设置世界: (value: any) => { state.世界 = value; },
+        设置战斗: (value: any) => { state.战斗 = value; },
+        设置剧情: (value: any) => { state.剧情 = value; },
+        设置剧情规划: (value: any) => { state.剧情规划 = value; },
+        设置女主剧情规划: (value: any) => { state.女主剧情规划 = value; },
+        设置同人剧情规划: (value: any) => { state.同人剧情规划 = value; },
+        设置同人女主剧情规划: (value: any) => { state.同人女主剧情规划 = value; },
+        设置玩家门派: (value: any) => { state.玩家门派 = value; },
+        设置任务列表: (value: any) => { state.任务列表 = value; },
+        设置约定列表: (value: any) => { state.约定列表 = value; },
+        应用并同步记忆系统: (value: any) => { state.记忆系统 = value; },
+        performAutoSave
+    };
+    return { deps, getSocial: () => social, performAutoSave };
+};
+
+describe('运行时变量管理', () => {
+    it('保存社交分区时保留人工填写的主要女性正式姓名', async () => {
+        const { deps, getSocial, performAutoSave } = 创建依赖();
+        const workflow = 创建运行时变量工作流(deps);
+
+        await workflow.updateRuntimeVariableSection('社交', [
+            {
+                id: 'npc_manual_social_name',
+                姓名: '黄蓉',
+                性别: '女',
+                年龄: 18,
+                是否主要角色: true
+            }
+        ]);
+
+        expect(getSocial()[0].姓名).toBe('黄蓉');
+        expect(performAutoSave).toHaveBeenCalledWith(expect.objectContaining({
+            social: expect.arrayContaining([
+                expect.objectContaining({ 姓名: '黄蓉' })
+            ]),
+            force: true
+        }));
+    });
+});

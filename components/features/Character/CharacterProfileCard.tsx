@@ -47,6 +47,29 @@ const CharacterProfileCard: React.FC<Props> = ({ character, visualConfig }) => {
         { key: '悟', val: character.悟性, title: 六维说明.悟 },
         { key: '福', val: character.福源, title: 六维说明.福 },
     ];
+    const 读取文本字段 = (key: string): string => {
+        const value = (character as any)?.[key];
+        return typeof value === 'string' ? value.trim() : '';
+    };
+    const 读取数字字段 = (key: string): number => {
+        const value = Number((character as any)?.[key]);
+        return Number.isFinite(value) ? value : 0;
+    };
+    const 仙侠文本字段 = [
+        { label: '灵根', value: 读取文本字段('灵根') },
+        { label: '资质', value: 读取文本字段('灵根资质') },
+        { label: '丹田', value: 读取文本字段('丹田状态') },
+        { label: '道基', value: 读取文本字段('道基状态') },
+    ];
+    const 仙侠数值字段 = [
+        { label: '灵力', value: `${读取数字字段('当前灵力')}/${读取数字字段('最大灵力')}` },
+        { label: '神识', value: `${读取数字字段('当前神识')}/${读取数字字段('最大神识')}` },
+        { label: '心魔', value: 读取数字字段('心魔值') },
+        { label: '功德', value: 读取数字字段('功德') },
+        { label: '业力', value: 读取数字字段('业力') },
+    ];
+    const 显示仙侠档案 = 仙侠文本字段.some((item) => item.value)
+        || ['当前灵力', '最大灵力', '当前神识', '最大神识', '心魔值', '功德', '业力'].some((key) => 读取数字字段(key) !== 0);
 
     return (
         <div className="character-profile-card w-full max-w-5xl overflow-hidden rounded-2xl border border-[#c7a56a]/55 bg-[#fffaf0] text-[#4f2d16] shadow-[0_18px_50px_rgba(92,57,24,0.16)]" style={profileFontStyle}>
@@ -92,6 +115,26 @@ const CharacterProfileCard: React.FC<Props> = ({ character, visualConfig }) => {
                             </div>
                         </div>
                     </div>
+
+                    {显示仙侠档案 && (
+                        <div className="border border-[#b7d6d2]/70 bg-[#f4fffb] p-4">
+                            <div className="mb-3 text-[10px] uppercase tracking-[0.35em] text-[#0f766e]">修真档案</div>
+                            <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                                {仙侠文本字段.map((item) => (
+                                    <div key={item.label} className="border border-[#b7d6d2] bg-[#fbfffc] px-3 py-2">
+                                        <div className="text-[10px] tracking-[0.25em] text-[#0f766e]">{item.label}</div>
+                                        <div className="mt-1 text-[#14532d]">{item.value || '未记录'}</div>
+                                    </div>
+                                ))}
+                                {仙侠数值字段.map((item) => (
+                                    <div key={item.label} className="border border-[#b7d6d2] bg-[#fbfffc] px-3 py-2">
+                                        <div className="text-[10px] tracking-[0.25em] text-[#0f766e]">{item.label}</div>
+                                        <div className="mt-1 font-mono text-[#14532d]">{item.value}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="border border-[#c7a56a]/35 bg-[#fffdf6] p-4">
                         <div className="mb-3 text-[10px] uppercase tracking-[0.35em] text-[#9b5a22]">外貌描摹</div>

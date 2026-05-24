@@ -494,7 +494,7 @@ const LandingPage: React.FC<Props> = ({
             </div>
 
             <div className="landing-stage relative z-10 flex w-full max-w-[2200px] flex-1 flex-col items-center gap-6 pb-2 lg:block">
-                <section className="landing-hero-section flex min-h-[calc(100vh-210px)] min-w-0 flex-col items-center justify-center animate-fadeIn lg:absolute lg:left-1/2 lg:top-[40%] lg:-translate-x-1/2 lg:-translate-y-1/2">
+                <section className="landing-hero-section relative z-20 flex min-h-[calc(100vh-210px)] min-w-0 flex-col items-center justify-center animate-fadeIn lg:absolute lg:left-1/2 lg:top-[40%] lg:-translate-x-1/2 lg:-translate-y-1/2">
                     <div className="relative mb-7 flex w-full flex-col items-center">
                         <div className="landing-title-glow absolute -top-20 left-1/2 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-wuxia-gold/5 blur-3xl" />
 

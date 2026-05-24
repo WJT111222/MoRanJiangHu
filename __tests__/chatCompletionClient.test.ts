@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { 应用Claude兼容末尾User修正, type 通用消息 } from '../services/ai/chatCompletionClient';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { 应用Claude兼容末尾User修正, 请求模型文本, type 通用消息 } from '../services/ai/chatCompletionClient';
 import type { 当前可用接口结构 } from '../utils/apiConfig';
 
 const baseConfig: 当前可用接口结构 = {
@@ -13,6 +13,10 @@ const baseConfig: 当前可用接口结构 = {
 };
 
 describe('chatCompletionClient Claude compatible message normalization', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     it('appends a user turn when Claude-like models end with assistant COT pseudo history', () => {
         const messages: 通用消息[] = [
             { role: 'system', content: '规则' },
@@ -41,5 +45,28 @@ describe('chatCompletionClient Claude compatible message normalization', () => {
         });
 
         expect(normalized).toBe(messages);
+    });
+
+    it('uses the Qianfan Coding chat completions path without inserting /v1', async () => {
+        const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+            choices: [{ message: { content: 'pong' } }]
+        }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+        }));
+
+        const result = await 请求模型文本({
+            ...baseConfig,
+            baseUrl: 'https://qianfan.baidubce.com/v2/coding',
+            model: 'deepseek-v3.2'
+        }, [{ role: 'user', content: 'ping' }], {
+            signal: undefined,
+            streamOptions: { stream: false },
+            errorDetailLimit: 500
+        });
+
+        expect(result).toBe('pong');
+        expect(fetchMock).toHaveBeenCalled();
+        expect(String(fetchMock.mock.calls[0][0])).toBe('https://qianfan.baidubce.com/v2/coding/chat/completions');
     });
 });

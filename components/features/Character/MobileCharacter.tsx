@@ -173,7 +173,11 @@ const MobileCharacter: React.FC<Props> = ({
     );
     const selectedAvatarId = typeof archive?.已选头像图片ID === 'string' ? archive.已选头像图片ID.trim() : '';
     const selectedPortraitId = typeof archive?.已选立绘图片ID === 'string' ? archive.已选立绘图片ID.trim() : '';
-    const selectedAvatarRecord = history.find((item: any) => typeof item?.id === 'string' && item.id.trim() === selectedAvatarId) || null;
+    const recentImageRecord = archive?.最近生图结果 && typeof archive.最近生图结果 === 'object' ? archive.最近生图结果 : null;
+    const selectedAvatarRecord = history.find((item: any) => typeof item?.id === 'string' && item.id.trim() === selectedAvatarId)
+        || (recentImageRecord?.id === selectedAvatarId ? recentImageRecord : null)
+        || history.find((item: any) => item?.构图 === '头像' && item?.状态 === 'success')
+        || (recentImageRecord?.构图 === '头像' && recentImageRecord?.状态 === 'success' ? recentImageRecord : null);
     const selectedPortraitRecord = history.find((item: any) => typeof item?.id === 'string' && item.id.trim() === selectedPortraitId) || null;
     const avatarUrl = 获取图片展示地址(selectedAvatarRecord) || character?.头像图片URL || '';
     const portraitUrl = 获取图片展示地址(selectedPortraitRecord) || '';
@@ -194,6 +198,27 @@ const MobileCharacter: React.FC<Props> = ({
         { key: '悟', val: character.悟性 },
         { key: '福', val: character.福源 },
     ];
+    const 读取仙侠文本字段 = (key: string): string => {
+        const value = (character as any)?.[key];
+        return typeof value === 'string' ? value.trim() : '';
+    };
+    const 读取仙侠数字字段 = (key: string): number => {
+        const value = Number((character as any)?.[key]);
+        return Number.isFinite(value) ? value : 0;
+    };
+    const 仙侠档案字段 = [
+        { label: '灵根', value: 读取仙侠文本字段('灵根') || '未记录', accent: true },
+        { label: '灵根资质', value: 读取仙侠文本字段('灵根资质') || '未记录' },
+        { label: '灵力', value: `${读取仙侠数字字段('当前灵力')}/${读取仙侠数字字段('最大灵力')}`, accent: true },
+        { label: '神识', value: `${读取仙侠数字字段('当前神识')}/${读取仙侠数字字段('最大神识')}` },
+        { label: '丹田状态', value: 读取仙侠文本字段('丹田状态') || '未记录' },
+        { label: '道基状态', value: 读取仙侠文本字段('道基状态') || '未记录' },
+        { label: '心魔值', value: 读取仙侠数字字段('心魔值') },
+        { label: '功德', value: 读取仙侠数字字段('功德') },
+        { label: '业力', value: 读取仙侠数字字段('业力') },
+    ];
+    const 显示仙侠档案 = ['灵根', '灵根资质', '丹田状态', '道基状态'].some((key) => 读取仙侠文本字段(key))
+        || ['当前灵力', '最大灵力', '当前神识', '最大神识', '心魔值', '功德', '业力'].some((key) => 读取仙侠数字字段(key) !== 0);
 
     const bodyParts = [
         { name: '头部', current: character.头部当前血量, max: character.头部最大血量 },
@@ -348,6 +373,17 @@ const MobileCharacter: React.FC<Props> = ({
                                     <MobileStatCard label="负重" value={`${character.当前负重}/${character.最大负重}`} />
                                 </div>
                             </div>
+
+                            {显示仙侠档案 && (
+                                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/10 p-4">
+                                    <div className="mb-3 text-[10px] tracking-[0.32em] text-emerald-200/75">仙侠修真</div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {仙侠档案字段.map((item) => (
+                                            <MobileStatCard key={item.label} label={item.label} value={item.value} accent={item.accent} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="rounded-2xl border border-gray-800 bg-black/25 p-4">
                                 <div className="mb-3 text-[10px] tracking-[0.32em] text-wuxia-gold/65">外貌描摹</div>

@@ -1,6 +1,6 @@
 import { 角色数据结构, 环境信息结构, 装备槽位 } from '../../types';
 import { normalizeCanonicalGameTime, 环境时间转标准串, 结构化时间转标准串 } from './timeUtils';
-import { 压缩图片资源字段 } from '../../utils/imageAssets';
+import { 压缩图片资源字段, 图片资源记录含可恢复地址 } from '../../utils/imageAssets';
 import { 自动装备最佳装备 } from '../../utils/equipmentActions';
 import { 规范化消耗品使用效果 } from '../../utils/itemEffects';
 import { 补齐自动丹药预设 } from '../../utils/autoConsumables';
@@ -933,7 +933,15 @@ const 合并角色图片档案对象 = (leftRaw: any, rightRaw: any): any | unde
     const leftRecent = 标准化角色图片记录(leftSource?.最近生图结果);
     const rightRecent = 标准化角色图片记录(rightSource?.最近生图结果);
     const mergedMap = new Map<string, any>();
-    [...(Array.isArray(rightSource?.生图历史) ? rightSource.生图历史 : []), ...(Array.isArray(leftSource?.生图历史) ? leftSource.生图历史 : [])]
+    const rightHistorySource = [
+        ...(Array.isArray(rightSource?.生图历史) ? rightSource.生图历史 : []),
+        ...(rightRecent ? [rightRecent] : [])
+    ];
+    const leftHistorySource = [
+        ...(Array.isArray(leftSource?.生图历史) ? leftSource.生图历史 : []),
+        ...(leftRecent ? [leftRecent] : [])
+    ];
+    [...rightHistorySource, ...leftHistorySource]
         .forEach((item) => {
             const normalized = 标准化角色图片记录(item);
             if (!normalized) return;
@@ -945,9 +953,27 @@ const 合并角色图片档案对象 = (leftRaw: any, rightRaw: any): any | unde
         });
     const mergedHistory = Array.from(mergedMap.values()).sort((a, b) => (Number(b?.生成时间) || 0) - (Number(a?.生成时间) || 0));
     const recent = rightRecent || leftRecent || mergedHistory[0];
-    const 已选头像图片ID = 取首个非空文本值(rightSource?.已选头像图片ID, leftSource?.已选头像图片ID);
-    const 已选立绘图片ID = 取首个非空文本值(rightSource?.已选立绘图片ID, leftSource?.已选立绘图片ID);
+    const 原始已选头像图片ID = 取首个非空文本值(rightSource?.已选头像图片ID, leftSource?.已选头像图片ID);
+    const 原始已选立绘图片ID = 取首个非空文本值(rightSource?.已选立绘图片ID, leftSource?.已选立绘图片ID);
     const 已选背景图片ID = 取首个非空文本值(rightSource?.已选背景图片ID, leftSource?.已选背景图片ID);
+    const 角色图片记录可作头像 = (record: any): boolean => (
+        record?.构图 === '头像'
+        && record?.状态 === 'success'
+        && Boolean(record?.id)
+        && 图片资源记录含可恢复地址(record)
+    );
+    const 角色图片记录可作立绘 = (record: any): boolean => (
+        (record?.构图 === '半身' || record?.构图 === '立绘')
+        && record?.状态 === 'success'
+        && Boolean(record?.id)
+        && 图片资源记录含可恢复地址(record)
+    );
+    const 已选头像图片ID = mergedHistory.some((item) => item?.id === 原始已选头像图片ID && 角色图片记录可作头像(item))
+        ? 原始已选头像图片ID
+        : (mergedHistory.find(角色图片记录可作头像)?.id || undefined);
+    const 已选立绘图片ID = mergedHistory.some((item) => item?.id === 原始已选立绘图片ID && 角色图片记录可作立绘(item))
+        ? 原始已选立绘图片ID
+        : (mergedHistory.find(角色图片记录可作立绘)?.id || undefined);
     if (!recent && mergedHistory.length <= 0 && !已选头像图片ID && !已选立绘图片ID && !已选背景图片ID) {
         return undefined;
     }
@@ -2492,11 +2518,20 @@ const 选择男性或中性NPC姓名 = (npc: any, index: number, usedNames: Set<
     return `${pool[start] || '云照'}${usedNames.size + 1}`;
 };
 
-const 修复NPC真实姓名列表 = (list: any[]): any[] => {
+const 修复NPC真实姓名列表 = (list: any[], options?: { 保留非姓名库主要女性名?: boolean }): any[] => {
     if (!Array.isArray(list)) return [];
     const usedNames = new Set<string>();
     return list.map((npc, index) => {
         const name = 规范化文本(npc?.姓名).replace(/\s+/g, '');
+        if (
+            options?.保留非姓名库主要女性名 === true
+            && name
+            && !是否噪声NPC姓名(name)
+            && !usedNames.has(name)
+        ) {
+            usedNames.add(name);
+            return name === npc?.姓名 ? npc : { ...npc, 姓名: name };
+        }
         if (是否真实NPC姓名(name) && !usedNames.has(name)) {
             usedNames.add(name);
             return name === npc?.姓名 ? npc : { ...npc, 姓名: name };
@@ -3054,14 +3089,18 @@ const 合并占位NPC列表 = (list: any[], options?: { 合并精确同名?: boo
     return merged;
 };
 
-const 规范化社交列表 = (list: any[], options?: { 合并同名?: boolean }): any[] => {
+const 规范化社交列表 = (list: any[], options?: { 合并同名?: boolean; 保留非姓名库主要女性名?: boolean }): any[] => {
     if (!Array.isArray(list)) return [];
     const filtered = list.filter((npc) => !是否应丢弃NPC条目(npc));
     const normalized = filtered.map((npc, index) => 标准化单个NPC(npc, index));
     const merged = options?.合并同名 === false
         ? 合并占位NPC列表(normalized, { 合并精确同名: false })
         : 合并占位NPC列表(合并同名NPC列表(normalized));
-    return 重命名重复女性NPC列表(修复NPC真实姓名列表(merged));
+    return 重命名重复女性NPC列表(修复NPC真实姓名列表(merged, {
+        保留非姓名库主要女性名: options?.保留非姓名库主要女性名 === true
+    }), {
+        保留非姓名库主要女性名: options?.保留非姓名库主要女性名 === true
+    });
 };
 
 export {

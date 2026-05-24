@@ -41,6 +41,19 @@ describe('female name selector', () => {
         expect(prompt).toContain(candidates[99]);
     });
 
+    it('warns fandom mode to keep canonical names instead of forcing the candidate pool', () => {
+        const prompt = 构建女性姓名候选提示词({
+            usedNames: ['黄蓉'],
+            seed: '射雕英雄传|桃花岛',
+            count: 10,
+            fandomEnabled: true
+        });
+
+        expect(prompt).toContain('当前启用同人融合');
+        expect(prompt).toContain('原著/同人已有角色');
+        expect(prompt).toContain('不得为了匹配候选池而改名');
+    });
+
     it('keeps the first non-template female real name and only repairs duplicates/placeholders', () => {
         const list = 重命名重复女性NPC列表([
             { id: 'a', 姓名: '慕容青鸾', 性别: '女', 身份: '师姐' },
@@ -77,5 +90,21 @@ describe('female name selector', () => {
         expect(npc.姓名).not.toBe('苏婉儿');
         expect(判断女性姓名来自姓名库(npc.姓名)).toBe(true);
         expect(npc.曾用名).toContain('苏婉儿');
+    });
+
+    it('keeps named fandom major characters outside the selector pool when fandom protection is enabled', () => {
+        const [npc] = 重命名重复女性NPC列表([
+            {
+                id: 'fandom_huang_rong',
+                姓名: '黄蓉',
+                性别: '女',
+                身份: '同人原著角色',
+                是否主要角色: true,
+                简介: '来自原著章节的关键人物。'
+            }
+        ], { 保留非姓名库主要女性名: true });
+
+        expect(npc.姓名).toBe('黄蓉');
+        expect(npc.曾用名).toBeUndefined();
     });
 });

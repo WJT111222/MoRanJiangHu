@@ -1004,6 +1004,13 @@ const 构建OpenAI端点 = (
     const base = 清理末尾斜杠(baseUrlRaw || '');
     if (!base) return '';
 
+    const lowerBase = base.toLowerCase();
+    const looksLikeQianfanCoding = lowerBase.includes('qianfan.baidubce.com')
+        && /\/v2\/coding(?:\/chat\/completions)?$/i.test(base);
+    if (looksLikeQianfanCoding) {
+        return /\/chat\/completions$/i.test(base) ? base : `${base}/chat/completions`;
+    }
+
     if (options?.prefixMode === true && options.protocol === 'deepseek') {
         if (/\/beta\/chat\/completions$/i.test(base) || /\/chat\/completions$/i.test(base)) return base;
         if (/\/v1$/i.test(base)) return `${base.replace(/\/v1$/i, '')}/beta/chat/completions`;
@@ -1011,7 +1018,6 @@ const 构建OpenAI端点 = (
         return `${base}/beta/chat/completions`;
     }
 
-    const lowerBase = base.toLowerCase();
     const lowerModel = (modelRaw || '').toLowerCase();
     const isZhipuSupplier = supplier === 'zhipu';
     const looksLikeZhipu = isZhipuSupplier

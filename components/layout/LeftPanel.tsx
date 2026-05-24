@@ -185,8 +185,12 @@ const LeftPanel: React.FC<Props> = ({ 角色, onOpenCharacter, onOpenVariableMan
     const 玩家头像地址 = React.useMemo(() => {
         const archive = 角色?.图片档案;
         const selectedAvatarId = typeof archive?.已选头像图片ID === 'string' ? archive.已选头像图片ID.trim() : '';
-        const selectedAvatar = (Array.isArray(archive?.生图历史) ? archive!.生图历史 : []).find((item: any) => item?.id === selectedAvatarId)
-            || (archive?.最近生图结果?.id === selectedAvatarId ? archive.最近生图结果 : null);
+        const history = Array.isArray(archive?.生图历史) ? archive!.生图历史 : [];
+        const recent = archive?.最近生图结果;
+        const selectedAvatar = history.find((item: any) => item?.id === selectedAvatarId)
+            || (recent?.id === selectedAvatarId ? recent : null)
+            || history.find((item: any) => item?.构图 === '头像' && item?.状态 === 'success')
+            || (recent?.构图 === '头像' && recent?.状态 === 'success' ? recent : null);
         return 获取图片资源文本地址(selectedAvatar?.本地路径 || selectedAvatar?.图片URL || 角色.头像图片URL);
     }, [角色]);
 
