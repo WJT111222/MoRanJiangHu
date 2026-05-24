@@ -166,7 +166,7 @@ describe('存档谱系补全', () => {
         }));
     });
 
-    it('本地只下载到缺父节点的半截谱系时，不会硬修成新根', () => {
+    it('本地只下载到缺父节点的半截谱系时，会保留原始回合并降级为本地根节点', () => {
         const childOnly: any = {
             id: 2,
             类型: 'auto',
@@ -191,16 +191,16 @@ describe('存档谱系补全', () => {
 
         const repaired = 修复本地存档谱系列表([childOnly]);
 
-        expect(repaired.changed).toBe(false);
+        expect(repaired.changed).toBe(true);
         expect(repaired.saves[0].元数据).toEqual(expect.objectContaining({
-            存档根节点哈希: 'aaaaaaaaaaaaaaaa',
-            存档父节点哈希: 'aaaaaaaaaaaaaaaa',
-            存档谱系深度: 1,
+            存档根节点哈希: 'bbbbbbbbbbbbbbbb',
+            存档父节点哈希: '',
+            存档谱系深度: 0,
             游戏回合数: 1
         }));
     });
 
-    it('同一系列里出现多个第0回合根节点时，会拆成独立本地谱系而不是硬串线', () => {
+    it('同一系列里出现多个第0回合根节点时，会保留在同一谱系并交给时间树排序', () => {
         const firstRoot: any = {
             id: 1,
             类型: 'auto',
@@ -240,7 +240,7 @@ describe('存档谱系补全', () => {
 
         expect(repaired.changed).toBe(true);
         expect(repaired.saves.find((item: any) => item.id === 1)?.元数据.存档系列ID).toBe('series-collided');
-        expect(repaired.saves.find((item: any) => item.id === 2)?.元数据.存档系列ID).toBe('series-collided-root-bbbbbbbbbbbb');
+        expect(repaired.saves.find((item: any) => item.id === 2)?.元数据.存档系列ID).toBe('series-collided');
         expect(repaired.saves.map((item: any) => item.元数据.游戏回合数)).toEqual([0, 0]);
     });
 
@@ -288,7 +288,7 @@ describe('存档谱系补全', () => {
             存档根节点哈希: 'aaaaaaaaaaaaaaaa',
             存档父节点哈希: 'aaaaaaaaaaaaaaaa',
             存档谱系深度: 1,
-            游戏回合数: 1
+            游戏回合数: 17
         }));
     });
 });
