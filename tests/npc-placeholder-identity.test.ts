@@ -2,6 +2,98 @@ import { describe, expect, it } from 'vitest';
 import { 规范化社交列表 } from '../hooks/useGame/stateTransforms';
 
 describe('NPC 占位姓名归一化', () => {
+    it('保留已经稳定的主要女性角色姓名，即使不在候选姓名库', () => {
+        const result = 规范化社交列表([
+            {
+                id: 'npc_custom_heroine',
+                姓名: '顾明棠',
+                性别: '女',
+                身份: '玩家手动改名的同行者',
+                简介: '顾明棠已经随主角同行多日。',
+                是否主要角色: true,
+                好感度: 80
+            }
+        ], { 合并同名: false });
+
+        expect(result).toHaveLength(1);
+        expect(result[0].姓名).toBe('顾明棠');
+    });
+
+    it('保留老存档里已经存在的模板女性名', () => {
+        const result = 规范化社交列表([
+            {
+                id: 'npc_template_name',
+                姓名: '苏婉儿',
+                性别: '女',
+                身份: '新登场女修',
+                简介: '老存档中已经存在的模板名档案。',
+                是否主要角色: true
+            },
+            {
+                id: 'npc_custom_name',
+                姓名: '沈折枝',
+                性别: '女',
+                身份: '已稳定承接的旧识',
+                简介: '沈折枝此前已经正式登场。',
+                是否主要角色: true
+            }
+        ], { 合并同名: false });
+
+        expect(result).toHaveLength(2);
+        expect(result[0].姓名).toBe('苏婉儿');
+        expect(result[1].姓名).toBe('沈折枝');
+    });
+
+    it('重复模板女性名也不自动改名，避免改动老存档事实', () => {
+        const result = 规范化社交列表([
+            {
+                id: 'npc_template_first',
+                姓名: '苏婉儿',
+                性别: '女',
+                身份: '老存档角色一',
+                简介: '老存档已经生成的模板名。',
+                是否主要角色: true
+            },
+            {
+                id: 'npc_template_second',
+                姓名: '苏婉儿',
+                性别: '女',
+                身份: '老存档角色二',
+                简介: '另一个老存档模板名角色。',
+                是否主要角色: true
+            }
+        ], { 合并同名: false });
+
+        expect(result).toHaveLength(2);
+        expect(result.map((item) => item.姓名)).toEqual(['苏婉儿', '苏婉儿']);
+    });
+
+    it('重复姓名只处理后出现的重复项，不改第一个稳定档案', () => {
+        const result = 规范化社交列表([
+            {
+                id: 'npc_first',
+                姓名: '顾明棠',
+                性别: '女',
+                身份: '先登场的主要角色',
+                简介: '顾明棠已经建立稳定档案。',
+                是否主要角色: true
+            },
+            {
+                id: 'npc_second',
+                姓名: '顾明棠',
+                性别: '女',
+                身份: '后登场的同名女修',
+                简介: '另一个同名角色。',
+                是否主要角色: true
+            }
+        ], { 合并同名: false });
+
+        expect(result).toHaveLength(2);
+        expect(result[0].姓名).toBe('顾明棠');
+        expect(result[1].姓名).not.toBe('顾明棠');
+        expect(result[1].曾用名).toContain('顾明棠');
+    });
+
     it('把黑衣女人后续真名吸收到原档案', () => {
         const result = 规范化社交列表([
             {

@@ -144,7 +144,7 @@ type 会话生命周期依赖 = {
     游戏设置启用自动重试: (config?: any) => boolean;
     执行带自动重试的生成请求: <T>(params: {
         enabled: boolean;
-        action: () => Promise<T>;
+        action: (attempt: number, lastError?: any) => Promise<T>;
         onRetry?: (attempt: number, maxAttempts: number, reason: string) => void;
     }) => Promise<T>;
     更新流式草稿为自动重试提示: (history: any[], attempt: number, maxAttempts: number, reason: string) => any[];

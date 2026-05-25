@@ -123,6 +123,17 @@ export const 校验主剧情正文最低字数 = (response: GameResponse, minLen
     );
 };
 
+const 构建正文文本 = (response: GameResponse): string => (
+    (Array.isArray(response.logs) ? response.logs : [])
+        .filter((log) => log && typeof log.text === 'string' && log.text.trim().length > 0)
+        .map((log) => {
+            const sender = (log.sender || '旁白').trim() || '旁白';
+            const tag = sender.startsWith('【') ? sender : `【${sender}】`;
+            return `${tag}${log.text.trim()}`;
+        })
+        .join('\n')
+);
+
 const 创建主剧情流式超时错误 = (stage: string, timeoutMs: number): Error => {
     const error = new Error(`主剧情乾坤推演${stage}（${Math.max(1, Math.ceil(timeoutMs / 1000))} 秒无流式输出）`);
     error.name = 'TimeoutError';
@@ -428,7 +439,7 @@ type 主剧情发送依赖 = {
     游戏设置启用自动重试: (config?: any) => boolean;
     执行带自动重试的生成请求: <T>(params: {
         enabled: boolean;
-        action: () => Promise<T>;
+        action: (attempt: number, lastError?: any) => Promise<T>;
         onRetry?: (attempt: number, maxAttempts: number, reason: string) => void;
     }) => Promise<T>;
     更新流式草稿为自动重试提示: (history: 聊天记录结构[], attempt: number, maxAttempts: number, reason?: string) => 聊天记录结构[];
@@ -879,7 +890,16 @@ export const 执行主剧情发送工作流 = async (
                     deps.设置历史记录(prev => deps.更新流式草稿为自动重试提示(prev, attempt, maxAttempts, reason));
                 }
             },
-            action: async () => {
+            action: async (attempt, lastError) => {
+                const retryFormatPrompt = attempt > 1
+                    ? [
+                        '【自动重试格式修正】',
+                        `上一版被拒绝原因：${lastError?.parseDetail || lastError?.message || '正文协议不合格'}`,
+                        '请完整重新生成本回合，不要只输出补丁。',
+                        '硬性要求：<正文> 内所有角色对白必须单独成行，并以【角色名】开头；没有【角色名】的行只能写旁白、动作、环境或判定。',
+                        '如果一句话是某个角色说出口的内容，不允许写成无标签普通段落。'
+                    ].join('\n')
+                    : '';
                 const requestStory = (
                     signal: AbortSignal,
                     markStreamActivity?: () => void
@@ -915,10 +935,11 @@ export const 执行主剧情发送工作流 = async (
                             styleAssistantPrompt: [styleAssistantPrompt, realWorldModePrompt].filter(Boolean).join('\n\n'),
                             outputProtocolPrompt,
                             cotPseudoHistoryPrompt: cotPseudoPrompt,
-                            lengthRequirementPrompt,
+                            lengthRequirementPrompt: [lengthRequirementPrompt, retryFormatPrompt].filter(Boolean).join('\n\n'),
                             disclaimerRequirementPrompt,
                             validateTagCompleteness: runtimeGameConfig.启用标签检测完整性 === true,
                             enableTagRepair: runtimeGameConfig.启用标签修复 !== false,
+                            validateDialogueFormat: true,
                             requireActionOptionsTag: runtimeGameConfig.启用行动选项 !== false,
                             errorDetailLimit: Number.POSITIVE_INFINITY,
                             prefixMode: deepSeekPrefixMode,
@@ -962,9 +983,9 @@ export const 执行主剧情发送工作流 = async (
 
         const socialBeforeMainCommands = deps.深拷贝(currentState.社交);
         const rawAiText = deps.获取原始AI消息(aiResult.rawText);
-        const mainLengthShortage = 获取主剧情正文不足信息(aiData, runtimeGameConfig.字数要求);
+        let mainLengthShortage = 获取主剧情正文不足信息(aiData, runtimeGameConfig.字数要求);
         const shortBodyOnlyWarn = runtimeGameConfig.字数不足处理方式 === '仅提示';
-        const shouldRegenerateForLength = Boolean(mainLengthShortage && !mainLengthShortage.withinTolerance && !shortBodyOnlyWarn);
+        let shouldRegenerateForLength = Boolean(mainLengthShortage && !mainLengthShortage.withinTolerance && !shortBodyOnlyWarn);
         const allowShortDraftForPolish = Boolean(shouldRegenerateForLength && deps.文章优化功能已开启());
         if (mainLengthShortage && !shouldRegenerateForLength) {
             options?.onPolishProgress?.({
@@ -981,6 +1002,56 @@ export const 执行主剧情发送工作流 = async (
             options?.onPolishProgress?.({
                 phase: "start",
                 text: `${mainLengthShortage.message} 已先保留为剧情大纲，并交给文章优化扩写。`
+            });
+        }
+        if (mainLengthShortage && shouldRegenerateForLength && !allowShortDraftForPolish && 接口配置是否可用(activeApi)) {
+            options?.onPolishProgress?.({
+                phase: "start",
+                text: `${mainLengthShortage.message} 正在基于原文补足正文，不重新生成整回合。`
+            });
+            const sourceBody = 构建正文文本(aiData);
+            const expandPrompt = [
+                '你是《墨色江湖》的正文补足器。',
+                '任务不是重新生成整回合，而是在不改变事实、不新增命令含义的前提下，只扩写用户给出的 <正文>。',
+                '必须保留原正文里的判定结果、人物关系、地点、物品、台词含义和事件顺序。',
+                `本次 <正文> 可见字数目标至少 ${runtimeGameConfig.字数要求} 字；可以补充动作过程、感官反馈、环境承接、NPC反应和结果余波。`,
+                '所有角色对白必须继续使用【角色名】开头；旁白使用【旁白】。',
+                '只输出 <thinking>...</thinking><正文>...</正文>，不要输出命令、记忆或解释。'
+            ].join('\n');
+            const expanded = await textAIService.generatePolishedBody(
+                sourceBody,
+                expandPrompt,
+                activeApi,
+                controller.signal,
+                '',
+                runtimeGameConfig.启用COT伪装注入 !== false ? 构建COT伪装提示词(runtimeGameConfig) : ''
+            );
+            const expandedResponse = textAIService.parseStoryRawText(
+                `<正文>\n${expanded.bodyText}\n</正文>\n<短期记忆>无</短期记忆>`,
+                { validateDialogueFormat: true, enableTagRepair: true }
+            );
+            const expandedAiData: GameResponse = {
+                ...aiData,
+                logs: expandedResponse.logs,
+                body_original_logs: Array.isArray((aiData as any).body_original_logs) && (aiData as any).body_original_logs.length > 0
+                    ? (aiData as any).body_original_logs
+                    : aiData.logs
+            };
+            const expandedShortage = 获取主剧情正文不足信息(expandedAiData, runtimeGameConfig.字数要求);
+            if (expandedShortage && !expandedShortage.withinTolerance) {
+                throw new textAIService.StoryResponseParseError(
+                    `${expandedShortage.message}原文补足后仍不足，请重试。`,
+                    expanded.rawText || rawAiText,
+                    expandedShortage.message
+                );
+            }
+            aiData = expandedAiData;
+            displayAiData = expandedAiData;
+            mainLengthShortage = expandedShortage;
+            shouldRegenerateForLength = false;
+            options?.onPolishProgress?.({
+                phase: "done",
+                text: '已基于原文补足正文，保留本回合原有命令与记忆。'
             });
         }
 

@@ -171,6 +171,64 @@ const 是否Judge残留文本 = (text: string): boolean => {
     return Judge标签残留正则.test(source) || Judge数值残留正则.test(source);
 };
 
+const 人物动作动词正则 = /^(?:将|把|给|向|对|朝|走|站|坐|停|回|转|看|望|抬|低|点|摇|皱|叹|笑|沉|伸|握|按|收|拔|举|放|推|扶|拂|敛|挑|倒|取|递|开口|提醒|解释|说道|说|道|问|答)/;
+const 无标签言语引导正则 = /^(.{1,32}?)(?:说|说道|道|问|问道|喊|喊道|喝|喝道|答|答道|回|回道|唤|唤道|骂|骂道|笑|笑道|叹|叹道|吩咐|提醒|解释|应|应道|接|接道|开口|继续|补充|又道)\s*[：:，,]\s*(.{2,500})$/;
+const 口语起始正则 = /^(?:我|我们|咱|咱们|你|你们|他|她|此事|这事|那就|若|如果|既然|今日|今天|明日|明天|昨日|昨天|现在|眼下|先|别|不要|必须|可以|应该|不是|恐怕|看来|听我|放心|等等|走|快|慢着|且慢|好|嗯|不行|没错|自然|当然|只要)/;
+const 叙事动作特征正则 = /(?:走到|来到|回到|站在|坐在|望向|看向|拿起|放下|推开|打开|穿过|掠过|落在|映在|吹过|响起|传来|升起|落下|归鞘|倒了|喝了|吃了|伸手|抬手|皱眉|点头|摇头|叹息|沉默|停下|转身)/;
+
+const 提取动作行说话人 = (line: string): string => {
+    const text = (line || '').trim();
+    for (let length = 4; length >= 2; length -= 1) {
+        const name = text.slice(0, length);
+        if (!/^[\u4e00-\u9fff]{2,4}$/.test(name)) continue;
+        if (人物动作动词正则.test(text.slice(length))) {
+            const cleaned = 清理说话人(name);
+            if (cleaned) return cleaned;
+        }
+    }
+    return '';
+};
+
+const 是否像无标签口语 = (line: string): boolean => {
+    const text = (line || '').trim();
+    if (text.length < 6 || text.length > 220) return false;
+    if (含有引号对白(text) || 是否Judge残留文本(text)) return false;
+    if (拟声词正则.test(text)) return false;
+    if (叙事动作特征正则.test(text) && !/[我你咱]/.test(text)) return false;
+    return 口语起始正则.test(text) || /[？?！!]$/.test(text) || /(?:吧|吗|呢|啊|罢|了)$/.test(text);
+};
+
+const 拆分旁白夹杂无标签对白 = (log: GameLog): GameLog[] => {
+    const source = typeof log?.text === 'string' ? log.text.replace(/\r\n/g, '\n') : '';
+    if (!source || !source.includes('\n')) return [log];
+
+    const result: GameLog[] = [];
+    let pendingSpeaker = '';
+    for (const rawLine of source.split('\n')) {
+        const line = rawLine.trim();
+        if (!line) continue;
+
+        const guided = line.match(无标签言语引导正则);
+        const guidedSpeaker = 清理说话人(guided?.[1] || '');
+        if (guided && guidedSpeaker) {
+            result.push({ sender: guidedSpeaker, text: (guided[2] || '').trim() });
+            pendingSpeaker = guidedSpeaker;
+            continue;
+        }
+
+        if (pendingSpeaker && 是否像无标签口语(line)) {
+            result.push({ sender: pendingSpeaker, text: line });
+            pendingSpeaker = '';
+            continue;
+        }
+
+        result.push({ sender: '旁白', text: line });
+        pendingSpeaker = 提取动作行说话人(line);
+    }
+
+    return result.length > 1 ? 合并相邻同发送者(result) : [log];
+};
+
 export const 规范化可渲染对白日志 = (logs: GameLog[] | undefined): GameLog[] => {
     const normalized = (Array.isArray(logs) ? logs : []).flatMap((item) => {
         const rawSender = (item?.sender || '旁白').trim() || '旁白';
@@ -251,7 +309,8 @@ export const 规范化对白日志 = (
             const text = typeof item?.text === 'string' ? item.text : String(item?.text ?? '');
             const log = { sender, text };
             if (sender !== '旁白') return [log];
-            return 拆分旁白夹杂对白(log, knownSpeakers);
+            return 拆分旁白夹杂对白(log, knownSpeakers)
+                .flatMap((part) => part.sender === '旁白' ? 拆分旁白夹杂无标签对白(part) : [part]);
         });
     return 合并相邻同发送者(normalized);
 };

@@ -8,6 +8,7 @@ export interface StoryParseOptions {
     enableTagRepair?: boolean;
     requireActionOptionsTag?: boolean;
     requireDynamicWorldTag?: boolean;
+    validateDialogueFormat?: boolean;
 }
 
 export class StoryResponseParseError extends Error {
@@ -30,14 +31,16 @@ const 默认解析选项: Required<StoryParseOptions> = {
     validateTagCompleteness: false,
     enableTagRepair: true,
     requireActionOptionsTag: false,
-    requireDynamicWorldTag: false
+    requireDynamicWorldTag: false,
+    validateDialogueFormat: false
 };
 
 const 规范化解析选项 = (options?: StoryParseOptions): Required<StoryParseOptions> => ({
     validateTagCompleteness: options?.validateTagCompleteness === true,
     enableTagRepair: options?.enableTagRepair !== false,
     requireActionOptionsTag: options?.requireActionOptionsTag === true,
-    requireDynamicWorldTag: options?.requireDynamicWorldTag === true
+    requireDynamicWorldTag: options?.requireDynamicWorldTag === true,
+    validateDialogueFormat: options?.validateDialogueFormat === true
 });
 
 type 协议标签 = (typeof 协议标签列表)[number];
@@ -839,6 +842,47 @@ const 解析正文日志 = (body: string): Array<{ sender: string; text: string 
     return logs.filter(item => item.text.trim().length > 0);
 };
 
+const 无标签人物动作动词正则 = /^(?:将|把|给|向|对|朝|走|站|坐|停|回|转|看|望|抬|低|点|摇|皱|叹|笑|沉|伸|握|按|收|拔|举|放|推|扶|拂|敛|挑|倒|取|递|开口|提醒|解释|说道|说|道|问|答)/;
+const 无标签口语起始正则 = /^(?:我|我们|咱|咱们|你|你们|他|她|此事|这事|那就|若|如果|既然|今日|今天|明日|明天|昨日|昨天|现在|眼下|先|别|不要|必须|可以|应该|不是|恐怕|看来|听我|放心|等等|走|快|慢着|且慢|好|嗯|不行|没错|自然|当然|只要)/;
+const 无标签叙事动作特征正则 = /(?:走到|来到|回到|站在|坐在|望向|看向|拿起|放下|推开|打开|穿过|掠过|落在|映在|吹过|响起|传来|升起|落下|归鞘|倒了|喝了|吃了|伸手|抬手|皱眉|点头|摇头|叹息|沉默|停下|转身)/;
+
+const 提取无标签动作行人物名 = (line: string): string => {
+    const text = (line || '').trim();
+    for (let length = 4; length >= 2; length -= 1) {
+        const name = text.slice(0, length);
+        if (!/^[\u4e00-\u9fff]{2,4}$/.test(name)) continue;
+        if (无标签人物动作动词正则.test(text.slice(length))) return name;
+    }
+    return '';
+};
+
+const 是否像无标签口语行 = (line: string): boolean => {
+    const text = (line || '').trim();
+    if (text.length < 6 || text.length > 260) return false;
+    if (/^【\s*[^】]+?\s*】/.test(text) || /[“"「『][^”"」』\n]{1,500}[”"」』]/.test(text)) return false;
+    if (无标签叙事动作特征正则.test(text) && !/[我你咱]/.test(text)) return false;
+    return 无标签口语起始正则.test(text) || /[？?！!]$/.test(text) || /(?:吧|吗|呢|啊|罢|了)$/.test(text);
+};
+
+const 检测正文对白格式问题 = (body: string): string | null => {
+    const lines = (body || '')
+        .replace(/\r\n/g, '\n')
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean)
+        .filter(line => !是否判定日志文本(line));
+    if (lines.length < 2) return null;
+    if (lines.some(line => /^【\s*[^】]+?\s*】/.test(line))) return null;
+
+    for (let index = 0; index < lines.length - 1; index += 1) {
+        const speaker = 提取无标签动作行人物名(lines[index]);
+        if (speaker && 是否像无标签口语行(lines[index + 1])) {
+            return `疑似角色「${speaker}」的对白没有使用【角色名】标签`;
+        }
+    }
+    return null;
+};
+
 const 清理命令尾部分隔符 = (source: string): string => {
     const text = (source || '').trimEnd();
     if (!text) return '';
@@ -1201,7 +1245,7 @@ export const 解析动态世界块 = (dynamicBlock: string): string[] => {
         .filter(Boolean);
 };
 
-const 解析标签协议响应 = (content: string): GameResponse | null => {
+const 解析标签协议响应 = (content: string, options?: Required<StoryParseOptions>): GameResponse | null => {
     const text = (content || '').trim();
     if (!text) return null;
 
@@ -1233,6 +1277,17 @@ const 解析标签协议响应 = (content: string): GameResponse | null => {
         .map(item => item.trim())
         .filter(Boolean)
         .join('\n\n');
+
+    const dialogueFormatIssue = options?.validateDialogueFormat
+        ? 检测正文对白格式问题(bodyJudgeExtraction.cleanBody)
+        : null;
+    if (dialogueFormatIssue) {
+        throw new StoryResponseParseError(
+            `${dialogueFormatIssue}。请重新生成本回合，并确保每句角色对白单独使用【角色名】开头，旁白只写动作与环境。`,
+            content,
+            dialogueFormatIssue
+        );
+    }
 
     let logs = 规范化对白日志(解析正文日志(bodyJudgeExtraction.cleanBody));
     if (logs.length === 0) {
@@ -1398,7 +1453,7 @@ export const parseStoryRawText = (content: string, options?: StoryParseOptions):
         }
     }
 
-    const tagged = 解析标签协议响应(normalizedText);
+    const tagged = 解析标签协议响应(normalizedText, parseOptions);
     if (tagged && tagged.logs.some(log => typeof log?.text === 'string' && log.text.trim().length > 0)) {
         return tagged;
     }

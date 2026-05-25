@@ -192,6 +192,7 @@ export interface StoryRequestOptions {
     enableTagRepair?: boolean;
     requireActionOptionsTag?: boolean;
     requireDynamicWorldTag?: boolean;
+    validateDialogueFormat?: boolean;
     errorDetailLimit?: number;
     includeReasoning?: boolean;
     disableThinking?: boolean;
@@ -1705,10 +1706,59 @@ const 解析故事响应 = (
         validateTagCompleteness: requestOptions?.validateTagCompleteness,
         enableTagRepair: requestOptions?.enableTagRepair,
         requireActionOptionsTag: requestOptions?.requireActionOptionsTag,
-        requireDynamicWorldTag: requestOptions?.requireDynamicWorldTag
+        requireDynamicWorldTag: requestOptions?.requireDynamicWorldTag,
+        validateDialogueFormat: requestOptions?.validateDialogueFormat
     }),
     rawText
 });
+
+const 构建正文协议修复消息 = (rawText: string, reason: string): 通用消息[] => 规范化文本补全消息链([
+    {
+        role: 'system',
+        content: [
+            '你是《墨色江湖》的响应协议修复器。',
+            '任务不是重新创作剧情，而是在不改变事实、不新增事件、不改写变量命令含义的前提下，修复上一版模型输出的格式。',
+            '必须保留原文中已经成立的剧情、短期记忆、命令、行动选项、动态世界等信息；只允许调整正文分段、对白标签和必要的协议标签闭合。',
+            '输出必须是完整可解析的协议文本，不要解释。'
+        ].join('\n')
+    },
+    {
+        role: 'user',
+        content: [
+            '【修复原因】',
+            reason || '正文对白格式不合规。',
+            '',
+            '【硬性修复要求】',
+            '1. <正文> 内所有角色说出口的台词必须单独成行，并以【角色名】开头。',
+            '2. 没有【角色名】的行只能是旁白、动作、环境或判定。',
+            '3. 如果原文出现“某人动作后一整行明显是他说的话”，把那一行改为【某人】开头，不要凭空改名。',
+            '4. 保留 <短期记忆>、<命令>、<行动选项>、<动态世界> 等块的原意；缺失必要块时按原文可见信息补齐最小可用内容。',
+            '5. 不要新增剧情，不要重写成另一版故事。',
+            '',
+            '【待修复原始输出】',
+            rawText || ''
+        ].join('\n')
+    }
+], { 保留System: true, 合并同角色: false });
+
+const 修复故事响应协议 = async (
+    rawText: string,
+    reason: string,
+    apiConfig: 当前可用接口结构,
+    signal?: AbortSignal,
+    requestOptions?: StoryRequestOptions
+): Promise<StoryResponseResult> => {
+    const repairedText = await 请求模型文本(apiConfig, 构建正文协议修复消息(rawText, reason), {
+        temperature: 0.2,
+        signal,
+        errorDetailLimit: requestOptions?.errorDetailLimit,
+        includeReasoning: requestOptions?.includeReasoning,
+        disableThinking: requestOptions?.disableThinking,
+        stripReasoning: requestOptions?.stripReasoning,
+        prefixMode: requestOptions?.prefixMode
+    });
+    return 解析故事响应(repairedText, requestOptions);
+};
 
 export const generateStoryResponse = async (
     systemPrompt: string,
@@ -1780,7 +1830,14 @@ export const generateStoryResponse = async (
             stripReasoning: requestOptions?.stripReasoning,
             prefixMode: requestOptions?.prefixMode
         });
-        return 解析故事响应(rawText, requestOptions);
+        try {
+            return 解析故事响应(rawText, requestOptions);
+        } catch (error: any) {
+            if (requestOptions?.validateDialogueFormat === true && error?.name === 'StoryResponseParseError') {
+                return 修复故事响应协议(rawText, error?.parseDetail || error?.message || '正文对白格式不合规', apiConfig, signal, requestOptions);
+            }
+            throw error;
+        }
     }
 
     const normalizedSystemPrompt = typeof systemPrompt === 'string' ? systemPrompt.trim() : '';
@@ -1861,7 +1918,14 @@ export const generateStoryResponse = async (
         prefixMode: requestOptions?.prefixMode
     });
 
-    return 解析故事响应(rawText, requestOptions);
+    try {
+        return 解析故事响应(rawText, requestOptions);
+    } catch (error: any) {
+        if (requestOptions?.validateDialogueFormat === true && error?.name === 'StoryResponseParseError') {
+            return 修复故事响应协议(rawText, error?.parseDetail || error?.message || '正文对白格式不合规', apiConfig, signal, requestOptions);
+        }
+        throw error;
+    }
 };
 
 export const testConnection = async (
