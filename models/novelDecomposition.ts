@@ -89,6 +89,15 @@ export interface 小说拆分地图地点档案结构 {
     首次出现: string;
 }
 
+export interface 小说拆分物品档案结构 {
+    名称: string;
+    类型: string;
+    用途: string;
+    所属人物: string;
+    所属势力: string;
+    首次出现: string;
+}
+
 export interface 小说拆分章节结构 {
     id: string;
     数据集ID: string;
@@ -127,6 +136,14 @@ export interface 小说拆分分段结构 {
     角色档案: 小说拆分角色档案结构[];
     势力档案: 小说拆分势力档案结构[];
     地图地点档案: 小说拆分地图地点档案结构[];
+    物品档案: 小说拆分物品档案结构[];
+    世界观规则: string[];
+    世界边界规则: string[];
+    人物关系: string[];
+    势力关系: string[];
+    伏笔线索: string[];
+    回收点: string[];
+    章节节奏: string[];
     时间线: 小说拆分时间线事件结构[];
     时间线起点: string;
     时间线终点: string;
@@ -172,6 +189,14 @@ export interface 小说拆分数据集结构 {
     角色档案: 小说拆分角色档案结构[];
     势力档案: 小说拆分势力档案结构[];
     地图地点档案: 小说拆分地图地点档案结构[];
+    物品档案: 小说拆分物品档案结构[];
+    世界观规则: string[];
+    世界边界规则: string[];
+    人物关系: string[];
+    势力关系: string[];
+    伏笔线索: string[];
+    回收点: string[];
+    章节节奏: string[];
     分段列表: 小说拆分分段结构[];
     注入树: 小说拆分树节点结构[];
     createdAt: number;

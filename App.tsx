@@ -2636,6 +2636,7 @@ const App: React.FC = () => {
                             onComplete={actions.handleGenerateWorld}
                             onCancel={() => { state.setView('home'); }}
                             loading={state.loading}
+                            apiConfig={state.apiConfig}
                             requestConfirm={requestConfirm}
                         />
                     ) : (
@@ -2643,6 +2644,7 @@ const App: React.FC = () => {
                             onComplete={actions.handleGenerateWorld}
                             onCancel={() => { state.setView('home'); }}
                             loading={state.loading}
+                            apiConfig={state.apiConfig}
                             requestConfirm={requestConfirm}
                         />
                     )}
@@ -3775,6 +3777,7 @@ const App: React.FC = () => {
                                     debugEnabled={(state.gameConfig as any)?.启用研发诊断模式 === true}
                                     onOpenPerson={openNpcDetailFromRecord}
                                     onRegenerateMap={handleRegenerateMap}
+                                    onInsertCommand={insertChatDraft}
                                     rawResponse={mapRegenerateRawText}
                                     onClose={() => setters.setShowMap(false)}
                                 />
@@ -3787,6 +3790,7 @@ const App: React.FC = () => {
                                     debugEnabled={(state.gameConfig as any)?.启用研发诊断模式 === true}
                                     onOpenPerson={openNpcDetailFromRecord}
                                     onRegenerateMap={handleRegenerateMap}
+                                    onInsertCommand={insertChatDraft}
                                     rawResponse={mapRegenerateRawText}
                                     onClose={() => setters.setShowMap(false)}
                                 />

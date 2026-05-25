@@ -12,10 +12,11 @@ interface Props {
     onClose: () => void;
     onOpenPerson?: (person: any) => void;
     onRegenerateMap?: () => Promise<boolean>;
+    onInsertCommand?: (text: string) => void;
     rawResponse?: string;
 }
 
-const MobileMapModal: React.FC<Props> = ({ world, env, onClose, onRegenerateMap, rawResponse, socialList }) => (
+const MobileMapModal: React.FC<Props> = ({ world, env, onClose, onRegenerateMap, onInsertCommand, rawResponse, socialList }) => (
     <div className="fixed inset-0 z-[220] flex items-stretch justify-center bg-black/95 p-0 backdrop-blur-sm md:hidden animate-fadeIn">
         <div className="relative flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden border border-wuxia-gold/20 bg-[#0b0907]/95 shadow-[0_0_80px_rgba(0,0,0,0.9)]">
             <div className="flex h-12 shrink-0 items-center justify-between border-b border-wuxia-gold/10 bg-black/70 px-3">
@@ -37,6 +38,7 @@ const MobileMapModal: React.FC<Props> = ({ world, env, onClose, onRegenerateMap,
                     world={world}
                     env={env}
                     onRegenerateMap={onRegenerateMap}
+                    onInsertCommand={onInsertCommand}
                     rawResponse={rawResponse}
                     socialList={socialList}
                     compact

@@ -11,6 +11,7 @@ interface Props {
     compact?: boolean;
     rawResponse?: string;
     socialList?: any[];
+    onInsertCommand?: (text: string) => void;
 }
 
 const 层级标签: Record<string, string> = {
@@ -82,7 +83,7 @@ const LocationTreeItem: React.FC<{
     );
 };
 
-const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact = false, rawResponse = '', socialList = [] }) => {
+const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact = false, rawResponse = '', socialList = [], onInsertCommand }) => {
     const tree = useMemo(() => 构建地点树(world, env), [world, env]);
     const [selectedNode, setSelectedNode] = useState<地点树节点 | null>(() => 获取索引选中节点(tree.当前节点, tree.节点映射));
     const [regenerating, setRegenerating] = useState(false);
@@ -258,6 +259,31 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
                                     <div className="text-xs text-gray-400 leading-relaxed">{selectedNode.描述}</div>
                                 ) : (
                                     <div className="text-xs text-gray-600">暂无描述</div>
+                                )}
+                                {onInsertCommand && (
+                                    <div className="mt-3 flex flex-wrap gap-2 border-t border-white/5 pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const name = String((selectedNode as any).名称 || selectedNode.鍚嶇О || '').trim();
+                                                if (name) onInsertCommand(`前往【${name}】`);
+                                            }}
+                                            className="rounded-lg border border-wuxia-gold/30 bg-wuxia-gold/10 px-3 py-1.5 text-[11px] font-bold text-wuxia-gold hover:bg-wuxia-gold/20"
+                                        >
+                                            前往此地
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const name = String((selectedNode as any).名称 || selectedNode.鍚嶇О || '').trim();
+                                                const desc = String((selectedNode as any).描述 || selectedNode.鎻忚堪 || '').trim();
+                                                if (name) onInsertCommand(`查看【${name}】详情${desc ? `：${desc}` : ''}`);
+                                            }}
+                                            className="rounded-lg border border-gray-700 bg-black/40 px-3 py-1.5 text-[11px] text-gray-300 hover:border-gray-500 hover:text-white"
+                                        >
+                                            查看详情
+                                        </button>
+                                    </div>
                                 )}
                                 {selectedNodeNpcs.length > 0 && (
                                     <div className="mt-2 pt-2 border-t border-white/5">

@@ -151,6 +151,15 @@ export interface NovelDecompositionLocationProfileAnalysisResult {
     首次出现: string;
 }
 
+export interface NovelDecompositionItemProfileAnalysisResult {
+    名称: string;
+    类型: string;
+    用途: string;
+    所属人物: string;
+    所属势力: string;
+    首次出现: string;
+}
+
 export interface NovelDecompositionAnalysisResult {
     groupNumber: number;
     chapterRange: string;
@@ -171,6 +180,14 @@ export interface NovelDecompositionAnalysisResult {
     characterProfiles: NovelDecompositionCharacterProfileAnalysisResult[];
     factionProfiles: NovelDecompositionFactionProfileAnalysisResult[];
     locationProfiles: NovelDecompositionLocationProfileAnalysisResult[];
+    itemProfiles: NovelDecompositionItemProfileAnalysisResult[];
+    worldRules: string[];
+    worldBoundaryRules: string[];
+    characterRelations: string[];
+    factionRelations: string[];
+    foreshadowingThreads: string[];
+    payoffPoints: string[];
+    chapterRhythm: string[];
     rawText: string;
 }
 
@@ -862,6 +879,14 @@ const 新小说拆分标题别名映射 = {
     角色档案: ['角色档案', '人物档案'],
     势力档案: ['势力档案', '组织档案'],
     地图地点档案: ['地图地点档案', '地点档案', '地图档案'],
+    物品档案: ['物品档案', '道具档案', '物件档案'],
+    世界观规则: ['世界观规则', '世界规则'],
+    世界边界规则: ['世界边界规则', '禁忌规则', '边界规则'],
+    人物关系: ['人物关系', '角色关系'],
+    势力关系: ['势力关系', '组织关系'],
+    伏笔线索: ['伏笔线索', '伏笔'],
+    回收点: ['回收点', '收束点', '回扣点'],
+    章节节奏: ['章节节奏', '节奏节拍', '章节节拍'],
     时间线起点: ['时间线起点', '本组开始时间', '本组开始时间线'],
     时间线终点: ['时间线终点', '本组结束时间', '本组结束时间线'],
     关键事件: ['关键事件'],
@@ -959,6 +984,14 @@ const 提取新小说拆分标题区块 = (text: string): Record<新小说拆分
         角色档案: [],
         势力档案: [],
         地图地点档案: [],
+        物品档案: [],
+        世界观规则: [],
+        世界边界规则: [],
+        人物关系: [],
+        势力关系: [],
+        伏笔线索: [],
+        回收点: [],
+        章节节奏: [],
         时间线起点: [],
         时间线终点: [],
         关键事件: [],
@@ -1255,7 +1288,19 @@ const 规范化新小说拆分结果 = (base: Omit<NovelDecompositionAnalysisRes
         ? base.locationProfiles
             .map((item) => 规范化新小说拆分地点档案(item))
             .filter((item) => item.名称)
-        : []
+        : [],
+    itemProfiles: Array.isArray(base.itemProfiles)
+        ? base.itemProfiles
+            .map((item) => 规范化新小说拆分物品档案(item))
+            .filter((item) => item.名称)
+        : [],
+    worldRules: 新小说拆分去重文本列表(base.worldRules || [], 24),
+    worldBoundaryRules: 新小说拆分去重文本列表(base.worldBoundaryRules || [], 24),
+    characterRelations: 新小说拆分去重文本列表(base.characterRelations || [], 24),
+    factionRelations: 新小说拆分去重文本列表(base.factionRelations || [], 24),
+    foreshadowingThreads: 新小说拆分去重文本列表(base.foreshadowingThreads || [], 24),
+    payoffPoints: 新小说拆分去重文本列表(base.payoffPoints || [], 24),
+    chapterRhythm: 新小说拆分去重文本列表(base.chapterRhythm || [], 24)
 });
 
 const 提取新小说拆分结果JSON = (rawText: string): any => {
@@ -1312,6 +1357,14 @@ const 解析新小说拆分标签结果 = (rawText: string): NovelDecompositionA
                     ...entry,
                     关键设施: 解析新小说拆分分隔列表(entry.关键设施 || '')
                 })),
+                itemProfiles: 解析新小说拆分条目块(sections.物品档案).map((entry) => 规范化新小说拆分物品档案(entry)),
+                worldRules: 解析新小说拆分列表区块(sections.世界观规则),
+                worldBoundaryRules: 解析新小说拆分列表区块(sections.世界边界规则),
+                characterRelations: 解析新小说拆分列表区块(sections.人物关系),
+                factionRelations: 解析新小说拆分列表区块(sections.势力关系),
+                foreshadowingThreads: 解析新小说拆分列表区块(sections.伏笔线索),
+                payoffPoints: 解析新小说拆分列表区块(sections.回收点),
+                chapterRhythm: 解析新小说拆分列表区块(sections.章节节奏),
                 timelineStart: (sections.时间线起点 || '').trim(),
                 timelineEnd: (sections.时间线终点 || '').trim(),
                 keyEvents: 解析新小说拆分条目块(sections.关键事件).map((entry) => ({
@@ -1424,6 +1477,46 @@ const 解析新小说拆分结果 = (rawText: string): NovelDecompositionAnalysi
                 ? data.locationProfiles.map((item: any) => 规范化新小说拆分地点档案(item)).filter((item: any) => item.名称)
                 : Array.isArray(data?.地图地点档案)
                     ? data.地图地点档案.map((item: any) => 规范化新小说拆分地点档案(item)).filter((item: any) => item.名称)
+                    : [],
+            itemProfiles: Array.isArray(data?.itemProfiles)
+                ? data.itemProfiles.map((item: any) => 规范化新小说拆分物品档案(item)).filter((item: any) => item.名称)
+                : Array.isArray(data?.物品档案)
+                    ? data.物品档案.map((item: any) => 规范化新小说拆分物品档案(item)).filter((item: any) => item.名称)
+                    : [],
+            worldRules: Array.isArray(data?.worldRules)
+                ? data.worldRules.map((item: any) => String(item || '').trim()).filter(Boolean)
+                : Array.isArray(data?.世界观规则)
+                    ? data.世界观规则.map((item: any) => String(item || '').trim()).filter(Boolean)
+                    : [],
+            worldBoundaryRules: Array.isArray(data?.worldBoundaryRules)
+                ? data.worldBoundaryRules.map((item: any) => String(item || '').trim()).filter(Boolean)
+                : Array.isArray(data?.世界边界规则)
+                    ? data.世界边界规则.map((item: any) => String(item || '').trim()).filter(Boolean)
+                    : [],
+            characterRelations: Array.isArray(data?.characterRelations)
+                ? data.characterRelations.map((item: any) => String(item || '').trim()).filter(Boolean)
+                : Array.isArray(data?.人物关系)
+                    ? data.人物关系.map((item: any) => String(item || '').trim()).filter(Boolean)
+                    : [],
+            factionRelations: Array.isArray(data?.factionRelations)
+                ? data.factionRelations.map((item: any) => String(item || '').trim()).filter(Boolean)
+                : Array.isArray(data?.势力关系)
+                    ? data.势力关系.map((item: any) => String(item || '').trim()).filter(Boolean)
+                    : [],
+            foreshadowingThreads: Array.isArray(data?.foreshadowingThreads)
+                ? data.foreshadowingThreads.map((item: any) => String(item || '').trim()).filter(Boolean)
+                : Array.isArray(data?.伏笔线索)
+                    ? data.伏笔线索.map((item: any) => String(item || '').trim()).filter(Boolean)
+                    : [],
+            payoffPoints: Array.isArray(data?.payoffPoints)
+                ? data.payoffPoints.map((item: any) => String(item || '').trim()).filter(Boolean)
+                : Array.isArray(data?.回收点)
+                    ? data.回收点.map((item: any) => String(item || '').trim()).filter(Boolean)
+                    : [],
+            chapterRhythm: Array.isArray(data?.chapterRhythm)
+                ? data.chapterRhythm.map((item: any) => String(item || '').trim()).filter(Boolean)
+                : Array.isArray(data?.章节节奏)
+                    ? data.章节节奏.map((item: any) => String(item || '').trim()).filter(Boolean)
                     : [],
             timelineStart: typeof data?.timelineStart === 'string'
                 ? data.timelineStart.trim()
@@ -1543,6 +1636,15 @@ const 规范化新小说拆分地点档案 = (raw: any): NovelDecompositionLocat
     所属势力: typeof raw?.所属势力 === 'string' ? raw.所属势力.trim() : typeof raw?.faction === 'string' ? raw.faction.trim() : '',
     地貌功能: typeof raw?.地貌功能 === 'string' ? raw.地貌功能.trim() : typeof raw?.function === 'string' ? raw.function.trim() : '',
     关键设施: 新小说拆分去重文本列表(Array.isArray(raw?.关键设施) ? raw.关键设施 : Array.isArray(raw?.facilities) ? raw.facilities : [], 12),
+    首次出现: typeof raw?.首次出现 === 'string' ? raw.首次出现.trim() : typeof raw?.firstSeen === 'string' ? raw.firstSeen.trim() : ''
+});
+
+const 规范化新小说拆分物品档案 = (raw: any): NovelDecompositionItemProfileAnalysisResult => ({
+    名称: typeof raw?.名称 === 'string' ? raw.名称.trim() : typeof raw?.name === 'string' ? raw.name.trim() : '',
+    类型: typeof raw?.类型 === 'string' ? raw.类型.trim() : typeof raw?.type === 'string' ? raw.type.trim() : '',
+    用途: typeof raw?.用途 === 'string' ? raw.用途.trim() : typeof raw?.usage === 'string' ? raw.usage.trim() : '',
+    所属人物: typeof raw?.所属人物 === 'string' ? raw.所属人物.trim() : typeof raw?.owner === 'string' ? raw.owner.trim() : '',
+    所属势力: typeof raw?.所属势力 === 'string' ? raw.所属势力.trim() : typeof raw?.faction === 'string' ? raw.faction.trim() : '',
     首次出现: typeof raw?.首次出现 === 'string' ? raw.首次出现.trim() : typeof raw?.firstSeen === 'string' ? raw.firstSeen.trim() : ''
 });
 

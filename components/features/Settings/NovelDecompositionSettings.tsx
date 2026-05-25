@@ -1033,6 +1033,14 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
             角色档案: [],
             势力档案: [],
             地图地点档案: [],
+            物品档案: [],
+            世界观规则: [],
+            世界边界规则: [],
+            人物关系: [],
+            势力关系: [],
+            伏笔线索: [],
+            回收点: [],
+            章节节奏: [],
             注入树: [],
             updatedAt: now
         };
@@ -1116,6 +1124,14 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                         角色档案: [],
                         势力档案: [],
                         地图地点档案: [],
+                        物品档案: [],
+                        世界观规则: [],
+                        世界边界规则: [],
+                        人物关系: [],
+                        势力关系: [],
+                        伏笔线索: [],
+                        回收点: [],
+                        章节节奏: [],
                         注入树: [],
                         updatedAt: Date.now()
                     });
@@ -1445,6 +1461,17 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                     关键事件: [],
                     角色推进: [],
                     登场角色: [],
+                    角色档案: [],
+                    势力档案: [],
+                    地图地点档案: [],
+                    物品档案: [],
+                    世界观规则: [],
+                    世界边界规则: [],
+                    人物关系: [],
+                    势力关系: [],
+                    伏笔线索: [],
+                    回收点: [],
+                    章节节奏: [],
                     时间线: [],
                     时间线起点: item.时间线起点,
                     时间线终点: item.时间线终点,
@@ -1581,10 +1608,12 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                 tags: ['小说分解', selectedDataset.来源类型].filter(Boolean)
             });
             await refreshWorkshopEntries();
-            设置状态消息(`已发布到创意工坊：${result.entry.title}。分享编号：${result.entry.id}`);
+            const publishedTitle = result.entry?.title || selectedDataset.作品名 || selectedDataset.标题 || '未命名小说分解模块';
+            const publishedId = result.entry?.id || '未知';
+            设置状态消息(`已发布到创意工坊：${publishedTitle}。分享编号：${publishedId}`);
             onNotify?.({
                 title: '发布成功',
-                message: `小说分解模块已上传到创意工坊：${result.entry.title}`,
+                message: `小说分解模块已上传到创意工坊：${publishedTitle}`,
                 tone: 'success'
             });
         } catch (error: any) {

@@ -1,5 +1,6 @@
 import type { 开局预设方案结构 } from '../data/newGamePresets';
 import { 属性最大值, 属性最小值, 规范化可选开局配置 } from './openingConfig';
+import { normalizeRealmDraft, normalizeWorldMapDraft } from './newGameDiy';
 
 export const 自定义开局预设存储键 = 'new_game_custom_start_presets';
 
@@ -46,7 +47,9 @@ export const 标准化开局预设方案 = (raw: any): 开局预设方案结构 
                 : 'normal',
             worldExtraRequirement: 标准化文本(raw?.worldConfig?.worldExtraRequirement),
             manualWorldPrompt: 标准化文本(raw?.worldConfig?.manualWorldPrompt),
-            manualRealmPrompt: 标准化文本(raw?.worldConfig?.manualRealmPrompt)
+            manualRealmPrompt: 标准化文本(raw?.worldConfig?.manualRealmPrompt),
+            realmDiyDraft: normalizeRealmDraft(raw?.worldConfig?.realmDiyDraft),
+            mapDiyDraft: normalizeWorldMapDraft(raw?.worldConfig?.mapDiyDraft)
         },
         character: {
             姓名: 标准化文本(raw?.character?.姓名),

@@ -12,10 +12,11 @@ interface Props {
     onClose: () => void;
     onOpenPerson?: (person: any) => void;
     onRegenerateMap?: () => Promise<boolean>;
+    onInsertCommand?: (text: string) => void;
     rawResponse?: string;
 }
 
-const MapModal: React.FC<Props> = ({ world, env, onClose, onRegenerateMap, rawResponse, socialList }) => (
+const MapModal: React.FC<Props> = ({ world, env, onClose, onRegenerateMap, onInsertCommand, rawResponse, socialList }) => (
     <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/95 p-2 backdrop-blur-sm animate-fadeIn">
         <div className="relative flex h-[95vh] max-h-[95vh] w-full max-w-[min(1680px,calc(100vw-16px))] flex-col overflow-hidden rounded-2xl border border-wuxia-gold/20 bg-ink-black/95 shadow-[0_0_80px_rgba(0,0,0,0.9)]">
             <div className="pointer-events-none absolute inset-0 z-0">
@@ -51,6 +52,7 @@ const MapModal: React.FC<Props> = ({ world, env, onClose, onRegenerateMap, rawRe
                     world={world}
                     env={env}
                     onRegenerateMap={onRegenerateMap}
+                    onInsertCommand={onInsertCommand}
                     rawResponse={rawResponse}
                     socialList={socialList}
                 />
