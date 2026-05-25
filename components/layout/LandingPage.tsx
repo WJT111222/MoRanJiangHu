@@ -401,6 +401,7 @@ const LandingPage: React.FC<Props> = ({
     const [presenceStats, setPresenceStats] = React.useState<OnlinePresencePublicStats | null>(null);
     const [presenceHistory, setPresenceHistory] = React.useState<在线人数小时点[]>([]);
     const [supportDetailsOpen, setSupportDetailsOpen] = React.useState(false);
+    const [localPlayOpen, setLocalPlayOpen] = React.useState(false);
     const [backgroundIndex, setBackgroundIndex] = React.useState(0);
 
     React.useEffect(() => {
@@ -580,21 +581,16 @@ const LandingPage: React.FC<Props> = ({
                     </div>
 
                     <div className="landing-action-group flex w-64 flex-col gap-3 animate-slide-in delay-100">
-                        <GameButton onClick={onStart} variant="primary" className="py-4 text-lg shadow-lg">
-                            踏入江湖
-                        </GameButton>
-
-                        <GameButton
-                            onClick={onLoad}
-                            variant="secondary"
-                            className={`py-4 text-lg shadow-lg ${!hasSave ? 'cursor-not-allowed grayscale opacity-50' : ''}`}
-                            disabled={!hasSave}
-                        >
-                            重入江湖
+                        <GameButton onClick={() => setLocalPlayOpen(true)} variant="primary" className="py-4 text-lg shadow-lg">
+                            本地游玩
                         </GameButton>
 
                         <GameButton onClick={onCloudPlay} variant="secondary" className="border-opacity-50 py-4 text-lg opacity-95 shadow-lg hover:opacity-100">
                             云端游玩
+                        </GameButton>
+
+                        <GameButton onClick={onNovelDecomposition} variant="secondary" className="border-opacity-50 py-4 text-lg opacity-95 shadow-lg hover:opacity-100">
+                            创意工坊
                         </GameButton>
 
                         <GameButton onClick={onImageManager} variant="secondary" className="border-opacity-50 py-4 text-lg opacity-90 shadow-lg hover:opacity-100">
@@ -603,10 +599,6 @@ const LandingPage: React.FC<Props> = ({
 
                         <GameButton onClick={onWorldbookManager} variant="secondary" className="border-opacity-50 py-4 text-lg opacity-90 shadow-lg hover:opacity-100">
                             世界书管理
-                        </GameButton>
-
-                        <GameButton onClick={onNovelDecomposition} variant="secondary" className="border-opacity-50 py-4 text-lg opacity-90 shadow-lg hover:opacity-100">
-                            小说拆解
                         </GameButton>
 
                         <GameButton onClick={onSettings} variant="secondary" className="border-opacity-50 py-4 text-lg opacity-80 shadow-lg hover:opacity-100">
@@ -720,6 +712,60 @@ const LandingPage: React.FC<Props> = ({
                             >
                                 ×
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {localPlayOpen && (
+                <div className="fixed inset-0 z-[430] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm animate-fadeIn" onClick={() => setLocalPlayOpen(false)}>
+                    <div
+                        className="w-full max-w-md rounded-2xl border border-wuxia-gold/25 bg-[linear-gradient(180deg,rgba(28,20,10,0.98),rgba(6,6,6,0.98))] p-5 shadow-[0_26px_90px_rgba(0,0,0,0.65)]"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="mb-4 flex items-start justify-between gap-4">
+                            <div>
+                                <div className="text-lg font-serif font-bold tracking-[0.18em] text-wuxia-gold">
+                                    本地游玩
+                                </div>
+                                <div className="mt-2 text-sm leading-6 text-amber-50/75">
+                                    选择新开一段江湖，或读取本机已有存档继续游玩。
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setLocalPlayOpen(false)}
+                                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-300/25 bg-black/30 text-xl text-amber-100 transition-colors hover:border-amber-300/50 hover:text-white"
+                                aria-label="关闭本地游玩选择"
+                                title="关闭"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="grid gap-3">
+                            <GameButton
+                                onClick={() => {
+                                    setLocalPlayOpen(false);
+                                    onStart();
+                                }}
+                                variant="primary"
+                                className="py-4 text-lg shadow-lg"
+                            >
+                                踏入江湖
+                            </GameButton>
+                            <GameButton
+                                onClick={() => {
+                                    if (!hasSave) return;
+                                    setLocalPlayOpen(false);
+                                    onLoad();
+                                }}
+                                variant="secondary"
+                                className={`py-4 text-lg shadow-lg ${!hasSave ? 'cursor-not-allowed grayscale opacity-50' : ''}`}
+                                disabled={!hasSave}
+                            >
+                                重入江湖
+                            </GameButton>
                         </div>
                     </div>
                 </div>
