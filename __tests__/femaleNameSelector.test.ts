@@ -72,24 +72,22 @@ describe('female name selector', () => {
         expect(new Set(femaleNames).size).toBe(femaleNames.length);
     });
 
-    it('rewrites template-like female names into the selector pool', () => {
+    it('keeps legacy template-like female names instead of rewriting old saves', () => {
         const [npc] = 重命名重复女性NPC列表([
             { id: 'short_given_name', 姓名: '婉儿', 性别: '女', 身份: '贴身侍女' }
         ]);
 
-        expect(npc.姓名).not.toBe('婉儿');
-        expect(判断女性姓名来自姓名库(npc.姓名)).toBe(true);
-        expect(npc.曾用名).toContain('婉儿');
+        expect(npc.姓名).toBe('婉儿');
+        expect(npc.曾用名).toBeUndefined();
     });
 
-    it('rewrites main female characters when their name is outside the selector pool', () => {
+    it('keeps legacy main female template names instead of rewriting old saves', () => {
         const [npc] = 重命名重复女性NPC列表([
             { id: 'main_su_waner', 姓名: '苏婉儿', 性别: '女', 身份: '主要女角色', 是否主要角色: true }
         ]);
 
-        expect(npc.姓名).not.toBe('苏婉儿');
-        expect(判断女性姓名来自姓名库(npc.姓名)).toBe(true);
-        expect(npc.曾用名).toContain('苏婉儿');
+        expect(npc.姓名).toBe('苏婉儿');
+        expect(npc.曾用名).toBeUndefined();
     });
 
     it('keeps named fandom major characters outside the selector pool when fandom protection is enabled', () => {
