@@ -2335,14 +2335,14 @@ export const useGame = () => {
 
     const 执行带自动重试的生成请求 = async <T,>(params: {
         enabled: boolean;
-        action: () => Promise<T>;
+        action: (attempt: number, lastError?: any) => Promise<T>;
         onRetry?: (attempt: number, maxAttempts: number, reason: string) => void;
     }): Promise<T> => {
         const maxAttempts = params.enabled ? 自动重试最大次数 : 1;
         let lastError: any = null;
         for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
             try {
-                return await params.action();
+                return await params.action(attempt, lastError);
             } catch (error: any) {
                 lastError = error;
                 if (!params.enabled || attempt >= maxAttempts || !是否可自动重试错误(error)) {

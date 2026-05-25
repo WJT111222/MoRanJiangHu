@@ -1,14 +1,17 @@
 {
-  "versionCode": 315,
-  "versionName": "1.0.314",
+  "versionCode": 316,
+  "versionName": "1.0.315",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "修复对象存储云端游玩新开存档后返回首页只落本地的问题：返回首页会等待本地保存完成，并把本次保存的存档明确同步到当前云端后再返回。",
-    "云端同步失败时会阻止直接返回首页并提示错误，避免玩家误以为已经保存到云端。",
-    "优化第 0 回合与返回首页保存链路，端到端验证对象存储云端清单能看到新建角色存档。",
-    "增强 Gemini 主剧情字数要求约束，减少模型长期低于设定字数的问题。",
+    "设置页 NPC 管理默认开放：普通模式下也能直接进入 NPC 管理，不再需要先开启研发/诊断模式。",
+    "对象存储云端存档列表改为按真实保存时间由新到旧显示，不再被回合数高低影响排序。",
+    "主剧情会检测开局/回合正文里的无标签台词：发现疑似角色对白没有【角色名】标签时，会把原始输出发给 AI 做协议修复，避免整段变成旁白，也减少完整重跑消耗。",
+    "正文字数不足时会基于原文补足正文，不重新生成整回合；原有命令、记忆和行动选项会保留。",
+    "保留本地对白兜底恢复作为最后保险，异常输出也尽量不再出现整段无法渲染成对话框。",
+    "修复角色姓名保护：已有稳定姓名、玩家手动改名和老存档中的模板名都会保留，避免后续回合被 AI 或本地兜底反复改名。",
+    "女性新角色仍会使用候选姓名池约束，减少新档继续生成模板名。",
     "官网：https://msjh.bacon159.pp.ua/",
-    "同步更新 Web、APK 与更新清单到 v1.0.314。"
+    "同步更新 Web、APK 与更新清单到 v1.0.315。"
   ],
   "releaseHistory": [
     {
@@ -3026,7 +3029,7 @@
   "r2Bucket": "quark-downloads-bacon",
   "r2Prefix": "moranjianghu",
   "backupWebsiteUrl": "https://msjh.bacon.de5.net",
-  "releasePublishedAt": "2026-05-25T02:10:16+08:00",
+  "releasePublishedAt": "2026-05-25T07:56:34+08:00",
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html"
 }
