@@ -102,7 +102,7 @@ describe('AI returned female name e2e', () => {
         expect(npc?.自动补全头像).toBe(true);
     });
 
-    it('still rewrites a template main heroine name if a model ignores the candidate pool', () => {
+    it('keeps an ignored-pool template name as legacy-compatible data instead of local rewriting', () => {
         const aiReturnedName = '苏婉儿';
         const response = {
             logs: [
@@ -159,9 +159,8 @@ describe('AI returned female name e2e', () => {
 
         const npc = result.社交.find((item: any) => item?.id === 'npc_ai_su_waner_fallback');
         console.info(`[AI姓名兜底] AI原始返回=${aiReturnedName}；最终入库=${npc?.姓名}；曾用名=${(npc?.曾用名 || []).join(',')}`);
-        expect(npc?.姓名).not.toBe(aiReturnedName);
-        expect(判断女性姓名来自姓名库(npc?.姓名)).toBe(true);
-        expect(npc?.曾用名).toContain(aiReturnedName);
+        expect(npc?.姓名).toBe(aiReturnedName);
+        expect(npc?.曾用名).toBeUndefined();
     });
 
     it.skipIf(!读取端到端AI配置())('uses the configured external AI endpoint to choose from the 100-name pool', async () => {

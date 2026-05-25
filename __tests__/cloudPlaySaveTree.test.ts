@@ -91,7 +91,7 @@ describe('对象存储云端游玩进度线', () => {
         expect(trees.map((tree) => tree.count).sort()).toEqual([1, 2]);
     });
 
-    it('读取最新只在同一谱系内按回合和游戏时间选择最远进度', () => {
+    it('读取展示最新时按真实保存时间选择同一谱系内最新存档', () => {
         const trees = 构建对象存储云存档时间树([
             makeItem({
                 hash: 'turn14-late-upload',
@@ -114,6 +114,6 @@ describe('对象存储云端游玩进度线', () => {
         ]);
 
         expect(trees).toHaveLength(1);
-        expect(trees[0].latest.hash).toBe('turn15-earlier-upload');
+        expect(trees[0].latest.hash).toBe('turn14-late-upload');
     });
 });
