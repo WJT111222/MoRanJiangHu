@@ -545,6 +545,44 @@ export interface WorldGenConfig {
     manualWorldPrompt: string;
     manualRealmPrompt: string;
     difficulty: 游戏难度;
+    realmDiyDraft?: RealmDiyDraft;
+    mapDiyDraft?: WorldMapDiyDraft;
+}
+
+export interface RealmDiyRow {
+    id: string;
+    name: string;
+    level: number;
+    power: string;
+    breakthrough: string;
+    parameters: string;
+    description: string;
+}
+
+export interface RealmDiyDraft {
+    rows: RealmDiyRow[];
+    updatedAt?: number;
+}
+
+export type WorldMapDiyLayerType = '寰宇' | '大地点' | '中地点' | '小地点' | '区地点' | '子地点';
+
+export interface WorldMapDiyNode {
+    id: string;
+    name: string;
+    layer: WorldMapDiyLayerType;
+    parentId: string;
+    description: string;
+    climate?: string;
+    population?: string;
+    culture?: string;
+    transport?: string;
+}
+
+export interface WorldMapDiyDraft {
+    nodes: WorldMapDiyNode[];
+    referenceImage?: string;
+    referenceOpacity?: number;
+    updatedAt?: number;
 }
 
 export type SaveType = 'manual' | 'auto';

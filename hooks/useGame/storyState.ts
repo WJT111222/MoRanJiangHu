@@ -20,6 +20,7 @@ import type { 任务结构, 任务状态 } from '../../models/task';
 import { 归一化六维到境界预算 } from '../../utils/attributeBudget';
 import { 重命名重复女性NPC列表 } from '../../utils/femaleNameSelector';
 import { 修复开局伙伴社交列表 } from '../../utils/openingCompanion';
+import { buildWorldMapLayersFromDraft } from '../../utils/newGameDiy';
 
 export type 开场命令基态 = {
     角色: 角色数据结构;
@@ -1507,7 +1508,7 @@ export const 规范化同人女主剧情规划状态 = (raw?: any): 同人女主
     };
 };
 
-export const 创建开场基础状态 = (charData: 角色数据结构, _worldConfig: WorldGenConfig, openingConfig?: OpeningConfig) => {
+export const 创建开场基础状态 = (charData: 角色数据结构, worldConfig: WorldGenConfig, openingConfig?: OpeningConfig) => {
     const 玩家门派 = 创建开局门派状态(charData, openingConfig);
     const 门派任务 = 是否无门派标识(玩家门派.ID)
         ? []
@@ -1523,12 +1524,19 @@ export const 创建开场基础状态 = (charData: 角色数据结构, _worldCon
     }
     const 角色 = 补齐开局仙侠字段(角色基态, openingConfig);
     const 社交 = 修复开局伙伴社交列表([], openingConfig, 角色);
+    const 世界 = 创建开场空白世界();
+    const 地图草稿层级 = Array.isArray(worldConfig?.mapDiyDraft?.nodes) && worldConfig.mapDiyDraft.nodes.length > 0
+        ? buildWorldMapLayersFromDraft(worldConfig.mapDiyDraft)
+        : [];
+    if (地图草稿层级.length > 0) {
+        世界.地图层级 = 地图草稿层级 as any;
+    }
     return {
         角色,
         环境: 创建开场空白环境(),
         游戏初始时间: '',
         社交,
-        世界: 创建开场空白世界(),
+        世界,
         战斗: 创建开场空白战斗(),
         玩家门派,
         任务列表: 门派任务,

@@ -22,9 +22,8 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
         const fileName = versionedFileName || 'MoRanJiangHu-latest.apk';
         const prefix = readReleaseObjectPrefix(env);
         const versionedKey = normalizeObjectKey(`${prefix}/${versionedFileName || 'latest.apk'}`);
-        const latestKey = normalizeObjectKey(`${prefix}/latest.apk`);
         const selectedProvider = pickApkProvider(request, manifest?.payload);
-        const key = selectedProvider === 'hi168' ? latestKey : versionedKey;
+        const key = versionedKey;
         if (selectedProvider === 'r2' && versionedFileName) {
             const r2Response = await buildR2ApkResponse(env, key, fileName, 'GET', 'r2-preferred');
             if (r2Response) return r2Response;
@@ -70,9 +69,8 @@ export async function onRequestHead({ request, env }: any): Promise<Response> {
         const fileName = versionedFileName || 'MoRanJiangHu-latest.apk';
         const prefix = readReleaseObjectPrefix(env);
         const versionedKey = normalizeObjectKey(`${prefix}/${versionedFileName || 'latest.apk'}`);
-        const latestKey = normalizeObjectKey(`${prefix}/latest.apk`);
         const selectedProvider = pickApkProvider(request, manifest?.payload);
-        const key = selectedProvider === 'hi168' ? latestKey : versionedKey;
+        const key = versionedKey;
         if (selectedProvider === 'r2' && versionedFileName) {
             const r2Response = await buildR2ApkResponse(env, key, fileName, 'HEAD', 'r2-preferred');
             if (r2Response) return r2Response;

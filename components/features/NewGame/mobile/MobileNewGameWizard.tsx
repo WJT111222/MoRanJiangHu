@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import GameButton from '../../../ui/GameButton';
-import { OpeningConfig, WorldGenConfig, 小说拆分数据集结构, 角色数据结构, 天赋结构, 背景结构, 游戏难度 } from '../../../../types';
+import { 接口设置结构, OpeningConfig, WorldGenConfig, 小说拆分数据集结构, 角色数据结构, 天赋结构, 背景结构, 游戏难度 } from '../../../../types';
 import { 预设天赋, 预设背景 } from '../../../../data/presets';
 import { 开局预设方案结构 } from '../../../../data/newGamePresets';
 import { OrnateBorder } from '../../../ui/decorations/OrnateBorder';
 import InlineSelect from '../../../ui/InlineSelect';
+import NewGameDiyTools from '../NewGameDiyTools';
 import * as dbService from '../../../../services/dbService';
 import { 读取小说拆分数据集列表 } from '../../../../services/novelDecompositionStore';
-import { 提交同人世界观预设 } from '../../../../services/fandomPresetSubmission';
 import { 合并去重开局预设方案, 标准化开局预设方案, 生成自定义开局预设ID, 自定义开局预设存储键 } from '../../../../utils/customNewGamePresets';
 import {
     关系侧重选项,
@@ -44,6 +44,7 @@ interface Props {
     ) => void;
     onCancel: () => void;
     loading: boolean;
+    apiConfig?: 接口设置结构;
     requestConfirm?: (options: { title?: string; message: string; confirmText?: string; cancelText?: string; danger?: boolean }) => Promise<boolean>;
 }
 
@@ -160,7 +161,7 @@ const 开关按钮: React.FC<{
     </button>
 );
 
-const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, requestConfirm }) => {
+const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConfig, requestConfirm }) => {
     const [step, setStep] = useState(0);
 
     // --- State: World Config ---
@@ -239,9 +240,6 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
     const [正在编辑开局预设ID, set正在编辑开局预设ID] = useState('');
     const [customPresetMeta, setCustomPresetMeta] = useState<自定义开局预设元信息>({ 名称: '', 简介: '' });
     const [openingExtraRequirement, setOpeningExtraRequirement] = useState('');
-    const [同人预设投稿已启用, set同人预设投稿已启用] = useState(true);
-    const [同人预设投稿状态, set同人预设投稿状态] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
-    const [同人预设投稿消息, set同人预设投稿消息] = useState('');
     const [显示世界观生成提示词, set显示世界观生成提示词] = useState(false);
     const [世界观生成提示词状态, set世界观生成提示词状态] = useState('');
 
@@ -645,52 +643,6 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
         openingConfigEnabled,
         openingConfig
     ]);
-    const 是否可提交同人世界观预设 = Boolean(
-        (openingConfig.同人融合.作品名 || '').trim()
-        || (当前附加小说数据集?.作品名 || 当前附加小说数据集?.标题 || '').trim()
-        || (worldConfig.worldName || '').trim()
-    ) && Boolean(
-        (worldConfig.manualWorldPrompt || '').trim()
-        || (worldConfig.worldExtraRequirement || '').trim()
-        || 当前附加小说数据集
-    );
-    const 执行同人世界观预设投稿 = async (params?: {
-        world?: WorldGenConfig;
-        opening?: OpeningConfig;
-        dataset?: 小说拆分数据集结构 | null;
-        silent?: boolean;
-    }) => {
-        if (同人预设投稿状态 === 'submitting') return;
-        if (!params?.silent) {
-            const confirmed = requestConfirm
-                ? await requestConfirm({
-                    title: '贡献为公共同人预设',
-                    message: '将把作品名、世界观提示词、境界提示词和小说分解摘要提交到官方 Worker，由 Worker 自动创建 GitHub PR。不会上传你本地的完整小说原文。是否继续？',
-                    confirmText: '提交并生成 PR',
-                    cancelText: '暂不提交'
-                })
-                : window.confirm('将把作品名、世界观提示词、境界提示词和小说分解摘要提交到官方 Worker，由 Worker 自动创建 GitHub PR。不会上传你本地的完整小说原文。是否继续？');
-            if (!confirmed) return;
-        }
-        try {
-            set同人预设投稿状态('submitting');
-            set同人预设投稿消息('正在提交公共预设投稿...');
-            const result = await 提交同人世界观预设({
-                worldConfig: params?.world || worldConfig,
-                openingConfig: params?.opening || openingConfig,
-                dataset: params?.dataset === undefined ? 当前附加小说数据集 : params.dataset
-            });
-            set同人预设投稿状态('success');
-            set同人预设投稿消息(result.pullRequestUrl ? `已创建投稿 PR：${result.pullRequestUrl}` : (result.message || '已提交公共预设投稿。'));
-            if (result.pullRequestUrl && !params?.silent) {
-                window.open(result.pullRequestUrl, '_blank', 'noopener,noreferrer');
-            }
-        } catch (error: any) {
-            set同人预设投稿状态('error');
-            set同人预设投稿消息(error?.message || '提交失败，请稍后重试。');
-        }
-    };
-    const 提交同人世界观预设投稿 = async () => 执行同人世界观预设投稿();
     const 读取UTF8文本文件 = async (file: File): Promise<string> => (
         new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -1138,7 +1090,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
         setCustomPresetMeta({ 名称: preset.名称, 简介: preset.简介 || '' });
         set正在编辑开局预设ID(preset.id);
         setShowCustomPresetEditor(true);
-        setStep(5);
+        setStep(0);
     };
 
     const 用当前配置覆盖开局方案 = async (preset: 开局预设方案结构) => {
@@ -1194,7 +1146,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
         }
         if (effectiveOpeningConfig?.同人融合.enabled && !effectiveOpeningConfig.同人融合.作品名.trim()) {
             alert('已启用同人融合，请先填写作品名。');
-            setStep(4);
+            setStep(0);
             return;
         }
         if (
@@ -1203,7 +1155,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
             && !effectiveOpeningConfig.同人融合.附加小说数据集ID.trim()
         ) {
             alert('已启用附加小说，请先选择一个小说分解数据集。');
-            setStep(4);
+            setStep(0);
             return;
         }
         if (
@@ -1212,7 +1164,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
             && effectiveRoleReplaceRules.length <= 0
         ) {
             alert('已启用同人角色替换，请先填写至少一条有效替换规则。');
-            setStep(4);
+            setStep(0);
             return;
         }
         const charData = preset
@@ -1238,19 +1190,6 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
             })
             : true;
         if (!ok) return;
-        if (
-            !preset
-            && 同人预设投稿已启用
-            && effectiveOpeningConfig?.同人融合.enabled
-            && 是否可提交同人世界观预设
-        ) {
-            void 执行同人世界观预设投稿({
-                world: effectiveWorldConfig,
-                opening: effectiveOpeningConfig,
-                dataset: 当前附加小说数据集,
-                silent: true
-            });
-        }
         onComplete(effectiveWorldConfig, charData, effectiveOpeningConfig, 'all', true, effectiveOpeningExtraRequirement.trim());
     };
 
@@ -1303,13 +1242,13 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
                                         <div className="rounded-2xl border border-wuxia-gold/25 bg-wuxia-gold/5 p-4 space-y-3">
                                             <div className="flex items-start justify-between gap-3">
                                                 <div>
-                                                    <div className="text-sm text-wuxia-gold font-bold">以自定义方案开局</div>
-                                                    <div className="text-[11px] text-gray-500 mt-1 leading-5">保存后的方案会出现在这里，可直接套用，或跳过表单步骤直接开局。</div>
+                                                    <div className="text-sm text-wuxia-gold font-bold">开局预设方案</div>
+                                                    <div className="text-[11px] text-gray-500 mt-1 leading-5">保存后的方案会优先出现在世界观页，可直接套用、编辑或跳过表单步骤直接开局。</div>
                                                 </div>
                                                 <span className="text-[10px] text-wuxia-cyan font-mono tracking-[0.18em]">CUSTOM</span>
                                             </div>
                                             <div className="space-y-3">
-                                                {自定义开局预设列表.slice(0, 3).map((preset) => (
+                                                {自定义开局预设列表.map((preset) => (
                                                     <div key={preset.id} className="rounded-xl border border-gray-700/80 bg-black/35 p-4 space-y-3">
                                                         <div>
                                                             <div className="text-base font-serif text-wuxia-gold">{preset.名称}</div>
@@ -1322,14 +1261,14 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
                                                             <GameButton onClick={() => 应用预设到表单(preset)} variant="secondary" className="py-2 text-xs">套用查看</GameButton>
                                                             <GameButton onClick={() => { void handleGenerate(preset); }} variant="primary" className="py-2 text-xs">以此方案开局</GameButton>
                                                         </div>
+                                                        <div className="grid grid-cols-3 gap-2 text-[11px]">
+                                                            <button type="button" onClick={() => 编辑自定义开局方案信息(preset)} className="text-wuxia-cyan">编辑</button>
+                                                            <button type="button" onClick={() => { void 用当前配置覆盖开局方案(preset); }} className="text-wuxia-gold">覆盖</button>
+                                                            <button type="button" onClick={() => { void 删除自定义开局方案(preset.id); }} className="text-red-400">删除</button>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
-                                            {自定义开局预设列表.length > 3 && (
-                                                <div className="text-[11px] text-gray-500">
-                                                    共 {自定义开局预设列表.length} 个方案，完整管理列表在本页下方“开局预设方案”区域。
-                                                </div>
-                                            )}
                                         </div>
                                     )}
 
@@ -1574,46 +1513,217 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
                                         </div>
                                     </div>
 
-                                    <div className="space-y-3 border-t border-wuxia-gold/20 pt-6">
-                                        <div>
-                                            <div className="text-sm text-wuxia-cyan font-bold">开局预设方案</div>
-                                            <div className="text-[11px] text-gray-500 mt-1">这里只保留你自己保存的方案；世界设定、手动提示词、角色、背景、天赋和开局要求都会一起保存。</div>
-                                        </div>
+                            <OrnateBorder className="p-4">
+                                <div className="border-b border-wuxia-gold/30 pb-3 mb-4">
+                                    <div className="text-[10px] uppercase tracking-[0.32em] text-wuxia-red/70 font-mono">Fandom Blend</div>
+                                    <h3 className="text-xl font-serif font-bold text-wuxia-gold mt-2">同人融合</h3>
+                                    <p className="text-[11px] text-gray-400 mt-2 leading-6">仅作用于世界观生成，不会单独进入开局初始化提示词。</p>
+                                </div>
 
-                                        {自定义开局预设列表.length > 0 && (
-                                            <div className="rounded-2xl border border-gray-800 bg-black/25 p-4 space-y-3">
-                                                <div className="text-[10px] tracking-[0.25em] text-gray-500 font-mono">已保存自定义开局方案</div>
-                                                <div className="space-y-3">
-                                                    {自定义开局预设列表.map((preset) => (
-                                                        <div key={preset.id} className="rounded-2xl border border-gray-700 bg-black/35 p-4 space-y-3">
-                                                            <div className="flex items-start justify-between gap-3">
-                                                                <div>
-                                                                    <div className="text-base font-serif text-wuxia-gold">{preset.名称}</div>
-                                                                    <div className="text-[11px] text-gray-400 mt-2 leading-6">{preset.简介}</div>
-                                                                </div>
-                                                                <span className="text-[10px] text-wuxia-cyan">自定义</span>
-                                                            </div>
-                                                            <div className="text-[11px] text-gray-500 leading-6">
-                                                                {preset.character.背景名称 || '未设背景'} / {preset.character.天赋名称列表.join('、') || '未设天赋'}
-                                                            </div>
-                                                            <div className="text-[11px] text-gray-500 leading-6">
-                                                                手动世界观：{preset.worldConfig.manualWorldPrompt ? '已保存' : '未保存'} / 手动境界：{preset.worldConfig.manualRealmPrompt ? '已保存' : '未保存'}
-                                                            </div>
-                                                            <div className="grid grid-cols-2 gap-2">
-                                                                <GameButton onClick={() => 应用预设到表单(preset)} variant="secondary" className="py-2 text-xs">套用方案</GameButton>
-                                                                <GameButton onClick={() => { void handleGenerate(preset); }} variant="primary" className="py-2 text-xs">以此方案开局</GameButton>
-                                                            </div>
-                                                            <div className="grid grid-cols-3 gap-2 text-[11px]">
-                                                                <button type="button" onClick={() => 编辑自定义开局方案信息(preset)} className="text-wuxia-cyan">编辑</button>
-                                                                <button type="button" onClick={() => { void 用当前配置覆盖开局方案(preset); }} className="text-wuxia-gold">覆盖</button>
-                                                                <button type="button" onClick={() => { void 删除自定义开局方案(preset.id); }} className="text-red-400">删除</button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between rounded-2xl border border-gray-800 bg-black/25 px-4 py-4">
+                                        <div>
+                                            <div className="text-sm text-gray-200">启用同人融合</div>
+                                            <div className="text-[11px] text-gray-500 mt-1">关闭时完全按原创世界生成。</div>
+                                        </div>
+                                        <开关按钮
+                                            checked={openingConfig.同人融合.enabled}
+                                            label={openingConfig.同人融合.enabled ? '已启用' : '已关闭'}
+                                            onToggle={() => setOpeningConfig((prev) => ({
+                                                ...prev,
+                                                同人融合: { ...prev.同人融合, enabled: !prev.同人融合.enabled }
+                                            }))}
+                                        />
+                                    </div>
+
+                                    {openingConfig.同人融合.enabled && (
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm text-wuxia-cyan font-bold">作品名</label>
+                                                <input
+                                                    value={openingConfig.同人融合.作品名}
+                                                    onChange={(e) => setOpeningConfig((prev) => ({
+                                                        ...prev,
+                                                        同人融合: { ...prev.同人融合, 作品名: e.target.value }
+                                                    }))}
+                                                    placeholder="例如：雪中悍刀行 / 诛仙 / 仙剑奇侠传"
+                                                    className="w-full bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-3 text-white outline-none rounded-md transition-all"
+                                                />
+                                                <div className="text-[11px] text-gray-500">
+                                                    若启用附加小说，选择数据集时会自动同步作品名，避免同人融合设定与注入来源脱节。
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm text-wuxia-cyan font-bold">来源类型</label>
+                                                <InlineSelect
+                                                    value={openingConfig.同人融合.来源类型}
+                                                    options={同人来源类型选项}
+                                                    onChange={(来源类型) => setOpeningConfig((prev) => ({
+                                                        ...prev,
+                                                        同人融合: { ...prev.同人融合, 来源类型 }
+                                                    }))}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm text-wuxia-cyan font-bold">融合强度</label>
+                                                <InlineSelect
+                                                    value={openingConfig.同人融合.融合强度}
+                                                    options={同人融合强度选项.map((item) => ({ value: item.value, label: item.label }))}
+                                                    onChange={(融合强度) => setOpeningConfig((prev) => ({
+                                                        ...prev,
+                                                        同人融合: { ...prev.同人融合, 融合强度 }
+                                                    }))}
+                                                />
+                                                <div className="text-[11px] text-gray-500 leading-6">
+                                                    {同人融合强度选项.find((item) => item.value === openingConfig.同人融合.融合强度)?.hint}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <开关按钮
+                                                    checked={openingConfig.同人融合.保留原著角色}
+                                                    label="保留原著角色实体"
+                                                    onToggle={() => setOpeningConfig((prev) => ({
+                                                        ...prev,
+                                                        同人融合: { ...prev.同人融合, 保留原著角色: !prev.同人融合.保留原著角色 }
+                                                    }))}
+                                                />
+                                                <div className="text-[11px] text-gray-500">关闭时只吸收作品母题、势力气质和设定结构，不直接保留原著角色。</div>
+                                            </div>
+                                            <div className="space-y-3 rounded-2xl border border-wuxia-gold/15 bg-black/25 p-4">
+                                                <开关按钮
+                                                    checked={openingConfig.同人融合.启用角色替换}
+                                                    label="启用同人角色替换"
+                                                    onToggle={() => setOpeningConfig((prev) => ({
+                                                        ...prev,
+                                                        同人融合: {
+                                                            ...prev.同人融合,
+                                                            启用角色替换: !prev.同人融合.启用角色替换
+                                                        }
+                                                    }))}
+                                                />
+                                                <div className="text-[11px] text-gray-500 leading-6">
+                                                    仅在“小说分解注入文本”进入主剧情 / 规划 / 世界演变上下文前做替换，不修改原数据集内容，也不影响外部存储。
+                                                </div>
+                                                {openingConfig.同人融合.启用角色替换 && (
+                                                    <div className="space-y-3">
+                                                        <label className="text-sm text-wuxia-cyan font-bold">被替换的原著角色名</label>
+                                                        <input
+                                                            type="text"
+                                                            value={openingConfig.同人融合.替换目标角色名}
+                                                            onChange={(e) => setOpeningConfig((prev) => ({
+                                                                ...prev,
+                                                                同人融合: {
+                                                                    ...prev.同人融合,
+                                                                    替换目标角色名: e.target.value
+                                                                }
+                                                            }))}
+                                                            placeholder="例如：徐凤年"
+                                                            className="w-full bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-3 text-white outline-none rounded-md transition-all"
+                                                        />
+                                                        <div className="text-[11px] text-gray-500">
+                                                            这个主名称默认会在注入时替换成当前主角姓名，不会改动界面外显的原始小说数据。
+                                                        </div>
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center justify-between gap-3">
+                                                                <label className="text-sm text-wuxia-cyan font-bold">附加替换规则（可选）</label>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={新增附加角色替换规则}
+                                                                    className="px-3 py-1.5 rounded-full border border-wuxia-gold/35 text-[11px] text-wuxia-gold hover:bg-wuxia-gold/10 transition-colors"
+                                                                >
+                                                                    新增一条
+                                                                </button>
+                                                            </div>
+                                                            {openingConfig.同人融合.附加角色替换规则列表.length > 0 ? (
+                                                                <div className="space-y-3">
+                                                                    {openingConfig.同人融合.附加角色替换规则列表.map((rule, index) => (
+                                                                        <div key={`mobile-replace-rule-${index}`} className="space-y-2 rounded-2xl border border-white/10 bg-black/20 p-3">
+                                                                            <input
+                                                                                type="text"
+                                                                                value={rule.原名称}
+                                                                                onChange={(e) => 更新附加角色替换规则(index, '原名称', e.target.value)}
+                                                                                placeholder="原著里的名字，例如：小年"
+                                                                                className="w-full bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-3 text-white outline-none rounded-md transition-all"
+                                                                            />
+                                                                            <input
+                                                                                type="text"
+                                                                                value={rule.替换为}
+                                                                                onChange={(e) => 更新附加角色替换规则(index, '替换为', e.target.value)}
+                                                                                placeholder="替换成，例如：阿轩"
+                                                                                className="w-full bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-3 text-white outline-none rounded-md transition-all"
+                                                                            />
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => 删除附加角色替换规则(index)}
+                                                                                className="w-full px-3 py-2 rounded-md border border-red-500/30 text-sm text-red-300 hover:bg-red-500/10 transition-colors"
+                                                                            >
+                                                                                删除这条
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-[11px] text-gray-500">
+                                                                    可以单独指定别名、小名、称呼或化名要替换成什么名字，例如“小年 -&gt; 阿轩”、“世子殿下 -&gt; 轩哥”。
+                                                                </div>
+                                                            )}
+                                                            <div className="text-[11px] text-gray-500">
+                                                                附加规则不会再强制绑定当前主角姓名，每条都按你填写的“原名称 -&gt; 替换为”执行。
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="space-y-3 rounded-2xl border border-wuxia-cyan/20 bg-black/25 p-4">
+                                                <开关按钮
+                                                    checked={openingConfig.同人融合.启用附加小说}
+                                                    label="启用附加小说分解"
+                                                    onToggle={() => setOpeningConfig((prev) => ({
+                                                        ...prev,
+                                                        同人融合: {
+                                                            ...prev.同人融合,
+                                                            启用附加小说: !prev.同人融合.启用附加小说,
+                                                            附加小说数据集ID: !prev.同人融合.启用附加小说 ? prev.同人融合.附加小说数据集ID : ''
+                                                        }
+                                                    }))}
+                                                />
+                                                <div className="text-[11px] text-gray-500 leading-6">
+                                                    允许前端同时保存多部小说的分解数据，但本次存档只会注入这里选定的那一部；未启用时，仍回退到全局当前注入数据集。
+                                                </div>
+                                                <InlineSelect
+                                                    value={openingConfig.同人融合.附加小说数据集ID}
+                                                    options={小说拆分数据集列表.map((dataset) => ({
+                                                        value: dataset.id,
+                                                        label: dataset.作品名 || dataset.标题 || dataset.id
+                                                    }))}
+                                                    onChange={选择附加小说数据集}
+                                                    placeholder={小说拆分数据集列表.length > 0 ? '选择附加小说数据集' : '暂无已导入的小说分解数据'}
+                                                    disabled={!openingConfig.同人融合.启用附加小说 || 小说拆分数据集列表.length <= 0}
+                                                />
+                                                <div className="text-[11px] text-gray-500">
+                                                    {小说拆分数据集列表.length <= 0
+                                                        ? '还没有可选的数据集，请先在首页的小说分解工作台导入 TXT / EPUB 或分解 JSON。'
+                                                        : 当前附加小说数据集
+                                                            ? `当前选择：${当前附加小说数据集.作品名 || 当前附加小说数据集.标题}，后续主剧情 / 规划分析 / 世界演变都会优先使用这部小说的分解注入。`
+                                                            : '启用后请选择一部小说分解数据集。'}
+                                                </div>
+                                                
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </OrnateBorder>
+
+                                    <NewGameDiyTools
+                                        worldConfig={worldConfig}
+                                        charData={构建角色数据()}
+                                        openingConfig={openingConfigEnabled ? openingConfig : undefined}
+                                        apiConfig={apiConfig}
+                                        onChange={setWorldConfig}
+                                        compact
+                                    />
+
+                                    
                                 </div>
                             </OrnateBorder>
                         </div>
@@ -1735,17 +1845,23 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
                                         <div className="space-y-3">
                                             <label className="text-sm text-wuxia-cyan font-bold">开局影像</label>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <div className="space-y-2">
+                                                <div className="min-w-0 space-y-2">
                                                     <div className="aspect-square rounded-lg border border-wuxia-gold/25 bg-black/40 overflow-hidden flex items-center justify-center text-xs text-gray-500">
                                                         {charAvatarUrl ? <img src={charAvatarUrl} alt="主角头像预览" className="h-full w-full object-cover" /> : '头像'}
                                                     </div>
-                                                    <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && 读取图片文件(e.target.files[0], setCharAvatarUrl)} className="text-[11px] text-gray-400 file:mr-2 file:rounded file:border-0 file:bg-wuxia-gold/20 file:px-2 file:py-1 file:text-wuxia-gold" />
+                                                    <label className="flex h-8 w-full cursor-pointer items-center justify-center rounded border border-wuxia-gold/25 bg-wuxia-gold/10 px-2 text-[11px] font-medium text-wuxia-gold transition-colors hover:bg-wuxia-gold/20">
+                                                        选择头像
+                                                        <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && 读取图片文件(e.target.files[0], setCharAvatarUrl)} className="sr-only" />
+                                                    </label>
                                                 </div>
-                                                <div className="space-y-2">
+                                                <div className="min-w-0 space-y-2">
                                                     <div className="aspect-square rounded-lg border border-wuxia-gold/25 bg-black/40 overflow-hidden flex items-center justify-center text-xs text-gray-500">
                                                         {charPortraitUrl ? <img src={charPortraitUrl} alt="主角立绘预览" className="h-full w-full object-contain" /> : '立绘'}
                                                     </div>
-                                                    <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && 读取图片文件(e.target.files[0], setCharPortraitUrl)} className="text-[11px] text-gray-400 file:mr-2 file:rounded file:border-0 file:bg-wuxia-gold/20 file:px-2 file:py-1 file:text-wuxia-gold" />
+                                                    <label className="flex h-8 w-full cursor-pointer items-center justify-center rounded border border-wuxia-gold/25 bg-wuxia-gold/10 px-2 text-[11px] font-medium text-wuxia-gold transition-colors hover:bg-wuxia-gold/20">
+                                                        选择立绘
+                                                        <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && 读取图片文件(e.target.files[0], setCharPortraitUrl)} className="sr-only" />
+                                                    </label>
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2">
@@ -2118,13 +2234,19 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
                                         <div className="rounded-2xl border border-wuxia-gold/20 bg-black/25 p-3 space-y-3">
                                             <div className="text-sm text-wuxia-cyan font-bold">开局影像</div>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <div className="space-y-2">
+                                                <div className="min-w-0 space-y-2">
                                                     <div className="aspect-square rounded-xl border border-gray-700 bg-black/30 overflow-hidden flex items-center justify-center text-xs text-gray-500">{partnerAvatarUrl ? <img src={partnerAvatarUrl} alt="同伴头像预览" className="h-full w-full object-cover" /> : '头像'}</div>
-                                                    <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && 读取图片文件(e.target.files[0], setPartnerAvatarUrl)} className="text-[11px] text-gray-400 file:mr-2 file:rounded file:border-0 file:bg-wuxia-gold/20 file:px-2 file:py-1 file:text-wuxia-gold" />
+                                                    <label className="flex h-8 w-full cursor-pointer items-center justify-center rounded border border-wuxia-gold/25 bg-wuxia-gold/10 px-2 text-[11px] font-medium text-wuxia-gold transition-colors hover:bg-wuxia-gold/20">
+                                                        选择头像
+                                                        <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && 读取图片文件(e.target.files[0], setPartnerAvatarUrl)} className="sr-only" />
+                                                    </label>
                                                 </div>
-                                                <div className="space-y-2">
+                                                <div className="min-w-0 space-y-2">
                                                     <div className="aspect-square rounded-xl border border-gray-700 bg-black/30 overflow-hidden flex items-center justify-center text-xs text-gray-500">{partnerPortraitUrl ? <img src={partnerPortraitUrl} alt="同伴立绘预览" className="h-full w-full object-cover" /> : '立绘'}</div>
-                                                    <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && 读取图片文件(e.target.files[0], setPartnerPortraitUrl)} className="text-[11px] text-gray-400 file:mr-2 file:rounded file:border-0 file:bg-wuxia-gold/20 file:px-2 file:py-1 file:text-wuxia-gold" />
+                                                    <label className="flex h-8 w-full cursor-pointer items-center justify-center rounded border border-wuxia-gold/25 bg-wuxia-gold/10 px-2 text-[11px] font-medium text-wuxia-gold transition-colors hover:bg-wuxia-gold/20">
+                                                        选择立绘
+                                                        <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && 读取图片文件(e.target.files[0], setPartnerPortraitUrl)} className="sr-only" />
+                                                    </label>
                                                 </div>
                                             </div>
                                             <div className="grid gap-2">
@@ -2216,7 +2338,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
                                 <div className="flex items-center justify-between gap-4 rounded-2xl border border-gray-800 bg-black/25 px-4 py-4">
                                     <div>
                                         <div className="text-sm text-gray-200">启用开局配置</div>
-                                        <div className="text-[11px] text-gray-500 mt-1">关闭时不额外注入关系侧重、切入偏好和同人融合，按世界观与角色档案自然开局。</div>
+                                        <div className="text-[11px] text-gray-500 mt-1">关闭时不额外注入关系侧重和切入偏好，按世界观与角色档案自然开局。</div>
                                     </div>
                                     <开关按钮
                                         checked={openingConfigEnabled}
@@ -2232,7 +2354,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
                                 <div className="border-b border-wuxia-gold/30 pb-3 mb-4">
                                     <div className="text-[10px] uppercase tracking-[0.32em] text-wuxia-cyan/70 font-mono">Opening Structure</div>
                                     <h3 className="text-xl font-serif font-bold text-wuxia-gold mt-2">开局配置</h3>
-                                    <p className="text-[11px] text-gray-400 mt-2 leading-6">这里决定题材模式、初始关系侧重、第一幕切入方式，以及是否让世界观带上同人融合倾向。</p>
+                                    <p className="text-[11px] text-gray-400 mt-2 leading-6">这里决定题材模式、初始关系侧重与第一幕切入方式。同人融合已移到“世界观”。</p>
                                 </div>
 
                                 <div className="space-y-4">
@@ -2313,244 +2435,12 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, r
                                 </div>
                             </OrnateBorder>
 
-                            <OrnateBorder className="p-4">
-                                <div className="border-b border-wuxia-gold/30 pb-3 mb-4">
-                                    <div className="text-[10px] uppercase tracking-[0.32em] text-wuxia-red/70 font-mono">Fandom Blend</div>
-                                    <h3 className="text-xl font-serif font-bold text-wuxia-gold mt-2">同人融合</h3>
-                                    <p className="text-[11px] text-gray-400 mt-2 leading-6">仅作用于世界观生成，不会单独进入开局初始化提示词。</p>
-                                </div>
 
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between rounded-2xl border border-gray-800 bg-black/25 px-4 py-4">
-                                        <div>
-                                            <div className="text-sm text-gray-200">启用同人融合</div>
-                                            <div className="text-[11px] text-gray-500 mt-1">关闭时完全按原创世界生成。</div>
-                                        </div>
-                                        <开关按钮
-                                            checked={openingConfig.同人融合.enabled}
-                                            label={openingConfig.同人融合.enabled ? '已启用' : '已关闭'}
-                                            onToggle={() => setOpeningConfig((prev) => ({
-                                                ...prev,
-                                                同人融合: { ...prev.同人融合, enabled: !prev.同人融合.enabled }
-                                            }))}
-                                        />
-                                    </div>
-
-                                    {openingConfig.同人融合.enabled && (
-                                        <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm text-wuxia-cyan font-bold">作品名</label>
-                                                <input
-                                                    value={openingConfig.同人融合.作品名}
-                                                    onChange={(e) => setOpeningConfig((prev) => ({
-                                                        ...prev,
-                                                        同人融合: { ...prev.同人融合, 作品名: e.target.value }
-                                                    }))}
-                                                    placeholder="例如：雪中悍刀行 / 诛仙 / 仙剑奇侠传"
-                                                    className="w-full bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-3 text-white outline-none rounded-md transition-all"
-                                                />
-                                                <div className="text-[11px] text-gray-500">
-                                                    若启用附加小说，选择数据集时会自动同步作品名，避免同人融合设定与注入来源脱节。
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm text-wuxia-cyan font-bold">来源类型</label>
-                                                <InlineSelect
-                                                    value={openingConfig.同人融合.来源类型}
-                                                    options={同人来源类型选项}
-                                                    onChange={(来源类型) => setOpeningConfig((prev) => ({
-                                                        ...prev,
-                                                        同人融合: { ...prev.同人融合, 来源类型 }
-                                                    }))}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm text-wuxia-cyan font-bold">融合强度</label>
-                                                <InlineSelect
-                                                    value={openingConfig.同人融合.融合强度}
-                                                    options={同人融合强度选项.map((item) => ({ value: item.value, label: item.label }))}
-                                                    onChange={(融合强度) => setOpeningConfig((prev) => ({
-                                                        ...prev,
-                                                        同人融合: { ...prev.同人融合, 融合强度 }
-                                                    }))}
-                                                />
-                                                <div className="text-[11px] text-gray-500 leading-6">
-                                                    {同人融合强度选项.find((item) => item.value === openingConfig.同人融合.融合强度)?.hint}
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <开关按钮
-                                                    checked={openingConfig.同人融合.保留原著角色}
-                                                    label="保留原著角色实体"
-                                                    onToggle={() => setOpeningConfig((prev) => ({
-                                                        ...prev,
-                                                        同人融合: { ...prev.同人融合, 保留原著角色: !prev.同人融合.保留原著角色 }
-                                                    }))}
-                                                />
-                                                <div className="text-[11px] text-gray-500">关闭时只吸收作品母题、势力气质和设定结构，不直接保留原著角色。</div>
-                                            </div>
-                                            <div className="space-y-3 rounded-2xl border border-wuxia-gold/15 bg-black/25 p-4">
-                                                <开关按钮
-                                                    checked={openingConfig.同人融合.启用角色替换}
-                                                    label="启用同人角色替换"
-                                                    onToggle={() => setOpeningConfig((prev) => ({
-                                                        ...prev,
-                                                        同人融合: {
-                                                            ...prev.同人融合,
-                                                            启用角色替换: !prev.同人融合.启用角色替换
-                                                        }
-                                                    }))}
-                                                />
-                                                <div className="text-[11px] text-gray-500 leading-6">
-                                                    仅在“小说分解注入文本”进入主剧情 / 规划 / 世界演变上下文前做替换，不修改原数据集内容，也不影响外部存储。
-                                                </div>
-                                                {openingConfig.同人融合.启用角色替换 && (
-                                                    <div className="space-y-3">
-                                                        <label className="text-sm text-wuxia-cyan font-bold">被替换的原著角色名</label>
-                                                        <input
-                                                            type="text"
-                                                            value={openingConfig.同人融合.替换目标角色名}
-                                                            onChange={(e) => setOpeningConfig((prev) => ({
-                                                                ...prev,
-                                                                同人融合: {
-                                                                    ...prev.同人融合,
-                                                                    替换目标角色名: e.target.value
-                                                                }
-                                                            }))}
-                                                            placeholder="例如：徐凤年"
-                                                            className="w-full bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-3 text-white outline-none rounded-md transition-all"
-                                                        />
-                                                        <div className="text-[11px] text-gray-500">
-                                                            这个主名称默认会在注入时替换成当前主角姓名，不会改动界面外显的原始小说数据。
-                                                        </div>
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center justify-between gap-3">
-                                                                <label className="text-sm text-wuxia-cyan font-bold">附加替换规则（可选）</label>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={新增附加角色替换规则}
-                                                                    className="px-3 py-1.5 rounded-full border border-wuxia-gold/35 text-[11px] text-wuxia-gold hover:bg-wuxia-gold/10 transition-colors"
-                                                                >
-                                                                    新增一条
-                                                                </button>
-                                                            </div>
-                                                            {openingConfig.同人融合.附加角色替换规则列表.length > 0 ? (
-                                                                <div className="space-y-3">
-                                                                    {openingConfig.同人融合.附加角色替换规则列表.map((rule, index) => (
-                                                                        <div key={`mobile-replace-rule-${index}`} className="space-y-2 rounded-2xl border border-white/10 bg-black/20 p-3">
-                                                                            <input
-                                                                                type="text"
-                                                                                value={rule.原名称}
-                                                                                onChange={(e) => 更新附加角色替换规则(index, '原名称', e.target.value)}
-                                                                                placeholder="原著里的名字，例如：小年"
-                                                                                className="w-full bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-3 text-white outline-none rounded-md transition-all"
-                                                                            />
-                                                                            <input
-                                                                                type="text"
-                                                                                value={rule.替换为}
-                                                                                onChange={(e) => 更新附加角色替换规则(index, '替换为', e.target.value)}
-                                                                                placeholder="替换成，例如：阿轩"
-                                                                                className="w-full bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-3 text-white outline-none rounded-md transition-all"
-                                                                            />
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => 删除附加角色替换规则(index)}
-                                                                                className="w-full px-3 py-2 rounded-md border border-red-500/30 text-sm text-red-300 hover:bg-red-500/10 transition-colors"
-                                                                            >
-                                                                                删除这条
-                                                                            </button>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            ) : (
-                                                                <div className="text-[11px] text-gray-500">
-                                                                    可以单独指定别名、小名、称呼或化名要替换成什么名字，例如“小年 -&gt; 阿轩”、“世子殿下 -&gt; 轩哥”。
-                                                                </div>
-                                                            )}
-                                                            <div className="text-[11px] text-gray-500">
-                                                                附加规则不会再强制绑定当前主角姓名，每条都按你填写的“原名称 -&gt; 替换为”执行。
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="space-y-3 rounded-2xl border border-wuxia-cyan/20 bg-black/25 p-4">
-                                                <开关按钮
-                                                    checked={openingConfig.同人融合.启用附加小说}
-                                                    label="启用附加小说分解"
-                                                    onToggle={() => setOpeningConfig((prev) => ({
-                                                        ...prev,
-                                                        同人融合: {
-                                                            ...prev.同人融合,
-                                                            启用附加小说: !prev.同人融合.启用附加小说,
-                                                            附加小说数据集ID: !prev.同人融合.启用附加小说 ? prev.同人融合.附加小说数据集ID : ''
-                                                        }
-                                                    }))}
-                                                />
-                                                <div className="text-[11px] text-gray-500 leading-6">
-                                                    允许前端同时保存多部小说的分解数据，但本次存档只会注入这里选定的那一部；未启用时，仍回退到全局当前注入数据集。
-                                                </div>
-                                                <InlineSelect
-                                                    value={openingConfig.同人融合.附加小说数据集ID}
-                                                    options={小说拆分数据集列表.map((dataset) => ({
-                                                        value: dataset.id,
-                                                        label: dataset.作品名 || dataset.标题 || dataset.id
-                                                    }))}
-                                                    onChange={选择附加小说数据集}
-                                                    placeholder={小说拆分数据集列表.length > 0 ? '选择附加小说数据集' : '暂无已导入的小说分解数据'}
-                                                    disabled={!openingConfig.同人融合.启用附加小说 || 小说拆分数据集列表.length <= 0}
-                                                />
-                                                <div className="text-[11px] text-gray-500">
-                                                    {小说拆分数据集列表.length <= 0
-                                                        ? '还没有可选的数据集，请先在首页的小说分解工作台导入 TXT / EPUB 或分解 JSON。'
-                                                        : 当前附加小说数据集
-                                                            ? `当前选择：${当前附加小说数据集.作品名 || 当前附加小说数据集.标题}，后续主剧情 / 规划分析 / 世界演变都会优先使用这部小说的分解注入。`
-                                                            : '启用后请选择一部小说分解数据集。'}
-                                                </div>
-                                                <div className="rounded-xl border border-wuxia-gold/20 bg-black/25 p-3 space-y-3">
-                                                    <div>
-                                                        <div className="text-sm text-wuxia-gold font-bold">贡献为公共同人预设</div>
-                                                        <div className="text-[11px] text-gray-500 leading-5">
-                                                            默认开启。开始生成时会同步提交作品名、世界观提示词、境界提示词和分解摘要到官方 Worker，由 Worker 自动创建 GitHub PR；不会上传小说原文。
-                                                        </div>
-                                                    </div>
-                                                    <开关按钮
-                                                        checked={同人预设投稿已启用}
-                                                        label={同人预设投稿已启用 ? '自动投稿' : '已关闭'}
-                                                        onToggle={() => set同人预设投稿已启用(prev => !prev)}
-                                                    />
-                                                    <GameButton
-                                                        type="button"
-                                                        onClick={() => { void 提交同人世界观预设投稿(); }}
-                                                        disabled={!是否可提交同人世界观预设 || 同人预设投稿状态 === 'submitting'}
-                                                        variant="secondary"
-                                                        className="w-full py-2 text-[11px] disabled:opacity-45 disabled:cursor-not-allowed"
-                                                        contentClassName="tracking-normal"
-                                                    >
-                                                        {同人预设投稿状态 === 'submitting' ? '提交中...' : '立即生成 PR'}
-                                                    </GameButton>
-                                                    {同人预设投稿消息 && (
-                                                        <div className={`text-[11px] leading-5 break-all ${
-                                                            同人预设投稿状态 === 'error'
-                                                                ? 'text-red-300'
-                                                                : 同人预设投稿状态 === 'success'
-                                                                    ? 'text-green-300'
-                                                                    : 'text-gray-400'
-                                                        }`}>
-                                                            {同人预设投稿消息}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </OrnateBorder>
                                 </>
                             ) : (
                                 <OrnateBorder className="p-4">
                                     <div className="text-sm text-gray-300 leading-7">
-                                        本次不额外指定关系侧重、开局切入或同人融合。系统将仅依据世界观、角色档案和既有硬约束自然生成开场。
+                                        本次不额外指定关系侧重或开局切入。系统将仅依据世界观、角色档案和既有硬约束自然生成开场。
                                     </div>
                                 </OrnateBorder>
                             )}

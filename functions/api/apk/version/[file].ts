@@ -41,8 +41,8 @@ const buildLatestApkRedirect = async (env: any, fileName: string, method: 'GET' 
     });
 };
 
-const buildHi168LatestApkRedirect = async (env: any, fileName: string, method: 'GET' | 'HEAD'): Promise<Response> => {
-    const key = normalizeObjectKey(`${readReleaseObjectPrefix(env)}/latest.apk`);
+const buildHi168VersionedApkRedirect = async (env: any, fileName: string, method: 'GET' | 'HEAD'): Promise<Response> => {
+    const key = normalizeObjectKey(`${readReleaseObjectPrefix(env)}/${fileName}`);
     const signedUrl = await buildSignedObjectUrl(env, key, 1800, method);
     return new Response(null, {
         status: 302,
@@ -51,7 +51,7 @@ const buildHi168LatestApkRedirect = async (env: any, fileName: string, method: '
             'Content-Type': 'application/vnd.android.package-archive',
             'Cache-Control': APK_LATEST_CACHE_CONTROL,
             'Content-Disposition': `attachment; filename="${fileName}"`,
-            'X-Moran-Apk-Source': 'hi168-latest-redirect',
+            'X-Moran-Apk-Source': 'hi168-versioned-redirect',
             ...APK_CORS_HEADERS
         }
     });
@@ -87,7 +87,12 @@ const handleVersionedApkRequest = async (context: any, method: 'GET' | 'HEAD'): 
             if (r2Response) return r2Response;
         }
         if (preferredProvider === 'hi168') {
-            return buildHi168LatestApkRedirect(env, fileName, method);
+            try {
+                return buildHi168VersionedApkRedirect(env, fileName, method);
+            } catch (error) {
+                console.warn('Versioned APK object storage download failed, falling back to latest.apk:', error);
+                return buildLatestApkRedirect(env, fileName, method);
+            }
         }
         try {
             const signedUrl = await buildSignedObjectUrl(env, key, 1800, method);
