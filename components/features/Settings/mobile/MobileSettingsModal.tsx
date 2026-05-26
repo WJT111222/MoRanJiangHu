@@ -86,6 +86,7 @@ interface Props {
     onCreateNpc: (seed?: Partial<NPC结构>) => NPC结构 | void;
     onSaveNpc: (npcId: string, npc: NPC结构) => void;
     onDeleteNpc: (npcId: string) => void;
+    onRestoreNpcBackup?: (socialList: NPC结构[]) => void;
     onStartNpcMemorySummary?: (npcId: string) => void;
     onUploadNpcImage: (npcId: string, slot: '头像' | '立绘' | '背景' | '胸部' | '小穴' | '屁穴' | '肉棒', payload: { dataUrl: string; fileName?: string }) => Promise<unknown> | unknown;
     onReplaceVariableSection: (section: keyof RuntimeStateSections, value: unknown) => void;
@@ -102,7 +103,7 @@ interface Props {
 const MobileSettingsModal: React.FC<Props> = ({
     activeTab, onTabChange, onClose,
     apiConfig, visualConfig, gameConfig, memoryConfig, prompts, festivals, currentTheme, history, memorySystem, socialList, runtimeState, currentStory, openingConfig, contextSnapshot,
-    onSaveApi, onSaveVisual, onSaveGame, onSaveMemory, onDeleteMemory, onRefineMemories, onRegenerateMapFromMemory, onCreateNpc, onSaveNpc, onDeleteNpc, onStartNpcMemorySummary, onUploadNpcImage, onReplaceVariableSection, onApplyVariableCommand, onUpdatePrompts, onUpdateFestivals, onThemeChange,
+    onSaveApi, onSaveVisual, onSaveGame, onSaveMemory, onDeleteMemory, onRefineMemories, onRegenerateMapFromMemory, onCreateNpc, onSaveNpc, onDeleteNpc, onRestoreNpcBackup, onStartNpcMemorySummary, onUploadNpcImage, onReplaceVariableSection, onApplyVariableCommand, onUpdatePrompts, onUpdateFestivals, onThemeChange,
     onReturnToHome, isHome, returnHomeSaving = false, requestConfirm
 }) => {
     const tabItems = [
@@ -182,6 +183,7 @@ const MobileSettingsModal: React.FC<Props> = ({
                     onCreateNpc={onCreateNpc}
                     onSaveNpc={onSaveNpc}
                     onDeleteNpc={onDeleteNpc}
+                    onRestoreNpcBackup={onRestoreNpcBackup}
                     onUploadNpcImage={onUploadNpcImage}
                 />
             );

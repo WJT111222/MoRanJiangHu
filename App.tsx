@@ -3161,6 +3161,7 @@ const App: React.FC = () => {
                             onCreateNpc={actions.createNpcManually}
                             onSaveNpc={actions.updateNpcManually}
                             onDeleteNpc={actions.deleteNpcManually}
+                            onRestoreNpcBackup={actions.restoreNpcVariableBackup}
                             onStartNpcMemorySummary={actions.handleQueueManualNpcMemorySummary}
                             onUploadNpcImage={actions.uploadNpcImageToSlot}
                             onReplaceVariableSection={actions.updateRuntimeVariableSection}
@@ -3202,6 +3203,7 @@ const App: React.FC = () => {
                             onCreateNpc={actions.createNpcManually}
                             onSaveNpc={actions.updateNpcManually}
                             onDeleteNpc={actions.deleteNpcManually}
+                            onRestoreNpcBackup={actions.restoreNpcVariableBackup}
                             onStartNpcMemorySummary={actions.handleQueueManualNpcMemorySummary}
                             onUploadNpcImage={actions.uploadNpcImageToSlot}
                             onReplaceVariableSection={actions.updateRuntimeVariableSection}

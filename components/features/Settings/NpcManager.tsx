@@ -2,6 +2,14 @@ import React from 'react';
 import type { NPC结构, NPC记忆, 记忆配置结构, 香闺秘档部位类型 } from '../../../types';
 import { 构建NPC记忆展示结果, 构建手动NPC记忆总结候选 } from '../../../hooks/useGame/npcMemorySummary';
 import { 获取图片展示地址 } from '../../../utils/imageAssets';
+import {
+    保存NPC变量本地备份,
+    读取NPC变量备份列表,
+    读取最新NPC变量备份,
+    读取NPC变量自动备份开启,
+    设置NPC变量自动备份开启,
+    type NPC变量备份记录
+} from '../../../services/npcVariableBackup';
 
 type 图片槽位类型 = '头像' | '立绘' | '背景' | 香闺秘档部位类型;
 
@@ -12,6 +20,7 @@ interface Props {
     onCreateNpc: (seed?: Partial<NPC结构>) => NPC结构 | void;
     onSaveNpc: (npcId: string, npc: NPC结构) => void;
     onDeleteNpc: (npcId: string) => void;
+    onRestoreNpcBackup?: (socialList: NPC结构[]) => void;
     onUploadNpcImage: (npcId: string, slot: 图片槽位类型, payload: { dataUrl: string; fileName?: string }) => Promise<unknown> | unknown;
 }
 
@@ -46,6 +55,7 @@ const NpcManager: React.FC<Props> = ({
     onCreateNpc,
     onSaveNpc,
     onDeleteNpc,
+    onRestoreNpcBackup,
     onUploadNpcImage
 }) => {
     const uploadInputRef = React.useRef<HTMLInputElement>(null);
@@ -55,6 +65,11 @@ const NpcManager: React.FC<Props> = ({
     const [collapsedMemoryIndexes, setCollapsedMemoryIndexes] = React.useState<number[]>([]);
     const [error, setError] = React.useState('');
     const [uploadSlot, setUploadSlot] = React.useState<图片槽位类型>('头像');
+    const [autoBackupEnabled, setAutoBackupEnabled] = React.useState(false);
+    const [backupCount, setBackupCount] = React.useState(0);
+    const [latestBackup, setLatestBackup] = React.useState<NPC变量备份记录 | null>(null);
+    const [backupBusy, setBackupBusy] = React.useState(false);
+    const [backupNotice, setBackupNotice] = React.useState('');
     const list = React.useMemo(() => Array.isArray(socialList) ? socialList : [], [socialList]);
     const selectedNpc = React.useMemo(
         () => list.find((npc) => npc?.id === selectedNpcId) || list[0] || null,
@@ -80,6 +95,22 @@ const NpcManager: React.FC<Props> = ({
         }
     }, [list, selectedNpc, selectedNpcId]);
 
+    const refreshBackupState = React.useCallback(async () => {
+        const [enabled, backups] = await Promise.all([
+            读取NPC变量自动备份开启(),
+            读取NPC变量备份列表()
+        ]);
+        setAutoBackupEnabled(enabled);
+        setBackupCount(backups.length);
+        setLatestBackup(backups[0] || null);
+    }, []);
+
+    React.useEffect(() => {
+        void refreshBackupState().catch((backupError) => {
+            console.warn('读取 NPC 变量备份状态失败', backupError);
+        });
+    }, [refreshBackupState]);
+
     React.useEffect(() => {
         if (!selectedNpc) {
             setDraftText('');
@@ -94,6 +125,76 @@ const NpcManager: React.FC<Props> = ({
         setCollapsedMemoryIndexes(Array.isArray(selectedNpc.记忆) ? selectedNpc.记忆.map((_, index) => index) : []);
         setError('');
     }, [selectedNpc]);
+
+    const formatBackupTime = (value?: string): string => {
+        if (!value) return '暂无备份';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString('zh-CN', {
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const handleManualBackup = async () => {
+        setBackupBusy(true);
+        setBackupNotice('');
+        try {
+            const record = await 保存NPC变量本地备份(list, {
+                来源: 'manual',
+                标签: 'NPC管理手动备份'
+            });
+            await refreshBackupState();
+            setBackupNotice(record ? `已备份 ${record.NPC数量} 名 NPC。` : '当前没有可备份的 NPC。');
+        } catch (backupError: any) {
+            setBackupNotice(backupError?.message || '备份失败，请稍后重试。');
+        } finally {
+            setBackupBusy(false);
+        }
+    };
+
+    const handleToggleAutoBackup = async () => {
+        setBackupBusy(true);
+        setBackupNotice('');
+        try {
+            const nextEnabled = !autoBackupEnabled;
+            await 设置NPC变量自动备份开启(nextEnabled);
+            setAutoBackupEnabled(nextEnabled);
+            setBackupNotice(nextEnabled ? '已开启每回合发送前自动备份。' : '已关闭自动备份。');
+        } catch (backupError: any) {
+            setBackupNotice(backupError?.message || '自动备份设置失败。');
+        } finally {
+            setBackupBusy(false);
+        }
+    };
+
+    const handleRestoreLatestBackup = async () => {
+        if (!onRestoreNpcBackup) {
+            setBackupNotice('当前运行环境不支持恢复备份。');
+            return;
+        }
+        setBackupBusy(true);
+        setBackupNotice('');
+        try {
+            const record = await 读取最新NPC变量备份();
+            if (!record) {
+                setBackupNotice('当前没有可恢复的 NPC 备份。');
+                return;
+            }
+            if (!window.confirm(`确定恢复最近 NPC 备份吗？\n备份时间：${formatBackupTime(record.创建时间)}\nNPC 数量：${record.NPC数量}\n系统会合并恢复缺失 NPC，不会改写已有同名 NPC。`)) {
+                return;
+            }
+            onRestoreNpcBackup(record.社交);
+            await refreshBackupState();
+            setBackupNotice(`已从最近备份恢复 ${record.NPC数量} 名 NPC。`);
+        } catch (backupError: any) {
+            setBackupNotice(backupError?.message || '恢复备份失败。');
+        } finally {
+            setBackupBusy(false);
+        }
+    };
 
     const updateDraftField = (field: string, value: unknown) => {
         const parsed = 读取JSON<Record<string, unknown>>(draftText, selectedNpc ? { ...selectedNpc } as Record<string, unknown> : {});
@@ -131,9 +232,18 @@ const NpcManager: React.FC<Props> = ({
         }
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!selectedNpc?.id) return;
         if (!window.confirm(`确定删除 NPC「${selectedNpc.姓名 || selectedNpc.id}」吗？`)) return;
+        try {
+            await 保存NPC变量本地备份(list, {
+                来源: 'before_manual_delete',
+                标签: `删除 ${selectedNpc.姓名 || selectedNpc.id} 前`
+            });
+            await refreshBackupState();
+        } catch (backupError) {
+            console.warn('删除 NPC 前备份失败', backupError);
+        }
         onDeleteNpc(selectedNpc.id);
         setSelectedNpcId('');
     };
@@ -217,6 +327,33 @@ const NpcManager: React.FC<Props> = ({
                     <button type="button" onClick={handleCreateNpc} className={`${主按钮样式} w-full sm:w-auto`}>
                         新增 NPC
                     </button>
+                </div>
+            </div>
+
+            <div className={卡片样式}>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0">
+                        <div className="text-sm font-bold text-paper-white">NPC 变量保险箱</div>
+                        <div className="mt-1 text-xs leading-relaxed text-gray-500">
+                            最近备份：{latestBackup ? `${formatBackupTime(latestBackup.创建时间)} · ${latestBackup.NPC数量} 名 · ${latestBackup.标签 || latestBackup.来源}` : '暂无'}；本地保留 {backupCount} 份。
+                        </div>
+                        {backupNotice && (
+                            <div className="mt-2 rounded-lg border border-wuxia-gold/20 bg-wuxia-gold/10 px-3 py-2 text-xs text-wuxia-gold">
+                                {backupNotice}
+                            </div>
+                        )}
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[420px]">
+                        <button type="button" onClick={handleManualBackup} disabled={backupBusy || list.length <= 0} className={`${次级按钮样式} disabled:cursor-not-allowed disabled:opacity-45`}>
+                            手动备份
+                        </button>
+                        <button type="button" onClick={handleToggleAutoBackup} disabled={backupBusy} className={`${autoBackupEnabled ? 主按钮样式 : 次级按钮样式} disabled:cursor-not-allowed disabled:opacity-45`}>
+                            {autoBackupEnabled ? '自动备份已开' : '开启自动备份'}
+                        </button>
+                        <button type="button" onClick={handleRestoreLatestBackup} disabled={backupBusy || !latestBackup} className={`${次级按钮样式} disabled:cursor-not-allowed disabled:opacity-45`}>
+                            恢复最近备份
+                        </button>
+                    </div>
                 </div>
             </div>
 

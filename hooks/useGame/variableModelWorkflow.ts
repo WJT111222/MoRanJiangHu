@@ -15,6 +15,7 @@ import { 按功能开关过滤提示词内容, 裁剪修炼体系上下文数据
 import { 构建变量路径登记提示, 校验变量命令是否登记 } from '../../utils/variableRegistry';
 import { 构建女性姓名候选提示词, 收集女性姓名候选已用名 } from '../../utils/femaleNameCandidatePrompt';
 import { 提取命中女性姓名黑名单 } from '../../utils/femaleNameSelector';
+import { 检测社交删除风险命令 } from '../../utils/npcRetentionGuard';
 
 type 变量模型基态 = Pick<
     响应命令处理状态,
@@ -636,6 +637,14 @@ export const 执行变量模型校准工作流 = async (
     const renameIssues = 提取变量命令NPC姓名改写(dedupedCommands, params.baseState.社交);
     if (renameIssues.length > 0) {
         const message = `变量生成试图改写已生成 NPC 姓名：${renameIssues.join('；')}。前端不会修改既有变量，请重新生成变量命令并保留已有 NPC 姓名。`;
+        const error = new Error(message);
+        (error as any).parseDetail = message;
+        throw error;
+    }
+
+    const deletionIssues = 检测社交删除风险命令(dedupedCommands, params.baseState.社交);
+    if (deletionIssues.length > 0) {
+        const message = `变量生成试图删除或替换既有 NPC：${deletionIssues.join('；')}。未经玩家手动确认，变量生成只能更新 NPC 字段，不能删除角色或整组覆盖社交列表。`;
         const error = new Error(message);
         (error as any).parseDetail = message;
         throw error;

@@ -68,7 +68,7 @@ describe('NPC 占位姓名归一化', () => {
         expect(result.map((item) => item.姓名)).toEqual(['苏婉儿', '苏婉儿']);
     });
 
-    it('重复姓名只处理后出现的重复项，不改第一个稳定档案', () => {
+    it('重复稳定姓名也不自动改名，避免二次污染既有档案', () => {
         const result = 规范化社交列表([
             {
                 id: 'npc_first',
@@ -90,8 +90,8 @@ describe('NPC 占位姓名归一化', () => {
 
         expect(result).toHaveLength(2);
         expect(result[0].姓名).toBe('顾明棠');
-        expect(result[1].姓名).not.toBe('顾明棠');
-        expect(result[1].曾用名).toContain('顾明棠');
+        expect(result[1].姓名).toBe('顾明棠');
+        expect(result[1].曾用名 || []).not.toContain('顾明棠');
     });
 
     it('把黑衣女人后续真名吸收到原档案', () => {
