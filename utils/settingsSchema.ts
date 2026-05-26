@@ -25,6 +25,8 @@ export const 设置键 = {
     存档保护: 'storage_save_protection',
     WebDAV同步配置: 'webdav_sync_settings',
     对象存储同步配置: 'object_storage_sync_settings',
+    NPC变量备份: 'npc_variable_backups',
+    NPC变量自动备份: 'npc_variable_auto_backup',
     图片资源迁移版本: 'image_asset_migration_v2'
 } as const;
 
@@ -262,6 +264,22 @@ export const 设置项定义列表: 设置项定义[] = [
         category: 'system',
         description: '用户本机保存的对象存储端点、存储桶和访问密钥，用于云存档同步。',
         order: 156,
+        internal: true
+    },
+    {
+        key: 设置键.NPC变量备份,
+        label: 'NPC 变量备份',
+        category: 'system',
+        description: '本机保存的 NPC 变量快照，用于角色误删后的恢复。',
+        order: 157,
+        internal: true
+    },
+    {
+        key: 设置键.NPC变量自动备份,
+        label: 'NPC 变量自动备份',
+        category: 'system',
+        description: '每回合发送前自动保存 NPC 变量快照的开关。',
+        order: 158,
         internal: true
     },
     {

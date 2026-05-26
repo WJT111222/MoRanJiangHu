@@ -74,6 +74,7 @@ describe('AI returned female name e2e', () => {
                 规范化角色物品容器映射,
                 战斗结束自动清空: (battle: any) => battle
             },
+            undefined,
             { applyState: false }
         );
 
@@ -126,6 +127,7 @@ describe('AI returned female name e2e', () => {
             seed: '真实端测少侠|端测州|前厅',
             count: 100
         });
+        const allowedSurnames = '赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦许何吕施张孔曹严华金魏陶姜谢邹喻柏水窦章云潘葛奚范彭郎鲁韦昌马苗凤花方俞任袁柳鲍史唐费廉岑薛雷贺倪汤滕殷罗毕郝安常乐于傅皮卞齐康伍余元卜顾孟平黄和穆萧尹';
         const response = await fetch(`${config.baseUrl.replace(/\/+$/u, '')}/chat/completions`, {
             method: 'POST',
             headers: {
@@ -138,11 +140,11 @@ describe('AI returned female name e2e', () => {
                 messages: [
                     {
                         role: 'system',
-                        content: '你只负责创造一个不在黑名单里的中文女性姓名。必须只输出姓名本身，不要解释，不要加标点。'
+                        content: `你只负责创造一个不在黑名单里的中文女性姓名。姓氏必须从这个集合中选一个：${allowedSurnames}。必须只输出姓名本身，不要解释，不要加标点。`
                     },
                     {
                         role: 'user',
-                        content: `${candidatePrompt}\n\n请创造一个适合“主要女角色、同行伙伴、可靠但有江湖锋芒”的姓名。只输出姓名。`
+                        content: `${candidatePrompt}\n\n请创造一个适合“主要女角色、同行伙伴、可靠但有江湖锋芒”的姓名。只输出姓名，且第一个字必须在允许姓氏集合内。`
                     }
                 ]
             })
@@ -153,7 +155,7 @@ describe('AI returned female name e2e', () => {
         const aiReturnedName = rawContent.trim().replace(/^["'“”‘’`\s]+|["'“”‘’`\s]+$/g, '').split(/[\s,，。；;：:\n\r]+/u).find(Boolean) || '';
         const commandResponse = {
             logs: [
-                { sender: aiReturnedName, text: '少侠，我随你同去。' }
+                { sender: aiReturnedName, text: `${aiReturnedName}拱手道：少侠，我随你同去。` }
             ],
             tavern_commands: [
                 {
@@ -200,6 +202,7 @@ describe('AI returned female name e2e', () => {
                 规范化角色物品容器映射,
                 战斗结束自动清空: (battle: any) => battle
             },
+            undefined,
             { applyState: false }
         );
         const npc = result.社交.find((item: any) => item?.id === 'npc_live_ai_name');

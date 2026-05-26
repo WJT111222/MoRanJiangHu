@@ -15,6 +15,7 @@ import { applyStateCommand, normalizeStateCommandKey } from '../../utils/stateHe
 import { 规范化任务列表自动结算 } from '../../utils/taskCompat';
 import { sanitizeInventoryCommand } from './inventoryCommandGuard';
 import { 姓名含已知中文姓氏 } from '../../utils/chineseName';
+import { 合并保留既有NPC列表, 命令存在社交删除风险 } from '../../utils/npcRetentionGuard';
 
 const 占位开局时间 = '1:01:01:00:00';
 
@@ -1024,7 +1025,7 @@ const 净化社交姓名命令 = (cmd: any, currentSocial: any[]): any | null =>
     const currentName = 规范化命令姓名(currentSocial?.[index]?.姓名);
     const nextName = 规范化命令姓名(cmd?.value);
     if (!currentName || !nextName || currentName === nextName) return cmd;
-    return cmd;
+    return null;
 };
 
 const 提取新增社交命令姓名 = (cmd: any): string => {
@@ -1082,6 +1083,7 @@ export const 执行响应命令处理 = (
     let heroinePlanBuffer = deps.规范化女主剧情规划状态(baseState?.女主剧情规划 ?? currentState.女主剧情规划);
     let fandomStoryPlanBuffer = deps.规范化同人剧情规划状态(baseState?.同人剧情规划 ?? currentState.同人剧情规划);
     let fandomHeroinePlanBuffer = deps.规范化同人女主剧情规划状态(baseState?.同人女主剧情规划 ?? currentState.同人女主剧情规划);
+    const socialBeforeCommands = Array.isArray(socialBuffer) ? socialBuffer : [];
 
     const responseFactText = 提取响应事实文本(response);
     const dialogueSenderKeys = 提取对白发送者集合(response, charBuffer?.姓名);
@@ -1103,6 +1105,7 @@ export const 执行响应命令处理 = (
                 dialogueSenderKeys
             );
             if (!safeCmd) return;
+            if (命令存在社交删除风险(safeCmd, socialBuffer)) return;
             if (是否游戏初始时间命令(safeCmd.key)) {
                 return;
             }
@@ -1186,6 +1189,10 @@ export const 执行响应命令处理 = (
             同步在场NPC当前位置(socialBuffer, envBuffer),
             { 合并同名: false }
         );
+        const retention = 合并保留既有NPC列表(socialBeforeCommands, socialBuffer);
+        if (retention.恢复数量 > 0) {
+            socialBuffer = deps.规范化社交列表(retention.列表, { 合并同名: false });
+        }
         storyBuffer = deps.规范化剧情状态(storyBuffer);
 
         let finalState: 响应命令处理状态 = {
@@ -1228,7 +1235,7 @@ export const 执行响应命令处理 = (
     }
 
     const normalizedEnv = deps.规范化环境信息(envBuffer);
-    const normalizedSocial = deps.规范化社交列表(
+    const normalizedSocialBase = deps.规范化社交列表(
         同步在场NPC当前位置(
             应用同行事实到队伍(
                 response,
@@ -1255,6 +1262,10 @@ export const 执行响应命令处理 = (
         ),
         { 合并同名: false }
     );
+    const socialRetention = 合并保留既有NPC列表(socialBeforeCommands, normalizedSocialBase);
+    const normalizedSocial = socialRetention.恢复数量 > 0
+        ? deps.规范化社交列表(socialRetention.列表, { 合并同名: false })
+        : normalizedSocialBase;
 
     let finalState: 响应命令处理状态 = {
         角色: charBuffer,

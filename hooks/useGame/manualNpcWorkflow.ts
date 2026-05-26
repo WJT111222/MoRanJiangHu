@@ -10,6 +10,7 @@ type 手动NPC工作流依赖 = {
     获取玩家门派?: () => 详细门派结构 | undefined;
     设置玩家门派?: (updater: any) => void;
     执行社交自动存档: (socialSnapshot: NPC结构[], sectSnapshot?: 详细门派结构) => void;
+    执行NPC变量本地备份?: (socialSnapshot: NPC结构[], options?: { 标签?: string }) => void | Promise<void>;
     保存图片资源: (dataUrl: string) => Promise<string>;
 };
 
@@ -209,10 +210,19 @@ export const 创建手动NPC工作流 = (deps: 手动NPC工作流依赖) => {
         if (!npcId) return;
         let removedNpc: NPC结构 | null = null;
         let sectSnapshot: 详细门派结构 | null = null;
+        let beforeDeleteSnapshot: NPC结构[] = [];
         const socialSnapshot = 更新社交并执行即时自动存档((prev) => {
+            beforeDeleteSnapshot = deps.规范化社交列表(prev, { 合并同名: false });
             removedNpc = prev.find((npc: any) => npc && (npc.id === npcId || npc.ID === npcId)) || null;
             return prev.filter((npc: any) => npc && npc.id !== npcId && npc.ID !== npcId);
         }, { 延迟自动存档: true });
+        if (removedNpc && beforeDeleteSnapshot.length > 0) {
+            void Promise.resolve(deps.执行NPC变量本地备份?.(beforeDeleteSnapshot, {
+                标签: `删除 ${removedNpc.姓名 || removedNpc.id || npcId} 前`
+            })).catch((backupError) => {
+                console.warn('删除 NPC 前本地备份失败', backupError);
+            });
+        }
         if (removedNpc && deps.获取玩家门派 && deps.设置玩家门派) {
             const nextSect = 移除NPC关联门派成员(deps.获取玩家门派(), removedNpc);
             if (nextSect) {

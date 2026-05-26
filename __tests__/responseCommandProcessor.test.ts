@@ -72,6 +72,52 @@ describe('responseCommandProcessor dialogue social sync', () => {
         expect(result.社交[0].自动补全头像).toBe(true);
     });
 
+    it('keeps existing NPCs when AI commands try to delete a social slot', () => {
+        const state = 构建基础状态();
+        state.社交 = 规范化社交列表([
+            { id: 'npc_shen_qingtang', 姓名: '沈青棠', 性别: '女', 身份: '旧友' }
+        ], { 合并同名: false });
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '沈青棠暂时离开客栈，约定日后再会。' }
+            ],
+            tavern_commands: [
+                { action: 'delete', key: '社交[0]' }
+            ]
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect(result.社交).toHaveLength(1);
+        expect(result.社交[0].id).toBe('npc_shen_qingtang');
+        expect(result.社交[0].姓名).toBe('沈青棠');
+    });
+
+    it('keeps existing NPCs when AI commands try to replace the whole social list', () => {
+        const state = 构建基础状态();
+        state.社交 = 规范化社交列表([
+            { id: 'npc_shen_qingtang', 姓名: '沈青棠', 性别: '女', 身份: '旧友' },
+            { id: 'npc_lu_mingke', 姓名: '陆明珂', 性别: '女', 身份: '掌柜' }
+        ], { 合并同名: false });
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '陆明珂重新整理账册。' }
+            ],
+            tavern_commands: [
+                {
+                    action: 'set',
+                    key: '社交',
+                    value: [
+                        { id: 'npc_lu_mingke', 姓名: '陆明珂', 性别: '女', 身份: '掌柜', 好感度: 15 }
+                    ]
+                }
+            ]
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect(result.社交.map((npc: any) => npc.姓名)).toEqual(['沈青棠', '陆明珂']);
+        expect(result.社交.find((npc: any) => npc.id === 'npc_lu_mingke')?.好感度).toBe(0);
+    });
+
     it('does not add narration fragments as dialogue NPCs', () => {
         const state = 构建基础状态();
         const result = 执行响应命令处理({
@@ -200,8 +246,7 @@ describe('responseCommandProcessor team companion fallback', () => {
 
         const companions = result.社交.filter((npc: any) => npc.是否队友 === true);
         expect(companions).toHaveLength(10);
-        expect(companions.every((npc: any) => /^[\u4e00-\u9fa5]{2,4}$/u.test(npc.姓名))).toBe(true);
-        expect(companions.every((npc: any) => !/^随行者\d+$/u.test(npc.姓名))).toBe(true);
+        expect(companions.every((npc: any) => /^随行者\d+$/u.test(npc.姓名))).toBe(true);
         expect(result.社交.some((npc: any) => npc.身份 === '随行队伍')).toBe(false);
     });
 
@@ -223,7 +268,7 @@ describe('responseCommandProcessor team companion fallback', () => {
         const companions = result.社交.filter((npc: any) => npc.是否队友 === true);
         expect(companions).toHaveLength(3);
         expect(companions.some((npc: any) => npc.姓名 === '顾清河')).toBe(true);
-        expect(companions.every((npc: any) => !/^随行者\d+$/.test(npc.姓名))).toBe(true);
+        expect(companions.filter((npc: any) => /^随行者\d+$/.test(npc.姓名))).toHaveLength(2);
     });
 
     it('does not rename follower placeholders with hostile dialogue senders', () => {

@@ -20,6 +20,7 @@ import { 生成地图更新 } from './mapUpdateWorkflow';
 import { 获取激活小说拆分注入文本 } from '../../services/novelDecompositionInjection';
 import { 同步剧情小说分解时间校准 } from '../../services/novelDecompositionCalibration';
 import { 提取命中女性姓名黑名单 } from '../../utils/femaleNameSelector';
+import { 检测社交删除风险命令 } from '../../utils/npcRetentionGuard';
 
 type 回忆检索进度 = {
     phase: 'start' | 'stream' | 'done' | 'error';
@@ -178,6 +179,23 @@ export const 校验响应未改写既有NPC姓名 = (
     const issues = 提取社交姓名改写(response, currentSocial);
     if (issues.length <= 0) return;
     const detail = `${stageLabel}试图改写已生成 NPC 姓名：${issues.join('；')}。前端不会修改既有变量，请完整重新生成本回合正文和变量命令；已有 NPC 姓名必须原样保留。`;
+    const error = new textAIService.StoryResponseParseError(detail, rawText, detail);
+    (error as any).parseDetail = detail;
+    throw error;
+};
+
+export const 校验响应未删除既有NPC = (
+    response: GameResponse,
+    currentSocial: any[],
+    rawText: string,
+    stageLabel = '主剧情'
+) => {
+    const issues = 检测社交删除风险命令(
+        Array.isArray(response?.tavern_commands) ? response.tavern_commands : [],
+        currentSocial
+    );
+    if (issues.length <= 0) return;
+    const detail = `${stageLabel}试图删除或整组替换既有 NPC：${issues.join('；')}。请完整重新生成本回合正文和变量命令；未经玩家手动确认，任何 NPC 都只能更新字段、标记死亡或离场，不能从社交变量中删除。`;
     const error = new textAIService.StoryResponseParseError(detail, rawText, detail);
     (error as any).parseDetail = detail;
     throw error;
@@ -464,6 +482,7 @@ type 主剧情发送依赖 = {
         options?: { applyState?: boolean }
     ) => 响应命令处理状态;
     performAutoSave: (snapshot?: 自动存档快照结构) => Promise<void>;
+    执行NPC变量自动备份?: (socialList: any[], options?: { 标签?: string }) => void | Promise<void>;
     执行正文润色: (
         baseResponse: GameResponse,
         rawText: string,
@@ -764,6 +783,11 @@ export const 执行主剧情发送工作流 = async (
         },
         回档前历史: deps.深拷贝(historyBeforeSend)
     });
+    void Promise.resolve(deps.执行NPC变量自动备份?.(currentState.社交, {
+        标签: `回合发送前 · ${currentGameTime}`
+    })).catch((error) => {
+        console.warn('NPC变量自动备份失败', error);
+    });
 
     const normalizedMemoryConfig = 规范化记忆配置(currentState.memoryConfig);
     const immediateUploadLimit = Math.max(1, Number(normalizedMemoryConfig.即时消息上传条数N) || 10);
@@ -1026,6 +1050,12 @@ export const 执行主剧情发送工作流 = async (
                     deps.获取原始AI消息(storyResult.rawText),
                     "主剧情"
                 );
+                校验响应未删除既有NPC(
+                    storyResult.response,
+                    currentState.社交,
+                    deps.获取原始AI消息(storyResult.rawText),
+                    "主剧情"
+                );
                 return storyResult;
             }
         });
@@ -1055,6 +1085,7 @@ export const 执行主剧情发送工作流 = async (
         const rawAiText = deps.获取原始AI消息(aiResult.rawText);
         校验响应未命中女性姓名黑名单(aiData, rawAiText, "主剧情");
         校验响应未改写既有NPC姓名(aiData, currentState.社交, rawAiText, "主剧情");
+        校验响应未删除既有NPC(aiData, currentState.社交, rawAiText, "主剧情");
         let mainLengthShortage = 获取主剧情正文不足信息(aiData, runtimeGameConfig.字数要求);
         const shortBodyOnlyWarn = runtimeGameConfig.字数不足处理方式 === '仅提示';
         let shouldRegenerateForLength = Boolean(mainLengthShortage && !mainLengthShortage.withinTolerance && !shortBodyOnlyWarn);
