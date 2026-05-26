@@ -1,0 +1,51 @@
+import { test, expect } from '@playwright/test';
+import { __测试__构建图片端点 } from '../services/ai/imageTasks.ts';
+
+test('APK NovelAI proxy URL uses deployed API and live proxy does not return HTML fallback', async ({ request }) => {
+  const token = process.env.MORAN_NOVELAI_TOKEN || process.env.NOVELAI_TOKEN || '';
+  expect(token, 'MORAN_NOVELAI_TOKEN or NOVELAI_TOKEN is required').not.toBe('');
+
+  const originalWindow = globalThis.window;
+  globalThis.window = {
+    Capacitor: {
+      isNativePlatform: () => true,
+      getPlatform: () => 'android',
+    },
+    location: {
+      protocol: 'https:',
+      hostname: 'localhost',
+      origin: 'https://localhost',
+    },
+  };
+
+  let endpoint;
+  try {
+    endpoint = __测试__构建图片端点('https://image.novelai.net', '/ai/generate-image');
+  } finally {
+    if (originalWindow === undefined) {
+      delete globalThis.window;
+    } else {
+      globalThis.window = originalWindow;
+    }
+  }
+
+  expect(endpoint).toBe('https://msjh.bacon159.pp.ua/api/novelai/ai/generate-image');
+
+  const proxyRouteProbe = endpoint.replace('/ai/generate-image', '/unsupported-probe');
+  const response = await request.post(proxyRouteProbe, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    data: {},
+    timeout: 30000,
+  });
+  const contentType = response.headers()['content-type'] || '';
+  const text = await response.text();
+
+  expect(contentType.toLowerCase()).not.toContain('text/html');
+  expect(text.trim().slice(0, 80).toLowerCase()).not.toContain('<!doctype html');
+  expect(response.status()).toBe(502);
+  expect(text).toContain('NovelAI proxy failed');
+});

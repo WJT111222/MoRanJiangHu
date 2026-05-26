@@ -297,6 +297,8 @@ export interface 功能模型占位配置结构 {
     小说拆分主剧情注入: boolean;
     小说拆分规划分析注入: boolean;
     小说拆分世界演变注入: boolean;
+    小说拆分主剧情保留原文注入: boolean;
+    小说拆分主剧情字数优化: boolean;
     小说拆分主剧情注入上限: number;
     小说拆分详细注入上限: number;
     文生图功能启用: boolean;
@@ -566,6 +568,54 @@ export interface RealmDiyDraft {
 
 export type WorldMapDiyLayerType = '寰宇' | '大地点' | '中地点' | '小地点' | '区地点' | '子地点';
 
+export type WorldMapDiyGeometryType = 'polygon' | 'point';
+export type WorldMapDiyFeatureType = 'mountain' | 'river' | 'road' | 'waterway' | 'route' | 'portal';
+
+export interface WorldMapDiyPoint {
+    x: number;
+    y: number;
+}
+
+export interface WorldMapDiyGeometry {
+    type: WorldMapDiyGeometryType;
+    points: WorldMapDiyPoint[];
+    closed?: boolean;
+}
+
+export interface WorldMapDiyScaleFields {
+    worldSummary?: string;
+    civilization?: string;
+    race?: string;
+    calendar?: string;
+    powerSystem?: string;
+    climateRules?: string;
+    geography?: string;
+    climateZone?: string;
+    populationScale?: string;
+    history?: string;
+    factions?: string;
+    resources?: string;
+    capital?: string;
+    government?: string;
+    military?: string;
+    law?: string;
+    religion?: string;
+    economy?: string;
+    specialty?: string;
+    customs?: string;
+    currentSituation?: string;
+    security?: string;
+    cityLayout?: string;
+    industry?: string;
+    classStructure?: string;
+    localCustoms?: string;
+    sectForces?: string;
+    environment?: string;
+    residentNpcs?: string;
+    eventPool?: string;
+    hiddenInfo?: string;
+}
+
 export interface WorldMapDiyNode {
     id: string;
     name: string;
@@ -576,12 +626,47 @@ export interface WorldMapDiyNode {
     population?: string;
     culture?: string;
     transport?: string;
+    geometry?: WorldMapDiyGeometry;
+    scaleFields?: WorldMapDiyScaleFields;
+    tags?: string[];
+}
+
+export interface WorldMapDiyFeature {
+    id: string;
+    type: WorldMapDiyFeatureType;
+    name: string;
+    parentId?: string;
+    connectedNodeIds?: string[];
+    points: WorldMapDiyPoint[];
+    description?: string;
+    fields?: Record<string, string>;
+    tags?: string[];
+}
+
+export interface WorldMapDiyCanvas {
+    width: number;
+    height: number;
+    zoom?: number;
+    panX?: number;
+    panY?: number;
+}
+
+export interface WorldMapDiyReferenceTransform {
+    x: number;
+    y: number;
+    scale: number;
+    rotation: number;
+    locked: boolean;
 }
 
 export interface WorldMapDiyDraft {
     nodes: WorldMapDiyNode[];
+    features?: WorldMapDiyFeature[];
+    canvas?: WorldMapDiyCanvas;
+    enabled?: boolean;
     referenceImage?: string;
     referenceOpacity?: number;
+    referenceTransform?: WorldMapDiyReferenceTransform;
     updatedAt?: number;
 }
 

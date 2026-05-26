@@ -603,6 +603,8 @@ export const 默认功能模型占位: 功能模型占位配置结构 = {
     小说拆分主剧情注入: true,
     小说拆分规划分析注入: true,
     小说拆分世界演变注入: true,
+    小说拆分主剧情保留原文注入: false,
+    小说拆分主剧情字数优化: true,
     小说拆分主剧情注入上限: 1200,
     小说拆分详细注入上限: 4000,
     文生图功能启用: false,
@@ -1297,6 +1299,8 @@ const 标准化功能模型占位 = (raw: any): 功能模型占位配置结构 =
         小说拆分主剧情注入: 读取布尔值(raw?.小说拆分主剧情注入) ?? true,
         小说拆分规划分析注入: 读取布尔值(raw?.小说拆分规划分析注入) ?? true,
         小说拆分世界演变注入: 读取布尔值(raw?.小说拆分世界演变注入) ?? true,
+        小说拆分主剧情保留原文注入: 读取布尔值(raw?.小说拆分主剧情保留原文注入) ?? false,
+        小说拆分主剧情字数优化: 读取布尔值(raw?.小说拆分主剧情字数优化) ?? true,
         小说拆分主剧情注入上限: Math.max(
             200,
             Number(raw?.小说拆分主剧情注入上限)
@@ -2187,7 +2191,11 @@ export const 生图接口支持NSFW = (config: 当前可用接口结构 | null):
     if (backend === 'openai') return false;
     // 仅检查模型名和 URL，不检查供应商字段；openai_compatible 是协议描述（ComfyUI/SD WebUI 也用），
     // 不代表后端不支持 NSFW。
-    const modelText = [config.model, config.baseUrl]
+    // ComfyUI / SD WebUI 不依赖模型字段，旧存档可能残留 gpt-image 等主接口模型名，不能因此误判。
+    const valuesToCheck = backend === 'novelai'
+        ? [config.model, config.baseUrl]
+        : [config.baseUrl];
+    const modelText = valuesToCheck
         .map((value) => 读取字符串(value).toLowerCase())
         .join(' ');
     return !不支持NSFW生图模型片段.some((keyword) => modelText.includes(keyword));
@@ -2327,17 +2335,20 @@ const 从已发现后端构建NSFW配置 = (backends?: Array<{ url: string }> | 
 
 export const 获取NSFW文生图接口配置 = (settings: 接口设置结构, discoveredComfyuiBackends?: Array<{ url: string }>): 当前可用接口结构 | null => {
     const sharedConfig = 获取文生图接口配置(settings);
-    if (!sharedConfig) return null;
+    const baseConfig = sharedConfig || 获取文生图基础接口配置(settings);
+    if (!baseConfig) return null;
     const sharedNsfwConfig = 生图接口支持NSFW(sharedConfig) ? sharedConfig : null;
 
     const feature = (settings as any)?.功能模型占位;
     const independent = Boolean(feature?.NSFW生图独立接口启用);
-    if (!independent) return sharedNsfwConfig || 构建NSFW兜底配置(settings, sharedConfig) || 从已发现后端构建NSFW配置(discoveredComfyuiBackends);
+    if (!independent) return sharedConfig
+        ? (sharedNsfwConfig || 构建NSFW兜底配置(settings, sharedConfig) || 从已发现后端构建NSFW配置(discoveredComfyuiBackends))
+        : 从已发现后端构建NSFW配置(discoveredComfyuiBackends);
 
     const nsfwBackend: NonNullable<当前可用接口结构['图片后端类型']> = feature?.NSFW生图后端类型 === 'novelai' || feature?.NSFW生图后端类型 === 'sd_webui' || feature?.NSFW生图后端类型 === 'comfyui'
         ? feature.NSFW生图后端类型
         : 'openai';
-    const sharedBackend: NonNullable<当前可用接口结构['图片后端类型']> = sharedConfig.图片后端类型 === 'novelai' || sharedConfig.图片后端类型 === 'sd_webui' || sharedConfig.图片后端类型 === 'comfyui'
+    const sharedBackend: NonNullable<当前可用接口结构['图片后端类型']> = sharedConfig?.图片后端类型 === 'novelai' || sharedConfig?.图片后端类型 === 'sd_webui' || sharedConfig?.图片后端类型 === 'comfyui'
         ? sharedConfig.图片后端类型
         : 'openai';
     const nsfwModel = 读取字符串(feature?.NSFW生图模型使用模型).trim();
@@ -2348,50 +2359,52 @@ export const 获取NSFW文生图接口配置 = (settings: 接口设置结构, di
     const nsfwWorkflow = feature?.使用默认NSFWComfyUI工作流 !== false
         ? 默认NSFWComfyUI工作流JSON
         : 规范化NSFWComfyUI工作流JSON(feature?.NSFWComfyUI工作流JSON);
-    const canReuseSharedConnection = nsfwBackend === sharedBackend;
+    const canReuseSharedConnection = Boolean(sharedConfig) && nsfwBackend === sharedBackend;
     const discoveredNsfwBaseUrl = nsfwBackend === 'comfyui'
         ? 获取已选发现ComfyUI后端URL(feature?.当前NSFW图片后端发现ID)
         : '';
     const resolvedBaseUrl = nsfwBackend === 'comfyui'
-        ? (discoveredNsfwBaseUrl || 规范化已发现ComfyUI后端URL(nsfwBaseUrl) || (canReuseSharedConnection ? sharedConfig.baseUrl : ''))
-        : (nsfwBaseUrl || (canReuseSharedConnection ? sharedConfig.baseUrl : ''));
+        ? (discoveredNsfwBaseUrl || 规范化已发现ComfyUI后端URL(nsfwBaseUrl) || (canReuseSharedConnection ? (sharedConfig?.baseUrl || '') : ''))
+        : (nsfwBaseUrl || (canReuseSharedConnection ? (sharedConfig?.baseUrl || '') : ''));
     const nsfwBackendNeedsAuth = nsfwBackend === 'openai' || nsfwBackend === 'novelai';
     const resolvedApiKey = nsfwBackendNeedsAuth
-        ? (nsfwApiKey || (canReuseSharedConnection ? sharedConfig.apiKey : ''))
+        ? (nsfwApiKey || (canReuseSharedConnection ? (sharedConfig?.apiKey || '') : ''))
         : nsfwApiKey;
     const resolvedWorkflow = nsfwBackend === 'comfyui'
-        ? (nsfwWorkflow || (canReuseSharedConnection ? sharedConfig.ComfyUI工作流JSON || '' : ''))
+        ? (nsfwWorkflow || (canReuseSharedConnection ? sharedConfig?.ComfyUI工作流JSON || '' : ''))
         : '';
-    const supplier = resolvedBaseUrl ? 推断供应商(resolvedBaseUrl) : sharedConfig.供应商;
+    const supplier = resolvedBaseUrl ? 推断供应商(resolvedBaseUrl) : baseConfig.供应商;
     const presetPathValue = 图片后端默认预设接口路径[nsfwBackend];
-    const 图片接口路径模式 = canReuseSharedConnection ? sharedConfig.图片接口路径模式 : 'preset';
+    const 图片接口路径模式 = canReuseSharedConnection ? sharedConfig?.图片接口路径模式 : 'preset';
     const 图片预设接口路径: NonNullable<当前可用接口结构['图片预设接口路径']> = canReuseSharedConnection
-        ? (sharedConfig.图片接口路径模式 === 'preset'
+        ? (sharedConfig?.图片接口路径模式 === 'preset'
             ? 规范化图片预设接口路径(sharedConfig.图片预设接口路径, nsfwBackend)
             : presetPathValue)
         : presetPathValue;
     const 图片接口路径 = 图片接口路径模式 === 'custom'
-        ? 规范化图片接口路径(sharedConfig.图片接口路径, nsfwBackend, 图片预设接口路径映射[图片预设接口路径])
+        ? 规范化图片接口路径(sharedConfig?.图片接口路径, nsfwBackend, 图片预设接口路径映射[图片预设接口路径])
         : 图片预设接口路径映射[图片预设接口路径];
 
     const result: 当前可用接口结构 = {
-        ...sharedConfig,
+        ...baseConfig,
         供应商: supplier,
-        协议覆盖: (nsfwBaseUrl || discoveredNsfwBaseUrl) ? 'auto' : (canReuseSharedConnection ? sharedConfig.协议覆盖 : 'auto'),
+        协议覆盖: (nsfwBaseUrl || discoveredNsfwBaseUrl) ? 'auto' : (canReuseSharedConnection ? (sharedConfig?.协议覆盖 || 'auto') : 'auto'),
         baseUrl: resolvedBaseUrl,
         apiKey: resolvedApiKey,
-        model: nsfwModel,
+        model: nsfwBackendNeedsModel ? nsfwModel : '',
         图片后端类型: nsfwBackend,
         图片接口路径模式,
         图片预设接口路径,
         图片接口路径,
-        图片响应格式: nsfwBackend === 'openai' ? sharedConfig.图片响应格式 : 'url',
-        图片走OpenAI自定义格式: nsfwBackend === 'openai' ? Boolean(sharedConfig.图片走OpenAI自定义格式) : false,
-        NPC生图使用词组转化器: nsfwBackend === 'novelai' ? true : sharedConfig.NPC生图使用词组转化器,
+        图片响应格式: nsfwBackend === 'openai' ? sharedConfig?.图片响应格式 : 'url',
+        图片走OpenAI自定义格式: nsfwBackend === 'openai' ? Boolean(sharedConfig?.图片走OpenAI自定义格式) : false,
+        NPC生图使用词组转化器: nsfwBackend === 'novelai' ? true : sharedConfig?.NPC生图使用词组转化器,
         ComfyUI工作流JSON: resolvedWorkflow
     };
 
-    return 生图接口支持NSFW(result) ? result : (sharedNsfwConfig || 构建NSFW兜底配置(settings, sharedConfig) || 从已发现后端构建NSFW配置(discoveredComfyuiBackends));
+    return 生图接口支持NSFW(result) ? result : (sharedConfig
+        ? (sharedNsfwConfig || 构建NSFW兜底配置(settings, sharedConfig) || 从已发现后端构建NSFW配置(discoveredComfyuiBackends))
+        : 从已发现后端构建NSFW配置(discoveredComfyuiBackends));
 };
 
 export const 获取生图词组转化器接口配置 = (settings: 接口设置结构): 当前可用接口结构 | null => {

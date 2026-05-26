@@ -386,11 +386,16 @@ type 小说拆分章节注入配置 = {
     includeTimeRange: boolean;
     includeTimeline: boolean;
     includeRoleProgress: boolean;
+    includeOriginalText: boolean;
     eventMode: 小说拆分章节事件写法;
     summaryLimit: number;
     factLimit: number;
     eventLimit: number;
     progressLimit: number;
+};
+
+type 小说拆分运行时注入选项 = {
+    保留原文注入: boolean;
 };
 
 const 取有效文本列表 = (items: unknown, maxCount?: number): string[] => {
@@ -416,6 +421,13 @@ const 追加多行列表区块 = (lines: string[], title: string, items: unknown
     if (list.length <= 0) return;
     lines.push(`${title}：`);
     lines.push(...list);
+};
+
+const 构建原文注入节选 = (text: string, maxChars: number): string => {
+    const source = (text || '').replace(/\r\n/g, '\n').trim();
+    if (!source) return '';
+    if (maxChars <= 0 || source.length <= maxChars) return source;
+    return `${source.slice(0, maxChars).trim()}\n……（原文节选已按上限截断）`;
 };
 
 const 解析章节概括块 = (text: string): 小说拆分章节概括块[] => {
@@ -596,7 +608,8 @@ const 构建角色推进区块 = (
 
 const 获取章节注入配置 = (
     target: 小说拆分注入目标类型,
-    position: 小说拆分滑窗位置
+    position: 小说拆分滑窗位置,
+    options?: 小说拆分运行时注入选项
 ): 小说拆分章节注入配置 => {
     if (target === 'main_story') {
         if (position === 'current') {
@@ -612,6 +625,7 @@ const 获取章节注入配置 = (
                 includeTimeRange: true,
                 includeTimeline: true,
                 includeRoleProgress: false,
+                includeOriginalText: options?.保留原文注入 === true,
                 eventMode: 'none',
                 summaryLimit: 4,
                 factLimit: 0,
@@ -631,6 +645,7 @@ const 获取章节注入配置 = (
             includeTimeRange: true,
             includeTimeline: false,
             includeRoleProgress: false,
+            includeOriginalText: false,
             eventMode: 'none',
             summaryLimit: 3,
             factLimit: 0,
@@ -653,6 +668,7 @@ const 获取章节注入配置 = (
                 includeTimeRange: true,
                 includeTimeline: false,
                 includeRoleProgress: true,
+                includeOriginalText: false,
                 eventMode: 'full',
                 summaryLimit: 4,
                 factLimit: 0,
@@ -672,6 +688,7 @@ const 获取章节注入配置 = (
             includeTimeRange: true,
             includeTimeline: false,
             includeRoleProgress: position === 'next',
+            includeOriginalText: false,
             eventMode: 'gates',
             summaryLimit: 3,
             factLimit: 0,
@@ -693,6 +710,7 @@ const 获取章节注入配置 = (
             includeTimeRange: true,
             includeTimeline: false,
             includeRoleProgress: false,
+            includeOriginalText: false,
             eventMode: 'full',
             summaryLimit: 3,
             factLimit: 0,
@@ -713,6 +731,7 @@ const 获取章节注入配置 = (
         includeTimeRange: true,
         includeTimeline: false,
         includeRoleProgress: false,
+        includeOriginalText: false,
         eventMode: 'gates',
         summaryLimit: 2,
         factLimit: 0,
@@ -785,6 +804,9 @@ const 构建章节区块文本 = (
             lines.push(timelineText);
         }
     }
+    if (config.includeOriginalText) {
+        追加区块(lines, '原文节选', 构建原文注入节选(segment.原文内容, config.factLimit > 0 ? config.factLimit : 1600));
+    }
     return lines.join('\n').trim();
 };
 
@@ -839,7 +861,8 @@ const 构建滑窗注入头部 = (target: 小说拆分注入目标类型): strin
 const 构建统一滑窗章节注入 = (
     dataset: 小说拆分数据集结构,
     target: 小说拆分注入目标类型,
-    story?: 剧情系统结构 | null
+    story?: 剧情系统结构 | null,
+    options?: 小说拆分运行时注入选项
 ): string => {
     const { currentIndex, previous, current, next } = 获取滑窗分段(dataset, story);
     if (!current) return '';
@@ -851,7 +874,7 @@ const 构建统一滑窗章节注入 = (
             构建章节区块文本(
                 previous,
                 currentIndex > 0 ? currentIndex : undefined,
-                获取章节注入配置(target, 'previous'),
+                获取章节注入配置(target, 'previous', options),
                 target,
                 'previous'
             )
@@ -863,7 +886,7 @@ const 构建统一滑窗章节注入 = (
         构建章节区块文本(
             current,
             currentIndex >= 0 ? currentIndex + 1 : undefined,
-            获取章节注入配置(target, 'current'),
+            获取章节注入配置(target, 'current', options),
             target,
             'current'
         )
@@ -874,7 +897,7 @@ const 构建统一滑窗章节注入 = (
         构建章节区块文本(
             next,
             currentIndex >= 0 ? currentIndex + 2 : undefined,
-            获取章节注入配置(target, 'next'),
+            获取章节注入配置(target, 'next', options),
             target,
             'next'
         )
@@ -934,9 +957,13 @@ const 小说拆分链路已启用 = (settings: 接口设置结构 | null | undef
 };
 
 const 获取链路上限 = (settings: 接口设置结构 | null | undefined, target: 小说拆分注入目标类型): number => {
-    void settings;
-    void target;
-    return 0;
+    const feature = settings?.功能模型占位;
+    if (!feature) return 0;
+    if (target === 'main_story') {
+        if (feature.小说拆分主剧情字数优化 === false) return 0;
+        return Math.max(0, Math.floor(Number(feature.小说拆分主剧情注入上限) || 0));
+    }
+    return Math.max(0, Math.floor(Number(feature.小说拆分详细注入上限) || 0));
 };
 
 const 获取优先数据集 = async (openingConfig?: OpeningConfig): Promise<小说拆分数据集结构 | null> => {
@@ -954,9 +981,10 @@ const 获取优先数据集 = async (openingConfig?: OpeningConfig): Promise<小
 const 构建实时章节注入文本 = (
     dataset: 小说拆分数据集结构,
     target: 小说拆分注入目标类型,
-    story?: 剧情系统结构 | null
+    story?: 剧情系统结构 | null,
+    options?: 小说拆分运行时注入选项
 ): string => {
-    return 构建统一滑窗章节注入(dataset, target, story);
+    return 构建统一滑窗章节注入(dataset, target, story, options);
 };
 
 export const 获取激活小说拆分注入文本 = async (
@@ -972,7 +1000,9 @@ export const 获取激活小说拆分注入文本 = async (
     if (!activeDataset) return '';
 
     const maxChars = 获取链路上限(settings, target);
-    const runtimeText = 构建实时章节注入文本(activeDataset, target, story);
+    const runtimeText = 构建实时章节注入文本(activeDataset, target, story, {
+        保留原文注入: target === 'main_story' && settings?.功能模型占位?.小说拆分主剧情保留原文注入 === true
+    });
     if (runtimeText.trim()) {
         return 应用同人角色替换(按上限裁切文本(runtimeText, maxChars), openingConfig, playerName);
     }

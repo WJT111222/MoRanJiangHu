@@ -28,7 +28,7 @@ import * as dbService from '../dbService';
 import { 压缩图片资源字段, 是否图片资源引用 } from '../../utils/imageAssets';
 import { parseJsonWithRepair } from '../../utils/jsonRepair';
 import { RELEASE_INFO } from '../../data/releaseInfo';
-import { isNativeCapacitorEnvironment } from '../../utils/nativeRuntime';
+import { buildSyncApiUrl, isNativeCapacitorEnvironment, requiresRemoteSyncApi } from '../../utils/nativeRuntime';
 import {
     判断疑似网络或跨域错误,
     构建ComfyUI精确连接失败提示,
@@ -151,14 +151,21 @@ const 获取NovelAI代理基础地址 = (baseUrlRaw: string): string => {
     if (typeof window === 'undefined') return '';
 
     const location = window.location;
+    const websiteUrl = 清理末尾斜杠(String(RELEASE_INFO.websiteUrl || '')) || 'https://msjh.bacon159.pp.ua';
+    if (requiresRemoteSyncApi()) {
+        const configured = 清理末尾斜杠(buildSyncApiUrl('/api/novelai'));
+        return /^https?:\/\//i.test(configured)
+            ? configured.replace(/\/api\/novelai$/i, '')
+            : websiteUrl;
+    }
+
     const isHttpLike = location.protocol === 'http:' || location.protocol === 'https:';
     const isLocalHttpDev = isHttpLike && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
     if (isLocalHttpDev || location.hostname === 'msjh.bacon.de5.net' || /\.workers\.dev$/i.test(location.hostname)) {
         return '';
     }
 
-    const websiteUrl = 清理末尾斜杠(String(RELEASE_INFO.websiteUrl || ''));
-    return websiteUrl || 'https://msjh.bacon.de5.net';
+    return websiteUrl;
 };
 
 const 构建图片端点 = (baseUrlRaw: string, customPathRaw?: string): string => {
@@ -176,6 +183,8 @@ const 构建图片端点 = (baseUrlRaw: string, customPathRaw?: string): string 
     }
     return 构建OpenAI图片生成端点(base, customPath, { useRuntimeProxy: true });
 };
+
+export const __测试__构建图片端点 = 构建图片端点;
 
 const 推断图片Mime类型 = (fileName: string): string => {
     const lower = (fileName || '').toLowerCase();
