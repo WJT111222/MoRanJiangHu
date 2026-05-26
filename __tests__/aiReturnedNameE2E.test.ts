@@ -119,6 +119,29 @@ describe('AI returned female name e2e', () => {
             .toThrow('女性模板姓名黑名单');
     });
 
+    it('does not reject normal body text that uses an affectionate nickname', () => {
+        const response = {
+            logs: [
+                { sender: '旁白', text: '你低声唤了一句“婉儿”，江婉回头看你。' },
+                { sender: '婉儿', text: '我听见了。' }
+            ],
+            tavern_commands: [
+                {
+                    action: 'set' as const,
+                    key: '社交[0].关系状态',
+                    value: '听见主角亲昵称呼后略有动容'
+                }
+            ]
+        };
+
+        expect(() => 校验响应未命中女性姓名黑名单(
+            response as any,
+            JSON.stringify(response),
+            '主剧情',
+            [{ 姓名: '江婉', 性别: '女' }]
+        )).not.toThrow();
+    });
+
     it.skipIf(!读取端到端AI配置())('uses the configured external AI endpoint to create a non-blacklisted name', async () => {
         const config = 读取端到端AI配置();
         if (!config) throw new Error('missing e2e AI config');

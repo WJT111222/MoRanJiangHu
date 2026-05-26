@@ -14,7 +14,7 @@ import { 构建同人运行时提示词包 } from '../../prompts/runtime/fandom'
 import { 按功能开关过滤提示词内容, 裁剪修炼体系上下文数据 } from '../../utils/promptFeatureToggles';
 import { 构建变量路径登记提示, 校验变量命令是否登记 } from '../../utils/variableRegistry';
 import { 构建女性姓名候选提示词, 收集女性姓名候选已用名 } from '../../utils/femaleNameCandidatePrompt';
-import { 提取命中女性姓名黑名单 } from '../../utils/femaleNameSelector';
+import { 提取命中新女性角色姓名黑名单 } from '../../utils/femaleNameSelector';
 import { 检测社交删除风险命令 } from '../../utils/npcRetentionGuard';
 
 type 变量模型基态 = Pick<
@@ -622,11 +622,11 @@ export const 执行变量模型校准工作流 = async (
             return true;
         });
 
-    const blacklistHits = 提取命中女性姓名黑名单(JSON.stringify({
+    const blacklistHits = 提取命中新女性角色姓名黑名单({
         commands: dedupedCommands,
-        reports: result.reports,
-        rawText: result.rawText
-    }));
+        currentSocial: params.baseState.社交,
+        includeLogSenders: false
+    });
     if (blacklistHits.length > 0) {
         const message = `变量生成命中女性模板姓名黑名单：${blacklistHits.join('、')}。请重新生成变量命令，并确保正文 sender、人物称呼与社交姓名使用同一个非模板原创姓名。`;
         const error = new Error(message);

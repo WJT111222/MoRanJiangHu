@@ -76,6 +76,14 @@ export const 常见女性姓名黑名单 = [
     '小翠'
 ];
 
+const 常见女性姓名黑名单集合 = new Set(常见女性姓名黑名单);
+const 短昵称黑名单集合 = new Set(常见女性姓名黑名单.filter((name) => name.length <= 2));
+
+const 排序姓名黑名单命中 = (hits: Iterable<string>): string[] => (
+    Array.from(new Set(Array.from(hits).filter(Boolean)))
+        .sort((a, b) => 常见女性姓名黑名单.indexOf(a) - 常见女性姓名黑名单.indexOf(b))
+);
+
 export const 提取命中女性姓名黑名单 = (value: unknown): string[] => {
     const text = typeof value === 'string'
         ? value
@@ -89,7 +97,97 @@ export const 提取命中女性姓名黑名单 = (value: unknown): string[] => {
             if (hits.some((hit) => hit.includes(name))) return;
             hits.push(name);
         });
-    return hits.sort((a, b) => 常见女性姓名黑名单.indexOf(a) - 常见女性姓名黑名单.indexOf(b));
+    return 排序姓名黑名单命中(hits);
+};
+
+const 命令路径去前缀 = (value: unknown): string => (
+    typeof value === 'string' ? value.trim().replace(/^gameState\./, '') : ''
+);
+
+const 命令动作 = (cmd: any): string => (
+    typeof cmd?.action === 'string' ? cmd.action.trim() : 'set'
+);
+
+const 读取候选姓名 = (value: unknown): string => 规范化姓名键(value);
+
+const 当前社交姓名集合 = (currentSocial?: any[]): Set<string> => new Set(
+    (Array.isArray(currentSocial) ? currentSocial : [])
+        .map((npc) => 规范化姓名键(npc?.姓名 ?? npc?.名称))
+        .filter(Boolean)
+);
+
+const 命中黑名单姓名 = (name: unknown): string[] => {
+    const normalized = 读取候选姓名(name);
+    return normalized && 常见女性姓名黑名单集合.has(normalized) ? [normalized] : [];
+};
+
+const 命令值疑似女性姓名目标 = (value: any): boolean => (
+    判断女性名称目标(value)
+    || 命中黑名单姓名(value?.姓名 ?? value?.名称).length > 0
+);
+
+export const 提取命中新女性角色姓名黑名单 = (params: {
+    response?: any;
+    commands?: any[];
+    currentSocial?: any[];
+    includeLogSenders?: boolean;
+}): string[] => {
+    const hits = new Set<string>();
+    const existingNames = 当前社交姓名集合(params.currentSocial);
+    const commands = Array.isArray(params.commands)
+        ? params.commands
+        : (Array.isArray(params.response?.tavern_commands) ? params.response.tavern_commands : []);
+
+    const pushName = (name: unknown) => {
+        命中黑名单姓名(name).forEach((hit) => hits.add(hit));
+    };
+
+    commands.forEach((cmd: any) => {
+        const action = 命令动作(cmd);
+        const key = 命令路径去前缀(cmd?.key);
+        if (action === 'push' && key === '社交' && cmd?.value && typeof cmd.value === 'object') {
+            if (命令值疑似女性姓名目标(cmd.value)) pushName(cmd.value?.姓名 ?? cmd.value?.名称);
+            return;
+        }
+        if (action !== 'set') return;
+
+        const setName = key.match(/^社交\[(\d+)\]\.姓名$/);
+        if (setName) {
+            const index = Number(setName[1]);
+            const nextName = 读取候选姓名(cmd?.value);
+            const currentName = 读取候选姓名(params.currentSocial?.[index]?.姓名);
+            if (!currentName || currentName !== nextName) pushName(nextName);
+            return;
+        }
+
+        const setWholeNpc = key.match(/^社交\[(\d+)\]$/);
+        if (setWholeNpc && cmd?.value && typeof cmd.value === 'object' && !Array.isArray(cmd.value)) {
+            const index = Number(setWholeNpc[1]);
+            const nextName = 读取候选姓名(cmd.value?.姓名 ?? cmd.value?.名称);
+            const currentName = 读取候选姓名(params.currentSocial?.[index]?.姓名);
+            if ((!currentName || currentName !== nextName) && 命令值疑似女性姓名目标(cmd.value)) pushName(nextName);
+            return;
+        }
+
+        if (key === '社交' && Array.isArray(cmd?.value)) {
+            cmd.value.forEach((item: any, index: number) => {
+                if (!item || typeof item !== 'object' || Array.isArray(item)) return;
+                const nextName = 读取候选姓名(item?.姓名 ?? item?.名称);
+                const currentName = 读取候选姓名(params.currentSocial?.[index]?.姓名);
+                if ((!currentName || currentName !== nextName) && 命令值疑似女性姓名目标(item)) pushName(nextName);
+            });
+        }
+    });
+
+    if (params.includeLogSenders !== false && Array.isArray(params.response?.logs)) {
+        params.response.logs.forEach((log: any) => {
+            const sender = 读取候选姓名(log?.sender);
+            if (!sender || existingNames.has(sender) || 短昵称黑名单集合.has(sender)) return;
+            pushName(sender);
+        });
+    }
+
+    return 排序姓名黑名单命中(hits);
 };
 
 export const 构建女性姓名黑名单提示词 = (): string => [

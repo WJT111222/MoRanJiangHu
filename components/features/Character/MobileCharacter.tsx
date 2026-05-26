@@ -454,7 +454,7 @@ const MobileCharacter: React.FC<Props> = ({
                                 <div className="flex items-center justify-between gap-3">
                                     <div>
                                         <div className="text-[10px] tracking-[0.32em] text-wuxia-gold/75">技艺面板</div>
-                                        <div className="mt-1 text-sm text-gray-200">查看炼器、炼丹、医术、阵法等技艺进度</div>
+                                        <div className="mt-1 text-sm text-gray-200">查看医术、毒术、机关、采集、鉴定等技艺进度</div>
                                     </div>
                                     <div className="rounded-full border border-wuxia-gold/25 bg-black/25 px-2.5 py-1 font-mono text-xs text-wuxia-gold">{技艺列表.length} 项</div>
                                 </div>

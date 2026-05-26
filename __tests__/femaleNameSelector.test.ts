@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { 女性人名选择器列表, 提取命中女性姓名黑名单, 重命名重复女性NPC列表, 选择唯一女性姓名, 选择女性姓名候选列表 } from '../utils/femaleNameSelector';
+import { 女性人名选择器列表, 提取命中女性姓名黑名单, 提取命中新女性角色姓名黑名单, 重命名重复女性NPC列表, 选择唯一女性姓名, 选择女性姓名候选列表 } from '../utils/femaleNameSelector';
 import { 构建女性姓名候选提示词 } from '../utils/femaleNameCandidatePrompt';
 
 describe('female name selector', () => {
@@ -57,6 +57,30 @@ describe('female name selector', () => {
     it('detects common female template names for regeneration', () => {
         expect(提取命中女性姓名黑名单('【苏婉儿】她与林婉儿同时出现')).toEqual(['苏婉儿', '林婉儿']);
         expect(提取命中女性姓名黑名单({ value: { 姓名: '苏婉清' } })).toEqual(['苏婉清']);
+    });
+
+    it('only treats blacklist hits as invalid when they are new structured NPC names', () => {
+        const response = {
+            logs: [
+                { sender: '旁白', text: '你轻声唤了一句“婉儿”，她偏头应了。' },
+                { sender: '婉儿', text: '我在。' }
+            ],
+            tavern_commands: []
+        };
+
+        expect(提取命中新女性角色姓名黑名单({ response })).toEqual([]);
+        expect(提取命中新女性角色姓名黑名单({
+            response: {
+                logs: [],
+                tavern_commands: [
+                    {
+                        action: 'push',
+                        key: '社交',
+                        value: { 姓名: '婉儿', 性别: '女', 身份: '新登场侍女' }
+                    }
+                ]
+            }
+        })).toEqual(['婉儿']);
     });
 
     it('does not locally rename generated female NPC names', () => {

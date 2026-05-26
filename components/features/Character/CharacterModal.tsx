@@ -315,7 +315,7 @@ const CharacterModal: React.FC<Props> = ({
                                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-wuxia-gold/10 pb-4">
                                     <div>
                                         <div className="text-sm font-bold tracking-[0.26em] text-wuxia-gold">主角技艺面板</div>
-                                        <div className="mt-1 text-[11px] text-gray-500">炼器、炼丹、医术、阵法等生活与江湖技艺会在这里集中显示。</div>
+                                        <div className="mt-1 text-[11px] text-gray-500">医术、毒术、机关、采集、鉴定等生活与江湖技艺会在这里集中显示。</div>
                                     </div>
                                     <div className="rounded-full border border-wuxia-gold/20 bg-black/35 px-3 py-1 text-xs text-wuxia-gold/80">共 {skills.length} 项</div>
                                 </div>

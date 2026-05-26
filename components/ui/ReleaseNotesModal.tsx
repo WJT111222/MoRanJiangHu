@@ -54,7 +54,7 @@ const normalizedHistory: ReleaseEntry[] = [
 }, []);
 
 const CNB_GUIDE_URL = RELEASE_INFO.cnbGuideUrl || 'https://msjh.bacon.de5.net/cnb-comfyui-guide.html';
-const API共享说明 = '也欢迎愿意支持项目的客户共享可用于开发测试的 API 地址和密钥。我承诺：客户提供的 API key 只会用于本项目开发，不会用于其他用途。目前我已为本项目共享 10 元用于 2 个 Plus 号接码，若长期完全自费可能难以为继。';
+const API共享说明 = '也欢迎愿意支持项目的客户共享可用于开发测试的 API 地址和密钥。我承诺：客户提供的 API key 只会用于本项目开发，不会用于其他用途。目前我已为本项目购买三次接码，共花费 15 元，若长期完全自费可能难以为继。';
 
 const ReleaseNotesModal: React.FC<Props> = ({
     open,

@@ -6,6 +6,7 @@ import { 规范化消耗品使用效果 } from '../../utils/itemEffects';
 import { 补齐自动丹药预设 } from '../../utils/autoConsumables';
 import { 归一化六维到境界预算 } from '../../utils/attributeBudget';
 import { 姓名含已知中文姓氏 } from '../../utils/chineseName';
+import { 构建默认技艺 } from '../../utils/skillDefaults';
 
 const 深拷贝 = <T,>(data: T): T => JSON.parse(JSON.stringify(data)) as T;
 const 默认装备模板 = {
@@ -129,8 +130,7 @@ const 取首个有效文本片段 = (...values: unknown[]): string => {
     }
     return '';
 };
-const 默认角色技艺 = ['炼器', '炼丹', '医术', '阵法', '符箓', '机关', '采集', '鉴定']
-    .map((名称) => ({ 名称, 等级: '未入门', 熟练度: 0, 描述: '尚未形成稳定技艺。' }));
+const 默认角色技艺 = 构建默认技艺('武侠');
 
 const 四段境界名称 = ['开脉', '聚息', '归元', '御劲', '化罡'];
 const 四段境界阶段映射: Record<string, string> = {
@@ -1776,8 +1776,7 @@ const NPC装备槽位 = Object.keys(默认NPC装备);
 const 空NPC装备正则 = /^(无|暂无|未装备|空|没有|none|n\/a)$/i;
 const NPC门派组织正则 = /([\u4e00-\u9fa5]{2,10}(?:山庄|门|派|宗|宫|寨|帮|镖局|商会|书院|府|阁|堂))/;
 
-const 默认NPC技艺 = ['炼器', '炼丹', '医术', '阵法', '符箓', '机关', '采集', '鉴定']
-    .map((名称) => ({ 名称, 等级: '未入门', 熟练度: 0, 描述: '尚未形成稳定技艺。' }));
+const 默认NPC技艺 = 构建默认技艺('武侠');
 
 const 推断NPC出身背景 = (npc: any): { 名称: string; 描述: string; 效果: string } => {
     const text = [
