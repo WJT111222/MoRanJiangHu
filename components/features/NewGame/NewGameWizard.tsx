@@ -28,6 +28,7 @@ import {
     规范化开局配置,
     规范化可选开局配置
 } from '../../../utils/openingConfig';
+import { 构建默认技艺 } from '../../../utils/skillDefaults';
 import { 默认境界母板提示词 } from '../../../prompts/runtime/fandom';
 import { 设置键 } from '../../../utils/settingsSchema';
 import { 根据名称映射天赋抽卡, 根据名称映射抽卡, 补全天赋抽卡名称列表, 补全抽卡名称列表, 天赋抽卡数量, 出身抽卡数量, 抽取天赋卡牌, 抽取卡牌 } from '../../../utils/talentDraw';
@@ -557,7 +558,7 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
             右腿当前血量: 右腿最大血量, 右腿最大血量, 右腿状态: '正常',
             装备: { 头部: '无', 胸部: '无', 盔甲: '无', 内衬: '无', 腿部: '无', 手部: '无', 足部: '无', 主武器: '无', 副武器: '无', 暗器: '无', 背部: '无', 腰部: '无', 坐骑: '无' },
             物品列表: [], 功法列表: [],
-            技艺: ['炼器', '炼丹', '医术', '阵法', '符箓', '机关', '采集', '鉴定'].map((名称) => ({ 名称, 等级: '未入门', 熟练度: 0, 描述: '尚未形成稳定技艺。' })),
+            技艺: 构建默认技艺(openingConfig.题材模式),
             当前经验: 0, 升级经验: 初始升级经验, 玩家BUFF: [], 突破条件: []
         };
     };
