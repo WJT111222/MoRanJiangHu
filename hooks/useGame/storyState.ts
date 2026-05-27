@@ -385,11 +385,61 @@ const 创建默认仙侠聚宝阁商品 = (): 详细门派结构['兑换列表']
     { id: 'sect_shop_fan', 物品名称: '玉骨扇', 类型: '法器', 兑换价格: 260, 库存: 1, 要求职位: '外门弟子' }
 ]);
 
-const 创建默认藏经阁列表 = (): NonNullable<详细门派结构['藏经阁列表']> => ([
-    { id: 'sect_lib_qingyun_sword', 名称: '青云剑法', 类型: '功法', 品阶: '凡品', 简介: '青云山门入门剑法，重在稳、准、连。', 要求职位: '外门弟子', 要求累计贡献: 0 },
-    { id: 'sect_lib_clear_breath', 名称: '澄息诀', 类型: '心法', 品阶: '良品', 简介: '以吐纳平复气息，提高内力续航。', 要求职位: '外门弟子', 要求累计贡献: 150 },
-    { id: 'sect_lib_cloud_step', 名称: '踏云步', 类型: '身法', 品阶: '良品', 简介: '借山阶与林风练步，利于闪避与追击。', 要求职位: '内门弟子', 要求累计贡献: 450 }
-]);
+const 提取门派典籍前缀 = (sectName: string): string => {
+    const compact = 取文本(sectName, '本门').replace(/(山庄|剑派|武馆|仙宗|剑宗|道院|灵门|玄府|真宫|宗|派|门|帮|堂|堡|庄|院|府)$/u, '');
+    return compact || 取文本(sectName, '本门');
+};
+
+const 创建默认藏经阁列表 = (sectName = '本门', openingConfig?: OpeningConfig): NonNullable<详细门派结构['藏经阁列表']> => {
+    const seed = 生成稳定哈希(`${sectName}|${openingConfig?.题材模式 || ''}|藏经阁`);
+    const prefix = 提取门派典籍前缀(sectName);
+    const isXianxia = openingConfig?.题材模式 === '仙侠';
+    const martialStyle = 按种子取项(
+        isXianxia
+            ? ['剑诀', '玄功', '御气诀', '灵息诀', '符剑诀']
+            : ['剑法', '刀法', '拳谱', '掌法', '枪诀', '腿法'],
+        seed
+    );
+    const innerStyle = 按种子取项(
+        isXianxia ? ['凝真心法', '归元诀', '清虚吐纳篇', '抱朴灵息法'] : ['养息功', '归元心法', '听风内功', '沉炉劲'],
+        seed,
+        7
+    );
+    const movementStyle = 按种子取项(
+        isXianxia ? ['流云步', '踏星步', '御风身法', '轻烟遁法'] : ['轻身步', '掠影步', '燕回身法', '穿林步'],
+        seed,
+        13
+    );
+    return [
+        {
+            id: `sect_lib_${生成稳定哈希(`${sectName}|entry`).toString(36)}`,
+            名称: `${prefix}入门${martialStyle}`,
+            类型: martialStyle.includes('步') || martialStyle.includes('身') ? '身法' : '功法',
+            品阶: '凡品',
+            简介: `${sectName}给新进弟子打基础的入门典籍，招路贴合本门传承，不再沿用固定青云模板。`,
+            要求职位: '杂役弟子',
+            要求累计贡献: 0
+        },
+        {
+            id: `sect_lib_${生成稳定哈希(`${sectName}|inner`).toString(36)}`,
+            名称: `${prefix}${innerStyle}`,
+            类型: '心法',
+            品阶: '良品',
+            简介: `${sectName}藏经阁常见的内修法门，用来稳住气息与根基。`,
+            要求职位: '外门弟子',
+            要求累计贡献: 120
+        },
+        {
+            id: `sect_lib_${生成稳定哈希(`${sectName}|movement`).toString(36)}`,
+            名称: `${prefix}${movementStyle}`,
+            类型: '身法',
+            品阶: '良品',
+            简介: `${sectName}弟子外出行走时常修的身法，重在趋避、追击与赶路。`,
+            要求职位: '外门弟子',
+            要求累计贡献: 260
+        }
+    ];
+};
 
 const 功法品质权重: Record<string, number> = { 凡品: 1, 良品: 2, 上品: 3, 极品: 4, 绝世: 5, 传说: 6 };
 
@@ -510,7 +560,14 @@ const 补齐开局仙侠字段 = (charData: 角色数据结构, openingConfig?: 
 
 const 补齐开局角色功法 = (charData: 角色数据结构, sect: 详细门派结构): 角色数据结构 => {
     const currentSkills = Array.isArray((charData as any)?.功法列表) ? 深拷贝((charData as any).功法列表) : [];
-    return { ...charData, 功法列表: currentSkills };
+    if (currentSkills.length > 0) return { ...charData, 功法列表: currentSkills };
+    if (!sect || 是否无门派标识(sect.ID) || !Array.isArray(sect.藏经阁列表) || sect.藏经阁列表.length === 0) {
+        return { ...charData, 功法列表: currentSkills };
+    }
+    const contribution = Math.max(取数字((charData as any)?.门派贡献, 0), 取数字(sect.累计贡献, 0), 取数字(sect.玩家贡献, 0));
+    const availableBook = sect.藏经阁列表.find((book: any) => 取数字(book?.要求累计贡献, 0) <= contribution) || sect.藏经阁列表[0];
+    if (!availableBook) return { ...charData, 功法列表: currentSkills };
+    return { ...charData, 功法列表: [从藏经阁条目创建功法(availableBook, sect.名称)] };
 };
 
 const 补齐门派重要成员 = (sourceMembers: unknown): 详细门派结构['重要成员'] => {
@@ -673,6 +730,7 @@ export const 创建开局门派状态 = (
         建设度: seedData.build,
         弟子总数: seedData.total,
         兑换列表: isXianxia ? 创建默认仙侠聚宝阁商品() : 创建默认聚宝阁商品(),
+        藏经阁列表: 创建默认藏经阁列表(baseName, openingConfig),
         任务列表: [],
         重要成员: 创建默认同门名录(baseName, openingConfig)
     });
@@ -726,7 +784,7 @@ export const 规范化门派状态 = (raw?: any): 详细门派结构 => {
         累计贡献: totalContribution,
         任务列表: safeTasks,
         兑换列表: Array.isArray(source?.兑换列表) && source.兑换列表.length > 0 ? source.兑换列表 : (isActiveSect ? 创建默认聚宝阁商品() : []),
-        藏经阁列表: Array.isArray(source?.藏经阁列表) && source.藏经阁列表.length > 0 ? source.藏经阁列表 : (isActiveSect ? 创建默认藏经阁列表() : []),
+        藏经阁列表: Array.isArray(source?.藏经阁列表) && source.藏经阁列表.length > 0 ? source.藏经阁列表 : (isActiveSect ? 创建默认藏经阁列表(displayName) : []),
         重要成员: isActiveSect ? 补齐门派重要成员(source?.重要成员) : []
     };
 };

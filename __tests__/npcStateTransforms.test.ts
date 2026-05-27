@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { 规范化社交列表 } from '../hooks/useGame/stateTransforms';
 
 describe('NPC old save compatibility', () => {
-    it('repairs teammate combat caps, equipment and bag from legacy placeholders', () => {
+    it('repairs teammate combat caps without inventing equipment or bag contents', () => {
         const [npc] = 规范化社交列表([
             {
                 id: 'legacy_shen_ruoyan',
@@ -30,12 +30,12 @@ describe('NPC old save compatibility', () => {
         expect(npc.最大内力).toBeGreaterThanOrEqual(15);
         expect(npc.攻击力).toBeGreaterThan(0);
         expect(npc.防御力).toBeGreaterThan(0);
-        expect(npc.当前装备.主武器).not.toBe('无');
-        expect(npc.当前装备.服装).not.toBe('无');
-        expect(npc.背包.length).toBeGreaterThan(0);
+        expect(npc.当前装备.主武器).toBe('无');
+        expect(npc.当前装备.服装).toBe('无');
+        expect(npc.背包).toEqual([]);
     });
 
-    it('replaces explanatory prose in NPC equipment slots with safe item names', () => {
+    it('drops explanatory prose in NPC equipment slots without inferring replacement gear', () => {
         const [npc] = 规范化社交列表([
             {
                 id: 'npc_bad_equipment_text',
@@ -52,11 +52,38 @@ describe('NPC old save compatibility', () => {
             }
         ], { 合并同名: false });
 
-        expect(npc.当前装备.主武器).toBe('青云佩剑');
-        expect(npc.当前装备.服装).toBe('青云绣裙');
+        expect(npc.当前装备.主武器).toBe('无');
+        expect(npc.当前装备.服装).toBe('无');
         expect(npc.当前装备.鞋履).toBe('轻便布靴');
         expect(npc.当前装备.主武器).not.toContain('根据');
         expect(npc.当前装备.服装).not.toContain('服装：');
+    });
+
+    it('keeps a newly made bare puppet unequipped until story gives it gear', () => {
+        const [npc] = 规范化社交列表([
+            {
+                id: 'npc_bare_puppet',
+                姓名: '陆怀安',
+                性别: '男',
+                身份: '刚炼制成形的元婴傀儡',
+                简介: '刚从炼器台醒来，尚未穿戴衣物，也没有随身物。',
+                境界: '通玄境一重',
+                当前装备: {},
+                背包: []
+            }
+        ], { 合并同名: false });
+
+        expect(npc.当前装备).toMatchObject({
+            主武器: '无',
+            副武器: '无',
+            服装: '无',
+            饰品: '无',
+            内衣: '无',
+            内裤: '无',
+            袜饰: '无',
+            鞋履: '无'
+        });
+        expect(npc.背包).toEqual([]);
     });
 
     it('derives NPC talents, background and stable non-zero skills from identity when model omitted them', () => {

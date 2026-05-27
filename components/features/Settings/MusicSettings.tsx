@@ -21,6 +21,13 @@ const MusicSettings: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [deletingTrackId, setDeletingTrackId] = React.useState<string | null>(null);
 
+    const handleVolumePointer = (e: React.PointerEvent<HTMLInputElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        if (rect.width <= 0) return;
+        const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+        setVolume(Math.round(ratio * 100));
+    };
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -68,16 +75,16 @@ const MusicSettings: React.FC = () => {
     };
 
     return (
-        <div className="p-4 space-y-6 text-gray-200">
+        <div className="p-4 space-y-6 text-paper-white">
             {/* Feature Toggle */}
-            <div className="flex items-center justify-between p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+            <div className="flex items-center justify-between p-4 bg-ink-gray/55 rounded-xl border border-wuxia-gold/25">
                 <div>
                     <h3 className="text-lg font-bold text-wuxia-gold">背景音乐功能</h3>
-                    <p className="text-xs text-gray-400">开启后将在主界面通过播放器控制音乐</p>
+                    <p className="text-xs text-paper-white/70">开启后将在主界面通过播放器控制音乐</p>
                 </div>
                 <button 
                     onClick={() => toggleMusicFeature(!enabled)}
-                    className={`px-6 py-2 rounded-full transition-all ${enabled ? 'bg-wuxia-gold text-black font-bold' : 'bg-zinc-800 text-gray-400'}`}
+                    className={`px-6 py-2 rounded-full transition-all ${enabled ? 'bg-wuxia-gold text-ink-black font-bold' : 'bg-ink-black/35 text-paper-white/70 border border-wuxia-gold/15'}`}
                 >
                     {enabled ? '已开启' : '已关闭'}
                 </button>
@@ -95,7 +102,12 @@ const MusicSettings: React.FC = () => {
                     max="100"
                     value={volume}
                     onChange={(e) => setVolume(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-wuxia-gold"
+                    onInput={(e) => setVolume(parseInt(e.currentTarget.value))}
+                    onPointerDown={handleVolumePointer}
+                    onPointerMove={(e) => {
+                        if (e.buttons === 1) handleVolumePointer(e);
+                    }}
+                    className="w-full h-1.5 bg-ink-gray rounded-lg appearance-none cursor-pointer accent-wuxia-gold"
                 />
             </div>
 
@@ -105,7 +117,7 @@ const MusicSettings: React.FC = () => {
                     <button
                         key={mode}
                         onClick={() => setPlayMode(mode)}
-                        className={`py-2 px-1 border rounded-lg transition-all text-sm ${playMode === mode ? 'border-wuxia-gold text-wuxia-gold bg-wuxia-gold/10' : 'border-zinc-800 text-gray-500 hover:border-zinc-600'}`}
+                        className={`py-2 px-1 border rounded-lg transition-all text-sm ${playMode === mode ? 'border-wuxia-gold text-wuxia-gold bg-wuxia-gold/10' : 'border-wuxia-gold/20 text-paper-white/70 hover:border-wuxia-gold/40'}`}
                     >
                         {mode === 'list-loop' && '列表循环'}
                         {mode === 'single-loop' && '单曲循环'}
@@ -119,7 +131,7 @@ const MusicSettings: React.FC = () => {
                 <div className="flex items-center justify-between">
                     <h4 className="font-bold flex items-center gap-2">
                         <span className="w-1 h-4 bg-wuxia-gold rounded-full"></span>
-                        已添加曲目 ({tracks.length})
+                        曲目列表 ({tracks.length})
                     </h4>
                     <button 
                         onClick={() => fileInputRef.current?.click()}
@@ -139,34 +151,34 @@ const MusicSettings: React.FC = () => {
 
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                     {tracks.length === 0 ? (
-                        <div className="text-center py-8 bg-zinc-900/30 rounded-xl border border-dashed border-zinc-800 text-gray-600 text-sm">
+                        <div className="text-center py-8 bg-ink-gray/35 rounded-xl border border-dashed border-wuxia-gold/25 text-paper-white/60 text-sm">
                             尚无本地曲目，请点击上方按钮添加
                         </div>
                     ) : (
                         tracks.map(track => (
                             <div 
                                 key={track.id}
-                                className={`flex items-center justify-between p-3 border rounded-xl transition-colors group ${currentTrackId === track.id ? 'border-wuxia-gold/40 bg-wuxia-gold/5' : 'border-zinc-800 hover:border-zinc-700 bg-zinc-900/40'}`}
+                                className={`flex items-center justify-between p-3 border rounded-xl transition-colors group ${currentTrackId === track.id ? 'border-wuxia-gold/50 bg-wuxia-gold/10' : 'border-wuxia-gold/20 hover:border-wuxia-gold/40 bg-ink-gray/45'}`}
                             >
                                 <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className="w-10 h-10 shrink-0 bg-zinc-800 border border-zinc-700 rounded-lg flex items-center justify-center overflow-hidden">
+                                    <div className="w-10 h-10 shrink-0 bg-ink-black/35 border border-wuxia-gold/20 rounded-lg flex items-center justify-center overflow-hidden">
                                         {track.封面URL ? (
                                             <img src={track.封面URL} alt="cover" className="w-full h-full object-cover" />
                                         ) : (
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-wuxia-gold" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                                         )}
                                     </div>
                                     <div className="overflow-hidden cursor-pointer" onClick={() => playTrack(track.id)}>
-                                        <div className={`truncate text-sm font-medium ${currentTrackId === track.id ? 'text-wuxia-gold' : 'text-gray-200'}`}>
+                                        <div className={`truncate text-sm font-medium ${currentTrackId === track.id ? 'text-wuxia-gold' : 'text-paper-white'}`}>
                                             {track.名称}
                                         </div>
-                                        <div className="text-[10px] text-gray-500 uppercase tracking-tighter">
-                                            {track.封面URL ? '已解析封面' : '无封面信息'}
+                                        <div className="text-[10px] text-paper-white/55 uppercase tracking-normal">
+                                            {track.id.startsWith('default_') ? '默认在线曲目' : (track.封面URL ? '已解析封面' : '无封面信息')}
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {deletingTrackId === track.id ? (
+                                    {track.id.startsWith('default_') ? null : deletingTrackId === track.id ? (
                                         <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-300">
                                             <button 
                                                 onClick={() => {
@@ -179,7 +191,7 @@ const MusicSettings: React.FC = () => {
                                             </button>
                                             <button 
                                                 onClick={() => setDeletingTrackId(null)}
-                                                className="text-[10px] bg-zinc-800 text-gray-400 px-2 py-1 rounded hover:bg-zinc-700 transition-all"
+                                                className="text-[10px] bg-ink-black/40 text-paper-white/70 px-2 py-1 rounded hover:bg-ink-black/55 transition-all"
                                             >
                                                 取消
                                             </button>
@@ -187,7 +199,7 @@ const MusicSettings: React.FC = () => {
                                     ) : (
                                         <button 
                                             onClick={() => setDeletingTrackId(track.id)}
-                                            className="p-2 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="p-2 text-paper-white/45 hover:text-wuxia-red opacity-0 group-hover:opacity-100 transition-opacity"
                                         >
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                                         </button>

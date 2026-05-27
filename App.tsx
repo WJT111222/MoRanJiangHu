@@ -2600,7 +2600,7 @@ const App: React.FC = () => {
 
     return (
         <MusicProvider visualConfig={effectiveVisualConfig} onSaveVisual={actions.saveVisualSettings}>
-            <div className={`h-screen w-screen overflow-hidden bg-ink-black relative flex flex-col transition-colors duration-500 ${isMobile ? 'p-0' : 'p-3'}`} style={appRootStyleVars}>
+            <div className={`h-screen w-screen max-w-full min-w-0 overflow-hidden bg-ink-black relative flex flex-col transition-colors duration-500 ${isMobile ? 'p-0' : 'p-3'}`} style={appRootStyleVars}>
                 {fontFaceStyleText && <style>{fontFaceStyleText}</style>}
                 {legacyImageMigrationNoticeVisible && (
                     <旧图迁移提示条

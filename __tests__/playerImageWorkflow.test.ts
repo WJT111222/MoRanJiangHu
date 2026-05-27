@@ -117,4 +117,24 @@ describe('playerImageWorkflow', () => {
             force: true
         }));
     });
+
+    it('skips automatic player image slots that already have recoverable records', async () => {
+        const 执行生图 = vi.fn(async () => undefined);
+        const workflow = 创建主角图片工作流(创建依赖(执行生图) as any);
+        await workflow.generatePlayerImagesAutomatically({
+            姓名: '刀哥',
+            头像图片URL: '',
+            图片档案: {
+                已选头像图片ID: 'avatar-1',
+                已选立绘图片ID: 'portrait-1',
+                生图历史: [
+                    { id: 'avatar-1', 构图: '头像', 状态: 'success', 图片URL: 'https://img.example/avatar.webp' },
+                    { id: 'portrait-1', 构图: '半身', 状态: 'success', 图片URL: 'https://img.example/portrait.webp' }
+                ]
+            }
+        } as any);
+
+        expect(执行生图).toHaveBeenCalledTimes(1);
+        expect(执行生图.mock.calls[0][1]).toEqual(expect.objectContaining({ 构图: '立绘' }));
+    });
 });

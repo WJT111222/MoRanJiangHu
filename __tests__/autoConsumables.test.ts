@@ -155,9 +155,10 @@ describe('stateTransforms 只补一次系统丹药预设', () => {
 });
 
 describe('储物容器效果归一', () => {
-    it('储物袋不应提供精力增益，而应归一为负重/收纳能力', () => {
+    it('储物袋不应提供精力增益，而应归一为直接负重上限加成', () => {
         const normalized = 规范化角色物品容器映射({
             姓名: '测试',
+            最大负重: 100,
             物品列表: [
                 {
                     ID: 'bag_1',
@@ -174,10 +175,36 @@ describe('储物容器效果归一', () => {
             已补齐系统丹药预设: true
         } as any);
         const bag = normalized.物品列表.find((item: any) => item.名称 === '储物袋');
-        expect(bag?.容器属性?.最大容量).toBeGreaterThan(0);
+        expect(bag?.容器属性).toBeUndefined();
         expect(bag?.词条列表.some((entry: any) => String(entry.属性).includes('精力'))).toBe(false);
         expect(bag?.词条列表.some((entry: any) => entry.属性 === '最大负重')).toBe(true);
         expect(bag?.使用效果.some((effect: any) => String(effect.目标属性).includes('精力'))).toBe(false);
+        expect(normalized.基础最大负重).toBe(100);
+        expect(normalized.储物负重加成.总计).toBeGreaterThan(0);
+        expect(normalized.最大负重).toBe(100 + normalized.储物负重加成.总计);
+    });
+
+    it('储物袋和储物戒指各只取最高一个生效，并且重复归一不会反复抬高最大负重', () => {
+        const normalized = 规范化角色物品容器映射({
+            姓名: '测试',
+            最大负重: 100,
+            物品列表: [
+                { ID: 'bag_1', 名称: '粗布储物袋', 描述: '负重上限 +20 斤。', 类型: '法宝', 品质: '凡品', 重量: 0.5, 堆叠数量: 1, 容器属性: { 最大容量: 20 } },
+                { ID: 'bag_2', 名称: '精制储物袋', 描述: '负重上限 +50 斤。', 类型: '法宝', 品质: '良品', 重量: 0.6, 堆叠数量: 1, 容器属性: { 最大容量: 50 } },
+                { ID: 'ring_1', 名称: '纳物戒', 描述: '负重上限 +80 斤。', 类型: '饰品', 品质: '上品', 重量: 0.1, 堆叠数量: 1, 容器属性: { 最大容量: 80 } },
+                { ID: 'ring_2', 名称: '乾坤戒', 描述: '负重上限 +150 斤。', 类型: '饰品', 品质: '极品', 重量: 0.1, 堆叠数量: 1, 容器属性: { 最大容量: 150 } },
+            ],
+            已补齐系统丹药预设: true
+        } as any);
+
+        expect(normalized.储物负重加成).toEqual({ 储物袋: 50, 储物戒指: 150, 总计: 200 });
+        expect(normalized.最大负重).toBe(300);
+        expect(normalized.当前负重).toBe(1.3);
+        expect(normalized.物品列表.every((item: any) => !item.容器属性 && !item.当前容器ID)).toBe(true);
+
+        const second = 规范化角色物品容器映射(normalized as any);
+        expect(second.基础最大负重).toBe(100);
+        expect(second.最大负重).toBe(300);
     });
 });
 

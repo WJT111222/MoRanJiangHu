@@ -135,6 +135,27 @@ export const 创建主角图片工作流 = (deps: 主角图片工作流依赖) =
         ));
     };
 
+    const 主角已有非头像构图 = (playerSnapshot: 角色数据结构 | undefined, compositions: string[]): boolean => {
+        const player = playerSnapshot || deps.获取角色();
+        const archive = player?.图片档案 && typeof player.图片档案 === 'object' ? player.图片档案 : {};
+        const history = Array.isArray(archive?.生图历史) ? archive.生图历史 : [];
+        const selectedPortraitId = typeof archive?.已选立绘图片ID === 'string' ? archive.已选立绘图片ID.trim() : '';
+        if (selectedPortraitId && history.some((item: any) => (
+            item?.id === selectedPortraitId
+            && compositions.includes(String(item?.构图 || ''))
+            && item?.状态 === 'success'
+            && 图片资源记录含可恢复地址(item)
+        ))) {
+            return true;
+        }
+        const recent = archive?.最近生图结果 || player?.最近生图结果;
+        return [recent, ...history].some((item: any) => (
+            item?.状态 === 'success'
+            && compositions.includes(String(item?.构图 || ''))
+            && 图片资源记录含可恢复地址(item)
+        ));
+    };
+
     const selectPlayerAvatarImage = (imageId: string) => 更新玩家选图字段(
         '已选头像图片ID',
         imageId,
@@ -276,10 +297,11 @@ export const 创建主角图片工作流 = (deps: 主角图片工作流依赖) =
         const imageFeature = deps.读取文生图功能配置();
         if (!imageFeature?.总开关) return;
         const targets: 主角生图选项[] = [
-            { 构图: '头像', 额外要求: '开局自动生成主角头像，强调面部辨识度、清晰五官与稳定角色特征。' },
-            { 构图: '半身', 额外要求: '开局自动生成主角半身像，强调上半身服饰、姿态、气质与身份辨识。' },
-            { 构图: '立绘', 额外要求: '开局自动生成主角全身立绘，强调完整服饰、体态、武侠气质与角色稳定外观。' }
-        ];
+            主角已有头像(playerSnapshot) ? null : { 构图: '头像', 额外要求: '开局自动生成主角头像，强调面部辨识度、清晰五官与稳定角色特征。' },
+            主角已有非头像构图(playerSnapshot, ['半身']) ? null : { 构图: '半身', 额外要求: '开局自动生成主角半身像，强调上半身服饰、姿态、气质与身份辨识。' },
+            主角已有非头像构图(playerSnapshot, ['立绘']) ? null : { 构图: '立绘', 额外要求: '开局自动生成主角全身立绘，强调完整服饰、体态、武侠气质与角色稳定外观。' }
+        ].filter(Boolean) as 主角生图选项[];
+        if (targets.length === 0) return;
         let failedCount = 0;
         for (const target of targets) {
             try {

@@ -220,6 +220,13 @@ export default defineConfig(({ mode }) => {
             if (normalizedId.endsWith('/utils/promptFeatureToggles.ts')) {
               return 'prompts-shared-utils';
             }
+
+            if (
+              normalizedId.endsWith('/data/structuredItemLibrary.ts') ||
+              normalizedId.endsWith('/data/presetItemImages.ts')
+            ) {
+              return 'item-library';
+            }
  
             if (normalizedId.includes('/prompts/runtime/')) {
               return 'prompts-runtime';
