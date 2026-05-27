@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 import { 视觉设置结构, MusicTrack } from '../../../types';
 import { 读取设置, 保存设置, 读取图片资源 } from '../../../services/dbService';
 import { 设置键 } from '../../../utils/settingsSchema';
+import { 默认背景音乐曲库 } from '../../../data/defaultMusicTracks';
 
 interface MusicContextType {
     tracks: MusicTrack[];
@@ -61,6 +62,7 @@ export const MusicProvider: React.FC<{
     onSaveVisual: (config: 视觉设置结构) => void;
 }> = ({ children, visualConfig, onSaveVisual }) => {
     const [tracks, setTracks] = useState<MusicTrack[]>([]);
+    const [localMusicConfig, setLocalMusicConfig] = useState<Partial<视觉设置结构>>({});
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
@@ -70,10 +72,42 @@ export const MusicProvider: React.FC<{
     
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
-    const enabled = visualConfig?.启用背景音乐 === true;
-    const volume = visualConfig?.全局音量 ?? 50;
-    const playMode = visualConfig?.音频播放模式 || 'list-loop';
-    const currentTrackId = visualConfig?.当前播放曲目ID;
+    useEffect(() => {
+        setLocalMusicConfig({
+            启用背景音乐: visualConfig?.启用背景音乐 === true,
+            全局音量: visualConfig?.全局音量 ?? 50,
+            音频播放模式: visualConfig?.音频播放模式 || 'list-loop',
+            当前播放曲目ID: visualConfig?.当前播放曲目ID
+        });
+    }, [
+        visualConfig?.启用背景音乐,
+        visualConfig?.全局音量,
+        visualConfig?.音频播放模式,
+        visualConfig?.当前播放曲目ID
+    ]);
+
+    const enabled = localMusicConfig.启用背景音乐 === true;
+    const volume = localMusicConfig.全局音量 ?? 50;
+    const playMode = localMusicConfig.音频播放模式 || 'list-loop';
+    const currentTrackId = localMusicConfig.当前播放曲目ID;
+    const playableTracks = tracks.length > 0 ? tracks : 默认背景音乐曲库;
+
+    const 保存音乐视觉设置 = (patch: Partial<视觉设置结构>) => {
+        const nextConfig = {
+            时间显示格式: visualConfig?.时间显示格式 || '传统',
+            渲染层数: visualConfig?.渲染层数 ?? 30,
+            ...visualConfig,
+            ...localMusicConfig,
+            ...patch
+        };
+        setLocalMusicConfig({
+            启用背景音乐: nextConfig.启用背景音乐 === true,
+            全局音量: nextConfig.全局音量 ?? 50,
+            音频播放模式: nextConfig.音频播放模式 || 'list-loop',
+            当前播放曲目ID: nextConfig.当前播放曲目ID
+        });
+        onSaveVisual(nextConfig);
+    };
 
     // Load initial tracks
     useEffect(() => {
@@ -143,7 +177,7 @@ export const MusicProvider: React.FC<{
                 return;
             }
             
-            const targetTrack = tracks.find(t => t.id === currentTrackId);
+            const targetTrack = playableTracks.find(t => t.id === currentTrackId);
             if (!targetTrack) return;
             
             // Parse Lyrics
@@ -186,7 +220,7 @@ export const MusicProvider: React.FC<{
         };
 
         loadAndPlayTrack();
-    }, [currentTrackId, tracks, enabled]);
+    }, [currentTrackId, playableTracks, enabled]);
 
     // Update current lyric based on time
     useEffect(() => {
@@ -207,25 +241,25 @@ export const MusicProvider: React.FC<{
     }, [currentTime, currentLyric]);
 
     const handleNext = useCallback((isAuto = false) => {
-        if (!tracks.length) return;
-        const currentIndex = tracks.findIndex(t => t.id === currentTrackId);
+        if (!playableTracks.length) return;
+        const currentIndex = playableTracks.findIndex(t => t.id === currentTrackId);
         
         let nextIndex = 0;
         if (playMode === 'random') {
-            nextIndex = Math.floor(Math.random() * tracks.length);
+            nextIndex = Math.floor(Math.random() * playableTracks.length);
         } else {
-            nextIndex = currentIndex >= 0 ? (currentIndex + 1) % tracks.length : 0;
+            nextIndex = currentIndex >= 0 ? (currentIndex + 1) % playableTracks.length : 0;
         }
         
-        playTrack(tracks[nextIndex].id);
-    }, [tracks, currentTrackId, playMode, visualConfig]);
+        playTrack(playableTracks[nextIndex].id);
+    }, [playableTracks, currentTrackId, playMode, visualConfig]);
 
     const handlePrev = useCallback(() => {
-        if (!tracks.length) return;
-        const currentIndex = tracks.findIndex(t => t.id === currentTrackId);
-        let prevIndex = currentIndex > 0 ? currentIndex - 1 : tracks.length - 1;
-        playTrack(tracks[prevIndex].id);
-    }, [tracks, currentTrackId, visualConfig]);
+        if (!playableTracks.length) return;
+        const currentIndex = playableTracks.findIndex(t => t.id === currentTrackId);
+        let prevIndex = currentIndex > 0 ? currentIndex - 1 : playableTracks.length - 1;
+        playTrack(playableTracks[prevIndex].id);
+    }, [playableTracks, currentTrackId, visualConfig]);
 
     const addTrack = async (track: MusicTrack) => {
         const updatedTracks = [...tracks, track];
@@ -238,6 +272,7 @@ export const MusicProvider: React.FC<{
     };
 
     const removeTrack = async (id: string) => {
+        if (id.startsWith('default_')) return;
         const updatedTracks = tracks.filter(t => t.id !== id);
         setTracks(updatedTracks);
         await 保存设置(设置键.音乐曲库, updatedTracks);
@@ -252,16 +287,18 @@ export const MusicProvider: React.FC<{
     };
 
     const playTrack = (id: string) => {
-        if (!visualConfig) return;
-        onSaveVisual({
-            ...visualConfig,
+        保存音乐视觉设置({
             当前播放曲目ID: id
         });
     };
 
     const togglePlay = () => {
         const audio = audioRef.current;
-        if (!audio || !currentTrackId) return;
+        if (!audio) return;
+        if (!currentTrackId && playableTracks[0]) {
+            playTrack(playableTracks[0].id);
+            return;
+        }
         if (isPlaying) {
             audio.pause();
         } else {
@@ -277,32 +314,29 @@ export const MusicProvider: React.FC<{
     };
 
     const setVolume = (vol: number) => {
-        if (!visualConfig) return;
-        onSaveVisual({
-            ...visualConfig,
+        保存音乐视觉设置({
             全局音量: vol
         });
     };
 
     const setPlayMode = (mode: 'list-loop' | 'single-loop' | 'random') => {
-        if (!visualConfig) return;
-        onSaveVisual({
-            ...visualConfig,
+        保存音乐视觉设置({
             音频播放模式: mode
         });
     };
     
     const toggleMusicFeature = (isEnabled: boolean) => {
-        if (!visualConfig) return;
-        onSaveVisual({
-            ...visualConfig,
-            启用背景音乐: isEnabled
+        保存音乐视觉设置({
+            启用背景音乐: isEnabled,
+            当前播放曲目ID: isEnabled && !currentTrackId && playableTracks[0]
+                ? playableTracks[0].id
+                : currentTrackId
         });
     };
 
     return (
         <MusicContext.Provider value={{
-            tracks,
+            tracks: playableTracks,
             addTrack,
             removeTrack,
             playTrack,

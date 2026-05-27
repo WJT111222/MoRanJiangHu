@@ -18,6 +18,7 @@ import { 生成物品图标 } from '../../../services/ai/itemImageGeneration';
 import { 获取物品已选图标地址 } from '../../../utils/itemImage';
 import { 获取货币显示模式 } from '../../../utils/currencyDisplay';
 import { 获取题材模式配置 } from '../../../utils/topicModeProfiles';
+import { 同步角色储物负重上限 } from '../../../utils/storageCarry';
 
 interface Props {
     character: any;
@@ -188,10 +189,10 @@ const AuctionHouseModal: React.FC<Props> = ({
             ...auction.物品,
             ID: `item_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
         };
-        const nextCharacter = {
+        const nextCharacter = 同步角色储物负重上限({
             ...character,
             物品列表: [...(Array.isArray(character?.物品列表) ? character.物品列表 : []), returnedItem],
-        };
+        });
         const nextState = appendRecord({
             ...auctionState,
             拍卖品列表: auctionState.拍卖品列表.map((entry) => entry.ID === auction.ID ? { ...entry, 状态: '已下架' as const } : entry),

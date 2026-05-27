@@ -1,3 +1,5 @@
+import { 同步角色储物负重上限, 重算背包物品负重 } from './storageCarry';
+
 const 取数字 = (value: unknown, fallback = 0): number => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -15,9 +17,7 @@ export const 是否杂物类物品 = (item: any): boolean => {
 };
 
 export const 重新计算背包负重 = (items: any[]): number => (
-    Math.round(items.reduce((sum, item) => (
-        sum + Math.max(0, 取数字(item?.重量)) * Math.max(1, Math.trunc(取数字(item?.堆叠数量, 1)))
-    ), 0) * 10) / 10
+    重算背包物品负重(items)
 );
 
 export const 丢弃背包物品 = (character: any, itemId: string, count = 1) => {
@@ -44,7 +44,7 @@ export const 丢弃背包物品 = (character: any, itemId: string, count = 1) =>
         }
     }
 
-    nextCharacter.当前负重 = 重新计算背包负重(nextCharacter.物品列表);
+    同步角色储物负重上限(nextCharacter);
     return {
         ok: true as const,
         nextCharacter,
@@ -57,7 +57,7 @@ export const 丢弃所有杂物 = (character: any) => {
     const items = Array.isArray(nextCharacter?.物品列表) ? nextCharacter.物品列表 : [];
     const removed = items.filter(是否杂物类物品);
     nextCharacter.物品列表 = items.filter((item: any) => !是否杂物类物品(item));
-    nextCharacter.当前负重 = 重新计算背包负重(nextCharacter.物品列表);
+    同步角色储物负重上限(nextCharacter);
     const removedCount = removed.reduce((sum: number, item: any) => sum + Math.max(1, Math.trunc(取数字(item?.堆叠数量, 1))), 0);
     return {
         ok: removed.length > 0 as boolean,

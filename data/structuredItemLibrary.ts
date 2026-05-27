@@ -1,4 +1,5 @@
 import type { 物品品质, 物品类型 } from '../models/item';
+import type { 题材模式类型 } from '../models/system';
 
 export interface 结构化物品条目 {
     名称: string;
@@ -10,6 +11,7 @@ export interface 结构化物品条目 {
     武器子类?: string;
     视觉标签: string[];
     生图描述: string;
+    适用题材模式?: 题材模式类型[];
 }
 
 const 武器材质 = [
@@ -127,6 +129,11 @@ const 无材质物品: 结构化物品条目[] = [
     { 名称: '绳索', 物品: '绳索', 类型: '杂物', 品质: '凡品', 视觉标签: ['hemp rope', 'coil'], 生图描述: 'coil of rough braided hemp rope' },
     { 名称: '地图', 物品: '地图', 类型: '杂物', 品质: '良品', 视觉标签: ['aged paper map', 'ink routes'], 生图描述: 'hand drawn map on aged paper showing mountains rivers and paths' },
     { 名称: '银两', 材质: '银', 物品: '银两', 类型: '杂物', 品质: '凡品', 视觉标签: ['silver ingots', 'currency'], 生图描述: 'small pile of Chinese silver ingots and loose silver pieces' },
+    { 名称: '门派令牌', 物品: '令牌', 类型: '任务道具', 品质: '良品', 视觉标签: ['sect token', 'carved wood and bronze'], 生图描述: 'ancient sect identity token made of carved wood and bronze, abstract emblem only, no readable text' },
+    { 名称: '镖局凭证', 物品: '凭证', 类型: '任务道具', 品质: '凡品', 视觉标签: ['escort agency voucher', 'paper seal'], 生图描述: 'folded ancient escort agency voucher with wax seal and unreadable ink strokes, no real text' },
+    { 名称: '密函', 物品: '密函', 类型: '任务道具', 品质: '上品', 视觉标签: ['sealed letter', 'secret document'], 生图描述: 'sealed ancient secret letter tied with cord and wax seal, unreadable marks only, no real text' },
+    { 名称: '铜钥匙', 材质: '铜', 物品: '钥匙', 类型: '任务道具', 品质: '凡品', 视觉标签: ['bronze key', 'old key'], 生图描述: 'single old bronze key with simple teeth on aged cloth, no label' },
+    { 名称: '官府文牒', 物品: '文牒', 类型: '任务道具', 品质: '良品', 视觉标签: ['official writ', 'folded document', 'seal'], 生图描述: 'ancient official travel document with red seal and unreadable calligraphy-like strokes, no readable real text' },
     { 名称: '草鞋', 物品: '草鞋', 类型: '防具', 品质: '凡品', 装备位置: '足部', 视觉标签: ['straw sandals', 'woven straw footwear'], 生图描述: 'a pair of empty woven straw sandals, rustic ancient footwear, visible straw weave and simple ties' },
 ];
 
@@ -188,6 +195,10 @@ const 仙侠预设物品: 结构化物品条目[] = [
     { 名称: '月白法袍', 物品: '法袍', 类型: '防具', 品质: '上品', 装备位置: '胸部', 视觉标签: ['cultivation robe', 'moon white fabric', 'silver trim'], 生图描述: 'moon-white cultivation robe laid flat with silver trim and soft fabric folds, no person, no text' },
     { 名称: '玄纹法冠', 物品: '法冠', 类型: '防具', 品质: '上品', 装备位置: '头部', 视觉标签: ['cultivation crown', 'dark jade', 'hair crown'], 生图描述: 'dark jade cultivation hair crown accessory with simple geometric motifs, isolated headwear prop, no person' },
     { 名称: '避尘靴', 物品: '法靴', 类型: '防具', 品质: '良品', 装备位置: '足部', 视觉标签: ['cultivation boots', 'cloth boots', 'white soles'], 生图描述: 'pair of empty clean cloth cultivation boots placed side by side, visible hollow openings and stitched soles, no feet' },
+    { 名称: '宗门令牌', 物品: '令牌', 类型: '任务道具', 品质: '良品', 视觉标签: ['cultivation sect token', 'jade and bronze'], 生图描述: 'xianxia sect identity token made of jade and bronze with abstract emblem, no readable text' },
+    { 名称: '秘境钥匙', 物品: '钥匙', 类型: '任务道具', 品质: '极品', 视觉标签: ['mystic key', 'ancient jade key', 'spatial gate'], 生图描述: 'single ancient jade key for a mystic realm gate, faint spatial glow, no text' },
+    { 名称: '传承玉符', 物品: '玉符', 类型: '任务道具', 品质: '绝世', 视觉标签: ['inheritance jade talisman', 'glowing jade token'], 生图描述: 'small glowing jade inheritance talisman with abstract engraved patterns, no readable characters' },
+    { 名称: '洞府禁牌', 物品: '禁牌', 类型: '任务道具', 品质: '上品', 视觉标签: ['cave mansion pass token', 'dark jade plaque'], 生图描述: 'dark jade cave-mansion access plaque with abstract seal marks, no readable text' },
 ];
 
 const 现代预设物品: 结构化物品条目[] = [
@@ -197,6 +208,30 @@ const 现代预设物品: 结构化物品条目[] = [
     { 名称: '急救包', 物品: '急救包', 类型: '消耗品', 品质: '良品', 视觉标签: ['first aid kit', 'medical supplies'], 生图描述: 'compact first aid kit opened to show bandages and medical supplies, no readable labels' },
     { 名称: '防割手套', 物品: '防割手套', 类型: '防具', 品质: '良品', 装备位置: '手部', 视觉标签: ['cut resistant gloves', 'work safety gear'], 生图描述: 'pair of grey cut-resistant work gloves, modern safety gear, isolated product photo' },
     { 名称: '古玉残佩', 物品: '古玉残佩', 类型: '饰品', 品质: '上品', 视觉标签: ['ancient jade pendant', 'modern antique market'], 生图描述: 'small incomplete antique jade pendant on a dark cloth, subtle mysterious aura, no text' },
+    { 名称: '银行卡', 物品: '银行卡', 类型: '杂物', 品质: '良品', 视觉标签: ['bank card', 'modern payment card'], 生图描述: 'plain modern bank card on a desk, no logo, no numbers, no readable text' },
+    { 名称: '现金信封', 物品: '现金信封', 类型: '杂物', 品质: '凡品', 视觉标签: ['cash envelope', 'modern currency'], 生图描述: 'plain paper envelope partly open with generic cash-like paper slips, no readable text or numbers' },
+    { 名称: '合同文件', 物品: '合同文件', 类型: '任务道具', 品质: '良品', 视觉标签: ['contract document', 'signature pages'], 生图描述: 'modern contract folder with clipped pages and unreadable lines, no real text, no readable signatures' },
+    { 名称: '证件夹', 物品: '证件夹', 类型: '任务道具', 品质: '凡品', 视觉标签: ['ID holder', 'document wallet'], 生图描述: 'plain leather ID document holder with blank cards inside, no readable identity text' },
+    { 名称: '数据U盘', 物品: '数据U盘', 类型: '任务道具', 品质: '上品', 视觉标签: ['USB drive', 'data evidence'], 生图描述: 'small black USB flash drive on a desk, no logo or readable label' },
+    { 名称: '车钥匙', 物品: '车钥匙', 类型: '任务道具', 品质: '凡品', 视觉标签: ['car key', 'key fob'], 生图描述: 'plain modern car key fob and metal key on a tabletop, no logo, no text' },
+    { 名称: '维修工具箱', 物品: '工具箱', 类型: '杂物', 品质: '良品', 视觉标签: ['toolbox', 'repair tools'], 生图描述: 'open modern repair toolbox with wrench screwdriver and pliers, no brand labels' },
+    { 名称: '多功能工具钳', 物品: '工具钳', 类型: '杂物', 品质: '良品', 视觉标签: ['multitool pliers', 'pocket tool'], 生图描述: 'folding multitool pliers opened slightly, isolated product photo, no logo' },
+    { 名称: '电子元件包', 物品: '电子元件', 类型: '材料', 品质: '良品', 视觉标签: ['electronic components', 'repair parts'], 生图描述: 'small tray of generic electronic components, wires and circuit parts, no readable markings' },
+    { 名称: '备用电池组', 物品: '电池组', 类型: '材料', 品质: '良品', 视觉标签: ['battery pack', 'portable cells'], 生图描述: 'compact unlabeled rechargeable battery pack and loose generic cells, no text' },
+    { 名称: '防身喷雾', 物品: '防身喷雾', 类型: '武器', 品质: '凡品', 武器子类: '暗器', 视觉标签: ['defense spray canister', 'nonlethal tool'], 生图描述: 'small plain personal safety spray canister, capped, no brand, no readable text' },
+    { 名称: '伸缩警棍', 物品: '警棍', 类型: '武器', 品质: '良品', 武器子类: '棍', 视觉标签: ['telescopic baton', 'modern self defense tool'], 生图描述: 'closed telescopic baton as a nonfunctional prop, isolated on neutral background, no person' },
+    { 名称: '轻便夹克', 物品: '夹克', 类型: '防具', 品质: '凡品', 装备位置: '胸部', 视觉标签: ['light jacket', 'urban clothing'], 生图描述: 'plain lightweight urban jacket laid flat, no person, no logo' },
+    { 名称: '防护口罩', 物品: '口罩', 类型: '防具', 品质: '凡品', 装备位置: '头部', 视觉标签: ['protective mask', 'modern PPE'], 生图描述: 'single plain protective face mask on a clean surface, no text or logo' },
+    { 名称: '运动鞋', 物品: '运动鞋', 类型: '防具', 品质: '凡品', 装备位置: '足部', 视觉标签: ['sneakers', 'modern footwear'], 生图描述: 'pair of empty modern sneakers side by side, no feet, no brand, no logo' },
+    { 名称: '急救手册', 物品: '手册', 类型: '秘籍', 品质: '良品', 视觉标签: ['first aid manual', 'training booklet'], 生图描述: 'small modern first aid training booklet with simple blank cover and unreadable diagrams, no readable text' },
+    { 名称: '电脑维修手册', 物品: '手册', 类型: '秘籍', 品质: '良品', 视觉标签: ['computer repair manual', 'technical booklet'], 生图描述: 'modern computer repair manual booklet with abstract circuit diagrams, no readable text' },
+    { 名称: '便携检测仪', 物品: '检测仪', 类型: '杂物', 品质: '上品', 视觉标签: ['portable detector', 'scientific handheld device'], 生图描述: 'handheld portable detector device with small blank screen and sensor probe, no text' },
+    { 名称: '防护服', 物品: '防护服', 类型: '防具', 品质: '上品', 装备位置: '胸部', 视觉标签: ['protective suit', 'hazmat-style gear'], 生图描述: 'folded modern protective suit with gloves and hood, no person, no logo, no text' },
+    { 名称: '异常样本盒', 物品: '样本盒', 类型: '材料', 品质: '上品', 视觉标签: ['sample case', 'sealed specimen'], 生图描述: 'sealed transparent specimen sample case with faint glow inside, no biohazard symbol, no readable text' },
+    { 名称: '灵能探测器', 物品: '探测器', 类型: '杂物', 品质: '上品', 视觉标签: ['spiritual energy detector', 'modern occult device'], 生图描述: 'modern handheld spiritual energy detector with blank gauge and subtle glow, no text' },
+    { 名称: '灵气抑制贴', 物品: '抑制贴', 类型: '消耗品', 品质: '良品', 视觉标签: ['spirit suppression patch', 'medical patch'], 生图描述: 'small sealed adhesive patches with faint blue pattern, no readable text or label' },
+    { 名称: '银戒指', 材质: '银', 物品: '戒指', 类型: '饰品', 品质: '良品', 视觉标签: ['silver ring', 'modern accessory'], 生图描述: 'plain silver ring photographed alone on neutral cloth, no hand, no logo' },
+    { 名称: '怀表', 物品: '怀表', 类型: '饰品', 品质: '良品', 视觉标签: ['pocket watch', 'vintage accessory'], 生图描述: 'closed vintage pocket watch with chain on dark cloth, no readable numerals or text' },
 ];
 
 const 末日预设物品: 结构化物品条目[] = [
@@ -206,6 +241,25 @@ const 末日预设物品: 结构化物品条目[] = [
     { 名称: '弩机组件', 物品: '弩机组件', 类型: '武器', 品质: '上品', 视觉标签: ['crossbow parts', 'silent weapon'], 生图描述: 'mechanical crossbow limb and trigger components on a rough table, no person' },
     { 名称: '抗生素散盒', 物品: '抗生素散盒', 类型: '消耗品', 品质: '上品', 视觉标签: ['antibiotics', 'medical cache'], 生图描述: 'scattered unlabeled antibiotic blister packs and small medicine box, survival medical supplies, no readable text' },
     { 名称: '汽油桶', 物品: '汽油桶', 类型: '材料', 品质: '良品', 视觉标签: ['fuel canister', 'survival resource'], 生图描述: 'red metal fuel canister with scratches and dirt, isolated apocalypse resource prop, no readable text' },
+    { 名称: '饮水瓶', 物品: '饮水瓶', 类型: '消耗品', 品质: '凡品', 视觉标签: ['water bottle', 'survival water'], 生图描述: 'clear reusable water bottle filled with clean water, scratched survival gear, no label' },
+    { 名称: '压缩饼干', 物品: '压缩饼干', 类型: '消耗品', 品质: '凡品', 视觉标签: ['compressed biscuits', 'ration food'], 生图描述: 'plain compressed ration biscuits in torn unlabeled foil packet, no readable text' },
+    { 名称: '医用绷带', 物品: '绷带', 类型: '消耗品', 品质: '凡品', 视觉标签: ['medical bandage', 'survival medicine'], 生图描述: 'roll of clean medical bandage and gauze pads, no label or text' },
+    { 名称: '止血带', 物品: '止血带', 类型: '消耗品', 品质: '良品', 视觉标签: ['tourniquet', 'emergency medicine'], 生图描述: 'plain emergency tourniquet strap coiled beside gauze, no logo or text' },
+    { 名称: '过滤水壶', 物品: '过滤水壶', 类型: '杂物', 品质: '良品', 视觉标签: ['water filter bottle', 'survival tool'], 生图描述: 'rugged water filter bottle with scratches, no brand, no readable markings' },
+    { 名称: '干电池组', 物品: '干电池', 类型: '材料', 品质: '凡品', 视觉标签: ['dry batteries', 'power cells'], 生图描述: 'small bundle of generic dry batteries with blank wraps, no text or brand' },
+    { 名称: '净水滤芯', 物品: '滤芯', 类型: '材料', 品质: '良品', 视觉标签: ['water filter cartridge', 'survival component'], 生图描述: 'generic water filter cartridge and charcoal pellets, no text' },
+    { 名称: '弹药盒', 物品: '弹药盒', 类型: '材料', 品质: '上品', 视觉标签: ['ammunition box', 'sealed metal box'], 生图描述: 'closed rugged metal ammunition supply box as a survival resource prop, no weapons, no readable text' },
+    { 名称: '太阳能充电板', 物品: '太阳能板', 类型: '材料', 品质: '上品', 视觉标签: ['portable solar panel', 'survival power'], 生图描述: 'folding portable solar charging panel on a dusty surface, no logo or text' },
+    { 名称: '防毒面具', 物品: '防毒面具', 类型: '防具', 品质: '上品', 装备位置: '头部', 视觉标签: ['gas mask', 'respirator'], 生图描述: 'single rugged gas mask respirator lying on a table, no person, no symbol, no text' },
+    { 名称: '护目镜', 物品: '护目镜', 类型: '防具', 品质: '良品', 装备位置: '头部', 视觉标签: ['protective goggles', 'survival eyewear'], 生图描述: 'scratched protective goggles on a dusty surface, no face, no logo' },
+    { 名称: '战术背心', 物品: '战术背心', 类型: '防具', 品质: '良品', 装备位置: '胸部', 视觉标签: ['tactical vest', 'survival armor'], 生图描述: 'empty rugged tactical vest laid flat with pouches, no person, no patches or text' },
+    { 名称: '撬棍', 物品: '撬棍', 类型: '武器', 品质: '凡品', 武器子类: '棍', 视觉标签: ['crowbar', 'salvage tool'], 生图描述: 'worn metal crowbar as a survival salvage tool, isolated prop, no person' },
+    { 名称: '消音弩', 物品: '弩', 类型: '武器', 品质: '上品', 武器子类: '暗器', 视觉标签: ['silent crossbow', 'survival weapon prop'], 生图描述: 'compact nonfunctional survival crossbow prop with simple limbs and stock, no projectile fired, no person' },
+    { 名称: '求生手册', 物品: '手册', 类型: '秘籍', 品质: '良品', 视觉标签: ['survival manual', 'field guide'], 生图描述: 'worn survival field manual booklet with abstract diagrams and no readable text' },
+    { 名称: '营地通行证', 物品: '通行证', 类型: '任务道具', 品质: '良品', 视觉标签: ['camp pass', 'survivor permit'], 生图描述: 'laminated survivor camp pass card with blank photo square and unreadable lines, no real text' },
+    { 名称: '无线电台', 物品: '无线电台', 类型: '杂物', 品质: '上品', 视觉标签: ['field radio', 'survival communication'], 生图描述: 'rugged portable field radio with antenna and blank display, no readable text' },
+    { 名称: '防水火柴', 物品: '火柴', 类型: '杂物', 品质: '凡品', 视觉标签: ['waterproof matches', 'survival fire starter'], 生图描述: 'small waterproof match case opened to show matches, no label or text' },
+    { 名称: '感染检测卡', 物品: '检测卡', 类型: '任务道具', 品质: '上品', 视觉标签: ['infection test card', 'medical evidence'], 生图描述: 'blank medical test card in a clear pouch with sample tube, no readable text or symbols' },
 ];
 
 const 生成材质物品 = (): 结构化物品条目[] => {
@@ -264,6 +318,67 @@ const 生成材质物品 = (): 结构化物品条目[] => {
 
 export const 结构化物品库: 结构化物品条目[] = 生成材质物品();
 
+const 取名称 = (items: readonly 结构化物品条目[]) => items.map((item) => item.名称);
+const 仙侠专属名称 = new Set(取名称(仙侠预设物品));
+const 现代专属名称 = new Set(取名称(现代预设物品));
+const 末日专属名称 = new Set(取名称(末日预设物品));
+const 额外仙侠法宝名称 = new Set(['玉骨扇']);
+const 去重名称 = (...groups: string[][]): string[] => Array.from(new Set(groups.flat().filter(Boolean)));
+
+const 武侠基础物品名称 = 结构化物品库
+    .filter((entry) => (
+        !仙侠专属名称.has(entry.名称)
+        && !现代专属名称.has(entry.名称)
+        && !末日专属名称.has(entry.名称)
+        && entry.类型 !== '法宝'
+    ))
+    .map((entry) => entry.名称);
+
+const 仙侠物品名称 = 结构化物品库
+    .filter((entry) => (
+        仙侠专属名称.has(entry.名称)
+        || 额外仙侠法宝名称.has(entry.名称)
+        || (!现代专属名称.has(entry.名称) && !末日专属名称.has(entry.名称))
+    ))
+    .map((entry) => entry.名称);
+
+const 现代都市物品名称 = 结构化物品库
+    .filter((entry) => 现代专属名称.has(entry.名称))
+    .map((entry) => entry.名称);
+
+const 末日物品名称 = 结构化物品库
+    .filter((entry) => 末日专属名称.has(entry.名称))
+    .map((entry) => entry.名称);
+
+export const 题材模式预设物品名称清单: Record<题材模式类型, string[]> = {
+    武侠: 去重名称(武侠基础物品名称),
+    仙侠: 去重名称(仙侠物品名称),
+    灵气复苏: 去重名称(现代都市物品名称, 仙侠物品名称, ['急救包', '便携检测仪', '防护服', '异常样本盒', '灵能探测器', '灵气抑制贴', '古玉残佩', '灵晶']),
+    都市修仙: 去重名称(现代都市物品名称, 仙侠物品名称, ['银行卡', '合同文件', '智能手机', '古玉残佩', '下品灵石', '符箓入门', '护身符']),
+    现代都市: 去重名称(现代都市物品名称),
+    末日丧尸: 去重名称(末日物品名称, ['智能手机', '急救包', '维修工具箱', '多功能工具钳', '备用电池组', '防护口罩', '运动鞋']),
+};
+
+const 规范化题材模式 = (mode?: unknown): 题材模式类型 => (
+    mode === '仙侠'
+        || mode === '灵气复苏'
+        || mode === '都市修仙'
+        || mode === '现代都市'
+        || mode === '末日丧尸'
+        || mode === '武侠'
+        ? mode
+        : '武侠'
+);
+
+export const 获取题材模式预设物品名称清单 = (mode?: unknown): string[] => (
+    题材模式预设物品名称清单[规范化题材模式(mode)]
+);
+
+export const 获取题材模式预设物品库 = (mode?: unknown): 结构化物品条目[] => {
+    const names = new Set(获取题材模式预设物品名称清单(mode));
+    return 结构化物品库.filter((entry) => names.has(entry.名称));
+};
+
 const 规范化名称 = (value: string): string => (
     String(value || '').trim().replace(/[·•・\s_\-—]+/g, '').replace(/青钢/g, '钢')
 );
@@ -280,6 +395,9 @@ export const 构建结构化物品库提示词摘要 = (): string => {
         .slice(0, 120)
         .map((entry) => entry.名称)
         .join('、');
+    const modeSummary = Object.entries(题材模式预设物品名称清单)
+        .map(([mode, names]) => `${mode}: ${names.slice(0, 28).join('、')}${names.length > 28 ? '等' : ''}`)
+        .join('；');
     return [
         '## 7. 结构化物品库优先规则',
         '- 生成任何新物品前，先在结构化物品库中选择最接近的“规范物品名称”：如 `钢盔甲`、`铁盔甲`、`钢剑`、`铁剑`、`木剑`、`草鞋`。',
@@ -288,6 +406,8 @@ export const 构建结构化物品库提示词摘要 = (): string => {
         '- 若剧情需要有门派、家族、出处或招式感，可以在展示名称中发挥，但底层规范物品仍应能对应库中条目。例如规范物品是 `钢刀`，展示名可以写 `杨氏断门刀`，描述里说明它是一柄杨氏家族传下的钢刀。',
         '- 物品图片、装备识别和预设复用以规范物品名称为准；剧情化展示名只负责风味，不应破坏规范物品映射。',
         '- 只有库中没有合适条目、且剧情确有特殊性时，才允许自由生成新规范名称；新规范名称也应保持材质和物品本体一致。',
+        '- 题材模式应优先从对应预设清单选物品；现代/末日不要回落到古代银钱、宗门法宝或仙侠灵石，灵气复苏/都市修仙可同时使用现代物资与修行物资。',
+        `- 当前题材模式预设清单示例：${modeSummary}。`,
         `- 当前可参考的常用结构化条目示例：${sampleNames}。`
     ].join('\n');
 };

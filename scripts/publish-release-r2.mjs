@@ -29,6 +29,7 @@ const legacyDownloadBaseUrl = String(process.env.MORAN_R2_PUBLIC_BASE_URL || `ht
   .replace(/\/+$/, '');
 const legacyManifestUrl = `${legacyDownloadBaseUrl}/latest.json`;
 const readEnv = (name, fallback = '') => String(process.env[name] || fallback).trim();
+const skipApkUpload = readEnv('MORAN_R2_SKIP_APK_UPLOAD', '0') === '1';
 const s3Endpoint = readEnv('MORAN_OSS_ENDPOINT', 'https://s3.hi168.com').replace(/\/+$/, '');
 const s3Bucket = readEnv('MORAN_OSS_BUCKET');
 const s3Prefix = readEnv('MORAN_OSS_RELEASE_PREFIX', releaseInfo.r2Prefix || 'moranjianghu').replace(/^\/+|\/+$/g, '');
@@ -51,7 +52,9 @@ const r2VersionedApkUrl = `${legacyDownloadBaseUrl}/${encodeURIComponent(version
 const r2LatestApkUrl = `${legacyDownloadBaseUrl}/latest.apk`;
 const versionedApkUrl = readEnv(
   'MORAN_RELEASE_VERSIONED_APK_URL',
-  websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedApkFileName)}` : (releaseInfo.apkDownloadUrl || hi168VersionedApkUrl)
+  skipApkUpload && hi168VersionedApkUrl
+    ? hi168VersionedApkUrl
+    : (websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedApkFileName)}` : (releaseInfo.apkDownloadUrl || hi168VersionedApkUrl))
 );
 const legacyLatestApkUrl = readEnv('MORAN_RELEASE_LATEST_APK_URL', releaseInfo.apkDownloadUrl || hi168LatestApkUrl);
 const preferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'r2') === 'hi168' ? 'hi168' : 'r2';
@@ -232,21 +235,25 @@ if (!versionedApkUrl) {
   throw new Error('Missing hi168/versioned APK URL. Run release:s3 first or set MORAN_RELEASE_VERSIONED_APK_URL.');
 }
 
-runWrangler([
-  'r2', 'object', 'put', `${bucket}/${r2VersionedApkKey}`,
-  '--file', apkPath,
-  '--content-type', 'application/vnd.android.package-archive',
-  '--cache-control', 'public,max-age=31536000,immutable',
-  '--remote'
-]);
+if (skipApkUpload) {
+  console.log('[R2] APK upload skipped by MORAN_R2_SKIP_APK_UPLOAD=1; publishing legacy manifest only.');
+} else {
+  runWrangler([
+    'r2', 'object', 'put', `${bucket}/${r2VersionedApkKey}`,
+    '--file', apkPath,
+    '--content-type', 'application/vnd.android.package-archive',
+    '--cache-control', 'public,max-age=31536000,immutable',
+    '--remote'
+  ]);
 
-runWrangler([
-  'r2', 'object', 'put', `${bucket}/${r2LatestApkKey}`,
-  '--file', apkPath,
-  '--content-type', 'application/vnd.android.package-archive',
-  '--cache-control', 'no-store,no-cache,max-age=0,must-revalidate',
-  '--remote'
-]);
+  runWrangler([
+    'r2', 'object', 'put', `${bucket}/${r2LatestApkKey}`,
+    '--file', apkPath,
+    '--content-type', 'application/vnd.android.package-archive',
+    '--cache-control', 'no-store,no-cache,max-age=0,must-revalidate',
+    '--remote'
+  ]);
+}
 
 runWrangler([
   'r2', 'object', 'put', manifestKey,
@@ -309,7 +316,7 @@ console.log(`R2 publish complete:
 - ${releaseInfo.updateManifestUrl}
 - apkSha256=${apkSha256}
 - apkSize=${apkSize}
-- uploadedApkBinaryToR2=true
+- uploadedApkBinaryToR2=${skipApkUpload ? 'false' : 'true'}
 - keptVersionedApks=${Array.from(keptVersionNames).join(', ')}
 - existingVersionedApks=${existingVersionedApks ? existingVersionedApks.length : 'unknown'}
 - staleVersionedApksDeleted=${deletedCount}`);

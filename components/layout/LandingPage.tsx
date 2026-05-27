@@ -465,7 +465,7 @@ const LandingPage: React.FC<Props> = ({
     };
 
     return (
-        <div className="landing-page relative z-40 flex h-full w-full flex-col items-center overflow-y-auto rounded-xl bg-black px-4 pt-[max(var(--app-safe-top,env(safe-area-inset-top,0px)),12px)] pb-[calc(var(--app-safe-bottom,env(safe-area-inset-bottom,0px))+16px)]">
+        <div className="landing-page relative z-40 flex h-full w-full max-w-full min-w-0 flex-col items-center overflow-x-hidden overflow-y-auto rounded-xl bg-black px-4 pt-[max(var(--app-safe-top,env(safe-area-inset-top,0px)),12px)] pb-[calc(var(--app-safe-bottom,env(safe-area-inset-bottom,0px))+16px)]">
             <div className="landing-bg absolute inset-0" aria-hidden="true">
                 <div
                     className="landing-bg-art absolute inset-0"
@@ -476,7 +476,7 @@ const LandingPage: React.FC<Props> = ({
                 <div className="landing-bg-grid absolute inset-x-0 bottom-0" />
             </div>
 
-            <div className="landing-topbar relative z-20 mb-3 flex w-full max-w-6xl flex-wrap items-center justify-center gap-2 pt-2 sm:justify-end md:mb-4">
+            <div className="landing-topbar relative z-20 mb-3 flex w-full max-w-full min-w-0 flex-wrap items-center justify-center gap-2 pt-2 sm:max-w-6xl sm:justify-end md:mb-4">
                 <button
                     type="button"
                     onClick={() => { void openExternalUrl(DISCORD_PROJECT_THREAD_URL); }}
@@ -523,9 +523,9 @@ const LandingPage: React.FC<Props> = ({
                 </button>
             </div>
 
-            <div className="landing-stage relative z-10 flex w-full max-w-[2200px] flex-1 flex-col items-center gap-6 pb-2 lg:block">
-                <section className="landing-hero-section relative z-20 flex min-h-[calc(100vh-210px)] min-w-0 flex-col items-center justify-center animate-fadeIn lg:absolute lg:left-1/2 lg:top-[40%] lg:-translate-x-1/2 lg:-translate-y-1/2">
-                    <div className="relative mb-7 flex w-full flex-col items-center">
+            <div className="landing-stage relative z-10 flex w-full max-w-full min-w-0 flex-1 flex-col items-center gap-6 overflow-x-hidden pb-2 lg:block lg:max-w-[2200px]">
+                <section className="landing-hero-section relative z-20 flex w-full max-w-full min-w-0 flex-col items-center justify-center overflow-x-hidden animate-fadeIn lg:absolute lg:left-1/2 lg:top-[40%] lg:min-h-[calc(100vh-210px)] lg:-translate-x-1/2 lg:-translate-y-1/2">
+                    <div className="relative mb-7 flex w-full max-w-full min-w-0 flex-col items-center">
                         <div className="landing-title-glow absolute -top-20 left-1/2 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-wuxia-gold/5 blur-3xl" />
 
                         <h1
@@ -553,7 +553,7 @@ const LandingPage: React.FC<Props> = ({
                             VER {RELEASE_INFO.versionName} · APK {RELEASE_INFO.versionCode}
                         </div>
 
-                        <div className="landing-subtitle-row flex items-center gap-6 opacity-90">
+                        <div className="landing-subtitle-row flex w-full max-w-full min-w-0 items-center justify-center gap-3 opacity-90 sm:gap-6">
                             <div className="h-px w-16 bg-gradient-to-r from-transparent to-wuxia-red" />
                             <h2
                                 className="text-shadow-sm text-xl font-bold uppercase tracking-[0.5em] text-wuxia-red md:text-2xl"
@@ -567,7 +567,7 @@ const LandingPage: React.FC<Props> = ({
                             <div className="h-px w-16 bg-gradient-to-l from-transparent to-wuxia-red" />
                         </div>
 
-                        <div className="landing-edition-card mt-7 w-full max-w-2xl border-2 border-amber-400/70 bg-amber-950/35 px-4 py-4 text-center shadow-[0_0_28px_rgba(251,191,36,0.16)]">
+                        <div className="landing-edition-card mt-7 w-full max-w-full border-2 border-amber-400/70 bg-amber-950/35 px-4 py-4 text-center shadow-[0_0_28px_rgba(251,191,36,0.16)] sm:max-w-2xl">
                             <div className="landing-edition-kicker text-sm font-bold tracking-[0.24em] text-amber-200 md:text-base">
                                 bacon159 二创版本
                             </div>
@@ -580,7 +580,7 @@ const LandingPage: React.FC<Props> = ({
                         </div>
                     </div>
 
-                    <div className="landing-action-group flex w-64 flex-col gap-3 animate-slide-in delay-100">
+                    <div className="landing-action-group flex w-[min(16rem,calc(100vw-2rem))] max-w-full flex-col gap-3 animate-slide-in delay-100">
                         <GameButton onClick={() => setLocalPlayOpen(true)} variant="primary" className="py-4 text-lg shadow-lg">
                             本地游玩
                         </GameButton>
@@ -607,7 +607,7 @@ const LandingPage: React.FC<Props> = ({
                     </div>
                 </section>
 
-                <div className="landing-dashboard-row relative z-10 grid w-full max-w-[1020px] grid-cols-1 items-stretch gap-4 overflow-hidden animate-fadeIn lg:absolute lg:bottom-16 lg:left-1/2 lg:h-[224px] lg:max-h-[224px] lg:-translate-x-1/2 lg:grid-cols-[minmax(300px,400px)_minmax(420px,1fr)]">
+                <div className="landing-dashboard-row relative z-10 grid w-full max-w-full min-w-0 grid-cols-1 items-stretch gap-4 overflow-hidden animate-fadeIn lg:absolute lg:bottom-16 lg:left-1/2 lg:h-[224px] lg:max-h-[224px] lg:max-w-[1020px] lg:-translate-x-1/2 lg:grid-cols-[minmax(300px,400px)_minmax(420px,1fr)]">
                     <aside className="landing-card landing-release-card flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-wuxia-gold/15 bg-black/45 px-4 py-3 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-sm">
                         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-wuxia-gold/10 pb-2">
                             <div>
@@ -672,7 +672,7 @@ const LandingPage: React.FC<Props> = ({
                 </div>
             </div>
 
-            <div className="landing-friend-links relative z-10 mt-1 w-full max-w-6xl border-t border-white/10 pt-1.5 lg:absolute lg:bottom-3 lg:left-1/2 lg:h-[38px] lg:-translate-x-1/2">
+            <div className="landing-friend-links relative z-10 mt-1 w-full max-w-full min-w-0 overflow-x-hidden border-t border-white/10 pt-1.5 sm:max-w-6xl lg:absolute lg:bottom-3 lg:left-1/2 lg:h-[38px] lg:-translate-x-1/2">
                 <div className="flex h-full flex-wrap items-center justify-center gap-2 overflow-visible">
                     <button
                         type="button"

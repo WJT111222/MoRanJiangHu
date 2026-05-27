@@ -39,6 +39,7 @@ import { buildHistoryDebugSummary, buildSaveDebugSummary, collectLargestStrings,
 import { 清理内嵌图片冗余字段 } from '../../utils/imageAssets';
 import { 计算历史游玩回合数 } from '../../utils/saveTurn';
 import { 修复旧姓名库误改NPC姓名列表 } from '../../utils/npcNameRepair';
+import { 修复开局伙伴社交列表 } from '../../utils/openingCompanion';
 
 const 收集图床图片地址 = (
     value: unknown,
@@ -515,7 +516,7 @@ export const 创建存档数据 = (
     const historySnapshot = 构建存档历史记录(historySource, deps);
     const roleSource = snapshot?.role ? snapshot.role : currentState.角色;
     const envSource = snapshot?.env ? snapshot.env : currentState.环境;
-    const socialSource = Array.isArray(snapshot?.social) ? snapshot.social : currentState.社交;
+    const rawSocialSource = Array.isArray(snapshot?.social) ? snapshot.social : currentState.社交;
     const worldSource = snapshot?.world ? snapshot.world : currentState.世界;
     const battleSource = snapshot?.battle ? snapshot.battle : currentState.战斗;
     const sectSource = snapshot?.sect ? snapshot.sect : currentState.玩家门派;
@@ -528,6 +529,7 @@ export const 创建存档数据 = (
     const fandomHeroinePlanSource = snapshot?.fandomHeroinePlan ?? currentState.同人女主剧情规划;
     const memorySource = snapshot?.memory ? snapshot.memory : deps.规范化记忆系统(currentState.记忆系统);
     const openingConfigSource = snapshot?.openingConfig ?? currentState.openingConfig;
+    const socialSource = 修复开局伙伴社交列表(rawSocialSource, openingConfigSource, roleSource);
     const visualSource = snapshot?.visualConfig ? snapshot.visualConfig : currentState.visualConfig;
     const sceneImageArchiveSource = snapshot?.sceneImageArchive
         ? snapshot.sceneImageArchive

@@ -24,6 +24,8 @@ describe('variable model dialogue NPC audit', () => {
         expect(prompt).toContain('林婉儿');
         expect(prompt).toContain('push 社交');
         expect(prompt).toContain('完整 NPC 档案');
+        expect(prompt).toContain('当前装备未确认的槽位写“无”');
+        expect(prompt).toContain('不得凭身份、性别、门派、境界');
         expect(prompt).not.toContain('沈墨：本回合有独立对白框');
     });
 

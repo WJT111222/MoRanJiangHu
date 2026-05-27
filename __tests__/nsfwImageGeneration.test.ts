@@ -426,6 +426,28 @@ describe('获取NSFW文生图接口配置', () => {
         expect(result?.图片接口路径).toBe('/prompt');
     });
 
+    it('ignores stale OpenAI model names when independent NSFW uses ComfyUI', () => {
+        const settings = 构建测试接口设置({
+            文生图后端类型: 'openai',
+            文生图模型使用模型: 'gpt-image-2',
+            文生图模型API地址: 'https://api.openai.com',
+            NSFW生图独立接口启用: true,
+            NSFW生图后端类型: 'comfyui',
+            NSFW生图模型使用模型: 'gpt-image-2',
+            NSFW生图模型API地址: 'https://c300lsbk50-8188.cnb.run'
+        });
+
+        const result = 获取NSFW文生图接口配置(settings);
+
+        expect(result).not.toBeNull();
+        expect(result?.图片后端类型).toBe('comfyui');
+        expect(result?.baseUrl).toBe('https://c300lsbk50-8188.cnb.run');
+        expect(result?.model).toBe('');
+        expect(result?.图片接口路径).toBe('/prompt');
+        expect(生图接口支持NSFW(result)).toBe(true);
+        expect(接口配置是否可用(result)).toBe(true);
+    });
+
     it('builds correct endpoint for SD WebUI NSFW config (different backend from shared)', () => {
         const settings = 构建测试接口设置({
             文生图后端类型: 'comfyui',
