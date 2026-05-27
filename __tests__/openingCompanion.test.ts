@@ -95,7 +95,7 @@ describe('开局伙伴姓名保护', () => {
         expect(partner.图片档案?.已选立绘图片ID).toBe('portrait');
     });
 
-    it('AI 已生成的伙伴姓名不会被本地修复逻辑改写', () => {
+    it('AI 误生成同伴姓名时会合并回玩家指定姓名并保留曾用名', () => {
         const openingConfig = 创建开局配置('沈青萝');
         const fixed = 修复开局伙伴社交列表([
             {
@@ -116,8 +116,43 @@ describe('开局伙伴姓名保护', () => {
         ], openingConfig, { 姓名: '陆行舟' } as any);
 
         expect(fixed).toHaveLength(1);
-        expect(fixed[0].姓名).toBe('苏婉儿');
-        expect(fixed[0].曾用名).toBeUndefined();
+        expect(fixed[0].姓名).toBe('沈青萝');
+        expect(fixed[0].曾用名).toContain('苏婉儿');
+        expect(fixed[0].是否队友).toBe(true);
+        expect(fixed[0].是否主要角色).toBe(true);
+    });
+
+    it('变量生成同时保留本地同伴和 AI 同名同伴时只落一条档案', () => {
+        const openingConfig = 创建开局配置('俞月荷');
+        const fixed = 修复开局伙伴社交列表([
+            {
+                id: 'npc_opening_partner_seed',
+                姓名: '俞月荷',
+                性别: '女',
+                年龄: 19,
+                生日: '3月12日',
+                身份: '青梅竹马',
+                是否队友: true,
+                是否主要角色: true,
+                关系状态: '青梅竹马'
+            },
+            {
+                id: 'npc_ai_same_name',
+                姓名: '俞月荷',
+                性别: '女',
+                年龄: 19,
+                生日: '3月12日',
+                身份: '自幼相识的同行伙伴',
+                是否在场: true,
+                是否队友: true,
+                是否主要角色: true,
+                关系状态: '青梅竹马',
+                简介: '俞月荷是主角自幼相识的同行伙伴。'
+            }
+        ], openingConfig, { 姓名: '杨培强' } as any);
+
+        expect(fixed.filter((npc: any) => npc.姓名 === '俞月荷')).toHaveLength(1);
+        expect(fixed).toHaveLength(1);
         expect(fixed[0].是否队友).toBe(true);
         expect(fixed[0].是否主要角色).toBe(true);
     });
