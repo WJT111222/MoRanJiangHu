@@ -376,7 +376,7 @@ async function uploadImageToHost(item, buf) {
     payload?.url
   ].map((value) => typeof value === 'string' ? value.trim() : '').find(Boolean);
   const id = payload?.file?.id || payload?.id || payload?.data?.file?.id || payload?.data?.id || '';
-  const remoteUrl = candidates || (id ? `https://image.bacon159.pp.ua/api/v1/file/${encodeURIComponent(id)}` : '');
+  const remoteUrl = candidates || (id ? `https://image1.bacon159.pp.ua/api/v1/file/${encodeURIComponent(id)}` : '');
   if (!remoteUrl) throw new Error(`upload host response has no url: ${text.slice(0, 800)}`);
   return remoteUrl;
 }
@@ -401,7 +401,7 @@ async function selectTargets() {
       if (idx < 0) return true;
       const lineEnd = registry.indexOf('\n', idx);
       const line = registry.slice(idx, lineEnd >= 0 ? lineEnd : undefined);
-      return !line.includes('https://image.bacon159.pp.ua');
+      return !line.includes('https://image.bacon159.pp.ua') && !line.includes('https://image1.bacon159.pp.ua');
     });
   }
   if (LOCAL_ONLY) {

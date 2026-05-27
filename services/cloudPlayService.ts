@@ -215,7 +215,7 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => globalThis
 const buildCloudSaveDownloadUrl = (targetUrl: string): string => {
     try {
         const url = new URL(targetUrl);
-        if (!/(^|\.)image\.bacon159\.pp\.ua$/i.test(url.hostname)) return targetUrl;
+        if (!/(^|\.)(?:image1|image)\.bacon159\.pp\.ua$/i.test(url.hostname)) return targetUrl;
         return `${buildImageHostProxyUrl(IMAGE_HOST_DOWNLOAD_PROXY_PATH)}?type=file&url=${encodeURIComponent(targetUrl)}`;
     } catch {
         return targetUrl;
