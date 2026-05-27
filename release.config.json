@@ -1,13 +1,13 @@
 {
-  "versionCode": 340,
-  "versionName": "1.0.339",
+  "versionCode": 341,
+  "versionName": "1.0.340",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "预设物品图片统一切换到实测更快的 image1 图床域名，背包、拍卖行和预设图库加载物品图更顺畅。",
-    "重新替换 64 张非写实风格的预设物品图，现代、末日和灵气复苏物品不再显示扁平图标风格。",
-    "六个题材模式的预设图片反馈页继续可查看全部预设图，方便发现和反馈不合适的物品图片。",
+    "预设物品图片已按实测加载速度逐张选择最快图床域名，绝大多数图片使用 image1，少数旧域名更快的图片保留旧域名，背包、拍卖行和预设图库加载更顺畅。",
+    "六个题材模式的预设图片反馈页同步更新为测速后的最快图片地址，方便继续查看和反馈不合适的物品图片。",
+    "云端图片下载代理兼容 image1 与旧 image 图床域名，历史图片和新图片都能正常走官网代理。",
     "官网：https://msjh.bacon159.pp.ua/",
-    "同步更新 Web 与预设图库到 v1.0.339。"
+    "同步更新 Web 与预设图库到 v1.0.340。"
   ],
   "releaseHistory": [
     {
@@ -2149,7 +2149,7 @@
   "r2Bucket": "quark-downloads-bacon",
   "r2Prefix": "moranjianghu",
   "backupWebsiteUrl": "https://msjh.bacon.de5.net",
-  "releasePublishedAt": "2026-05-28T02:28:27+08:00",
+  "releasePublishedAt": "2026-05-28T02:42:04+08:00",
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html"
 }

@@ -481,7 +481,7 @@ async function uploadImageToHost(item, buf) {
         payload?.url,
       ].map((value) => typeof value === 'string' ? value.trim() : '').find(Boolean);
       const id = payload?.file?.id || payload?.id || payload?.data?.file?.id || payload?.data?.id || '';
-      const remoteUrl = candidates || (id ? `https://image.bacon159.pp.ua/api/v1/file/${encodeURIComponent(id)}` : '');
+      const remoteUrl = candidates || (id ? `https://image1.bacon159.pp.ua/api/v1/file/${encodeURIComponent(id)}` : '');
       if (!remoteUrl) throw new Error(`upload response has no url: ${text.slice(0, 500)}`);
       return remoteUrl;
     } catch (error) {
