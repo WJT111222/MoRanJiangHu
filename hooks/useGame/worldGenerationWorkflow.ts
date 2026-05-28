@@ -290,6 +290,7 @@ export const 执行世界生成工作流 = async (
         const normalizedWorldExtraRequirement = typeof worldConfig.worldExtraRequirement === 'string'
             ? worldConfig.worldExtraRequirement.trim()
             : '';
+        const useWorldRefinement = !useManualWorldPrompt && normalizedWorldExtraRequirement.length > 0;
         const initialFandomBundle = 构建同人运行时提示词包({ openingConfig });
         const fandomEnabled = initialFandomBundle.enabled;
         let realmPromptContent = 启用修炼体系
@@ -366,7 +367,7 @@ export const 执行世界生成工作流 = async (
                     }
                     : undefined,
                 normalizedWorldExtraRequirement
-                    ? `【世界观额外要求】\n${normalizedWorldExtraRequirement}`
+                    ? `【玩家世界观草稿与细化要求】\n${normalizedWorldExtraRequirement}\n- 必须优先保留玩家已写明的世界事实，并在此基础上细化，不得自顾自另起炉灶。`
                     : '',
                 signal
             ), { idleTimeout: openingRequestStreaming });
@@ -409,7 +410,7 @@ export const 执行世界生成工作流 = async (
                     realmPromptContent
                 ].join('\n')
                 : '',
-            normalizedWorldExtraRequirement ? `【世界观额外要求】\n${normalizedWorldExtraRequirement}` : '',
+            normalizedWorldExtraRequirement ? `【玩家世界观草稿与细化要求】\n${normalizedWorldExtraRequirement}\n- 必须优先保留玩家已写明的事实、地名、势力、时代、规则和禁忌。\n- 生成时只补全缺口、细化因果、补齐长期运行结构，不得推翻、绕开或替换玩家草稿。` : '',
             获取繁体输出指令(normalizedGameConfig)
         ]
             .filter(Boolean)
@@ -418,7 +419,7 @@ export const 执行世界生成工作流 = async (
 
         if (openingStreaming) {
             开局流式历史更新器?.更新(
-                useManualWorldPrompt ? '【生成中】校验手动世界观提示词...' : '【生成中】世界观生成...',
+                useManualWorldPrompt ? '【生成中】校验手动世界观提示词...' : useWorldRefinement ? '【生成中】AI 细化世界观...' : '【生成中】AI 生成世界观...',
                 { immediate: true }
             );
             if (!useManualWorldPrompt) {
@@ -427,14 +428,14 @@ export const 执行世界生成工作流 = async (
                     if (worldDeltaReceived) return;
                     pulse = (pulse + 1) % 4;
                     const dots = '.'.repeat(pulse) || '.';
-                    开局流式历史更新器?.更新(`【生成中】世界观生成${dots}`);
+                    开局流式历史更新器?.更新(`【生成中】${useWorldRefinement ? 'AI 细化世界观' : 'AI 生成世界观'}${dots}`);
                 }, 420);
             }
         }
 
         const generatedWorldPrompt = useManualWorldPrompt
             ? textAIService.解析世界观提示词内容(normalizedManualWorldPrompt)
-            : await 执行带超时('世界观生成', 世界观阶段超时毫秒, (signal, 标记活动) => textAIService.generateWorldData(
+            : await 执行带超时(useWorldRefinement ? 'AI 细化世界观' : 'AI 生成世界观', 世界观阶段超时毫秒, (signal, 标记活动) => textAIService.generateWorldData(
                 worldGenerationContext,
                 charData,
                 currentApi,
@@ -449,7 +450,7 @@ export const 执行世界生成工作流 = async (
                                 ? `...${normalized.slice(-480)}`
                                 : normalized;
                             const preview = tail.split('\n').slice(-10).join('\n').trim();
-                            开局流式历史更新器?.更新(`【生成中】世界观生成（流式预览）\n${preview || '...'}\n\n已接收 ${normalized.length} 字符`);
+                            开局流式历史更新器?.更新(`【生成中】${useWorldRefinement ? 'AI 细化世界观' : 'AI 生成世界观'}（流式预览）\n${preview || '...'}\n\n已接收 ${normalized.length} 字符`);
                         }
                     }
                     : undefined,

@@ -90,7 +90,7 @@ export const 构建开局世界观生成提示词预览 = ({
                 realmPromptContent
             ].join('\n')
             : '',
-        normalizedWorldExtraRequirement ? `【世界观额外要求】\n${normalizedWorldExtraRequirement}` : '',
+        normalizedWorldExtraRequirement ? `【玩家世界观草稿与细化要求】\n${normalizedWorldExtraRequirement}\n- 必须优先保留玩家已写明的事实、地名、势力、时代、规则和禁忌。\n- 生成时只补全缺口、细化因果、补齐长期运行结构，不得推翻、绕开或替换玩家草稿。` : '',
         获取繁体输出指令(normalizedGameConfig)
     ]
         .filter(Boolean)

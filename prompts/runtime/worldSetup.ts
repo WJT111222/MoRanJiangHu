@@ -63,7 +63,7 @@ export const 构建世界观锚点提示词 = (worldConfig: WorldGenConfig, char
 - ${题材配置.tianjiaoLabel}: ${worldConfig.tianjiaoSetting}
 - 游戏难度: ${难度设定.label}（${worldConfig.difficulty || 'normal'}）
 - 难度参数: 起始属性点${难度设定.起始属性点}；天赋重 roll ${难度设定.天赋重Roll次数}次；玩家判定修正${判定修正}；${难度设定.资源压力}；${难度设定.失败代价}
-- 世界观额外要求: ${worldConfig.worldExtraRequirement?.trim() || '无'}
+- 玩家世界观草稿与细化要求: ${worldConfig.worldExtraRequirement?.trim() || '无'}
 
 【世界母本硬边界】
 - 本存档世界观必须兼容${题材配置.label}成长主轴。
@@ -160,7 +160,10 @@ ${enabledDifficultyPrompts || '未提供'}
 - 难度规则在此阶段只用于约束“世界风险生态、资源稀缺度、社会压力、成长难度背景”。
 - 不要在此阶段直接输出数值变量、命令或初始化结果。
 
-【世界观额外要求（仅约束 world_prompt）】
+【玩家世界观草稿与细化要求（优先约束 world_prompt）】
 ${worldExtraRequirement.trim() || '无'}
-- 额外要求只影响世界母本风格与边界，不把结果改写成玩家专属设定或一次性剧情脚本。
+- 若玩家提供了草稿、片段、规则、地名、势力、时代、禁忌或风格方向，必须优先保留这些已写明内容，并在其基础上细化。
+- AI 只能补全缺口、整理因果、扩展可长期运行的世界结构；不得推翻、绕开、同义改写掉玩家草稿中的关键事实。
+- 若玩家草稿与题材模式或系统硬规则冲突，优先做兼容化解释；只有无法兼容时才最小幅度调整，并保留玩家原意。
+- 这些内容只影响世界母本风格与边界，不把结果改写成玩家专属设定或一次性剧情脚本。
 `.trim();

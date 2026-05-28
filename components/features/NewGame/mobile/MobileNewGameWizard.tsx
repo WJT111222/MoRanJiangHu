@@ -3,6 +3,8 @@ import GameButton from '../../../ui/GameButton';
 import { 接口设置结构, OpeningConfig, WorldGenConfig, 小说拆分数据集结构, 角色数据结构, 天赋结构, 背景结构, 游戏难度 } from '../../../../types';
 import { 预设天赋, 预设背景 } from '../../../../data/presets';
 import type { 开局预设方案结构 } from '../../../../data/newGamePresets';
+import type { 创意工坊模块条目, 创意工坊模块类型 } from '../../../../data/creativeWorkshopModules';
+import type { 题材模式类型 } from '../../../../models/system';
 import { OrnateBorder } from '../../../ui/decorations/OrnateBorder';
 import InlineSelect from '../../../ui/InlineSelect';
 import NewGameDiyTools from '../NewGameDiyTools';
@@ -17,7 +19,9 @@ import {
     题材模式选项,
     属性最大值,
     属性最小值,
+    创建平均属性分配,
     创建默认属性分配,
+    创建随机属性分配,
     新开局步骤列表,
     默认初始伙伴配置,
     默认开局配置,
@@ -28,12 +32,13 @@ import {
     规范化开局配置,
     规范化可选开局配置
 } from '../../../../utils/openingConfig';
-import { 合并题材世界默认值, 获取题材模式配置 } from '../../../../utils/topicModeProfiles';
+import { 合并题材世界默认值, 获取题材模式配置, 题材模式顺序 } from '../../../../utils/topicModeProfiles';
 import { 构建默认技艺 } from '../../../../utils/skillDefaults';
 import { 默认境界母板提示词 } from '../../../../prompts/runtime/fandom';
 import { 设置键 } from '../../../../utils/settingsSchema';
 import { 根据名称映射天赋抽卡, 根据名称映射抽卡, 补全天赋抽卡名称列表, 补全抽卡名称列表, 天赋抽卡数量, 出身抽卡数量, 抽取天赋卡牌, 抽取卡牌 } from '../../../../utils/talentDraw';
 import { 构建开局世界观生成提示词预览 } from '../../../../utils/worldGenerationPromptPreview';
+import { 下载创意工坊模块, 列出创意工坊模块 } from '../../../../services/creativeWorkshop';
 
 interface Props {
     onComplete: (
@@ -77,6 +82,13 @@ const 世界版图下拉选项: Array<{ value: WorldGenConfig['worldSize']; labe
     { value: '九州宏大', label: '九州宏大 (万里河山)' },
     { value: '无尽位面', label: '无尽位面 (多重世界)' }
 ];
+const 创意工坊类型标签: Record<创意工坊模块类型, string> = {
+    topic: '题材模板',
+    world_rules: '世界规则',
+    opening: '开局配置',
+    ability: '能力体系',
+    comfy_workflow: 'ComfyUI 工作流'
+};
 type DropdownProps = {
     value: number;
     options: number[];
@@ -224,6 +236,11 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
     const [自定义背景列表, 设置自定义背景列表] = useState<背景结构[]>([]);
     const [自定义开局预设列表, 设置自定义开局预设列表] = useState<开局预设方案结构[]>([]);
     const [小说拆分数据集列表, 设置小说拆分数据集列表] = useState<小说拆分数据集结构[]>([]);
+    const [创意工坊模块列表, 设置创意工坊模块列表] = useState<创意工坊模块条目[]>([]);
+    const [已选创意工坊模式, 设置已选创意工坊模式] = useState<题材模式类型 | ''>('');
+    const [已选创意工坊子项, 设置已选创意工坊子项] = useState<Partial<Record<创意工坊模块类型, string>>>({});
+    const [创意工坊注入状态, 设置创意工坊注入状态] = useState('');
+    const [创意工坊注入中, 设置创意工坊注入中] = useState(false);
     
     // Custom Inputs
     const [customTalent, setCustomTalent] = useState<天赋结构>({ 名称: '', 描述: '', 效果: '' });
@@ -238,6 +255,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
     const [openingExtraRequirement, setOpeningExtraRequirement] = useState('');
     const [显示世界观生成提示词, set显示世界观生成提示词] = useState(false);
     const [世界观生成提示词状态, set世界观生成提示词状态] = useState('');
+    const 世界观请求模式 = worldConfig.worldExtraRequirement.trim() ? 'AI 细化世界观' : 'AI 生成世界观';
 
     // --- Logic ---
     const monthOptions = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
@@ -532,7 +550,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
             当前经验: 0, 升级经验: 初始升级经验, 玩家BUFF: [], 突破条件: []
         };
     };
-    const 应用预设到表单 = (preset: 开局预设方案结构) => {
+    const 应用预设到表单 = (preset: 开局预设方案结构, options?: { 保持当前步骤?: boolean }) => {
         const nextWorldConfig: WorldGenConfig = { ...worldConfig, ...preset.worldConfig };
         const nextBackground = 根据名称查找背景(preset.character.背景名称);
         const nextTalents = 根据名称查找天赋列表(preset.character.天赋名称列表);
@@ -572,7 +590,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
         });
         setPartnerTalents(normalizedPartner.天赋列表 as 天赋结构[]);
         setOpeningExtraRequirement(preset.openingExtraRequirement || '');
-        setStep(1);
+        if (!options?.保持当前步骤) setStep(1);
     };
     const 当前性别模式: '男' | '女' | '自定义' = charGender.trim() === '男' || charGender.trim() === '女'
         ? charGender.trim() as '男' | '女'
@@ -649,6 +667,93 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
         }));
         setWorldConfig((prev) => 合并题材世界默认值(题材模式, prev) as WorldGenConfig);
     };
+    const 拼接额外要求 = (current: string | undefined, addition: string): string => {
+        const base = (current || '').trim();
+        const extra = addition.trim();
+        if (!extra) return base;
+        if (!base) return extra;
+        if (base.includes(extra)) return base;
+        return `${base}\n${extra}`;
+    };
+
+    const 创意工坊模块键 = (entry: 创意工坊模块条目): string => `${entry.source || 'builtin'}:${entry.id}`;
+
+    const 按键查找创意工坊模块 = (moduleKey: string): 创意工坊模块条目 | undefined => (
+        创意工坊模块列表.find((item) => 创意工坊模块键(item) === moduleKey)
+    );
+
+    const 按模式查找官方工坊模块 = (mode: 题材模式类型, type: 创意工坊模块类型): 创意工坊模块条目 | undefined => (
+        创意工坊模块列表.find((entry) => (
+            entry.source === 'builtin'
+            && entry.type === type
+            && entry.preset?.openingConfig?.题材模式 === mode
+        ))
+    );
+
+    const 读取模块模式 = (entry: 创意工坊模块条目): 题材模式类型 | '' => {
+        const mode = entry.preset?.openingConfig?.题材模式 || (entry.payload as any)?.mode || (entry.payload as any)?.value;
+        return 题材模式顺序.includes(mode as 题材模式类型) ? mode as 题材模式类型 : '';
+    };
+
+    const 应用创意工坊模块到开局 = async (moduleKey: string) => {
+        设置创意工坊注入状态('');
+        if (!moduleKey) return;
+        const entry = 按键查找创意工坊模块(moduleKey);
+        if (!entry) return;
+        设置创意工坊注入中(true);
+        try {
+            const module = await 下载创意工坊模块(entry);
+            const mode = 读取模块模式(module);
+            if (mode) 更新题材模式(mode);
+            const content = String((module.payload as any)?.content || '').trim();
+            if (module.type === 'topic' && module.preset) {
+                setWorldConfig((prev) => ({
+                    ...prev,
+                    ...module.preset!.worldConfig,
+                    manualWorldPrompt: prev.manualWorldPrompt,
+                    manualRealmPrompt: prev.manualRealmPrompt
+                }));
+                if (module.preset.openingConfig?.题材模式) {
+                    setOpeningConfig((prev) => ({ ...prev, 题材模式: module.preset!.openingConfig!.题材模式 }));
+                }
+            } else if (module.type === 'world_rules') {
+                const extra = String((module.payload as any)?.worldExtraRequirement || module.preset?.openingExtraRequirement || content).trim();
+                if (extra) setWorldConfig((prev) => ({ ...prev, worldExtraRequirement: 拼接额外要求(prev.worldExtraRequirement, extra) }));
+            } else if (module.type === 'ability') {
+                const realmPrompt = String((module.payload as any)?.manualRealmPrompt || module.preset?.worldConfig?.manualRealmPrompt || content).trim();
+                if (realmPrompt) setWorldConfig((prev) => ({ ...prev, manualRealmPrompt: realmPrompt }));
+            }
+            设置创意工坊注入状态(`已注入「${module.title}」。可在下方继续微调世界观和手动提示词；开局配置仍在后续步骤单独调整。`);
+        } catch (error: any) {
+            设置创意工坊注入状态(`工坊预设注入失败：${error?.message || '未知错误'}`);
+        } finally {
+            设置创意工坊注入中(false);
+        }
+    };
+
+    const 选择创意工坊子项 = (type: 创意工坊模块类型, moduleKey: string) => {
+        设置已选创意工坊子项((prev) => ({ ...prev, [type]: moduleKey }));
+        void 应用创意工坊模块到开局(moduleKey);
+    };
+
+    const 选择创意工坊模式 = (mode: 题材模式类型 | '') => {
+        设置已选创意工坊模式(mode);
+        if (!mode) {
+            设置已选创意工坊子项({});
+            return;
+        }
+        更新题材模式(mode);
+        const next: Partial<Record<创意工坊模块类型, string>> = {};
+        (['topic', 'world_rules', 'ability'] as 创意工坊模块类型[]).forEach((type) => {
+            const entry = 按模式查找官方工坊模块(mode, type);
+            if (entry) {
+                const key = 创意工坊模块键(entry);
+                next[type] = key;
+                void 应用创意工坊模块到开局(key);
+            }
+        });
+        设置已选创意工坊子项(next);
+    };
     const 读取UTF8文本文件 = async (file: File): Promise<string> => (
         new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -704,7 +809,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
     };
     const 导出世界观生成请求提示词 = () => {
         导出文本文件(`${worldConfig.worldName || 'world'}-开局世界观生成请求.txt`, 当前世界观生成提示词预览);
-        set世界观生成提示词状态('已导出开局世界观生成请求。');
+        set世界观生成提示词状态(`已导出${世界观请求模式}请求。`);
         window.setTimeout(() => set世界观生成提示词状态(''), 2200);
     };
     const 复制世界观生成请求提示词 = async () => {
@@ -713,7 +818,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                 throw new Error('当前浏览器不支持剪贴板写入');
             }
             await navigator.clipboard.writeText(当前世界观生成提示词预览);
-            set世界观生成提示词状态('已复制开局世界观生成请求。');
+            set世界观生成提示词状态(`已复制${世界观请求模式}请求。`);
         } catch (error) {
             导出文本文件(`${worldConfig.worldName || 'world'}-开局世界观生成请求.txt`, 当前世界观生成提示词预览);
             set世界观生成提示词状态('复制失败，已改为导出文本文件。');
@@ -736,11 +841,12 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
     useEffect(() => {
         const 加载自定义建角配置 = async () => {
             try {
-                const [savedTalents, savedBackgrounds, savedStartPresets, savedNovelDatasets] = await Promise.all([
+                const [savedTalents, savedBackgrounds, savedStartPresets, savedNovelDatasets, workshopModules] = await Promise.all([
                     dbService.读取设置(自定义天赋存储键),
                     dbService.读取设置(自定义背景存储键),
                     dbService.读取设置(自定义开局预设存储键),
-                    读取小说拆分数据集列表()
+                    读取小说拆分数据集列表(),
+                    列出创意工坊模块().catch(() => [] as 创意工坊模块条目[])
                 ]);
                 if (Array.isArray(savedTalents)) {
                     设置自定义天赋列表(合并去重天赋(savedTalents as 天赋结构[]));
@@ -750,6 +856,9 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                 }
                 if (Array.isArray(savedStartPresets)) {
                     设置自定义开局预设列表(合并去重开局预设方案(savedStartPresets.map(item => 标准化开局预设方案(item)).filter(Boolean) as 开局预设方案结构[]));
+                }
+                if (Array.isArray(workshopModules)) {
+                    设置创意工坊模块列表(workshopModules.filter((item) => item.type === 'topic' || item.type === 'world_rules' || item.type === 'ability'));
                 }
                 设置小说拆分数据集列表(savedNovelDatasets);
             } catch (error) {
@@ -779,6 +888,9 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
         if (delta > 0 && current >= 属性最大值) return;
         setStats({ ...stats, [key]: current + delta });
     };
+
+    const 平均分配主角属性 = () => setStats(创建平均属性分配(totalStatBudget));
+    const 随机分配主角属性 = () => setStats(创建随机属性分配(totalStatBudget));
 
     const toggleRelationFocus = (value: OpeningConfig['关系侧重'][number]) => {
         setOpeningConfig((prev) => {
@@ -854,7 +966,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
     const 校验属性点是否合法 = (): boolean => {
         if (remainingPoints < 0) {
             alert(`当前属性总点数超过 ${worldConfig.difficulty.toUpperCase()} 难度上限，请先回收 ${Math.abs(remainingPoints)} 点。`);
-            setStep(1);
+            setStep(2);
             return false;
         }
         if (partnerEnabled && partnerRemainingPoints < 0) {
@@ -866,7 +978,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
     };
 
     const handleNextStep = () => {
-        if (step === 1 && !校验属性点是否合法()) return;
+        if (step === 2 && !校验属性点是否合法()) return;
         if (step === 3 && !校验属性点是否合法()) return;
         setStep((prev) => Math.min(prev + 1, STEPS.length - 1));
     };
@@ -886,6 +998,8 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
     const 更新伙伴属性 = (key: keyof 属性结构, value: number) => {
         setPartnerStats(prev => ({ ...prev, [key]: Math.max(属性最小值, Math.min(属性最大值, value)) }));
     };
+    const 平均分配伙伴属性 = () => setPartnerStats(创建平均属性分配(totalStatBudget));
+    const 随机分配伙伴属性 = () => setPartnerStats(创建随机属性分配(totalStatBudget));
 
     const 构建伙伴开局配置 = () => {
         const fallback = 默认初始伙伴配置();
@@ -1131,12 +1245,12 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
         const effectiveRoleReplaceRules = 获取同人角色替换规则列表(effectiveOpeningConfig, effectiveName);
         if (!effectiveName.trim()) {
             alert("请先填写角色姓名");
-            setStep(1);
+            setStep(2);
             return;
         }
         if (!effectiveGender.trim()) {
             alert("请先填写角色性别");
-            setStep(1);
+            setStep(2);
             return;
         }
         if (!preset && !校验属性点是否合法()) return;
@@ -1278,6 +1392,59 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                                         </div>
                                     )}
 
+                                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div className="text-sm text-emerald-300 font-bold">创意工坊模式</div>
+                                                <div className="mt-1 text-[11px] leading-6 text-gray-400">
+                                                    模式由“题材模板 + 世界规则 + 能力体系”组成；开局配置仍在新建存档流程中单独保留。
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] text-emerald-200 font-mono tracking-[0.18em]">WORKSHOP</span>
+                                        </div>
+                                        <InlineSelect
+                                            value={已选创意工坊模式}
+                                            options={[
+                                                { value: '', label: '不使用工坊模式' },
+                                                ...题材模式顺序.map((mode) => ({ value: mode, label: `${mode}模式` }))
+                                            ]}
+                                            onChange={选择创意工坊模式}
+                                            disabled={创意工坊注入中 || 创意工坊模块列表.length <= 0}
+                                        />
+                                        <div className="space-y-3">
+                                            {(['topic', 'world_rules', 'ability'] as 创意工坊模块类型[]).map((type) => {
+                                                const selectedKey = 已选创意工坊子项[type] || '';
+                                                const selectedEntry = selectedKey ? 按键查找创意工坊模块(selectedKey) : null;
+                                                const options = 创意工坊模块列表.filter((entry) => entry.type === type);
+                                                return (
+                                                    <div key={type} className="rounded-xl border border-white/10 bg-black/25 p-3 space-y-2">
+                                                        <div className="text-[11px] font-bold text-emerald-200">{创意工坊类型标签[type]}</div>
+                                                        <InlineSelect
+                                                            value={selectedKey}
+                                                            options={[
+                                                                { value: '', label: `不替换${创意工坊类型标签[type]}` },
+                                                                ...options.map((entry) => ({
+                                                                    value: 创意工坊模块键(entry),
+                                                                    label: `${读取模块模式(entry) || '通用'} · ${entry.title}`
+                                                                }))
+                                                            ]}
+                                                            onChange={(moduleKey) => 选择创意工坊子项(type, moduleKey)}
+                                                            disabled={创意工坊注入中 || options.length <= 0}
+                                                        />
+                                                        {selectedEntry && (
+                                                            <div className="text-[11px] leading-5 text-gray-400">
+                                                                {selectedEntry.injectionPreview.slice(0, 2).map((line, index) => <div key={`${selectedKey}-${index}`}>- {line}</div>)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {创意工坊注入状态 && (
+                                            <div className={`text-[11px] ${创意工坊注入状态.includes('失败') ? 'text-red-300' : 'text-emerald-200'}`}>{创意工坊注入状态}</div>
+                                        )}
+                                    </div>
+
                                     <div className="rounded-2xl border border-wuxia-gold/20 bg-black/30 p-4 space-y-4">
                                         <div className="flex items-start justify-between gap-3">
                                             <div>
@@ -1390,21 +1557,21 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm text-wuxia-cyan font-bold">世界观额外要求 (可选)</label>
+                                        <label className="text-sm text-wuxia-cyan font-bold">玩家世界观草稿与细化要求 (可选)</label>
                                         <textarea
                                             value={worldConfig.worldExtraRequirement}
                                             onChange={e => setWorldConfig({ ...worldConfig, worldExtraRequirement: e.target.value })}
-                                            placeholder="例如：强调宗门政治与朝堂博弈，减少神话奇观；世界风格偏冷峻写实。"
+                                            placeholder="可以写你已经想好的世界观片段、地名、势力、规则或风格。AI 会优先保留这些内容，只在基础上补全细节。"
                                             className="w-full h-24 bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-3 text-white outline-none rounded-md transition-all resize-none"
                                         />
-                                        <div className="text-[11px] text-gray-500">仅作用于世界观提示词生成，不直接改写角色初始状态。</div>
+                                        <div className="text-[11px] text-gray-500">仅作用于世界观提示词生成；AI 会按你的草稿细化，不直接改写角色初始状态。</div>
                                     </div>
 
                                     <div className="space-y-3 rounded-2xl border border-wuxia-gold/20 bg-black/25 p-4">
                                         <div>
-                                            <div className="text-sm text-wuxia-gold font-bold">开局世界观生成提示词</div>
+                                            <div className="text-sm text-wuxia-gold font-bold">{世界观请求模式}提示词</div>
                                             <div className="mt-1 text-[11px] leading-6 text-gray-500">
-                                                按当前世界设定、主角档案与开局题材实时拼装，可复制到外部模型或网页搜索工作流。
+                                                {worldConfig.worldExtraRequirement.trim() ? '会把上方草稿作为优先输入，请 AI 在此基础上细化。' : '未填写草稿时，会请 AI 从当前题材和世界参数生成完整世界母本。'}
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-3 gap-2">
@@ -1768,8 +1935,8 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                         </div>
                     )}
 
-                    {/* STEP 2: CHARACTER BASIC */}
-                    {step === 1 && (
+                    {/* STEP 3: CHARACTER BASIC */}
+                    {step === 2 && (
                         <div className="animate-slide-in max-w-4xl mx-auto">
                             <h3 className="text-lg md:text-xl font-serif font-bold text-wuxia-gold border-b border-wuxia-gold/30 pb-3 mb-6">侠客名录</h3>
                             
@@ -1918,6 +2085,10 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                                             <span className="text-wuxia-gold font-bold text-lg">天资根骨</span>
                                             <span className={`text-sm font-mono transition-colors ${remainingPoints < 0 ? 'text-red-400' : remainingPoints > 0 ? 'text-green-400' : 'text-gray-500'}`}>总点数: {usedPoints}/{totalStatBudget}</span>
                                         </div>
+                                        <div className="mb-3 grid grid-cols-2 gap-2">
+                                            <button type="button" onClick={平均分配主角属性} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-500/15">平均分配</button>
+                                            <button type="button" onClick={随机分配主角属性} className="rounded-lg border border-wuxia-gold/30 bg-wuxia-gold/10 px-3 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/15">随机分配</button>
+                                        </div>
                                         <div className="mb-3 rounded-xl border border-wuxia-gold/15 bg-black/25 px-3 py-3 text-[11px] leading-6 text-gray-400">
                                             当前难度判定修正 <span className={当前难度设定.判定修正 >= 0 ? 'text-green-400' : 'text-red-400'}>{难度判定修正文本}</span>，天赋可重 roll <span className="text-wuxia-cyan">{当前难度设定.天赋重Roll次数}</span> 次。
                                         </div>
@@ -1940,8 +2111,8 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                         </div>
                     )}
 
-                    {/* STEP 3: TALENTS & BACKGROUND */}
-                    {step === 2 && (
+                    {/* STEP 2: TALENTS & BACKGROUND */}
+                    {step === 1 && (
                         <div className="space-y-5 animate-slide-in max-w-5xl mx-auto">
                             <OrnateBorder className="p-4 bg-gradient-to-br from-black/70 via-black/55 to-wuxia-gold/5">
                                 <div className="border-b border-wuxia-gold/30 pb-3 mb-4">
@@ -2300,6 +2471,10 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                                             <span className="text-gray-400">伙伴属性点</span>
                                             <span className={partnerRemainingPoints < 0 ? 'text-red-400' : 'text-wuxia-gold'}>{partnerUsedPoints}/{totalStatBudget}</span>
                                         </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button type="button" onClick={平均分配伙伴属性} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-500/15">平均分配</button>
+                                            <button type="button" onClick={随机分配伙伴属性} className="rounded-lg border border-wuxia-gold/30 bg-wuxia-gold/10 px-3 py-2 text-xs font-bold text-wuxia-gold hover:bg-wuxia-gold/15">随机分配</button>
+                                        </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             {Object.entries(partnerStats).map(([key, value]) => (
                                                 <div key={key} className="rounded-xl border border-gray-800 bg-black/25 p-3">
@@ -2491,7 +2666,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                                 <div className="text-sm space-y-3 font-mono text-gray-300">
                                     <p>世界: <span className="text-white">{worldConfig.worldName}</span></p>
                                     <p>难度: <span className="text-white uppercase">{worldConfig.difficulty}</span></p>
-                                    <p>世界观额外要求: <span className="text-white">{worldConfig.worldExtraRequirement.trim() || '无'}</span></p>
+                                    <p>世界观草稿/细化要求: <span className="text-white">{worldConfig.worldExtraRequirement.trim() || '无'}</span></p>
                                     <p>手动世界观提示词: <span className="text-white">{worldConfig.manualWorldPrompt.trim() ? '已提供' : '未提供'}</span></p>
                                     <p>手动境界提示词: <span className="text-white">{worldConfig.manualRealmPrompt.trim() ? '已提供' : '未提供'}</span></p>
                                     <p>主角: <span className="text-white">{charName.trim() || '未填写姓名'}</span> <span className='text-gray-500'>({charGender.trim() || '未填写性别'}, {charAge}岁)</span></p>
