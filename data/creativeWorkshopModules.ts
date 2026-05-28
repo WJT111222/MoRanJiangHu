@@ -112,7 +112,6 @@ const 构建题材预设 = (
 export const 创意工坊模块分区: Array<{ id: 创意工坊模块类型; title: string; description: string }> = [
     { id: 'topic', title: '题材模板', description: '套用题材口径、货币、地图空间和基础提示词。' },
     { id: 'world_rules', title: '世界规则', description: '注入感染、文明密度、资源、市场和基础设施规则。' },
-    { id: 'opening', title: '开局配置', description: '注入第一幕切入、关系锚点、组织和同行者约束。' },
     { id: 'ability', title: '能力体系', description: '注入境界、觉醒、堕化或非超凡成长边界。' },
     { id: 'comfy_workflow', title: 'ComfyUI 工作流', description: '分享可用于普通、场景或 NSFW 生图的 API workflow JSON。' }
 ];
@@ -199,30 +198,6 @@ const 构建世界规则模块 = (mode: keyof typeof 题材模式配置表): 创
     };
 };
 
-const 构建开局模块 = (mode: keyof typeof 题材模式配置表): 创意工坊模块条目 => {
-    const profile = 题材模式配置表[mode];
-    const actor = 题材默认角色[mode];
-    const preset = 构建题材预设(`workshop_opening_${profile.value}`, `工坊·${profile.shortLabel}开局配置`, `${profile.label}开局关系和切入模板。`, mode, 构建角色(actor.姓名, actor.背景, actor.天赋), actor.开局补充);
-    return {
-        id: `opening-${profile.value}`,
-        type: 'opening',
-        title: `${profile.shortLabel}开局配置`,
-        subtitle: `${preset.openingConfig?.初始关系模板 || '关系锚点'}、${preset.openingConfig?.开局切入偏好 || '第一幕切入'}`,
-        description: `为${profile.label}注入第一幕切入、关系侧重、组织生成和同行者约束。`,
-        tags: [profile.shortLabel, '开局配置', '关系'],
-        payload: preset.openingConfig ? { ...preset.openingConfig } : {},
-        injectionPreview: [
-            `openingConfig.题材模式：${mode}`,
-            `openingConfig.初始关系模板：${preset.openingConfig?.初始关系模板 || ''}`,
-            `openingConfig.关系侧重：${(preset.openingConfig?.关系侧重 || []).join('、')}`,
-            `openingExtraRequirement：${actor.开局补充}`
-        ],
-        source: 'builtin',
-        contributor: '官方',
-        preset
-    };
-};
-
 const 构建能力模块 = (mode: keyof typeof 题材模式配置表): 创意工坊模块条目 => {
     const profile = 题材模式配置表[mode];
     const manualRealmPrompt = mode === '武侠'
@@ -304,7 +279,6 @@ const 构建ComfyUI工作流模块 = (
 export const 创意工坊模块列表: 创意工坊模块条目[] = [
     ...题材模式顺序.map(构建题材模块),
     ...题材模式顺序.map(构建世界规则模块),
-    ...题材模式顺序.map(构建开局模块),
     ...题材模式顺序.map(构建能力模块),
     构建ComfyUI工作流模块('comfy-workflow-default-main', '默认普通 ComfyUI 工作流', '通用写实', 'main', 默认ComfyUI工作流JSON, '官方默认普通生图 workflow，适合 NPC、物品和常规画面。'),
     构建ComfyUI工作流模块('comfy-workflow-default-scene', '默认场景 ComfyUI 工作流', '场景氛围', 'scene', 默认ComfyUI工作流JSON, '官方默认场景生图 workflow，适合环境、地点和横竖屏场景图。'),

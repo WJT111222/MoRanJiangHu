@@ -12,12 +12,13 @@ import type {
 } from '../types';
 import { 获取题材模式选项, 规范化题材模式 } from './topicModeProfiles';
 
-export const 新开局步骤列表 = ['世界观', '角色基础', '天赋背景', '开局伙伴', '开局配置', '确认生成'] as const;
+export const 新开局步骤列表 = ['世界观', '天赋背景', '角色基础', '开局伙伴', '开局配置', '确认生成'] as const;
 
 export const 属性键列表 = ['力量', '敏捷', '体质', '根骨', '悟性', '福源'] as const;
 export const 默认属性值 = 3;
 export const 属性最小值 = 3;
 export const 属性最大值 = 10;
+export type 属性分配结构 = Record<typeof 属性键列表[number], number>;
 
 export type 难度设定结构 = {
     id: 游戏难度;
@@ -267,7 +268,7 @@ export const 获取难度总属性点 = (difficulty?: 游戏难度): number => (
     获取难度设定(difficulty).起始属性点
 );
 
-export const 创建默认属性分配 = () => ({
+export const 创建默认属性分配 = (): 属性分配结构 => ({
     力量: 默认属性值,
     敏捷: 默认属性值,
     体质: 默认属性值,
@@ -275,6 +276,37 @@ export const 创建默认属性分配 = () => ({
     悟性: 默认属性值,
     福源: 默认属性值
 });
+
+export const 计算属性总点数 = (attributes: Partial<属性分配结构>): number => (
+    属性键列表.reduce((sum, key) => sum + (Number.isFinite(attributes[key]) ? Number(attributes[key]) : 默认属性值), 0)
+);
+
+export const 创建平均属性分配 = (totalBudget: number): 属性分配结构 => {
+    const next = 创建默认属性分配();
+    let remaining = Math.max(0, Math.floor(totalBudget) - 计算属性总点数(next));
+    let index = 0;
+    while (remaining > 0 && 属性键列表.some((key) => next[key] < 属性最大值)) {
+        const key = 属性键列表[index % 属性键列表.length];
+        if (next[key] < 属性最大值) {
+            next[key] += 1;
+            remaining -= 1;
+        }
+        index += 1;
+    }
+    return next;
+};
+
+export const 创建随机属性分配 = (totalBudget: number, random: () => number = Math.random): 属性分配结构 => {
+    const next = 创建默认属性分配();
+    let remaining = Math.max(0, Math.floor(totalBudget) - 计算属性总点数(next));
+    while (remaining > 0 && 属性键列表.some((key) => next[key] < 属性最大值)) {
+        const availableKeys = 属性键列表.filter((key) => next[key] < 属性最大值);
+        const key = availableKeys[Math.floor(random() * availableKeys.length)] || availableKeys[0];
+        next[key] += 1;
+        remaining -= 1;
+    }
+    return next;
+};
 
 const 规范化属性分配 = (value: any) => {
     const fallback = 创建默认属性分配();

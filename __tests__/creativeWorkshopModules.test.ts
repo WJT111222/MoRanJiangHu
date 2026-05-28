@@ -6,15 +6,15 @@ import { 题材模式顺序 } from '../utils/topicModeProfiles';
 describe('creativeWorkshopModules', () => {
     it('规划分区均有当前可用模块', () => {
         const sectionIds = 创意工坊模块分区.map((section) => section.id);
-        expect(sectionIds).toEqual(['topic', 'world_rules', 'opening', 'ability', 'comfy_workflow']);
+        expect(sectionIds).toEqual(['topic', 'world_rules', 'ability', 'comfy_workflow']);
         for (const sectionId of sectionIds) {
             expect(创意工坊模块列表.some((entry) => entry.type === sectionId)).toBe(true);
         }
     });
 
-    it('每个题材模式都有四类官方预设模块', () => {
+    it('每个题材模式都有三类官方新建存档工坊模块', () => {
         for (const mode of 题材模式顺序) {
-            for (const type of ['topic', 'world_rules', 'opening', 'ability'] as const) {
+            for (const type of ['topic', 'world_rules', 'ability'] as const) {
                 const matches = 创意工坊模块列表.filter((entry) => (
                     entry.source === 'builtin'
                     && entry.type === type
@@ -25,8 +25,8 @@ describe('creativeWorkshopModules', () => {
         }
     });
 
-    it('每个分区恰好对应六个官方题材模式模块', () => {
-        for (const type of ['topic', 'world_rules', 'opening', 'ability'] as const) {
+    it('每个新建存档工坊分区恰好对应六个官方题材模式模块', () => {
+        for (const type of ['topic', 'world_rules', 'ability'] as const) {
             const entries = 创意工坊模块列表.filter((entry) => entry.source === 'builtin' && entry.type === type);
             expect(entries.length, type).toBe(题材模式顺序.length);
             expect(new Set(entries.map((entry) => entry.preset?.openingConfig?.题材模式))).toEqual(new Set(题材模式顺序));
@@ -49,11 +49,16 @@ describe('creativeWorkshopModules', () => {
 
     it('可安装模块都能标准化为新建游戏开局预设', () => {
         const installable = 创意工坊模块列表.filter((entry) => entry.preset);
-        expect(installable.length).toBeGreaterThanOrEqual(题材模式顺序.length * 4);
+        expect(installable.length).toBeGreaterThanOrEqual(题材模式顺序.length * 3);
         for (const entry of installable) {
             const normalized = 标准化开局预设方案(entry.preset);
             expect(normalized?.id).toBe(entry.preset?.id);
             expect(normalized?.openingConfig?.题材模式).toBeTruthy();
         }
+    });
+
+    it('开局配置保留在新建存档流程，不作为创意工坊分区模块', () => {
+        expect(创意工坊模块分区.some((section) => section.id === 'opening')).toBe(false);
+        expect(创意工坊模块列表.some((entry) => entry.type === 'opening')).toBe(false);
     });
 });
