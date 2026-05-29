@@ -21,12 +21,16 @@ type SendResult = {
 type RecallProgress = {
     phase: 'start' | 'stream' | 'done' | 'error';
     text?: string;
+    channelName?: string;
+    modelName?: string;
 };
 
 type PolishProgress = {
     phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
+    channelName?: string;
+    modelName?: string;
 };
 
 type WorldEvolutionProgress = {
@@ -34,6 +38,8 @@ type WorldEvolutionProgress = {
     text?: string;
     rawText?: string;
     commandTexts?: string[];
+    channelName?: string;
+    modelName?: string;
 };
 
 type PlanningProgress = {
@@ -41,6 +47,8 @@ type PlanningProgress = {
     text?: string;
     rawText?: string;
     commandTexts?: string[];
+    channelName?: string;
+    modelName?: string;
 };
 
 type VariableGenerationProgress = {
@@ -48,6 +56,8 @@ type VariableGenerationProgress = {
     text?: string;
     rawText?: string;
     commandTexts?: string[];
+    channelName?: string;
+    modelName?: string;
 };
 
 type MapUpdateProgress = {
@@ -55,6 +65,8 @@ type MapUpdateProgress = {
     text?: string;
     rawText?: string;
     commandTexts?: string[];
+    channelName?: string;
+    modelName?: string;
 };
 
 type QueueProgressPayload = {
@@ -62,6 +74,8 @@ type QueueProgressPayload = {
     text?: string;
     rawText?: string;
     commandTexts?: string[];
+    channelName?: string;
+    modelName?: string;
 };
 
 const QUEUE_TEXT_RENDER_LIMIT = 6000;
@@ -806,6 +820,16 @@ const InputArea: React.FC<Props> = ({
                                                         {progressText}
                                                     </pre>
                                                 )}
+                                                {(stage.progress?.channelName || stage.progress?.modelName) && (
+                                                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] leading-5">
+                                                        <span className="rounded border border-wuxia-cyan/25 bg-wuxia-cyan/10 px-2 py-0.5 text-wuxia-cyan">
+                                                            渠道：{stage.progress?.channelName || '未配置渠道'}
+                                                        </span>
+                                                        <span className="rounded border border-wuxia-gold/25 bg-wuxia-gold/10 px-2 py-0.5 text-wuxia-gold">
+                                                            模型：{stage.progress?.modelName || '未选择模型'}
+                                                        </span>
+                                                    </div>
+                                                )}
                                                 {commandExpanded && commandTexts.length > 0 && (
                                                     <div className="mt-2 rounded border border-wuxia-gold/20 bg-black/55 p-2">
                                                         <div className="text-xs text-wuxia-gold/80 mb-1">本回合命令列表</div>
@@ -895,6 +919,16 @@ const InputArea: React.FC<Props> = ({
                         <pre className="text-[11px] whitespace-pre-wrap text-gray-300 leading-relaxed max-h-28 overflow-y-auto custom-scrollbar">
                             {截断队列展示文本(recallProgress.text, QUEUE_TEXT_RENDER_LIMIT, '剧情回忆文本')}
                         </pre>
+                    )}
+                    {(recallProgress.channelName || recallProgress.modelName) && (
+                        <div className="flex flex-wrap gap-2 text-[11px] leading-5">
+                            <span className="rounded border border-wuxia-cyan/25 bg-wuxia-cyan/10 px-2 py-0.5 text-wuxia-cyan">
+                                渠道：{recallProgress.channelName || '未配置渠道'}
+                            </span>
+                            <span className="rounded border border-wuxia-gold/25 bg-wuxia-gold/10 px-2 py-0.5 text-wuxia-gold">
+                                模型：{recallProgress.modelName || '未选择模型'}
+                            </span>
+                        </div>
                     )}
                     <div className="flex flex-wrap gap-2 pt-1">
                         {recallRunning && (

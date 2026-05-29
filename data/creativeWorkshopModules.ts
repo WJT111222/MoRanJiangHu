@@ -21,6 +21,9 @@ export interface 创意工坊模块条目 {
     updatedAt?: string;
     downloadUrl?: string;
     sha256?: string;
+    ownerUserId?: string;
+    ownerUsername?: string;
+    anonymous?: boolean;
 }
 
 const 通用属性 = {

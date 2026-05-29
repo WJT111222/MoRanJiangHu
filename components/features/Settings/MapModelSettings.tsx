@@ -4,6 +4,7 @@ import GameButton from '../../ui/GameButton';
 import InlineSelect from '../../ui/InlineSelect';
 import ToggleSwitch from '../../ui/ToggleSwitch';
 import { 规范化接口设置 } from '../../../utils/apiConfig';
+import StageApiModelSelector from './StageApiModelSelector';
 
 interface Props {
     settings: 接口设置结构;
@@ -213,30 +214,21 @@ const MapModelSettings: React.FC<Props> = ({ settings, onSave, onRegenerateMapFr
                 )}
 
                 <div className="text-[11px] text-gray-400">
-                    开启地图生成功能后，如果不单独填写地图生成模型/API，就会直接复用主剧情模型和接口。
+                    这里控制手动解析、回忆解析和旧存档重建时使用的全量地图生成接口；不单独配置时会复用主剧情模型和接口。
                 </div>
 
-                <div className="flex gap-3 items-end">
-                    <div className="flex-1 space-y-1">
-                        <label className="text-xs text-gray-300">地图生成使用模型</label>
-                        <InlineSelect
-                            value={mapModelDisplay}
-                            options={selectOptions.map((model) => ({ value: model, label: model }))}
-                            onChange={(model) => updatePlaceholder('地图生成使用模型', model)}
-                            disabled={selectOptions.length === 0}
-                            placeholder={selectOptions.length ? '请选择模型' : '请先点击获取列表'}
-                            buttonClassName="bg-black/50 border-gray-600 py-2.5"
-                        />
-                    </div>
-                    <GameButton
-                        onClick={handleFetchModels}
-                        variant="secondary"
-                        className="px-4 py-2 text-xs"
-                        disabled={loadingModels}
-                    >
-                        {loadingModels ? '...' : '获取列表'}
-                    </GameButton>
-                </div>
+                <StageApiModelSelector
+                    form={form}
+                    enabled={地图生成功能开启}
+                    title="全量地图生成"
+                    modelKey="地图生成使用模型"
+                    channelKey="地图生成渠道ID"
+                    baseUrlKey="地图生成API地址"
+                    apiKeyKey="地图生成API密钥"
+                    fallbackModel={activeConfig?.model || 主剧情解析模型}
+                    disabledPlaceholder="地图生成功能未开启"
+                    onChange={updatePlaceholder}
+                />
 
                 <div className="space-y-1">
                     <label className="text-xs text-gray-300">地图生成独立 API 地址（可选）</label>
@@ -272,7 +264,7 @@ const MapModelSettings: React.FC<Props> = ({ settings, onSave, onRegenerateMapFr
             <div className="rounded-md border border-wuxia-gold/20 bg-black/25 p-4 space-y-4">
                 <div className="text-wuxia-gold font-bold text-xs">正文后自动地图更新</div>
                 <div className="text-[11px] text-gray-400">
-                    自动队列会在文章优化、变量生成、动态世界、规划分析之后最后执行。关闭地图生成功能时，本阶段会显示未开启并跳过；开启地图生成功能且关闭独立模型时，地图更新跟随主剧情接口；开启独立模型后仅地图更新改用这里的模型/API。
+                    这里控制每回合正文生成后的增量地图更新。它会读取主剧情和前面阶段产出的结果，只补本回合新增地点、人物位置和地图层级变化；关闭独立模型时跟随主剧情接口，开启独立模型后仅本阶段改用这里的渠道和模型。
                 </div>
 
                 <label className="flex items-center justify-between gap-3 text-xs text-gray-300">
@@ -296,25 +288,18 @@ const MapModelSettings: React.FC<Props> = ({ settings, onSave, onRegenerateMapFr
                     />
                 </label>
 
-                <div className="flex gap-3 items-end">
-                    <div className="flex-1 space-y-1">
-                        <label className="text-xs text-gray-300">地图自动更新使用模型</label>
-                        <InlineSelect
-                            value={autoMapModelDisplay}
-                            options={selectOptions.map((model) => ({ value: model, label: model }))}
-                            onChange={(model) => updatePlaceholder('地图自动更新使用模型', model)}
-                            disabled={!地图生成功能开启 || !自动更新独立开启 || selectOptions.length === 0}
-                            placeholder={!地图生成功能开启
-                                ? '地图生成功能未开启'
-                                : !自动更新独立开启
-                                ? `跟随主剧情模型：${主剧情解析模型 || '未设置'}`
-                                : (selectOptions.length ? '请选择模型' : '请先点击获取列表')}
-                            buttonClassName={地图生成功能开启 && 自动更新独立开启
-                                ? 'bg-black/50 border-gray-600 py-2.5'
-                                : 'bg-black/30 border-gray-700 py-2.5'}
-                        />
-                    </div>
-                </div>
+                <StageApiModelSelector
+                    form={form}
+                    enabled={地图生成功能开启 && 自动更新独立开启}
+                    title="每回合地图更新"
+                    modelKey="地图自动更新使用模型"
+                    channelKey="地图自动更新渠道ID"
+                    baseUrlKey="地图自动更新API地址"
+                    apiKeyKey="地图自动更新API密钥"
+                    fallbackModel={主剧情解析模型}
+                    disabledPlaceholder={!地图生成功能开启 ? '地图生成功能未开启' : undefined}
+                    onChange={updatePlaceholder}
+                />
 
                 <div className="space-y-1">
                     <label className="text-xs text-gray-300">地图自动更新独立 API 地址（可选）</label>

@@ -19,6 +19,7 @@ const MemorySettings = React.lazy(() => lazyImportWithReload('mobile-settings-me
 const HistoryViewer = React.lazy(() => import('../HistoryViewer'));
 const ContextViewer = React.lazy(() => lazyImportWithReload('mobile-settings-context-viewer', () => import('../ContextViewer')));
 const LogViewer = React.lazy(() => lazyImportWithReload('mobile-settings-log-viewer', () => import('../LogViewer')));
+const WorkflowGraphSettings = React.lazy(() => lazyImportWithReload('mobile-settings-workflow-graph', () => import('../WorkflowGraphSettings')));
 const RecallModelSettings = React.lazy(() => lazyImportWithReload('mobile-settings-recall-model', () => import('../RecallModelSettings')));
 const MemorySummaryModelSettings = React.lazy(() => lazyImportWithReload('mobile-settings-memory-summary-model', () => import('../MemorySummaryModelSettings')));
 const MemoryRefineModelSettings = React.lazy(() => lazyImportWithReload('mobile-settings-memory-refine-model', () => import('../MemoryRefineModelSettings')));
@@ -34,7 +35,7 @@ const MusicSettings = React.lazy(() => lazyImportWithReload('mobile-settings-mus
 const NpcManager = React.lazy(() => lazyImportWithReload('mobile-settings-npc-manager', () => import('../NpcManager')));
 const VariableManager = React.lazy(() => lazyImportWithReload('mobile-settings-variable-manager', () => import('../VariableManager')));
 
-type SettingsTab = 'api' | 'image_generation' | 'recall' | 'memory_summary_model' | 'memory_refine_model' | 'map_model' | 'polish' | 'world_evolution' | 'variable_model' | 'planning_model' | 'independent_api_gpt' | 'novel_decomposition' | 'novel_decomposition_runtime' | 'prompt' | 'storage' | 'theme' | 'visual' | 'world' | 'game' | 'reality' | 'tavern_preset' | 'memory' | 'history' | 'context' | 'logs' | 'music' | 'npc_management' | 'variable_manager';
+type SettingsTab = 'api' | 'workflow_graph' | 'image_generation' | 'recall' | 'memory_summary_model' | 'memory_refine_model' | 'map_model' | 'polish' | 'world_evolution' | 'variable_model' | 'planning_model' | 'independent_api_gpt' | 'novel_decomposition' | 'novel_decomposition_runtime' | 'prompt' | 'storage' | 'theme' | 'visual' | 'world' | 'game' | 'reality' | 'tavern_preset' | 'memory' | 'history' | 'context' | 'logs' | 'music' | 'npc_management' | 'variable_manager';
 type RuntimeStateSections = Record<'角色' | '环境' | '社交' | '世界' | '战斗' | '剧情' | '女主剧情规划' | '玩家门派' | '任务列表' | '约定列表' | '记忆系统', unknown>;
 
 type ContextSection = {
@@ -120,6 +121,7 @@ const MobileSettingsModal: React.FC<Props> = ({
         { id: 'context', label: '上下文' },
         { id: 'logs', label: '日志' },
         { id: 'api', label: '接口' },
+        { id: 'workflow_graph', label: '流程' },
         { id: 'image_generation', label: '文生图' },
         { id: 'recall', label: '回忆' },
         { id: 'memory_summary_model', label: '总结' },
@@ -140,15 +142,21 @@ const MobileSettingsModal: React.FC<Props> = ({
     const visibleTabItems = diagnosticsEnabled
         ? tabItems
         : tabItems.filter((item) => !['context', 'history'].includes(item.id));
+    React.useEffect(() => {
+        if (!visibleTabItems.some((item) => item.id === activeTab)) {
+            onTabChange('game');
+        }
+    }, [activeTab, onTabChange, visibleTabItems]);
 
     const 设置加载占位 = (
-        <div className="flex min-h-[220px] items-center justify-center rounded-xl border border-wuxia-gold/10 bg-black/20 text-xs tracking-[0.18em] text-wuxia-gold/70">
+        <div className="flex min-h-[220px] items-center justify-center rounded-xl border border-wuxia-gold/20 bg-[#f3ead4]/95 text-xs tracking-[0.18em] text-amber-900 shadow-inner">
             设置载入中…
         </div>
     );
 
     const renderTabContent = () => {
         if (activeTab === 'api') return <ApiSettings settings={apiConfig} onSave={onSaveApi} />;
+        if (activeTab === 'workflow_graph') return <WorkflowGraphSettings settings={apiConfig} onNavigate={(tab) => onTabChange(tab as SettingsTab)} />;
         if (activeTab === 'image_generation') return <ImageGenerationSettings settings={apiConfig} onSave={onSaveApi} />;
         if (activeTab === 'recall') return <RecallModelSettings settings={apiConfig} onSave={onSaveApi} />;
         if (activeTab === 'memory_summary_model') return <MemorySummaryModelSettings settings={apiConfig} onSave={onSaveApi} />;

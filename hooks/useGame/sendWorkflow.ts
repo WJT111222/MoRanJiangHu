@@ -1,6 +1,6 @@
 import * as textAIService from '../../services/ai/text';
 import type { GameResponse, OpeningConfig, 聊天记录结构, 记忆系统结构, 角色数据结构, 剧情系统结构, 剧情规划结构, 女主剧情规划结构, 同人剧情规划结构, 同人女主剧情规划结构, 世界书结构, 内置提示词条目结构 } from '../../types';
-import { 获取主剧情接口配置, 获取世界演变接口配置, 接口配置是否可用 } from '../../utils/apiConfig';
+import { 获取主剧情接口配置, 获取剧情回忆接口配置, 获取文章优化接口配置, 获取变量计算接口配置, 获取世界演变接口配置, 获取规划分析接口配置, 获取地图自动更新接口配置, 接口配置是否可用 } from '../../utils/apiConfig';
 import { 规范化游戏设置 } from '../../utils/gameSettings';
 import { 计算正文字数容错字数, 正文字数差距在容错内 } from '../../utils/bodyLengthTolerance';
 import { 构建世界书注入文本 } from '../../utils/worldbook';
@@ -25,6 +25,8 @@ import { 检测社交删除风险命令 } from '../../utils/npcRetentionGuard';
 type 回忆检索进度 = {
     phase: 'start' | 'stream' | 'done' | 'error';
     text?: string;
+    channelName?: string;
+    modelName?: string;
 };
 
 type 正文润色进度 = {
@@ -32,6 +34,8 @@ type 正文润色进度 = {
     text?: string;
     rawText?: string;
     commandTexts?: string[];
+    channelName?: string;
+    modelName?: string;
 };
 
 type 正文字数不足信息 = {
@@ -48,6 +52,8 @@ type 变量生成进度 = {
     text?: string;
     rawText?: string;
     commandTexts?: string[];
+    channelName?: string;
+    modelName?: string;
 };
 
 type 独立阶段标识 = 'polish' | 'world' | 'planning' | 'variable' | 'map';
@@ -64,6 +70,8 @@ type 规划分析进度 = {
     text?: string;
     rawText?: string;
     commandTexts?: string[];
+    channelName?: string;
+    modelName?: string;
 };
 
 type 世界演变进度 = {
@@ -71,6 +79,8 @@ type 世界演变进度 = {
     text?: string;
     rawText?: string;
     commandTexts?: string[];
+    channelName?: string;
+    modelName?: string;
 };
 
 type 地图更新进度 = {
@@ -78,6 +88,8 @@ type 地图更新进度 = {
     text?: string;
     rawText?: string;
     commandTexts?: string[];
+    channelName?: string;
+    modelName?: string;
 };
 
 const 格式化命令展示路径 = (key: string): string => key.replace(/^gameState\./, '');
@@ -381,6 +393,58 @@ const 构建带索引命令文本 = (commands: any[], startIndex: number): strin
     return rendered;
 };
 
+type 队列阶段模型信息 = {
+    channelName?: string;
+    modelName?: string;
+};
+
+const 获取队列阶段渠道键 = (config: any, mainConfig?: any | null): string => {
+    if (!config) return '';
+    return [
+        String(config.id || config.名称 || config.供应商 || '').trim(),
+        String(config.baseUrl || '').trim().replace(/\/+$/, ''),
+        String(config.apiKey || '').trim()
+    ].filter(Boolean).join('|') || String(mainConfig?.id || mainConfig?.名称 || mainConfig?.供应商 || '').trim();
+};
+
+const 构建队列阶段模型信息 = (
+    stageLabel: string,
+    config: any,
+    mainConfig?: any | null
+): 队列阶段模型信息 => {
+    const modelName = String(config?.model || mainConfig?.model || '').trim() || '未选择模型';
+    const baseChannel = String(config?.名称 || config?.供应商 || mainConfig?.名称 || mainConfig?.供应商 || '').trim() || '未配置渠道';
+    const isIndependent = Boolean(config && mainConfig && (
+        String(config.baseUrl || '') !== String(mainConfig.baseUrl || '')
+        || String(config.model || '') !== String(mainConfig.model || '')
+        || String(config.apiKey || '') !== String(mainConfig.apiKey || '')
+    ));
+    return {
+        channelName: isIndependent ? `${stageLabel}独立渠道：${baseChannel}` : baseChannel,
+        modelName
+    };
+};
+
+const 合并变量结果到展示响应 = (
+    displayResponse: GameResponse,
+    mergedParsed: GameResponse
+): GameResponse => ({
+    ...displayResponse,
+    tavern_commands: Array.isArray(mergedParsed.tavern_commands) ? mergedParsed.tavern_commands : [],
+    variable_calibration_report: mergedParsed.variable_calibration_report,
+    variable_calibration_commands: mergedParsed.variable_calibration_commands,
+    variable_calibration_model: mergedParsed.variable_calibration_model
+});
+
+const 附加队列阶段模型信息 = <T extends { channelName?: string; modelName?: string }>(
+    progress: T,
+    info: 队列阶段模型信息
+): T => ({
+    ...progress,
+    channelName: progress.channelName || info.channelName,
+    modelName: progress.modelName || info.modelName
+});
+
 export type 发送选项 = {
     onRecallProgress?: (progress: 回忆检索进度) => void;
     onPolishProgress?: (progress: 正文润色进度) => void;
@@ -614,6 +678,38 @@ export const 执行主剧情发送工作流 = async (
         alert('请先在设置中填写 API 地址/API Key，并选择主剧情使用模型');
         deps.setShowSettings(true);
         return { cancelled: true };
+    }
+    const stageModelInfo = {
+        recall: 构建队列阶段模型信息('剧情回忆', 获取剧情回忆接口配置(currentState.apiConfig), activeApi),
+        polish: 构建队列阶段模型信息('文章优化', 获取文章优化接口配置(currentState.apiConfig), activeApi),
+        variable: 构建队列阶段模型信息('变量生成', 获取变量计算接口配置(currentState.apiConfig), activeApi),
+        world: 构建队列阶段模型信息('动态世界', 获取世界演变接口配置(currentState.apiConfig), activeApi),
+        planning: 构建队列阶段模型信息('规划分析', 获取规划分析接口配置(currentState.apiConfig), activeApi),
+        map: 构建队列阶段模型信息('地图更新', 获取地图自动更新接口配置(currentState.apiConfig), activeApi)
+    };
+    if (options) {
+        const originalOptions = options;
+        options = {
+            ...originalOptions,
+            onRecallProgress: originalOptions.onRecallProgress
+                ? (progress) => originalOptions.onRecallProgress?.(附加队列阶段模型信息(progress, stageModelInfo.recall))
+                : undefined,
+            onPolishProgress: originalOptions.onPolishProgress
+                ? (progress) => originalOptions.onPolishProgress?.(附加队列阶段模型信息(progress, stageModelInfo.polish))
+                : undefined,
+            onVariableGenerationProgress: originalOptions.onVariableGenerationProgress
+                ? (progress) => originalOptions.onVariableGenerationProgress?.(附加队列阶段模型信息(progress, stageModelInfo.variable))
+                : undefined,
+            onWorldEvolutionProgress: originalOptions.onWorldEvolutionProgress
+                ? (progress) => originalOptions.onWorldEvolutionProgress?.(附加队列阶段模型信息(progress, stageModelInfo.world))
+                : undefined,
+            onPlanningProgress: originalOptions.onPlanningProgress
+                ? (progress) => originalOptions.onPlanningProgress?.(附加队列阶段模型信息(progress, stageModelInfo.planning))
+                : undefined,
+            onMapUpdateProgress: originalOptions.onMapUpdateProgress
+                ? (progress) => originalOptions.onMapUpdateProgress?.(附加队列阶段模型信息(progress, stageModelInfo.map))
+                : undefined
+        };
     }
 
     const mainRequestStartedAt = Date.now();
@@ -1312,7 +1408,17 @@ export const 执行主剧情发送工作流 = async (
         后台队列已启动 = true;
         void (async () => {
             try {
-                if (deps.文章优化功能已开启()) {
+                const 文章优化开启 = deps.文章优化功能已开启();
+                const 变量生成配置 = 获取变量计算接口配置(currentState.apiConfig);
+                const 变量生成开启 = 接口配置是否可用(变量生成配置);
+                const 文章优化配置 = 获取文章优化接口配置(currentState.apiConfig);
+                const 文章优化变量可并行 = 文章优化开启
+                    && 变量生成开启
+                    && 接口配置是否可用(文章优化配置)
+                    && 获取队列阶段渠道键(文章优化配置, activeApi) !== 获取队列阶段渠道键(变量生成配置, activeApi);
+
+                const 执行文章优化阶段 = async () => {
+                    if (!文章优化开启) return null;
                     const polishStage = await 执行可重试独立阶段({
                         stageId: "polish",
                         stageLabel: "文章优化",
@@ -1321,7 +1427,7 @@ export const 执行主剧情发送工作流 = async (
                                 phase: "start",
                                 text: attempt > 1
                                     ? `正在重新提取并润色<正文>内容...（第 ${attempt} 次手动重试）`
-                                    : "正在后台提取并润色<正文>内容..."
+                                    : (文章优化变量可并行 ? "正在并行提取并润色<正文>内容..." : "正在后台提取并润色<正文>内容...")
                             });
                         },
                         onAutoRetry: (attempt, maxAttempts, reason) => {
@@ -1353,7 +1459,11 @@ export const 执行主剧情发送工作流 = async (
                             });
                         }
                     });
-                    const polished = polishStage.result;
+                    return polishStage;
+                };
+
+                const 应用文章优化结果 = (polishStage: Awaited<ReturnType<typeof 执行文章优化阶段>>) => {
+                    const polished = polishStage?.result;
                     if (polishStage.completed && polished) {
                         if (polished.applied) {
                             displayAiData = polished.response;
@@ -1400,11 +1510,11 @@ export const 执行主剧情发送工作流 = async (
                             });
                         }
                     }
-                }
+                };
 
                 let variableGenerationResult: Awaited<ReturnType<typeof deps.执行变量生成并合并响应>> = null;
                 const 变量生成前命令数 = Array.isArray(responseForExecution.tavern_commands) ? responseForExecution.tavern_commands.length : 0;
-                const variableStage = await 执行可重试独立阶段({
+                const 执行变量生成阶段 = async (baseDisplayResponse: GameResponse) => 执行可重试独立阶段({
                     stageId: "variable",
                     stageLabel: "变量生成",
                     beforeAttempt: (attempt) => {
@@ -1412,7 +1522,7 @@ export const 执行主剧情发送工作流 = async (
                             phase: "start",
                             text: attempt > 1
                                 ? `正在重新执行变量生成...（第 ${attempt} 次手动重试）`
-                                : "正在执行变量生成..."
+                                : (文章优化变量可并行 ? "正在并行执行变量生成..." : "正在执行变量生成...")
                         });
                     },
                     onAutoRetry: (attempt, maxAttempts, reason) => {
@@ -1425,7 +1535,7 @@ export const 执行主剧情发送工作流 = async (
                         snapshot: turnSnapshot,
                         parsedResponse: mainStoryVariableResponse,
                         mergeTargetResponse: responseForExecution,
-                        displayResponse: finalDisplayResponse,
+                        displayResponse: baseDisplayResponse,
                         rawText: rawAiText,
                         playerInput: sendInput,
                         inputTokens,
@@ -1451,12 +1561,26 @@ export const 执行主剧情发送工作流 = async (
                         || "变量生成失败"
                     )
                 });
+                let variableStage: Awaited<ReturnType<typeof 执行变量生成阶段>>;
+                if (文章优化变量可并行) {
+                    const baseDisplayResponse = finalDisplayResponse;
+                    const [polishStage, parallelVariableStage] = await Promise.all([
+                        执行文章优化阶段(),
+                        执行变量生成阶段(baseDisplayResponse)
+                    ]);
+                    应用文章优化结果(polishStage);
+                    variableStage = parallelVariableStage;
+                } else {
+                    const polishStage = await 执行文章优化阶段();
+                    应用文章优化结果(polishStage);
+                    variableStage = await 执行变量生成阶段(finalDisplayResponse);
+                }
                 variableGenerationResult = variableStage.result ?? null;
                 if (variableStage.completed && variableGenerationResult?.mergedParsed) {
                     responseForExecution = variableGenerationResult.mergedParsed;
                     finalParsedResponse = variableGenerationResult.mergedParsed;
-                    finalDisplayResponse = variableGenerationResult.mergedDisplayResponse;
-                    displayAiData = variableGenerationResult.mergedDisplayResponse;
+                    finalDisplayResponse = 合并变量结果到展示响应(displayAiData, variableGenerationResult.mergedParsed);
+                    displayAiData = finalDisplayResponse;
                     await 让出主线程();
                     simulatedState = 计时同步队列步骤(
                         "variable.simulateMergedResponseCommands",
@@ -1480,13 +1604,39 @@ export const 执行主剧情发送工作流 = async (
                     }
                 }
                 let worldEvolutionResult: 世界演变执行结果 | null = null;
+                let planningResult: Awaited<ReturnType<typeof deps.后台执行统一规划分析>> | null = null;
+                let mapUpdateResult: 地图更新执行结果 | null = null;
                 const 变量生成后命令数 = Array.isArray(responseForExecution.tavern_commands) ? responseForExecution.tavern_commands.length : 0;
-                if (!worldEvolutionFeatureEnabled) {
-                    options?.onWorldEvolutionProgress?.({
-                        phase: "skipped",
-                        text: "动态世界功能未开启，已跳过本轮世界推演。"
-                    });
-                } else if (worldEvolutionSplitEnabled) {
+                const mapGenerationEnabled = currentState.apiConfig?.功能模型占位?.地图生成功能启用 !== false;
+                const parallelStageEntries = [
+                    { id: 'world', enabled: worldEvolutionSplitEnabled, config: 获取世界演变接口配置(currentState.apiConfig) },
+                    { id: 'planning', enabled: planningFeatureEnabled, config: 获取规划分析接口配置(currentState.apiConfig) },
+                    { id: 'map', enabled: mapGenerationEnabled, config: 获取地图自动更新接口配置(currentState.apiConfig) }
+                ].filter((item) => item.enabled && 接口配置是否可用(item.config));
+                const parallelChannelKeys = parallelStageEntries.map((item) => 获取队列阶段渠道键(item.config, activeApi)).filter(Boolean);
+                const 后处理三阶段可并行 = parallelStageEntries.length >= 2
+                    && parallelChannelKeys.length === parallelStageEntries.length
+                    && new Set(parallelChannelKeys).size === parallelChannelKeys.length;
+
+                const 执行动态世界阶段 = async (
+                    stateSnapshot: typeof simulatedState,
+                    responseSnapshot: GameResponse,
+                    displaySnapshot: GameResponse
+                ): Promise<世界演变执行结果 | null> => {
+                    if (!worldEvolutionFeatureEnabled) {
+                        options?.onWorldEvolutionProgress?.({
+                            phase: "skipped",
+                            text: "动态世界功能未开启，已跳过本轮世界推演。"
+                        });
+                        return null;
+                    }
+                    if (!worldEvolutionSplitEnabled) {
+                        options?.onWorldEvolutionProgress?.({
+                            phase: "skipped",
+                            text: "世界演变独立链路未启用，已跳过。"
+                        });
+                        return null;
+                    }
                     const worldStage = await 执行可重试独立阶段({
                         stageId: "world",
                         stageLabel: "动态世界",
@@ -1495,7 +1645,7 @@ export const 执行主剧情发送工作流 = async (
                                 phase: "start",
                                 text: attempt > 1
                                     ? `正在重新执行动态世界更新...（第 ${attempt} 次手动重试）`
-                                    : "正在执行动态世界更新..."
+                                    : (后处理三阶段可并行 ? "正在并行执行动态世界更新..." : "正在执行动态世界更新...")
                             });
                         },
                         onAutoRetry: (attempt, maxAttempts, reason) => {
@@ -1506,15 +1656,15 @@ export const 执行主剧情发送工作流 = async (
                         },
                         run: async () => {
                             const worldContextResponse: GameResponse = {
-                                ...displayAiData,
-                                tavern_commands: Array.isArray(responseForExecution.tavern_commands) ? [...responseForExecution.tavern_commands] : []
+                                ...displaySnapshot,
+                                tavern_commands: Array.isArray(responseSnapshot.tavern_commands) ? [...responseSnapshot.tavern_commands] : []
                             };
                             const result = await deps.执行世界演变更新({
                                 来源: "story_dynamic",
                                 动态世界线索: [],
                                 applyCommands: false,
                                 currentResponse: worldContextResponse,
-                                stateBase: simulatedState,
+                                stateBase: stateSnapshot,
                                 signal: controller.signal
                             });
                             if (result.phase === "error") {
@@ -1543,164 +1693,95 @@ export const 执行主剧情发送工作流 = async (
                             });
                         }
                     });
-                    worldEvolutionResult = worldStage.result || null;
-                    if (worldStage.completed && worldEvolutionResult) {
-                        options?.onWorldEvolutionProgress?.({
-                            phase: worldEvolutionResult.phase,
-                            text: worldEvolutionResult.statusText || (worldEvolutionResult.ok ? "动态世界更新完成。" : "动态世界未产生更新。"),
-                            rawText: worldEvolutionResult.rawText,
-                            commandTexts: 构建带索引命令文本(worldEvolutionResult.commands, 变量生成后命令数 + 1)
+                    return worldStage.result || null;
+                };
+
+                const 执行规划分析阶段 = async (
+                    stateSnapshot: typeof simulatedState,
+                    responseSnapshot: GameResponse
+                ): Promise<Awaited<ReturnType<typeof deps.后台执行统一规划分析>> | null> => {
+                    if (!planningFeatureEnabled) {
+                        options?.onPlanningProgress?.({
+                            phase: "skipped",
+                            text: "规划分析功能未开启，已跳过本轮规划分析。"
                         });
+                        return null;
                     }
-                } else {
-                    options?.onWorldEvolutionProgress?.({
-                        phase: "skipped",
-                        text: "世界演变独立链路未启用，已跳过。"
-                    });
-                }
-                if (!本次仍是最新前台回合()) {
-                    options?.onWorldEvolutionProgress?.({
-                        phase: "skipped",
-                        text: "新的正文回合已经开始，本轮动态世界结果已作为过期后台结果丢弃。"
-                    });
-                    return;
-                }
-                if (worldEvolutionResult && worldEvolutionResult.commands.length > 0) {
-                    responseForExecution = {
-                        ...responseForExecution,
-                        tavern_commands: [
-                            ...(Array.isArray(responseForExecution.tavern_commands) ? responseForExecution.tavern_commands : []),
-                            ...worldEvolutionResult.commands
-                        ]
-                    };
-                    await 让出主线程();
-                    simulatedState = 计时同步队列步骤(
-                        "world.simulateMergedResponseCommands",
-                        () => deps.processResponseCommands(responseForExecution, mainCommandBaseState, { applyState: false }),
-                        { commandCount: 获取响应命令数量(responseForExecution), worldCommandCount: worldEvolutionResult.commands.length }
-                    );
-                }
-                let 当前命令偏移 = 变量生成后命令数 + (worldEvolutionResult ? worldEvolutionResult.commands.length : 0);
-                if (!planningFeatureEnabled) {
-                    options?.onPlanningProgress?.({
-                        phase: "skipped",
-                        text: "规划分析功能未开启，已跳过本轮规划分析。"
-                    });
-                } else {
-                const planningStage = await 执行可重试独立阶段({
-                    stageId: "planning",
-                    stageLabel: "规划分析",
-                    useGlobalAutoRetry: false,
-                    beforeAttempt: (attempt) => {
-                        options?.onPlanningProgress?.({
-                            phase: "start",
-                            text: attempt > 1
-                                ? `正在重新分析并修订剧情规划...（第 ${attempt} 次手动重试）`
-                                : "正在分析并修订剧情规划..."
-                        });
-                    },
-                    onAutoRetry: (attempt, maxAttempts, reason) => {
-                        options?.onPlanningProgress?.({
-                            phase: "start",
-                            text: `规划分析请求失败，正在自动重试（${attempt}/${maxAttempts}）${reason ? `：${reason}` : ""}`
-                        });
-                    },
-                    run: () => deps.后台执行统一规划分析({
-                        state: {
-                            环境: simulatedState.环境,
-                            社交: simulatedState.社交,
-                            世界: simulatedState.世界,
-                            剧情: simulatedState.剧情,
-                            剧情规划: simulatedState.剧情规划,
-                            女主剧情规划: simulatedState.女主剧情规划,
-                            同人剧情规划: simulatedState.同人剧情规划,
-                            同人女主剧情规划: simulatedState.同人女主剧情规划
+                    const planningStage = await 执行可重试独立阶段({
+                        stageId: "planning",
+                        stageLabel: "规划分析",
+                        useGlobalAutoRetry: false,
+                        beforeAttempt: (attempt) => {
+                            options?.onPlanningProgress?.({
+                                phase: "start",
+                                text: attempt > 1
+                                    ? `正在重新分析并修订剧情规划...（第 ${attempt} 次手动重试）`
+                                    : (后处理三阶段可并行 ? "正在并行分析并修订剧情规划..." : "正在分析并修订剧情规划...")
+                            });
                         },
-                        playerInput: sendInput,
-                        gameTime: 环境时间转标准串(simulatedState.环境) || "未知时间",
-                        response: responseForExecution,
-                        shouldApply: 本次仍是最新前台回合,
-                        onRetry: (attempt, maxAttempts, reason) => {
+                        onAutoRetry: (attempt, maxAttempts, reason) => {
                             options?.onPlanningProgress?.({
                                 phase: "start",
                                 text: `规划分析请求失败，正在自动重试（${attempt}/${maxAttempts}）${reason ? `：${reason}` : ""}`
                             });
                         },
-                        signal: controller.signal
-                    }),
-                    onError: (errorText) => {
-                        options?.onPlanningProgress?.({
-                            phase: "error",
-                            text: `${errorText || "规划分析失败"}\n规划分析失败不会阻塞本回合，已自动跳过。`
-                        });
-                    },
-                    onSkip: (errorText) => {
-                        options?.onPlanningProgress?.({
-                            phase: "skipped",
-                            text: `规划分析失败，已自动跳过；本回合正文和其他后台结果保留。${errorText ? `\n${errorText}` : ""}`
-                        });
-                    },
-                    getErrorText: (error: any) => (
-                        deps.提取原始报错详情(error)
-                        || error?.message
-                        || "规划分析失败"
-                    ),
-                    skipFailureDecision: true
-                });
-                const planningResult = planningStage.result;
-                if (!本次仍是最新前台回合()) {
-                    options?.onPlanningProgress?.({
-                        phase: "skipped",
-                        text: "新的正文回合已经开始，本轮规划分析结果已作为过期后台结果丢弃。"
+                        run: () => deps.后台执行统一规划分析({
+                            state: {
+                                环境: stateSnapshot.环境,
+                                社交: stateSnapshot.社交,
+                                世界: stateSnapshot.世界,
+                                剧情: stateSnapshot.剧情,
+                                剧情规划: stateSnapshot.剧情规划,
+                                女主剧情规划: stateSnapshot.女主剧情规划,
+                                同人剧情规划: stateSnapshot.同人剧情规划,
+                                同人女主剧情规划: stateSnapshot.同人女主剧情规划
+                            },
+                            playerInput: sendInput,
+                            gameTime: 环境时间转标准串(stateSnapshot.环境) || "未知时间",
+                            response: responseSnapshot,
+                            shouldApply: 本次仍是最新前台回合,
+                            onRetry: (attempt, maxAttempts, reason) => {
+                                options?.onPlanningProgress?.({
+                                    phase: "start",
+                                    text: `规划分析请求失败，正在自动重试（${attempt}/${maxAttempts}）${reason ? `：${reason}` : ""}`
+                                });
+                            },
+                            signal: controller.signal
+                        }),
+                        onError: (errorText) => {
+                            options?.onPlanningProgress?.({
+                                phase: "error",
+                                text: `${errorText || "规划分析失败"}\n规划分析失败不会阻塞本回合，已自动跳过。`
+                            });
+                        },
+                        onSkip: (errorText) => {
+                            options?.onPlanningProgress?.({
+                                phase: "skipped",
+                                text: `规划分析失败，已自动跳过；本回合正文和其他后台结果保留。${errorText ? `\n${errorText}` : ""}`
+                            });
+                        },
+                        getErrorText: (error: any) => (
+                            deps.提取原始报错详情(error)
+                            || error?.message
+                            || "规划分析失败"
+                        ),
+                        skipFailureDecision: true
                     });
-                    return;
-                }
-                if (planningStage.completed && planningResult) {
-                    options?.onPlanningProgress?.({
-                        phase: planningResult.updated ? "done" : "skipped",
-                        text: planningResult.message,
-                        rawText: planningResult.rawText,
-                        commandTexts: 构建带索引命令文本(planningResult.commands, 当前命令偏移 + 1)
-                    });
-                    if (planningResult.updated || planningResult.commands.length > 0) {
-                        planningDisplayMetadata = {
-                            planning_analysis_updated: planningResult.updated,
-                            planning_analysis_report: planningResult.message,
-                            planning_analysis_commands: Array.isArray(planningResult.commands) ? [...planningResult.commands] : []
-                        };
-                    }
-                    if (planningResult.commands.length > 0) {
-                        responseForExecution = {
-                            ...responseForExecution,
-                            tavern_commands: [
-                                ...(Array.isArray(responseForExecution.tavern_commands) ? responseForExecution.tavern_commands : []),
-                                ...planningResult.commands
-                            ]
-                        };
-                        await 让出主线程();
-                        simulatedState = 计时同步队列步骤(
-                            "planning.simulateMergedResponseCommands",
-                            () => deps.processResponseCommands(responseForExecution, mainCommandBaseState, { applyState: false }),
-                            { commandCount: 获取响应命令数量(responseForExecution), planningCommandCount: planningResult.commands.length }
-                        );
-                    }
-                }
-                }
+                    return planningStage.result || null;
+                };
 
-                const mapGenerationEnabled = currentState.apiConfig?.功能模型占位?.地图生成功能启用 !== false;
-                if (!mapGenerationEnabled) {
-                    options?.onMapUpdateProgress?.({
-                        phase: 'skipped',
-                        text: '地图生成功能未开启，已跳过本轮地图更新。'
-                    });
-                } else {
-                    options?.onMapUpdateProgress?.({
-                        phase: 'start',
-                        text: '正在执行地图更新...'
-                    });
-
-                    let mapUpdateResult: 地图更新执行结果 | null = null;
-                    const 地图更新前命令数 = Array.isArray(responseForExecution.tavern_commands) ? responseForExecution.tavern_commands.length : 0;
+                const 执行地图更新阶段 = async (
+                    stateSnapshot: typeof simulatedState,
+                    responseSnapshot: GameResponse,
+                    displaySnapshot: GameResponse
+                ): Promise<地图更新执行结果 | null> => {
+                    if (!mapGenerationEnabled) {
+                        options?.onMapUpdateProgress?.({
+                            phase: 'skipped',
+                            text: '地图生成功能未开启，已跳过本轮地图更新。'
+                        });
+                        return null;
+                    }
                     const mapUpdateStage = await 执行可重试独立阶段({
                         stageId: "map",
                         stageLabel: "地图更新",
@@ -1709,7 +1790,7 @@ export const 执行主剧情发送工作流 = async (
                                 phase: "start",
                                 text: attempt > 1
                                     ? `正在重新执行地图更新...（第 ${attempt} 次手动重试）`
-                                    : "正在执行地图更新..."
+                                    : (后处理三阶段可并行 ? "正在并行执行地图更新..." : "正在执行地图更新...")
                             });
                         },
                         onAutoRetry: (attempt, maxAttempts, reason) => {
@@ -1720,20 +1801,20 @@ export const 执行主剧情发送工作流 = async (
                         },
                         run: async () => {
                             const mapContextResponse: GameResponse = {
-                                ...displayAiData,
-                                tavern_commands: Array.isArray(responseForExecution.tavern_commands) ? [...responseForExecution.tavern_commands] : []
+                                ...displaySnapshot,
+                                tavern_commands: Array.isArray(responseSnapshot.tavern_commands) ? [...responseSnapshot.tavern_commands] : []
                             };
                             const result = await 生成地图更新({
                                 mode: 'auto_incremental',
                                 apiSettings: currentState.apiConfig,
-                                环境: simulatedState.环境,
-                                世界: simulatedState.世界,
-                                社交: simulatedState.社交,
-                                角色: simulatedState.角色,
+                                环境: stateSnapshot.环境,
+                                世界: stateSnapshot.世界,
+                                社交: stateSnapshot.社交,
+                                角色: stateSnapshot.角色,
                                 gameConfig: currentState.gameConfig,
                                 worldbooks: currentState.世界书列表,
                                 currentResponse: mapContextResponse,
-                                stateBase: simulatedState,
+                                stateBase: stateSnapshot,
                                 signal: controller.signal
                             });
                             if (result.phase === 'error') {
@@ -1762,23 +1843,136 @@ export const 执行主剧情发送工作流 = async (
                             });
                         }
                     });
-                    mapUpdateResult = mapUpdateStage.result || null;
+                    return mapUpdateStage.result || null;
+                };
+
+                if (后处理三阶段可并行) {
+                    const parallelState = simulatedState;
+                    const parallelResponse = {
+                        ...responseForExecution,
+                        tavern_commands: Array.isArray(responseForExecution.tavern_commands) ? [...responseForExecution.tavern_commands] : []
+                    } as GameResponse;
+                    const parallelDisplay = {
+                        ...displayAiData,
+                        tavern_commands: Array.isArray(responseForExecution.tavern_commands) ? [...responseForExecution.tavern_commands] : []
+                    } as GameResponse;
+                    [worldEvolutionResult, planningResult, mapUpdateResult] = await Promise.all([
+                        执行动态世界阶段(parallelState, parallelResponse, parallelDisplay),
+                        执行规划分析阶段(parallelState, parallelResponse),
+                        执行地图更新阶段(parallelState, parallelResponse, parallelDisplay)
+                    ]);
+                } else {
+                    worldEvolutionResult = await 执行动态世界阶段(simulatedState, responseForExecution, displayAiData);
                     if (!本次仍是最新前台回合()) {
-                        options?.onMapUpdateProgress?.({
+                        options?.onWorldEvolutionProgress?.({
                             phase: "skipped",
-                            text: "新的正文回合已经开始，本轮地图更新结果已作为过期后台结果丢弃。"
+                            text: "新的正文回合已经开始，本轮动态世界结果已作为过期后台结果丢弃。"
                         });
                         return;
                     }
-                    if (mapUpdateStage.completed && mapUpdateResult) {
-                        options?.onMapUpdateProgress?.({
-                            phase: mapUpdateResult.phase,
-                            text: mapUpdateResult.statusText || (mapUpdateResult.ok ? "地图更新完成。" : "地图更新未产生更新。"),
-                            rawText: mapUpdateResult.rawText,
-                            commandTexts: 构建带索引命令文本(mapUpdateResult.commands, 地图更新前命令数 + 1)
-                        });
+                    if (worldEvolutionResult && worldEvolutionResult.commands.length > 0) {
+                        responseForExecution = {
+                            ...responseForExecution,
+                            tavern_commands: [
+                                ...(Array.isArray(responseForExecution.tavern_commands) ? responseForExecution.tavern_commands : []),
+                                ...worldEvolutionResult.commands
+                            ]
+                        };
+                        await 让出主线程();
+                        simulatedState = 计时同步队列步骤(
+                            "world.simulateMergedResponseCommands",
+                            () => deps.processResponseCommands(responseForExecution, mainCommandBaseState, { applyState: false }),
+                            { commandCount: 获取响应命令数量(responseForExecution), worldCommandCount: worldEvolutionResult.commands.length }
+                        );
                     }
-                    if (mapUpdateResult && mapUpdateResult.commands.length > 0) {
+                    planningResult = await 执行规划分析阶段(simulatedState, responseForExecution);
+                    if (!本次仍是最新前台回合()) {
+                        options?.onPlanningProgress?.({
+                            phase: "skipped",
+                            text: "新的正文回合已经开始，本轮规划分析结果已作为过期后台结果丢弃。"
+                        });
+                        return;
+                    }
+                    if (planningResult?.commands?.length) {
+                        responseForExecution = {
+                            ...responseForExecution,
+                            tavern_commands: [
+                                ...(Array.isArray(responseForExecution.tavern_commands) ? responseForExecution.tavern_commands : []),
+                                ...planningResult.commands
+                            ]
+                        };
+                        await 让出主线程();
+                        simulatedState = 计时同步队列步骤(
+                            "planning.simulateMergedResponseCommands",
+                            () => deps.processResponseCommands(responseForExecution, mainCommandBaseState, { applyState: false }),
+                            { commandCount: 获取响应命令数量(responseForExecution), planningCommandCount: planningResult.commands.length }
+                        );
+                    }
+                    mapUpdateResult = await 执行地图更新阶段(simulatedState, responseForExecution, displayAiData);
+                }
+
+                if (!本次仍是最新前台回合()) {
+                    options?.onMapUpdateProgress?.({
+                        phase: "skipped",
+                        text: "新的正文回合已经开始，本轮后处理结果已作为过期后台结果丢弃。"
+                    });
+                    return;
+                }
+
+                let 当前命令偏移 = 变量生成后命令数;
+                if (worldEvolutionResult) {
+                    options?.onWorldEvolutionProgress?.({
+                        phase: worldEvolutionResult.phase,
+                        text: worldEvolutionResult.statusText || (worldEvolutionResult.ok ? "动态世界更新完成。" : "动态世界未产生更新。"),
+                        rawText: worldEvolutionResult.rawText,
+                        commandTexts: 构建带索引命令文本(worldEvolutionResult.commands, 当前命令偏移 + 1)
+                    });
+                    if (后处理三阶段可并行 && worldEvolutionResult.commands.length > 0) {
+                        responseForExecution = {
+                            ...responseForExecution,
+                            tavern_commands: [
+                                ...(Array.isArray(responseForExecution.tavern_commands) ? responseForExecution.tavern_commands : []),
+                                ...worldEvolutionResult.commands
+                            ]
+                        };
+                    }
+                    当前命令偏移 += worldEvolutionResult.commands.length;
+                }
+
+                if (planningResult) {
+                    options?.onPlanningProgress?.({
+                        phase: planningResult.updated ? "done" : "skipped",
+                        text: planningResult.message,
+                        rawText: planningResult.rawText,
+                        commandTexts: 构建带索引命令文本(planningResult.commands, 当前命令偏移 + 1)
+                    });
+                    if (planningResult.updated || planningResult.commands.length > 0) {
+                        planningDisplayMetadata = {
+                            planning_analysis_updated: planningResult.updated,
+                            planning_analysis_report: planningResult.message,
+                            planning_analysis_commands: Array.isArray(planningResult.commands) ? [...planningResult.commands] : []
+                        };
+                    }
+                    if (后处理三阶段可并行 && planningResult.commands.length > 0) {
+                        responseForExecution = {
+                            ...responseForExecution,
+                            tavern_commands: [
+                                ...(Array.isArray(responseForExecution.tavern_commands) ? responseForExecution.tavern_commands : []),
+                                ...planningResult.commands
+                            ]
+                        };
+                    }
+                    当前命令偏移 += planningResult.commands.length;
+                }
+
+                if (mapUpdateResult) {
+                    options?.onMapUpdateProgress?.({
+                        phase: mapUpdateResult.phase,
+                        text: mapUpdateResult.statusText || (mapUpdateResult.ok ? "地图更新完成。" : "地图更新未产生更新。"),
+                        rawText: mapUpdateResult.rawText,
+                        commandTexts: 构建带索引命令文本(mapUpdateResult.commands, 当前命令偏移 + 1)
+                    });
+                    if (mapUpdateResult.commands.length > 0) {
                         responseForExecution = {
                             ...responseForExecution,
                             tavern_commands: [
@@ -1786,13 +1980,33 @@ export const 执行主剧情发送工作流 = async (
                                 ...mapUpdateResult.commands
                             ]
                         };
-                        await 让出主线程();
-                        simulatedState = 计时同步队列步骤(
-                            "map.simulateMergedResponseCommands",
-                            () => deps.processResponseCommands(responseForExecution, mainCommandBaseState, { applyState: false }),
-                            { commandCount: 获取响应命令数量(responseForExecution), mapCommandCount: mapUpdateResult.commands.length }
-                        );
                     }
+                    当前命令偏移 += mapUpdateResult.commands.length;
+                }
+
+                if (后处理三阶段可并行 && (
+                    (worldEvolutionResult?.commands.length || 0) > 0
+                    || (planningResult?.commands.length || 0) > 0
+                    || (mapUpdateResult?.commands.length || 0) > 0
+                )) {
+                    await 让出主线程();
+                    simulatedState = 计时同步队列步骤(
+                        "parallelPost.simulateMergedResponseCommands",
+                        () => deps.processResponseCommands(responseForExecution, mainCommandBaseState, { applyState: false }),
+                        {
+                            commandCount: 获取响应命令数量(responseForExecution),
+                            worldCommandCount: worldEvolutionResult?.commands.length || 0,
+                            planningCommandCount: planningResult?.commands.length || 0,
+                            mapCommandCount: mapUpdateResult?.commands.length || 0
+                        }
+                    );
+                } else if (!后处理三阶段可并行 && mapUpdateResult && mapUpdateResult.commands.length > 0) {
+                    await 让出主线程();
+                    simulatedState = 计时同步队列步骤(
+                        "map.simulateMergedResponseCommands",
+                        () => deps.processResponseCommands(responseForExecution, mainCommandBaseState, { applyState: false }),
+                        { commandCount: 获取响应命令数量(responseForExecution), mapCommandCount: mapUpdateResult.commands.length }
+                    );
                 }
                 finalParsedResponse = responseForExecution;
                 finalDisplayResponse = {

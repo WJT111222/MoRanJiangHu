@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 详细门派结构, 职位等级排序 } from '../../../models/sect';
 
 interface Props {
@@ -11,8 +11,48 @@ interface Props {
 
 type Tab = 'hall' | 'exchange' | 'library' | 'members';
 
+const 获取组织显示文案 = (sectData: 详细门派结构) => {
+    const text = JSON.stringify(sectData || {});
+    const isApocalypse = /末日|丧尸|营地|避难|安全点|据点|车队|搜救|医疗维修|后勤|巡逻|物资|燃油|口粮|弹药|尸群/u.test(text);
+    if (!isApocalypse) {
+        return {
+            tabs: { hall: '宗门', exchange: '兑换', library: '藏经', members: '同门' },
+            organizationPower: '门派实力',
+            memberCount: '弟子',
+            principle: '宗门宗旨',
+            rules: '戒律',
+            rankPath: '晋升之路',
+            contribution: '贡献点',
+            capabilitySuffix: '',
+            rankMap: {} as Record<string, string>
+        };
+    }
+    return {
+        tabs: { hall: '据点', exchange: '物资', library: '资料', members: '成员' },
+        organizationPower: '据点能力',
+        memberCount: '成员',
+        principle: '据点准则',
+        rules: '守则',
+        rankPath: '分工晋升',
+        contribution: '贡献点',
+        capabilitySuffix: '能力值',
+        rankMap: {
+            杂役弟子: '营地成员',
+            外门弟子: '外勤成员',
+            内门弟子: '搜救队员',
+            真传弟子: '安全骨干',
+            执事: '指挥骨干',
+            长老: '副负责人',
+            副掌门: '负责人',
+            掌门: '总负责人'
+        } as Record<string, string>
+    };
+};
+
 const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook, learnedBookIds = [] }) => {
     const [activeTab, setActiveTab] = useState<Tab>('hall');
+    const 文案 = useMemo(() => 获取组织显示文案(sectData), [sectData]);
+    const 显示职位 = (rank?: string) => 文案.rankMap[String(rank || '').trim()] || rank || '无';
     const 累计贡献 = Math.max(sectData.玩家贡献 || 0, sectData.累计贡献 || 0);
     const 职位折扣: Record<string, number> = {
         杂役弟子: 0,
@@ -51,7 +91,7 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                         </div>
                         <div>
                             <div className="text-wuxia-gold font-serif font-bold text-base">{sectData.名称}</div>
-                            <div className="text-[9px] text-gray-500 font-mono">{sectData.玩家职位}</div>
+                            <div className="text-[9px] text-gray-500 font-mono">{显示职位(sectData.玩家职位)}</div>
                         </div>
                     </div>
                     <button
@@ -67,10 +107,10 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                 <div className="border-b border-gray-800/60 bg-black/30 px-3 py-2 overflow-x-auto no-scrollbar">
                     <div className="flex gap-2">
                         {[
-                            { id: 'hall', label: '宗门' },
-                            { id: 'exchange', label: '兑换' },
-                            { id: 'library', label: '藏经' },
-                            { id: 'members', label: '同门' },
+                            { id: 'hall', label: 文案.tabs.hall },
+                            { id: 'exchange', label: 文案.tabs.exchange },
+                            { id: 'library', label: 文案.tabs.library },
+                            { id: 'members', label: 文案.tabs.members },
                         ].map(tab => (
                             <button
                                 key={tab.id}
@@ -97,7 +137,7 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                                     <span>建设 <span className="text-gray-200">{sectData.建设度}</span></span>
                                 </div>
                                 <div className="mt-3 flex items-center justify-between">
-                                    <div className="text-[10px] text-gray-500">贡献点</div>
+                                    <div className="text-[10px] text-gray-500">{文案.contribution}</div>
                                     <div className="text-wuxia-gold font-mono font-bold">{sectData.玩家贡献}</div>
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
@@ -108,16 +148,16 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                             </div>
 
                             <div className="bg-black/40 border border-gray-800 rounded-xl p-4">
-                                <div className="text-[10px] text-wuxia-gold/70 tracking-[0.3em] mb-3">门派实力</div>
+                                <div className="text-[10px] text-wuxia-gold/70 tracking-[0.3em] mb-3">{文案.organizationPower}</div>
                                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                                     <div className="rounded border border-cyan-400/20 bg-cyan-950/15 p-2 text-cyan-100">等级：{sectData.门派等级 || '待评定'}</div>
                                     <div className="rounded border border-white/10 bg-black/25 p-2 text-gray-200">规模：{sectData.门派规模 || '待记录'}</div>
-                                    <div className="rounded border border-white/10 bg-black/25 p-2 text-gray-200">弟子：{sectData.弟子总数 || 0}</div>
+                                    <div className="rounded border border-white/10 bg-black/25 p-2 text-gray-200">{文案.memberCount}：{sectData.弟子总数 || 0}</div>
                                     <div className="rounded border border-wuxia-gold/20 bg-wuxia-gold/5 p-2 text-wuxia-gold">财富：{sectData.财富评级 || '待评估'}</div>
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-1.5">
                                     {Object.entries(战力分布).map(([key, value]) => (
-                                        <span key={key} className="rounded border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-gray-300">{key} {Number(value || 0)}</span>
+                                        <span key={key} className="rounded border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-gray-300">{key} {Number(value || 0)}{文案.capabilitySuffix ? ` ${文案.capabilitySuffix}` : ''}</span>
                                     ))}
                                 </div>
                                 {sectData.月俸规则 && (
@@ -128,19 +168,19 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                             </div>
 
                             <div className="bg-black/40 border border-gray-800 rounded-xl p-4">
-                                <div className="text-[10px] text-wuxia-gold/70 tracking-[0.3em] mb-2">宗门宗旨</div>
+                                <div className="text-[10px] text-wuxia-gold/70 tracking-[0.3em] mb-2">{文案.principle}</div>
                                 <p className="text-sm text-gray-300 font-serif leading-relaxed">“{sectData.简介}”</p>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {sectData.门规.map((rule, i) => (
                                         <span key={i} className="text-[10px] bg-red-950/30 text-red-300 border border-red-900/50 px-2 py-1 rounded">
-                                            戒律{i + 1}: {rule}
+                                            {文案.rules}{i + 1}: {rule}
                                         </span>
                                     ))}
                                 </div>
                             </div>
 
                             <div className="bg-black/40 border border-gray-800 rounded-xl p-4">
-                                <div className="text-[10px] text-wuxia-gold/70 tracking-[0.3em] mb-2">晋升之路</div>
+                                <div className="text-[10px] text-wuxia-gold/70 tracking-[0.3em] mb-2">{文案.rankPath}</div>
                                 <div className="space-y-2">
                                     {Object.entries(职位等级排序)
                                         .sort((a, b) => a[1] - b[1])
@@ -157,7 +197,7 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                                                     }`}>
                                                         {lvl}
                                                     </div>
-                                                    <span className={isCurrent ? 'text-wuxia-gold' : 'text-gray-400'}>{rank}</span>
+                                                    <span className={isCurrent ? 'text-wuxia-gold' : 'text-gray-400'}>{显示职位(rank)}</span>
                                                     {isCurrent && <span className="text-[9px] text-wuxia-gold border border-wuxia-gold px-2 rounded">当前</span>}
                                                 </div>
                                             );
@@ -174,7 +214,7 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                                 return (
                                     <div key={good.id} className="bg-black/40 border border-gray-800 rounded-xl p-3 space-y-2">
                                         <div className="text-sm text-gray-200 font-bold">{good.物品名称}</div>
-                                        <div className="text-[10px] text-gray-500">要求 {good.要求职位}</div>
+                                        <div className="text-[10px] text-gray-500">要求 {显示职位(good.要求职位)}</div>
                                         <div className="flex items-center justify-between text-[10px]">
                                             <span className="text-wuxia-gold font-mono">{discountedPrice} 贡献</span>
                                             <span className="text-gray-500">库存 {good.库存}</span>

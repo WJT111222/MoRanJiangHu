@@ -5,6 +5,7 @@ import ToggleSwitch from '../../ui/ToggleSwitch';
 import InlineSelect from '../../ui/InlineSelect';
 import { 规范化接口设置 } from '../../../utils/apiConfig';
 import { 默认文章优化提示词 } from '../../../prompts/runtime/defaults';
+import StageApiModelSelector from './StageApiModelSelector';
 
 interface Props {
     settings: 接口设置结构;
@@ -161,34 +162,18 @@ const PolishModelSettings: React.FC<Props> = ({ settings, onSave }) => {
                     />
                 </label>
 
-                <div className="flex gap-3 items-end">
-                    <div className="flex-1 space-y-1">
-                        <label className="text-xs text-gray-300">文章优化使用模型</label>
-                        <InlineSelect
-                            value={polishModelDisplay}
-                            options={selectOptions.map((model) => ({
-                                value: model,
-                                label: model
-                            }))}
-                            onChange={(model) => updatePlaceholder('文章优化使用模型', model)}
-                            disabled={!独立模型开启 || selectOptions.length === 0}
-                            placeholder={!独立模型开启
-                                ? `跟随主剧情模型：${主剧情解析模型 || '未设置'}`
-                                : (selectOptions.length ? '请选择模型' : '请先点击获取列表')}
-                            buttonClassName={独立模型开启
-                                ? 'bg-black/50 border-gray-600 py-2.5'
-                                : 'bg-black/30 border-gray-700 py-2.5'}
-                        />
-                    </div>
-                    <GameButton
-                        onClick={handleFetchModels}
-                        variant="secondary"
-                        className="px-4 py-2 text-xs"
-                        disabled={loadingModels}
-                    >
-                        {loadingModels ? '...' : '获取列表'}
-                    </GameButton>
-                </div>
+                <StageApiModelSelector
+                    form={form}
+                    enabled={独立模型开启}
+                    title="文章优化"
+                    modelKey="文章优化使用模型"
+                    channelKey="文章优化渠道ID"
+                    baseUrlKey="文章优化API地址"
+                    apiKeyKey="文章优化API密钥"
+                    fallbackModel={主剧情解析模型}
+                    onChange={updatePlaceholder}
+                />
+
                 <div className="space-y-1">
                     <label className="text-xs text-gray-300">文章优化独立 API 地址（可选）</label>
                     <input

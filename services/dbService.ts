@@ -2321,6 +2321,33 @@ export const 删除存档 = async (id: number): Promise<void> => {
     await 清理未引用图片资源();
 };
 
+export const 批量删除存档 = async (ids: number[]): Promise<number> => {
+    if (await 读取存档保护状态()) {
+        throw new Error('存档保护已开启，请先在“设置-数据存储”中关闭后再删除存档。');
+    }
+    const uniqueIds = Array.from(new Set(ids
+        .map((id) => Math.floor(Number(id) || 0))
+        .filter((id) => id > 0)
+    ));
+    if (uniqueIds.length <= 0) return 0;
+
+    const db = await 初始化数据库();
+    await new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME, SAVE_SUMMARIES_STORE], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const summaryStore = transaction.objectStore(SAVE_SUMMARIES_STORE);
+        uniqueIds.forEach((id) => {
+            store.delete(id);
+            summaryStore.delete(id);
+        });
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error || new Error('批量删除存档事务已中止。'));
+    });
+    await 清理未引用图片资源();
+    return uniqueIds.length;
+};
+
 export const 清空存档数据 = async (): Promise<void> => {
     if (await 读取存档保护状态()) {
         throw new Error('存档保护已开启，请先在“设置-数据存储”中关闭后再清空存档。');

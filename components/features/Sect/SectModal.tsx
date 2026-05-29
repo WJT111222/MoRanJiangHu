@@ -12,22 +12,66 @@ interface Props {
 
 type Tab = 'hall' | 'exchange' | 'library' | 'members';
 
+const 获取组织显示文案 = (sectData: 详细门派结构) => {
+    const text = JSON.stringify(sectData || {});
+    const isApocalypse = /末日|丧尸|营地|避难|安全点|据点|车队|搜救|医疗维修|后勤|巡逻|物资|燃油|口粮|弹药|尸群/u.test(text);
+    if (!isApocalypse) {
+        return {
+            hall: '宗门大殿',
+            exchange: '聚宝阁',
+            library: '藏经阁',
+            members: '同门名录',
+            rankPath: '晋升之路',
+            contribution: '贡献点',
+            organizationPower: '门派实力',
+            memberCount: '弟子',
+            capabilitySuffix: '',
+            rules: '戒律',
+            rankMap: {} as Record<string, string>
+        };
+    }
+    return {
+        hall: '据点总览',
+        exchange: '物资库',
+        library: '资料库',
+        members: '成员名录',
+        rankPath: '分工晋升',
+        contribution: '贡献点',
+        organizationPower: '据点能力',
+        memberCount: '成员',
+        capabilitySuffix: '能力值',
+        rules: '守则',
+        rankMap: {
+            杂役弟子: '营地成员',
+            外门弟子: '外勤成员',
+            内门弟子: '搜救队员',
+            真传弟子: '安全骨干',
+            执事: '指挥骨干',
+            长老: '副负责人',
+            副掌门: '负责人',
+            掌门: '总负责人'
+        } as Record<string, string>
+    };
+};
+
 const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook, learnedBookIds = [] }) => {
     const [activeTab, setActiveTab] = useState<Tab>('hall');
+    const 文案 = useMemo(() => 获取组织显示文案(sectData), [sectData]);
+    const 显示职位 = (rank?: string) => 文案.rankMap[String(rank || '').trim()] || rank || '无';
     const 未加入门派 = !sectData
         || ['none', '无', '无门无派', '未加入', '散人'].includes(String(sectData.ID || '').trim())
         || ['none', '无', '无门无派', '未加入', '散人'].includes(String(sectData.名称 || '').trim())
         || ['none', '无', '无门无派', '未加入', '散人'].includes(String(sectData.玩家职位 || '').trim());
     const tabs = useMemo(() => (
         未加入门派
-            ? [{ id: 'hall' as Tab, label: '宗门大殿' }]
+            ? [{ id: 'hall' as Tab, label: 文案.hall }]
             : [
-                { id: 'hall' as Tab, label: '宗门大殿' },
-                { id: 'exchange' as Tab, label: '聚宝阁' },
-                { id: 'library' as Tab, label: '藏经阁' },
-                { id: 'members' as Tab, label: '同门名录' },
+                { id: 'hall' as Tab, label: 文案.hall },
+                { id: 'exchange' as Tab, label: 文案.exchange },
+                { id: 'library' as Tab, label: 文案.library },
+                { id: 'members' as Tab, label: 文案.members },
             ]
-    ), [未加入门派]);
+    ), [未加入门派, 文案]);
 
     useEffect(() => {
         if (未加入门派 && activeTab !== 'hall') {
@@ -98,10 +142,10 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                     <div className="flex items-center gap-6">
                         <div className="text-right">
                             <div className="text-xs text-gray-500 uppercase tracking-widest">身份</div>
-                            <div className="text-wuxia-cyan font-bold font-serif text-lg">{sectData.玩家职位}</div>
+                            <div className="text-wuxia-cyan font-bold font-serif text-lg">{显示职位(sectData.玩家职位)}</div>
                         </div>
                         <div className="text-right border-l border-gray-700 pl-6">
-                            <div className="text-xs text-gray-500 uppercase tracking-widest">贡献点</div>
+                            <div className="text-xs text-gray-500 uppercase tracking-widest">{文案.contribution}</div>
                             <div className="text-wuxia-gold font-bold font-mono text-xl">{sectData.玩家贡献}</div>
                         </div>
                         <button 
@@ -146,10 +190,10 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                                         <div className="absolute top-0 right-0 p-4 opacity-10 text-[120px] font-serif leading-none pointer-events-none">散</div>
                                         <h4 className="text-wuxia-gold font-bold text-lg mb-4 flex items-center gap-2">
                                             <span className="w-1 h-6 bg-wuxia-gold"></span>
-                                            尚未加入门派
+                                            尚未加入组织
                                         </h4>
                                         <p className="text-gray-300 font-serif leading-loose text-lg indent-8">
-                                            当前仍是江湖散人，暂无晋升、贡献、藏经阁、聚宝阁和同门名录。加入门派后，这里才会显示对应宗门事务。
+                                            当前仍是自由行动者，暂无晋升、贡献、{文案.library}、{文案.exchange}和{文案.members}。加入组织后，这里才会显示对应事务。
                                         </p>
                                     </div>
                                 ) : (
@@ -158,7 +202,7 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                                     <div className="absolute top-0 right-0 p-4 opacity-10 text-[120px] font-serif leading-none pointer-events-none">宗</div>
                                     <h4 className="text-wuxia-gold font-bold text-lg mb-4 flex items-center gap-2">
                                         <span className="w-1 h-6 bg-wuxia-gold"></span>
-                                        宗门宗旨
+                                        {文案.hall === '据点总览' ? '据点准则' : '宗门宗旨'}
                                     </h4>
                                     <p className="text-gray-300 font-serif leading-loose text-lg indent-8">
                                         “{sectData.简介}”
@@ -166,7 +210,7 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                                     <div className="mt-6 flex flex-wrap gap-4">
                                         {sectData.门规.map((rule, i) => (
                                             <span key={i} className="text-xs bg-red-950/30 text-red-300 border border-red-900/50 px-3 py-1 rounded">
-                                                戒律{i+1}: {rule}
+                                                {文案.rules}{i+1}: {rule}
                                             </span>
                                         ))}
                                     </div>
@@ -174,7 +218,7 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
 
                                 <div className="grid grid-cols-2 gap-6">
                                      <div className="bg-black/30 border border-gray-700 p-6 rounded-lg">
-                                        <h4 className="text-gray-100 font-bold text-sm uppercase tracking-widest mb-4">晋升之路</h4>
+                                        <h4 className="text-gray-100 font-bold text-sm uppercase tracking-widest mb-4">{文案.rankPath}</h4>
                                         <div className="space-y-4 relative">
                                             {Object.entries(职位等级排序).sort((a,b) => a[1] - b[1]).map(([rank, lvl]) => {
                                                 const currentLvl = 职位等级排序[sectData.玩家职位] || 0;
@@ -194,7 +238,7 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                                                             {lvl}
                                                         </div>
                                                         <div className="flex-1">
-                                                            <div className={`font-bold ${isCurrent ? 'text-wuxia-gold' : 'text-gray-100'}`}>{rank}</div>
+                                                            <div className={`font-bold ${isCurrent ? 'text-wuxia-gold' : 'text-gray-100'}`}>{显示职位(rank)}</div>
                                                             <div className="mt-1 text-xs text-gray-200">累计贡献 {累计贡献} / {required}</div>
                                                             <div className="mt-1 text-[11px] text-gray-400">
                                                                 {(职位特权[rank] || []).join(' · ') || '暂无特权'}
@@ -208,7 +252,7 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                                         </div>
                                      </div>
                                      <div className="bg-black/30 border border-gray-700 p-6 rounded-lg">
-                                          <h4 className="text-gray-100 font-bold text-sm uppercase tracking-widest mb-4">贡献总览</h4>
+                                          <h4 className="text-gray-100 font-bold text-sm uppercase tracking-widest mb-4">{文案.contribution}总览</h4>
                                          <div className="grid grid-cols-2 gap-3 text-sm">
                                              <div className="rounded border border-wuxia-gold/20 bg-wuxia-gold/5 p-4">
                                                  <div className="text-gray-200">可用贡献</div>
@@ -222,16 +266,16 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                                           <p className="mt-4 text-sm leading-6 text-gray-200">晋升只看累计生成过的贡献点，聚宝阁兑换只消耗当前可用贡献。</p>
                                           <div className="mt-4 rounded border border-wuxia-gold/20 bg-black/25 p-3">
                                              <div className="text-xs tracking-widest text-wuxia-gold/70">当前身份特权</div>
-                                             <div className="mt-2 text-sm text-gray-100">{sectData.玩家职位} · 聚宝阁{当前折扣文本}</div>
+                                             <div className="mt-2 text-sm text-gray-100">{显示职位(sectData.玩家职位)} · 聚宝阁{当前折扣文本}</div>
                                              <div className="mt-2 flex flex-wrap gap-2">
-                                                 {(职位特权[sectData.玩家职位] || ['基础门派事务']).map(item => (
-                                                     <span key={item} className="rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-gray-200">{item}</span>
+                                                 {(职位特权[sectData.玩家职位] || ['基础事务']).map(item => (
+                                                     <span key={item} className="rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-gray-200">{文案.rankMap[item] || item}</span>
                                                  ))}
                                               </div>
                                           </div>
                                       </div>
                                       <div className="bg-black/30 border border-gray-700 p-6 rounded-lg md:col-span-2">
-                                          <h4 className="text-gray-100 font-bold text-sm uppercase tracking-widest mb-4">门派实力</h4>
+                                          <h4 className="text-gray-100 font-bold text-sm uppercase tracking-widest mb-4">{文案.organizationPower}</h4>
                                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                               <div className="rounded border border-cyan-400/20 bg-cyan-950/15 p-3">
                                                   <div className="text-gray-300">等级</div>
@@ -242,7 +286,7 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                                                   <div className="mt-1 text-gray-100">{sectData.门派规模 || '待记录'}</div>
                                               </div>
                                               <div className="rounded border border-white/10 bg-black/25 p-3">
-                                                  <div className="text-gray-300">弟子</div>
+                                                  <div className="text-gray-300">{文案.memberCount}</div>
                                                   <div className="mt-1 font-mono text-gray-100">{sectData.弟子总数 || 0}</div>
                                               </div>
                                               <div className="rounded border border-wuxia-gold/20 bg-wuxia-gold/5 p-3">
@@ -252,7 +296,7 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                                           </div>
                                           <div className="mt-4 flex flex-wrap gap-2">
                                               {Object.entries(战力分布).map(([key, value]) => (
-                                                  <span key={key} className="rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-gray-200">{key} {Number(value || 0)}</span>
+                                                  <span key={key} className="rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-gray-200">{key} {Number(value || 0)}{文案.capabilitySuffix ? ` ${文案.capabilitySuffix}` : ``}</span>
                                               ))}
                                           </div>
                                           {月俸规则 && (
@@ -285,7 +329,7 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                                                      <span className="text-xs bg-gray-800 text-gray-100 px-1.5 py-0.5 rounded">{good.类型}</span>
                                                  </div>
                                                  <div className="text-sm text-gray-200">
-                                                     要求: <span className="text-gray-100">{good.要求职位}</span>
+                                                     要求: <span className="text-gray-100">{显示职位(good.要求职位)}</span>
                                                  </div>
                                                  <div className="mt-auto pt-2 border-t border-gray-800 flex justify-between items-center">
                                                      <div className="text-wuxia-gold font-mono font-bold">
@@ -330,7 +374,7 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                                              </div>
                                              <p className="mt-4 text-sm leading-6 text-gray-300">{book.简介}</p>
                                               <div className="mt-4 grid grid-cols-2 gap-2 text-sm text-gray-300">
-                                                  <div className="rounded border border-white/10 bg-black/20 px-3 py-2">职位 {book.要求职位}</div>
+                                                  <div className="rounded border border-white/10 bg-black/20 px-3 py-2">职位 {显示职位(book.要求职位)}</div>
                                                   <div className="rounded border border-white/10 bg-black/20 px-3 py-2">累计贡献 {book.要求累计贡献}</div>
                                               </div>
                                                <button

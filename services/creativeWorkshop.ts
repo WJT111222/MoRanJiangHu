@@ -1,7 +1,9 @@
 import { 创意工坊模块列表, type 创意工坊模块条目, type 创意工坊模块类型 } from '../data/creativeWorkshopModules';
 import { RELEASE_INFO } from '../data/releaseInfo';
+import { buildCreativeWorkshopContentFingerprint, filterCreativeWorkshopDuplicates, isOfficialCreativeWorkshopDuplicate } from '../utils/creativeWorkshopDedupe';
 import { isNativeCapacitorEnvironment } from '../utils/nativeRuntime';
 import { 规范化ComfyUI工作流JSON } from './ai/comfyWorkflowTools';
+import { 读取云端游玩会话 } from './cloudPlayService';
 
 export const 已启用创意工坊模块存储键 = 'creative_workshop_enabled_modules';
 export const 本地创意工坊模块存储键 = 'creative_workshop_local_modules';
@@ -9,6 +11,13 @@ export const 本地创意工坊模块存储键 = 'creative_workshop_local_module
 export interface 发布创意工坊模块参数 {
     module: 创意工坊模块条目;
     contributor?: string;
+    anonymous?: boolean;
+}
+
+export interface 编辑创意工坊模块参数 {
+    id: string;
+    patch: Partial<Pick<创意工坊模块条目, 'title' | 'subtitle' | 'description' | 'tags' | 'contributor'>>;
+    anonymous?: boolean;
 }
 
 const API_PATH = '/api/workshop/modules';
@@ -39,6 +48,24 @@ const 读取响应JSON = async (response: Response): Promise<any> => {
         const preview = text.trim().slice(0, 200);
         return { ok: false, error: preview ? `创意工坊接口返回了非 JSON 内容：${preview}` : '创意工坊接口返回了空响应' };
     }
+};
+
+const 构建账号载荷 = (anonymous?: boolean) => {
+    const session = (() => {
+        try {
+            return 读取云端游玩会话();
+        } catch {
+            return null;
+        }
+    })();
+    if (!session?.username || !session.password) return {};
+    return {
+        auth: {
+            username: session.username,
+            password: session.password
+        },
+        anonymous: anonymous === true
+    };
 };
 
 const 规范化下载地址 = (value: unknown, id: string): string => {
@@ -114,21 +141,29 @@ export const 列出创意工坊模块 = async (): Promise<创意工坊模块条�
         cloudEntries = [];
     }
     const seen = new Set<string>();
-    return [...创意工坊模块列表, ...读取本地创意工坊模块(), ...cloudEntries]
+    return filterCreativeWorkshopDuplicates([...创意工坊模块列表, ...读取本地创意工坊模块(), ...cloudEntries]
         .map((entry) => ({ ...entry, source: entry.source || 'builtin' }))
         .filter((entry) => {
             const key = `${entry.source}:${entry.id}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
-        });
+        }));
 };
 
 export const 发布创意工坊模块 = async (params: 发布创意工坊模块参数): Promise<创意工坊模块条目> => {
+    if (isOfficialCreativeWorkshopDuplicate(params.module, 创意工坊模块列表)) {
+        throw new Error('该模块与官方预设完全一致，无需重复贡献社区。');
+    }
     const response = await fetch(构建创意工坊API地址(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ module: params.module, contributor: params.contributor || params.module.contributor || '' })
+        body: JSON.stringify({
+            module: params.module,
+            contributor: params.contributor || params.module.contributor || '',
+            officialFingerprints: 创意工坊模块列表.map(buildCreativeWorkshopContentFingerprint),
+            ...构建账号载荷(params.anonymous)
+        })
     });
     const payload = await 读取响应JSON(response);
     if (!response.ok || payload?.ok === false) {
@@ -137,6 +172,42 @@ export const 发布创意工坊模块 = async (params: 发布创意工坊模块�
     const entry = 规范化模块(payload.entry, 'cloud');
     if (!entry) throw new Error('发布创意工坊失败：服务端没有返回模块信息');
     return entry;
+};
+
+export const 编辑创意工坊模块 = async (params: 编辑创意工坊模块参数): Promise<创意工坊模块条目> => {
+    const response = await fetch(构建创意工坊API地址(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+            action: 'update',
+            id: params.id,
+            patch: params.patch,
+            ...构建账号载荷(params.anonymous)
+        })
+    });
+    const payload = await 读取响应JSON(response);
+    if (!response.ok || payload?.ok === false) {
+        throw new Error(payload?.error || `编辑创意工坊失败：${response.status}`);
+    }
+    const entry = 规范化模块(payload.entry, 'cloud');
+    if (!entry) throw new Error('编辑创意工坊失败：服务端没有返回模块信息');
+    return entry;
+};
+
+export const 删除创意工坊模块 = async (id: string): Promise<void> => {
+    const response = await fetch(构建创意工坊API地址(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+            action: 'delete',
+            id,
+            ...构建账号载荷(false)
+        })
+    });
+    const payload = await 读取响应JSON(response);
+    if (!response.ok || payload?.ok === false) {
+        throw new Error(payload?.error || `删除创意工坊失败：${response.status}`);
+    }
 };
 
 export const 下载创意工坊模块 = async (entry: 创意工坊模块条目): Promise<创意工坊模块条目> => {

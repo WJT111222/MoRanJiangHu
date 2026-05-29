@@ -29,6 +29,7 @@ interface Props {
     enableHeroinePlan?: boolean;
     enablePlanningPanel?: boolean;
     enableKungfu?: boolean;
+    kungfuLabel?: string;
     onSave: () => void;
     onLoad: () => void;
     onReturnToHome?: () => void;
@@ -63,6 +64,7 @@ const RightPanel: React.FC<Props> = ({
     enableHeroinePlan = false,
     enablePlanningPanel = true,
     enableKungfu = true,
+    kungfuLabel = '功法',
     onSave,
     onLoad,
     onReturnToHome,
@@ -107,7 +109,7 @@ const RightPanel: React.FC<Props> = ({
                 : ''
         }] : []),
         { label: '队伍', action: onOpenTeam, color: 'primary' as const, changeKeys: ['队伍'] },
-        ...(enableKungfu ? [{ label: '功法', action: onOpenKungfu, color: 'primary' as const, changeKeys: ['功法'] }] : []),
+        ...(enableKungfu ? [{ label: kungfuLabel, action: onOpenKungfu, color: 'primary' as const, changeKeys: ['功法'] }] : []),
         { label: '地图', action: onOpenMap, color: 'primary' as const, changeKeys: ['地图'] },
         { label: '门派', action: onOpenSect, color: 'primary' as const, changeKeys: ['玩家门派'] },
         { label: '任务', action: onOpenTask, color: 'primary' as const, changeKeys: ['任务列表'] },

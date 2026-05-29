@@ -12,7 +12,7 @@ import ReleaseNotesModal from './components/ui/ReleaseNotesModal';
 import { useGame } from './hooks/useGame';
 import { use图片资源回源预取 } from './hooks/useImageAssetPrefetch';
 import { 环境时间转标准串 } from './hooks/useGame/timeUtils';
-import { 获取文生图接口配置, 获取生图词组转化器接口配置, 获取记忆精炼接口配置, 接口配置是否可用 } from './utils/apiConfig';
+import { 获取主剧情接口配置, 获取文生图接口配置, 获取生图词组转化器接口配置, 获取记忆精炼接口配置, 接口配置是否可用 } from './utils/apiConfig';
 import { 请求模型文本 } from './services/ai/chatCompletionClient';
 import { 记忆精炼系统提示词 } from './prompts/runtime/memoryRefine';
 import { 获取内置世界书槽位内容 } from './utils/worldbook';
@@ -717,6 +717,7 @@ const App: React.FC = () => {
                 setters.setShowSaveLoad({ show: true, mode: 'load' });
                 break;
             case 'settings':
+                setters.setActiveTab('game');
                 setters.setShowSettings(true);
                 break;
             case 'music':
@@ -1435,6 +1436,11 @@ const App: React.FC = () => {
     }, [state.view, state.apiConfig, state.角色, setters, actions, meta.imageGenerationQueue, meta.sceneImageQueue]);
 
     const 当前题材市场名称 = React.useMemo(() => 获取题材模式配置(state.开局配置?.题材模式).auctionName, [state.开局配置?.题材模式]);
+    const 功法显示名称 = state.开局配置?.题材模式 === '末日丧尸'
+        ? '技能'
+        : state.开局配置?.题材模式 === '现代都市'
+            ? '能力'
+            : '功法';
     const activeMobileWindow =
         showCharacter ? '角色' :
         state.showBattle ? '战斗' :
@@ -1527,6 +1533,14 @@ const App: React.FC = () => {
     const playModeHint = currentCloudPlayMode
         ? '当前进度会先保存到本地，再后台同步到云端'
         : '当前进度仅保存到本地';
+    const mainStoryApiInfo = React.useMemo(() => {
+        const config = 获取主剧情接口配置(state.apiConfig);
+        return {
+            channelName: String(config?.名称 || config?.供应商 || '未配置渠道').trim(),
+            modelName: String(config?.model || '未选择模型').trim()
+        };
+    }, [state.apiConfig]);
+    const mainStoryApiLabel = `主剧情：${mainStoryApiInfo.channelName} / ${mainStoryApiInfo.modelName}`;
     const desktopRightDetailWidth = React.useMemo(() => clampDesktopDetailWidth(
         desktopDetailWidths[desktopRightDetailId] ?? getDesktopDetailDefaultWidth(desktopRightDetailId)
     ), [desktopDetailWidths, desktopRightDetailId, viewportWidth]);
@@ -2380,6 +2394,7 @@ const App: React.FC = () => {
                 setters.setShowSaveLoad({ show: true, mode: 'load' });
                 break;
             case '设置':
+                setters.setActiveTab('game');
                 setters.setShowSettings(true);
                 break;
             case '音乐':
@@ -2753,6 +2768,12 @@ const App: React.FC = () => {
                                   >
                                       {playModeLabel}
                                   </div>
+                                  <div
+                                      className="hidden max-w-[360px] items-center truncate rounded-full border border-wuxia-gold/40 bg-black/65 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-wuxia-gold shadow-[0_8px_20px_rgba(0,0,0,0.35)] backdrop-blur sm:inline-flex"
+                                      title={mainStoryApiLabel}
+                                  >
+                                      <span className="truncate">{mainStoryApiLabel}</span>
+                                  </div>
                                   {chatContentHidden && (
                                       <button
                                           type="button"
@@ -2882,6 +2903,7 @@ const App: React.FC = () => {
                                 enableHeroinePlan={safeGameConfig?.启用女主剧情规划 === true}
                                 enablePlanningPanel={state.apiConfig?.功能模型占位?.规划分析功能启用 !== false}
                                 enableKungfu={启用修炼体系}
+                                kungfuLabel={功法显示名称}
                                 onSave={openSave}
                                 onLoad={openLoad}
                                 onReturnToHome={() => { void handleReturnToHomeWithAutoSave(); }}
@@ -3710,11 +3732,13 @@ const App: React.FC = () => {
                             {isMobile ? (
                                 <MobileKungfuModal
                                     skills={safeCharacter?.功法列表 || []}
+                                    topicMode={state.开局配置?.题材模式}
                                     onClose={() => setters.setShowKungfu(false)}
                                 />
                             ) : (
                                 <KungfuModal
                                     skills={safeCharacter?.功法列表 || []}
+                                    topicMode={state.开局配置?.题材模式}
                                     onClose={() => setters.setShowKungfu(false)}
                                 />
                             )}
