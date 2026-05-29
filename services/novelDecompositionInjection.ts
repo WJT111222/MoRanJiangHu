@@ -9,7 +9,6 @@ import type {
 } from '../types';
 import {
     读取小说拆分注入快照列表,
-    获取当前激活小说拆分数据集,
     获取小说拆分数据集
 } from './novelDecompositionStore';
 import {
@@ -967,15 +966,14 @@ const 获取链路上限 = (settings: 接口设置结构 | null | undefined, tar
 };
 
 const 获取优先数据集 = async (openingConfig?: OpeningConfig): Promise<小说拆分数据集结构 | null> => {
-    const preferredDatasetId = (
-        openingConfig?.同人融合?.enabled === true
-        && openingConfig?.同人融合?.启用附加小说 === true
-    )
-        ? 读取文本(openingConfig?.同人融合?.附加小说数据集ID).trim()
-        : '';
-    return preferredDatasetId
-        ? (await 获取小说拆分数据集(preferredDatasetId)) || await 获取当前激活小说拆分数据集()
-        : await 获取当前激活小说拆分数据集();
+    const additionalNovelEnabled = openingConfig?.同人融合?.enabled === true
+        && openingConfig?.同人融合?.启用附加小说 === true;
+    if (!additionalNovelEnabled) return null;
+
+    const preferredDatasetId = 读取文本(openingConfig?.同人融合?.附加小说数据集ID).trim();
+    if (!preferredDatasetId) return null;
+
+    return await 获取小说拆分数据集(preferredDatasetId);
 };
 
 const 构建实时章节注入文本 = (

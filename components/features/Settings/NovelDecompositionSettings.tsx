@@ -30,7 +30,6 @@ import {
     删除小说拆分任务,
     删除小说拆分数据集,
     读取小说拆分注入快照列表,
-    设置小说拆分激活数据集,
     导出小说拆分分享数据,
     导入小说拆分分享数据,
     保存小说拆分注入快照列表
@@ -42,10 +41,13 @@ import { 从EPUB文件提取小说内容 } from '../../../services/epubImport';
 import { 从原始文本提取章节, 根据章节生成分段列表, 聚合小说拆分数据集 } from '../../../services/novelDecompositionPipeline';
 import {
     下载小说分解创意工坊模块,
+    编辑小说分解创意工坊模块,
+    删除小说分解创意工坊模块,
     发布小说分解创意工坊模块,
     列出小说分解创意工坊模块,
     type 小说分解创意工坊条目
 } from '../../../services/workshopNovelDecomposition';
+import { 读取云端游玩会话 } from '../../../services/cloudPlayService';
 
 interface Props {
     settings: 接口设置结构;
@@ -452,6 +454,10 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
     const [workshopLoading, setWorkshopLoading] = useState(false);
     const [workshopBusyId, setWorkshopBusyId] = useState('');
     const [workshopPublishing, setWorkshopPublishing] = useState(false);
+    const [workshopAnonymous, setWorkshopAnonymous] = useState(false);
+    const [workshopUsername, setWorkshopUsername] = useState('');
+    const [workshopEditingId, setWorkshopEditingId] = useState('');
+    const [workshopEditDraft, setWorkshopEditDraft] = useState({ title: '', workName: '', contributor: '', note: '', tags: '', anonymous: false });
     const [selectedDatasetId, setSelectedDatasetId] = useState('');
     const [selectedSegmentId, setSelectedSegmentId] = useState('');
     const [showStrategySection, setShowStrategySection] = useState(false);
@@ -539,6 +545,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
 
     useEffect(() => {
         void refreshBoard();
+        setWorkshopUsername(读取云端游玩会话()?.username || '');
     }, []);
 
     const refreshWorkshopEntries = async () => {
@@ -689,7 +696,6 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
         { id: 'chapters' as const, label: '章节筛选' },
         { id: 'segments' as const, label: '分段校对' },
         { id: 'tasks' as const, label: '任务管理' },
-        { id: 'snapshots' as const, label: '注入快照' }
     ]), []);
     const previewChapters = useMemo(() => {
         if (!selectedDataset) return [];
@@ -1191,7 +1197,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
             原始文本摘要: params.text.trim().slice(0, 240),
             分段模式: form.功能模型占位.小说拆分按N章分组 > 1 ? 'n_chapters' : 'single_chapter',
             每批章数: form.功能模型占位.小说拆分按N章分组,
-            激活注入: true
+            激活注入: false
         });
         await 写入小说拆分数据集(nextDataset);
         await refreshBoard();
@@ -1236,20 +1242,6 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
             });
         } catch (error: any) {
             推送错误提示(`导入 EPUB 失败：${error?.message || '未知错误'}`);
-        }
-    };
-
-    const handleSetActiveDataset = async () => {
-        if (!selectedDataset) {
-            setMessage('请先选择一个数据集。');
-            return;
-        }
-        try {
-            await 设置小说拆分激活数据集(selectedDataset.id);
-            设置状态消息(`已将“${selectedDataset.作品名 || selectedDataset.标题}”设为当前注入数据集。`);
-            await refreshBoard();
-        } catch (error: any) {
-            推送错误提示(`切换激活数据集失败：${error?.message || '未知错误'}`);
         }
     };
 
@@ -1605,7 +1597,8 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                 chapterCount: selectedDataset.总章节数 || selectedDataset.章节列表.length,
                 segmentCount: selectedDataset.分段列表.length,
                 sourceType: selectedDataset.来源类型,
-                tags: ['小说分解', selectedDataset.来源类型].filter(Boolean)
+                tags: ['小说分解', selectedDataset.来源类型].filter(Boolean),
+                anonymous: workshopAnonymous
             });
             await refreshWorkshopEntries();
             const publishedTitle = result.entry?.title || selectedDataset.作品名 || selectedDataset.标题 || '未命名小说分解模块';
@@ -1636,6 +1629,57 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
             设置状态消息(`已从创意工坊导入「${entry.title}」：数据集 ${result.datasetCount} 个，任务 ${result.taskCount} 个，快照 ${result.snapshotCount} 个。`);
         } catch (error: any) {
             推送错误提示(`导入创意工坊模块失败：${error?.message || '未知错误'}`);
+        } finally {
+            setWorkshopBusyId('');
+        }
+    };
+
+    const 开始编辑小说分解投稿 = (entry: 小说分解创意工坊条目) => {
+        setWorkshopEditingId(entry.id);
+        setWorkshopEditDraft({
+            title: entry.title || '',
+            workName: entry.workName || '',
+            contributor: entry.anonymous ? '' : (entry.contributor || workshopUsername),
+            note: entry.note || '',
+            tags: (entry.tags || []).join('、'),
+            anonymous: entry.anonymous === true
+        });
+    };
+
+    const 保存小说分解投稿编辑 = async (entry: 小说分解创意工坊条目) => {
+        setWorkshopBusyId(entry.id);
+        try {
+            await 编辑小说分解创意工坊模块({
+                id: entry.id,
+                title: workshopEditDraft.title,
+                workName: workshopEditDraft.workName,
+                contributor: workshopEditDraft.contributor,
+                note: workshopEditDraft.note,
+                tags: workshopEditDraft.tags.split(/[，,、\s]+/).map((tag) => tag.trim()).filter(Boolean),
+                anonymous: workshopEditDraft.anonymous
+            });
+            setWorkshopEditingId('');
+            await refreshWorkshopEntries();
+            设置状态消息(`已更新创意工坊投稿：${workshopEditDraft.title || entry.title}`);
+        } catch (error: any) {
+            推送错误提示(`编辑创意工坊投稿失败：${error?.message || '未知错误'}`);
+        } finally {
+            setWorkshopBusyId('');
+        }
+    };
+
+    const 删除小说分解投稿 = async (entry: 小说分解创意工坊条目) => {
+        const ok = requestConfirm
+            ? await requestConfirm({ title: '删除创意工坊投稿', message: `确定删除「${entry.title}」吗？`, confirmText: '删除', cancelText: '取消', danger: true })
+            : window.confirm(`确定删除「${entry.title}」吗？`);
+        if (!ok) return;
+        setWorkshopBusyId(entry.id);
+        try {
+            await 删除小说分解创意工坊模块(entry.id);
+            await refreshWorkshopEntries();
+            设置状态消息(`已删除创意工坊投稿：${entry.title}`);
+        } catch (error: any) {
+            推送错误提示(`删除创意工坊投稿失败：${error?.message || '未知错误'}`);
         } finally {
             setWorkshopBusyId('');
         }
@@ -2005,21 +2049,21 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                 <div className="rounded-xl border border-white/5 bg-gradient-to-b from-black/40 to-black/20 backdrop-blur-md p-6 shadow-xl space-y-6">
                     <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 border-b border-white/5 pb-6">
                         <div className="flex-1">
-                            <h4 className="text-lg font-serif font-semibold text-wuxia-gold tracking-wide">小说库与注入来源</h4>
+                            <h4 className="text-lg font-serif font-semibold text-wuxia-gold tracking-wide">小说分解数据集</h4>
                             <div className="mt-1.5 text-xs text-gray-400/80 leading-relaxed max-w-2xl">
-                                这里管理所有的分解数据集，可在此切换正在用于游戏的主剧情注入小说。
+                                这里只管理已经分解、TXT/EPUB 导入或分享 ZIP 导入的数据集。是否用于某个存档，需要在新开局时手动选择。
                             </div>
                         </div>
                         <div className="w-full lg:w-80 shrink-0">
-                            <div className="text-xs text-gray-500 mb-2 font-medium">选择数据集</div>
+                            <div className="text-xs text-gray-500 mb-2 font-medium">查看数据集</div>
                             <InlineSelect
                                 value={selectedDataset?.id || ''}
                                 options={datasetList.map((dataset) => ({
                                     value: dataset.id,
-                                    label: `${dataset.激活注入 ? '★ 正在注入 | ' : ''}${dataset.作品名 || dataset.标题 || dataset.id}`
+                                    label: dataset.作品名 || dataset.标题 || dataset.id
                                 }))}
                                 onChange={(value) => setSelectedDatasetId(value)}
-                                placeholder={datasetList.length > 0 ? '选择数据集' : '暂无数据集'}
+                                placeholder={datasetList.length > 0 ? '查看数据集' : '暂无数据集'}
                                 disabled={datasetList.length <= 0}
                                 buttonClassName="bg-black/40 border-white/10 py-3 rounded-lg hover:border-wuxia-gold/30 hover:bg-black/60 transition-all text-gray-200"
                             />
@@ -2038,13 +2082,6 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                 <div className="rounded-lg border border-white/5 bg-black/30 p-4 hover:bg-white/5 transition-colors">
                                     <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">当前作品</div>
                                     <div className="text-sm font-bold text-gray-200 truncate" title={selectedDataset.作品名 || selectedDataset.标题}>{selectedDataset.作品名 || selectedDataset.标题}</div>
-                                </div>
-                                <div className="rounded-lg border border-white/5 bg-black/30 p-4 hover:bg-white/5 transition-colors relative overflow-hidden group">
-                                    <div className={`absolute inset-0 opacity-10 transition-opacity ${selectedDataset.激活注入 ? 'bg-wuxia-gold group-hover:opacity-20' : 'bg-transparent'}`}></div>
-                                    <div className="relative">
-                                        <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">注入状态</div>
-                                        <div className={`text-sm font-bold ${selectedDataset.激活注入 ? 'text-wuxia-gold' : 'text-gray-400'}`}>{selectedDataset.激活注入 ? '★ 当前注入中' : '未激活'}</div>
-                                    </div>
                                 </div>
                                 <div className="rounded-lg border border-white/5 bg-black/30 p-4 hover:bg-white/5 transition-colors">
                                     <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">数据来源</div>
@@ -2066,13 +2103,6 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
 
                             <div className="flex flex-wrap items-center gap-3 pt-2">
                                 <button
-                                    onClick={() => void handleSetActiveDataset()}
-                                    className={`px-6 py-2.5 rounded-lg text-xs font-medium transition-all ${selectedDataset.激活注入 ? 'bg-wuxia-gold/20 text-wuxia-gold border border-wuxia-gold/30 cursor-default' : 'bg-wuxia-gold/80 text-black hover:bg-wuxia-gold border border-wuxia-gold'}`}
-                                    disabled={selectedDataset.激活注入}
-                                >
-                                    {selectedDataset.激活注入 ? '已是当前注入目标' : '设为当前注入'}
-                                </button>
-                                <button
                                     onClick={() => void handleStartTaskForDataset()}
                                     className="px-5 py-2.5 rounded-lg text-xs font-medium border border-blue-500/30 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 transition-all"
                                 >
@@ -2091,6 +2121,11 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                 >
                                     {workshopPublishing ? '发布中...' : '发布为小说分解模块'}
                                 </button>
+                                <label className="inline-flex items-center gap-2 text-xs text-gray-300">
+                                    <input type="checkbox" checked={workshopAnonymous} onChange={(event) => setWorkshopAnonymous(event.target.checked)} className="h-3.5 w-3.5 accent-wuxia-gold" />
+                                    匿名发布
+                                </label>
+                                <span className="text-[11px] text-gray-500">{workshopUsername ? `联机账号：${workshopUsername}` : '登录联机账号后可编辑/删除自己的投稿'}</span>
                                 <div className="flex-1"></div>
                                 <button
                                     onClick={() => void handleDeleteCurrentDataset()}
@@ -2132,8 +2167,13 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                             >
                                 {workshopPublishing ? '发布中...' : '发布当前小说分解'}
                             </button>
+                            <label className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-gray-300">
+                                <input type="checkbox" checked={workshopAnonymous} onChange={(event) => setWorkshopAnonymous(event.target.checked)} className="h-3.5 w-3.5 accent-wuxia-gold" />
+                                匿名发布
+                            </label>
                         </div>
                     </div>
+                    <div className="text-[11px] text-gray-500">{workshopUsername ? `联机账号：${workshopUsername}` : '登录联机账号后可编辑/删除自己的投稿'}</div>
 
                     {workshopLoading && workshopEntries.length <= 0 ? (
                         <div className="rounded-xl border border-white/5 bg-black/25 p-8 text-center text-sm text-gray-400">正在读取创意工坊模块...</div>
@@ -2170,6 +2210,23 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                     {entry.note && (
                                         <div className="line-clamp-3 rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-xs leading-5 text-gray-400">{entry.note}</div>
                                     )}
+                                    {workshopEditingId === entry.id && (
+                                        <div className="space-y-2 rounded-lg border border-sky-500/20 bg-sky-500/10 p-3">
+                                            <div className="grid gap-2 sm:grid-cols-2">
+                                                <input value={workshopEditDraft.title} onChange={(event) => setWorkshopEditDraft((prev) => ({ ...prev, title: event.target.value }))} className="h-9 rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-gray-100 outline-none focus:border-sky-400/50" placeholder="模块名称" />
+                                                <input value={workshopEditDraft.workName} onChange={(event) => setWorkshopEditDraft((prev) => ({ ...prev, workName: event.target.value }))} className="h-9 rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-gray-100 outline-none focus:border-sky-400/50" placeholder="作品名" />
+                                            </div>
+                                            <input value={workshopEditDraft.note} onChange={(event) => setWorkshopEditDraft((prev) => ({ ...prev, note: event.target.value }))} className="h-9 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-gray-100 outline-none focus:border-sky-400/50" placeholder="说明" />
+                                            <div className="grid gap-2 sm:grid-cols-2">
+                                                <input value={workshopEditDraft.tags} onChange={(event) => setWorkshopEditDraft((prev) => ({ ...prev, tags: event.target.value }))} className="h-9 rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-gray-100 outline-none focus:border-sky-400/50" placeholder="标签" />
+                                                <input value={workshopEditDraft.contributor} onChange={(event) => setWorkshopEditDraft((prev) => ({ ...prev, contributor: event.target.value }))} disabled={workshopEditDraft.anonymous} className="h-9 rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-gray-100 outline-none focus:border-sky-400/50 disabled:opacity-50" placeholder="署名" />
+                                            </div>
+                                            <label className="inline-flex items-center gap-2 text-xs text-gray-200">
+                                                <input type="checkbox" checked={workshopEditDraft.anonymous} onChange={(event) => setWorkshopEditDraft((prev) => ({ ...prev, anonymous: event.target.checked }))} className="h-3.5 w-3.5 accent-wuxia-gold" />
+                                                匿名显示
+                                            </label>
+                                        </div>
+                                    )}
                                     <div className="flex flex-wrap items-center gap-2">
                                         {(entry.tags || []).slice(0, 4).map((tag) => (
                                             <span key={tag} className="rounded border border-white/10 px-2 py-0.5 text-[10px] text-gray-400">{tag}</span>
@@ -2183,6 +2240,19 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                     >
                                         {workshopBusyId === entry.id ? '导入中...' : '下载并导入'}
                                     </button>
+                                    {entry.source === 'cloud' && workshopUsername && entry.ownerUsername === workshopUsername && (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {workshopEditingId === entry.id ? (
+                                                <>
+                                                    <button type="button" onClick={() => void 保存小说分解投稿编辑(entry)} disabled={Boolean(workshopBusyId)} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-200 hover:bg-emerald-500/15 disabled:opacity-50">保存编辑</button>
+                                                    <button type="button" onClick={() => setWorkshopEditingId('')} className="rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-gray-200 hover:border-white/25">取消</button>
+                                                </>
+                                            ) : (
+                                                <button type="button" onClick={() => 开始编辑小说分解投稿(entry)} className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-xs text-sky-200 hover:bg-sky-500/15">编辑投稿</button>
+                                            )}
+                                            <button type="button" onClick={() => void 删除小说分解投稿(entry)} disabled={Boolean(workshopBusyId)} className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-200 hover:bg-red-500/15 disabled:opacity-50">删除投稿</button>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

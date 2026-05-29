@@ -4,6 +4,7 @@ import GameButton from '../../ui/GameButton';
 import ToggleSwitch from '../../ui/ToggleSwitch';
 import InlineSelect from '../../ui/InlineSelect';
 import { 规范化接口设置 } from '../../../utils/apiConfig';
+import StageApiModelSelector from './StageApiModelSelector';
 
 interface Props {
     settings: 接口设置结构;
@@ -151,22 +152,18 @@ const NovelDecompositionApiSettings: React.FC<Props> = ({ settings, onSave }) =>
                     />
                 </label>
 
-                <div className="flex gap-3 items-end">
-                    <div className="flex-1 space-y-1">
-                        <label className="text-xs text-gray-300">小说分解使用模型</label>
-                        <InlineSelect
-                            value={modelDisplay}
-                            options={selectOptions.map((model) => ({ value: model, label: model }))}
-                            onChange={(model) => updatePlaceholder('小说拆分使用模型', model)}
-                            disabled={!独立模型开启 || selectOptions.length === 0}
-                            placeholder={!独立模型开启 ? `请先开启独立模型，当前主模型：${主剧情解析模型 || '未设置'}` : (selectOptions.length ? '请选择模型' : '请先点击获取列表')}
-                            buttonClassName={独立模型开启 ? 'bg-black/50 border-gray-600 py-2.5' : 'bg-black/30 border-gray-700 py-2.5'}
-                        />
-                    </div>
-                    <GameButton onClick={handleFetchModels} variant="secondary" className="px-4 py-2 text-xs" disabled={loadingModels || !独立模型开启}>
-                        {loadingModels ? '...' : '获取列表'}
-                    </GameButton>
-                </div>
+                <StageApiModelSelector
+                    form={form}
+                    enabled={独立模型开启}
+                    title="小说分解"
+                    modelKey="小说拆分使用模型"
+                    channelKey="小说拆分渠道ID"
+                    baseUrlKey="小说拆分API地址"
+                    apiKeyKey="小说拆分API密钥"
+                    fallbackModel={主剧情解析模型}
+                    disabledPlaceholder={`请先开启独立模型，当前主模型：${主剧情解析模型 || '未设置'}`}
+                    onChange={updatePlaceholder}
+                />
 
                 <div className="space-y-1">
                     <label className="text-xs text-gray-300">小说分解独立 API 地址</label>

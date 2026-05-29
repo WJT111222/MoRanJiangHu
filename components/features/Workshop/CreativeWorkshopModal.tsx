@@ -3,10 +3,13 @@ import { 创意工坊模块分区, type 创意工坊模块条目, type 创意工
 import type { 题材模式类型 } from '../../../models/system';
 import { 题材模式顺序 } from '../../../utils/topicModeProfiles';
 import {
+    编辑创意工坊模块,
+    删除创意工坊模块,
     发布创意工坊模块,
     导入本地创意工坊模块,
     列出创意工坊模块
 } from '../../../services/creativeWorkshop';
+import { 读取云端游玩会话 } from '../../../services/cloudPlayService';
 
 interface Props {
     open: boolean;
@@ -127,6 +130,10 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
     const [loading, setLoading] = useState(false);
     const [busyId, setBusyId] = useState('');
     const [contributor, setContributor] = useState('');
+    const [anonymousContribution, setAnonymousContribution] = useState(false);
+    const [cloudUsername, setCloudUsername] = useState('');
+    const [editingEntryId, setEditingEntryId] = useState('');
+    const [editingDraft, setEditingDraft] = useState({ title: '', subtitle: '', description: '', tags: '', contributor: '', anonymous: false });
     const [contributionDraft, setContributionDraft] = useState<贡献草稿>(() => 空贡献草稿());
     const [showContributionForm, setShowContributionForm] = useState(true);
     const contributionModule = useMemo(() => 构建贡献模块(contributionDraft, contributor), [contributionDraft, contributor]);
@@ -154,6 +161,8 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
 
     useEffect(() => {
         if (!open) return;
+        const session = 读取云端游玩会话();
+        setCloudUsername(session?.username || '');
         void refreshEntries();
     }, [open]);
 
@@ -162,11 +171,61 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
     const 发布模块 = async (entry: 创意工坊模块条目) => {
         setBusyId(entry.id);
         try {
-            const published = await 发布创意工坊模块({ module: entry, contributor });
+            const published = await 发布创意工坊模块({ module: entry, contributor, anonymous: anonymousContribution });
             setStatus(`已发布到社区工坊：${published.title}。`);
             await refreshEntries();
         } catch (error: any) {
             setStatus(`发布失败：${error?.message || '未知错误'}`);
+        } finally {
+            setBusyId('');
+        }
+    };
+
+    const 开始编辑社区模块 = (entry: 创意工坊模块条目) => {
+        setEditingEntryId(entry.id);
+        setEditingDraft({
+            title: entry.title || '',
+            subtitle: entry.subtitle || '',
+            description: entry.description || '',
+            tags: (entry.tags || []).join('、'),
+            contributor: entry.anonymous ? '' : (entry.contributor || cloudUsername),
+            anonymous: entry.anonymous === true
+        });
+    };
+
+    const 保存社区模块编辑 = async (entry: 创意工坊模块条目) => {
+        setBusyId(entry.id);
+        try {
+            const updated = await 编辑创意工坊模块({
+                id: entry.id,
+                anonymous: editingDraft.anonymous,
+                patch: {
+                    title: editingDraft.title,
+                    subtitle: editingDraft.subtitle,
+                    description: editingDraft.description,
+                    tags: editingDraft.tags.split(/[，,、\s]+/).map((tag) => tag.trim()).filter(Boolean),
+                    contributor: editingDraft.contributor
+                }
+            });
+            setStatus(`已更新社区工坊：${updated.title}。`);
+            setEditingEntryId('');
+            await refreshEntries();
+        } catch (error: any) {
+            setStatus(`编辑失败：${error?.message || '未知错误'}`);
+        } finally {
+            setBusyId('');
+        }
+    };
+
+    const 删除社区模块 = async (entry: 创意工坊模块条目) => {
+        if (!window.confirm(`确定删除社区投稿「${entry.title}」吗？`)) return;
+        setBusyId(entry.id);
+        try {
+            await 删除创意工坊模块(entry.id);
+            setStatus(`已删除社区投稿：${entry.title}。`);
+            await refreshEntries();
+        } catch (error: any) {
+            setStatus(`删除失败：${error?.message || '未知错误'}`);
         } finally {
             setBusyId('');
         }
@@ -212,7 +271,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <div className="text-sm font-bold tracking-[0.14em] text-emerald-300">小说分解模块</div>
-                                <div className="mt-2 text-xs leading-5 text-gray-300">导入、拆章、续跑、注入校对、发布和下载小说分解分享 ZIP。</div>
+                                <div className="mt-2 text-xs leading-5 text-gray-300">导入、拆章、续跑、分段校对、发布和下载小说分解分享 ZIP。</div>
                             </div>
                             <div className="shrink-0 border border-emerald-500/30 px-2 py-1 text-[10px] tracking-[0.14em] text-emerald-200">进入工作台</div>
                         </div>
@@ -239,6 +298,11 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <input value={contributor} onChange={(event) => setContributor(event.target.value)} placeholder="贡献者署名" className="h-9 rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-gray-100 outline-none placeholder:text-gray-500 focus:border-wuxia-gold/40" />
+                            <label className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-black/25 px-3 text-xs text-gray-200">
+                                <input type="checkbox" checked={anonymousContribution} onChange={(event) => setAnonymousContribution(event.target.checked)} className="h-3.5 w-3.5 accent-wuxia-gold" />
+                                匿名发布
+                            </label>
+                            <span className="text-[11px] text-gray-500">{cloudUsername ? `联机账号：${cloudUsername}` : '登录联机账号后可编辑/删除自己的投稿'}</span>
                             <button type="button" onClick={() => setShowContributionForm((value) => !value)} className="rounded-lg border border-wuxia-gold/25 px-3 py-2 text-xs text-wuxia-gold hover:border-wuxia-gold/45">{showContributionForm ? '收起贡献表单' : '贡献新预设'}</button>
                             <button type="button" onClick={() => void refreshEntries()} disabled={loading} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-200 hover:border-white/25 disabled:opacity-50">{loading ? '刷新中' : '刷新社区'}</button>
                         </div>
@@ -329,6 +393,9 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                     <div className="grid gap-3 lg:grid-cols-2">
                         {activeEntries.map((entry) => {
                             const expanded = expandedId === entry.id;
+                            const canPublishEntry = entry.source !== 'builtin' && entry.source !== 'cloud';
+                            const canManageEntry = entry.source === 'cloud' && Boolean(cloudUsername) && entry.ownerUsername === cloudUsername;
+                            const editing = editingEntryId === entry.id;
                             return (
                                 <div key={`${entry.source || 'builtin'}:${entry.id}`} className="rounded-xl border border-white/10 bg-black/25 p-4">
                                     <div className="flex items-start justify-between gap-3">
@@ -351,11 +418,44 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                             </ul>
                                         </div>
                                     )}
+                                    {editing && (
+                                        <div className="mt-3 space-y-2 rounded-lg border border-sky-500/20 bg-sky-500/10 p-3">
+                                            <div className="grid gap-2 sm:grid-cols-2">
+                                                <input value={editingDraft.title} onChange={(event) => setEditingDraft((prev) => ({ ...prev, title: event.target.value }))} className="h-9 rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-gray-100 outline-none focus:border-sky-400/50" placeholder="模块名称" />
+                                                <input value={editingDraft.subtitle} onChange={(event) => setEditingDraft((prev) => ({ ...prev, subtitle: event.target.value }))} className="h-9 rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-gray-100 outline-none focus:border-sky-400/50" placeholder="副标题" />
+                                            </div>
+                                            <input value={editingDraft.description} onChange={(event) => setEditingDraft((prev) => ({ ...prev, description: event.target.value }))} className="h-9 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-gray-100 outline-none focus:border-sky-400/50" placeholder="简介" />
+                                            <div className="grid gap-2 sm:grid-cols-2">
+                                                <input value={editingDraft.tags} onChange={(event) => setEditingDraft((prev) => ({ ...prev, tags: event.target.value }))} className="h-9 rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-gray-100 outline-none focus:border-sky-400/50" placeholder="标签" />
+                                                <input value={editingDraft.contributor} onChange={(event) => setEditingDraft((prev) => ({ ...prev, contributor: event.target.value }))} disabled={editingDraft.anonymous} className="h-9 rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-gray-100 outline-none focus:border-sky-400/50 disabled:opacity-50" placeholder="署名" />
+                                            </div>
+                                            <label className="inline-flex items-center gap-2 text-xs text-gray-200">
+                                                <input type="checkbox" checked={editingDraft.anonymous} onChange={(event) => setEditingDraft((prev) => ({ ...prev, anonymous: event.target.checked }))} className="h-3.5 w-3.5 accent-wuxia-gold" />
+                                                匿名显示
+                                            </label>
+                                        </div>
+                                    )}
                                     <div className="mt-4 grid gap-2 sm:grid-cols-3">
                                         <button type="button" onClick={() => setExpandedId(expanded ? '' : entry.id)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">{expanded ? '收起预览' : '预览注入'}</button>
                                         <button type="button" onClick={() => 下载JSON(entry)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">下载 JSON</button>
                                         <button type="button" onClick={() => void 复制文本(构建模块摘要(entry)).then((ok) => setStatus(ok ? `已复制「${entry.title}」注入摘要。` : '复制失败，请改用下载 JSON。'))} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">复制摘要</button>
-                                        <button type="button" onClick={() => void 发布模块(entry)} disabled={Boolean(busyId)} className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200 hover:bg-sky-500/15 disabled:opacity-50">贡献社区</button>
+                                        {canPublishEntry ? (
+                                            <button type="button" onClick={() => void 发布模块(entry)} disabled={Boolean(busyId)} className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200 hover:bg-sky-500/15 disabled:opacity-50">贡献社区</button>
+                                        ) : (
+                                            <button type="button" disabled className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-gray-500">无需贡献</button>
+                                        )}
+                                        {canManageEntry && !editing ? (
+                                            <button type="button" onClick={() => 开始编辑社区模块(entry)} className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200 hover:bg-sky-500/15">编辑投稿</button>
+                                        ) : null}
+                                        {canManageEntry && editing ? (
+                                            <button type="button" onClick={() => void 保存社区模块编辑(entry)} disabled={Boolean(busyId)} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 hover:bg-emerald-500/15 disabled:opacity-50">保存编辑</button>
+                                        ) : null}
+                                        {canManageEntry && editing ? (
+                                            <button type="button" onClick={() => setEditingEntryId('')} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">取消编辑</button>
+                                        ) : null}
+                                        {canManageEntry ? (
+                                            <button type="button" onClick={() => void 删除社区模块(entry)} disabled={Boolean(busyId)} className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200 hover:bg-red-500/15 disabled:opacity-50">删除投稿</button>
+                                        ) : null}
                                     </div>
                                 </div>
                             );

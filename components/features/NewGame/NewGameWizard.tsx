@@ -2118,7 +2118,7 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                                                     }))}
                                                 />
                                                 <div className="text-[11px] text-gray-500 leading-6">
-                                                    允许前端同时保存多部小说的分解数据，但本次存档只会注入这里选定的那一部；未启用时，仍回退到全局当前注入数据集。
+                                                    允许前端同时保存多部小说的分解数据，但本次存档只会注入这里选定的那一部；未启用时，本存档不会注入小说分解内容。
                                                 </div>
                                                 <InlineSelect
                                                     value={openingConfig.同人融合.附加小说数据集ID}

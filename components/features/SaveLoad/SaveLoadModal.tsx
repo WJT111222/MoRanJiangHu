@@ -333,6 +333,41 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         await loadSaves();
     };
 
+    const handleDeleteSeries = async (series: 本地时间树系列, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (saveProtectionEnabled) {
+            alert('存档保护已开启，请先在“设置-数据存储”中关闭后再删除存档。');
+            return;
+        }
+        const ids = 展平本地时间树(series.roots)
+            .map((save) => save.id)
+            .filter((id): id is number => typeof id === 'number');
+        if (ids.length <= 0) return;
+        const ok = requestConfirm
+            ? await requestConfirm({
+                title: '删除整棵时间树',
+                message: `确定删除“${series.title}”这一整棵时间树吗？将删除 ${ids.length} 个本地存档节点，包含手动 ${series.manualCount} 个、自动 ${series.autoCount} 个。此操作不可恢复。`,
+                confirmText: `删除 ${ids.length} 个节点`,
+                danger: true
+            })
+            : true;
+        if (!ok) return;
+        setSyncing(true);
+        setTransferMessage(`正在删除时间树：${ids.length} 个节点...`);
+        try {
+            const deleted = await dbService.批量删除存档(ids);
+            if (selectedSeriesKey === series.key) setSelectedSeriesKey(null);
+            setTransferMessage(`已删除时间树：${deleted} 个节点。`);
+            await loadSaves();
+        } catch (error: any) {
+            console.error(error);
+            setTransferMessage(`删除失败：${error?.message || '未知错误'}`);
+            alert(`删除失败：${error?.message || '未知错误'}`);
+        } finally {
+            setSyncing(false);
+        }
+    };
+
     const 删除按钮类名 = `absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full border transition-all ${
         saveProtectionEnabled
             ? 'border-gray-700 bg-black/20 text-gray-700 opacity-50 cursor-not-allowed'
@@ -979,6 +1014,14 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
                                             </button>
                                             <button
                                                 type="button"
+                                                onClick={(event) => { void handleDeleteSeries(selectedSeries, event); }}
+                                                disabled={busy || saveProtectionEnabled}
+                                                className="rounded border border-red-400/35 bg-red-950/35 px-3 py-2 text-xs font-semibold text-red-100 hover:border-red-300 hover:bg-red-800/45 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                删除整棵时间树
+                                            </button>
+                                            <button
+                                                type="button"
                                                 onClick={() => setSelectedSeriesKey(null)}
                                                 className="rounded border border-gray-600 px-3 py-2 text-xs text-gray-200 hover:bg-white/5"
                                             >
@@ -1048,6 +1091,22 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
                                                     title={saveProtectionEnabled ? '存档保护已开启' : '删除此档'}
                                                 >
                                                     删除此档
+                                                </button>
+                                            </div>
+                                        )}
+                                        {series.count > 1 && (
+                                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-wuxia-gold/10 pt-3">
+                                                <div className="text-[11px] text-gray-500">
+                                                    可一次清理整个系列，避免长存档逐个删除节点。
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={(event) => { void handleDeleteSeries(series, event); }}
+                                                    disabled={busy || saveProtectionEnabled}
+                                                    className="rounded border border-red-400/35 bg-red-950/35 px-2.5 py-1 text-[11px] font-semibold tracking-wider text-red-200 transition-colors hover:border-red-300 hover:bg-red-800/45 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    title={saveProtectionEnabled ? '存档保护已开启' : '删除此时间树的全部节点'}
+                                                >
+                                                    删除整棵时间树
                                                 </button>
                                             </div>
                                         )}

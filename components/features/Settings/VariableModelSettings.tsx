@@ -4,6 +4,7 @@ import GameButton from '../../ui/GameButton';
 import ToggleSwitch from '../../ui/ToggleSwitch';
 import InlineSelect from '../../ui/InlineSelect';
 import { 规范化接口设置 } from '../../../utils/apiConfig';
+import StageApiModelSelector from './StageApiModelSelector';
 
 interface Props {
     settings: 接口设置结构;
@@ -159,34 +160,17 @@ const VariableModelSettings: React.FC<Props> = ({ settings, onSave }) => {
                     />
                 </label>
 
-                <div className="flex gap-3 items-end">
-                    <div className="flex-1 space-y-1">
-                        <label className="text-xs text-gray-300">变量生成使用模型</label>
-                        <InlineSelect
-                            value={variableModelDisplay}
-                            options={selectOptions.map((model) => ({
-                                value: model,
-                                label: model
-                            }))}
-                            onChange={(model) => updatePlaceholder('变量计算使用模型', model)}
-                            disabled={!独立模型开启 || selectOptions.length === 0}
-                            placeholder={!独立模型开启
-                                ? `跟随主剧情模型：${主剧情解析模型 || '未设置'}`
-                                : (selectOptions.length ? '请选择模型' : '请先点击获取列表')}
-                            buttonClassName={独立模型开启
-                                ? 'bg-black/50 border-gray-600 py-2.5'
-                                : 'bg-black/30 border-gray-700 py-2.5'}
-                        />
-                    </div>
-                    <GameButton
-                        onClick={handleFetchModels}
-                        variant="secondary"
-                        className="px-4 py-2 text-xs"
-                        disabled={loadingModels}
-                    >
-                        {loadingModels ? '...' : '获取列表'}
-                    </GameButton>
-                </div>
+                <StageApiModelSelector
+                    form={form}
+                    enabled={独立模型开启}
+                    title="变量生成"
+                    modelKey="变量计算使用模型"
+                    channelKey="变量计算渠道ID"
+                    baseUrlKey="变量计算API地址"
+                    apiKeyKey="变量计算API密钥"
+                    fallbackModel={主剧情解析模型}
+                    onChange={updatePlaceholder}
+                />
 
                 <div className="space-y-1">
                     <label className="text-xs text-gray-300">变量独立 API 地址（可选）</label>

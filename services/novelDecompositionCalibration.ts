@@ -6,7 +6,6 @@ import type {
     章节时间校准结构
 } from '../types';
 import {
-    获取当前激活小说拆分数据集,
     获取小说拆分数据集
 } from './novelDecompositionStore';
 import {
@@ -22,15 +21,14 @@ const 读取数字 = (value: unknown, fallback = 0): number => {
 };
 
 const 获取优先小说数据集 = async (openingConfig?: OpeningConfig): Promise<小说拆分数据集结构 | null> => {
-    const preferredDatasetId = (
-        openingConfig?.同人融合?.enabled === true
-        && openingConfig?.同人融合?.启用附加小说 === true
-    )
-        ? 读取文本(openingConfig?.同人融合?.附加小说数据集ID)
-        : '';
-    return preferredDatasetId
-        ? (await 获取小说拆分数据集(preferredDatasetId)) || await 获取当前激活小说拆分数据集()
-        : await 获取当前激活小说拆分数据集();
+    const additionalNovelEnabled = openingConfig?.同人融合?.enabled === true
+        && openingConfig?.同人融合?.启用附加小说 === true;
+    if (!additionalNovelEnabled) return null;
+
+    const preferredDatasetId = 读取文本(openingConfig?.同人融合?.附加小说数据集ID);
+    if (!preferredDatasetId) return null;
+
+    return await 获取小说拆分数据集(preferredDatasetId);
 };
 
 const 获取已完成启用分段 = (dataset?: 小说拆分数据集结构 | null): 小说拆分分段结构[] => (

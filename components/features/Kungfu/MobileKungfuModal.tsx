@@ -5,9 +5,19 @@ import { getRarityNameClass, getRarityStyles } from '../../ui/rarityStyles';
 interface Props {
     skills: 功法结构[];
     onClose: () => void;
+    topicMode?: string;
 }
 
-const MobileKungfuModal: React.FC<Props> = ({ skills, onClose }) => {
+const 获取移动功法文案 = (topicMode?: string) => ({
+    title: topicMode === '末日丧尸' ? '技能手册' : topicMode === '现代都市' ? '能力档案' : '武学秘籍',
+    learned: topicMode === '末日丧尸' ? '已掌握技能' : topicMode === '现代都市' ? '已掌握能力' : '已学功法',
+    empty: topicMode === '末日丧尸' ? '暂无技能记录' : topicMode === '现代都市' ? '暂无能力记录' : '暂无功法',
+    choose: topicMode === '末日丧尸' ? '请选择技能' : topicMode === '现代都市' ? '请选择能力' : '请选择功法',
+    unit: topicMode === '末日丧尸' || topicMode === '现代都市' ? '级' : '重'
+});
+
+const MobileKungfuModal: React.FC<Props> = ({ skills, onClose, topicMode }) => {
+    const 文案 = 获取移动功法文案(topicMode);
     const safeSkills = Array.isArray(skills) ? skills : [];
     const [selectedId, setSelectedId] = useState<string | null>(safeSkills.length > 0 ? safeSkills[0].ID : null);
 
@@ -27,7 +37,7 @@ const MobileKungfuModal: React.FC<Props> = ({ skills, onClose }) => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-3 md:hidden animate-fadeIn">
             <div className="bg-ink-black/95 border border-wuxia-gold/30 w-full max-w-[560px] h-[84vh] flex flex-col shadow-[0_0_60px_rgba(0,0,0,0.8)] relative overflow-hidden rounded-2xl">
                 <div className="h-12 shrink-0 border-b border-gray-800/60 bg-black/40 flex items-center justify-between px-4">
-                    <h3 className="text-wuxia-gold font-serif font-bold text-base tracking-[0.3em]">武学秘籍</h3>
+                    <h3 className="text-wuxia-gold font-serif font-bold text-base tracking-[0.3em]">{文案.title}</h3>
                     <button
                         onClick={onClose}
                         className="w-8 h-8 flex items-center justify-center rounded-full bg-black/50 border border-gray-700 text-gray-400 hover:text-wuxia-red hover:border-wuxia-red transition-all"
@@ -41,7 +51,7 @@ const MobileKungfuModal: React.FC<Props> = ({ skills, onClose }) => {
 
                 <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 space-y-4 bg-ink-wash/5">
                     <div className="bg-black/40 border border-gray-800 rounded-xl p-3">
-                        <div className="text-[10px] text-gray-500 tracking-[0.2em] mb-2">已学功法</div>
+                        <div className="text-[10px] text-gray-500 tracking-[0.2em] mb-2">{文案.learned}</div>
                         <div className="flex gap-2 overflow-x-auto no-scrollbar">
                             {safeSkills.map((s) => {
                                 const selected = s.ID === selectedId;
@@ -55,13 +65,13 @@ const MobileKungfuModal: React.FC<Props> = ({ skills, onClose }) => {
                                     >
                                         <div className={`text-sm font-serif ${getRarityNameClass(s.品质)} ${selected ? 'font-bold' : ''}`}>{s.名称}</div>
                                         <div className="text-[10px] text-gray-500 flex items-center gap-1.5">
-                                            <span>{s.类型} · 第{s.当前重数}重</span>
+                                            <span>{s.类型} · 第{s.当前重数}{文案.unit}</span>
                                             <span className={`${getRarityStyles(s.品质).text} ${getRarityStyles(s.品质).glow}`}>{s.品质}</span>
                                         </div>
                                     </button>
                                 );
                             })}
-                            {safeSkills.length === 0 && <div className="text-xs text-gray-600 py-6 w-full text-center">暂无功法</div>}
+                            {safeSkills.length === 0 && <div className="text-xs text-gray-600 py-6 w-full text-center">{文案.empty}</div>}
                         </div>
                     </div>
 
@@ -128,7 +138,7 @@ const MobileKungfuModal: React.FC<Props> = ({ skills, onClose }) => {
                             )}
                         </>
                     ) : (
-                        <div className="text-center text-gray-600 text-xs py-10">请选择功法</div>
+                        <div className="text-center text-gray-600 text-xs py-10">{文案.choose}</div>
                     )}
                 </div>
             </div>

@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { 接口设置结构, 单接口配置结构, 功能模型占位配置结构 } from '../../../types';
 import GameButton from '../../ui/GameButton';
 import ToggleSwitch from '../../ui/ToggleSwitch';
-import InlineSelect from '../../ui/InlineSelect';
 import { 规范化接口设置 } from '../../../utils/apiConfig';
+import StageApiModelSelector from './StageApiModelSelector';
 
 interface Props {
     settings: 接口设置结构;
@@ -12,15 +12,12 @@ interface Props {
 
 const RecallModelSettings: React.FC<Props> = ({ settings, onSave }) => {
     const [form, setForm] = useState<接口设置结构>(() => 规范化接口设置(settings));
-    const [modelOptions, setModelOptions] = useState<string[]>([]);
-    const [loadingModels, setLoadingModels] = useState(false);
     const [message, setMessage] = useState('');
     const [showSuccess, setShowSuccess] = useState(false);
 
     useEffect(() => {
         const normalized = 规范化接口设置(settings);
         setForm(normalized);
-        setModelOptions([]);
     }, [settings]);
 
     const activeConfig = useMemo<单接口配置结构 | null>(() => {
@@ -34,9 +31,6 @@ const RecallModelSettings: React.FC<Props> = ({ settings, onSave }) => {
     }, [form.功能模型占位.主剧情使用模型]);
 
     const 独立模型开启 = Boolean(form.功能模型占位.剧情回忆独立模型开关);
-    const 独立API地址 = (form.功能模型占位.剧情回忆API地址 || '').trim();
-    const 独立API密钥 = (form.功能模型占位.剧情回忆API密钥 || '').trim();
-
     const updatePlaceholder = <K extends keyof 功能模型占位配置结构>(key: K, value: 功能模型占位配置结构[K]) => {
         setForm(prev => ({
             ...prev,
@@ -45,56 +39,6 @@ const RecallModelSettings: React.FC<Props> = ({ settings, onSave }) => {
                 [key]: value
             }
         }));
-    };
-
-    const fetchModelsFromCurrentConfig = async (): Promise<string[] | null> => {
-        const resolvedBaseUrl = 独立模型开启 && 独立API地址
-            ? 独立API地址
-            : (activeConfig?.baseUrl || '');
-        const resolvedApiKey = 独立模型开启 && 独立API密钥
-            ? 独立API密钥
-            : (activeConfig?.apiKey || '');
-        if (!resolvedApiKey || !resolvedBaseUrl) {
-            setMessage('请先填写可用的 API Key 与 Base URL（支持独立密钥）。');
-            return null;
-        }
-        try {
-            const base = resolvedBaseUrl.replace(/\/+$/, '');
-            const normalized = base.replace(/\/v1$/i, '');
-            const candidateUrls = Array.from(new Set([
-                `${normalized}/v1/models`,
-                `${normalized}/models`,
-                `${base}/models`
-            ]));
-            for (const url of candidateUrls) {
-                const res = await fetch(url, {
-                    headers: {
-                        Authorization: `Bearer ${resolvedApiKey}`
-                    }
-                });
-                if (!res.ok) continue;
-                const data = await res.json();
-                if (data && Array.isArray(data.data)) {
-                    return data.data.map((m: any) => m?.id).filter(Boolean);
-                }
-            }
-            setMessage('获取失败：返回格式错误。');
-            return null;
-        } catch (e: any) {
-            setMessage(`获取失败：${e.message}`);
-            return null;
-        }
-    };
-
-    const handleFetchModels = async () => {
-        setLoadingModels(true);
-        setMessage('');
-        const models = await fetchModelsFromCurrentConfig();
-        if (models) {
-            setModelOptions(models);
-            setMessage('剧情回忆模型列表获取成功。');
-        }
-        setLoadingModels(false);
     };
 
     const handleToggleIndependent = (checked: boolean) => {
@@ -123,20 +67,6 @@ const RecallModelSettings: React.FC<Props> = ({ settings, onSave }) => {
         setTimeout(() => setShowSuccess(false), 2000);
     };
 
-    const recallModelValue = (form.功能模型占位.剧情回忆使用模型 || '').trim();
-    const recallModelDisplay = 独立模型开启 ? recallModelValue : 主剧情解析模型;
-    const selectOptions = Array.from(
-        new Set(
-            [
-                ...modelOptions,
-                recallModelValue,
-                主剧情解析模型
-            ]
-                .map(item => (item || '').trim())
-                .filter(Boolean)
-        )
-    );
-
     return (
         <div className="space-y-6 text-sm animate-fadeIn">
             <div className="flex justify-between items-center border-b border-wuxia-gold/30 pb-3 mb-6">
@@ -157,34 +87,17 @@ const RecallModelSettings: React.FC<Props> = ({ settings, onSave }) => {
                     />
                 </label>
 
-                <div className="flex gap-3 items-end">
-                    <div className="flex-1 space-y-1">
-                        <label className="text-xs text-gray-300">剧情回忆使用模型</label>
-                        <InlineSelect
-                            value={recallModelDisplay}
-                            options={selectOptions.map((model) => ({
-                                value: model,
-                                label: model
-                            }))}
-                            onChange={(model) => updatePlaceholder('剧情回忆使用模型', model)}
-                            disabled={!独立模型开启 || selectOptions.length === 0}
-                            placeholder={!独立模型开启
-                                ? `跟随主剧情模型：${主剧情解析模型 || '未设置'}`
-                                : (selectOptions.length ? '请选择模型' : '请先点击获取列表')}
-                            buttonClassName={独立模型开启
-                                ? 'bg-black/50 border-gray-600 py-2.5'
-                                : 'bg-black/30 border-gray-700 py-2.5'}
-                        />
-                    </div>
-                    <GameButton
-                        onClick={handleFetchModels}
-                        variant="secondary"
-                        className="px-4 py-2 text-xs"
-                        disabled={loadingModels}
-                    >
-                        {loadingModels ? '...' : '获取列表'}
-                    </GameButton>
-                </div>
+                <StageApiModelSelector
+                    form={form}
+                    enabled={独立模型开启}
+                    title="剧情回忆"
+                    modelKey="剧情回忆使用模型"
+                    channelKey="剧情回忆渠道ID"
+                    baseUrlKey="剧情回忆API地址"
+                    apiKeyKey="剧情回忆API密钥"
+                    fallbackModel={主剧情解析模型}
+                    onChange={updatePlaceholder}
+                />
                 <div className="space-y-1">
                     <label className="text-xs text-gray-300">剧情回忆独立 API 地址（可选）</label>
                     <input
