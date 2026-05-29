@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { 功能模型占位配置结构, 接口设置结构, 单接口配置结构 } from '../../../types';
-import GameButton from '../../ui/GameButton';
 import InlineSelect from '../../ui/InlineSelect';
 import {
     获取主剧情接口配置,
@@ -506,7 +505,7 @@ const WorkflowGraphSettings: React.FC<{
             trim(mainApi?.model)
         ].filter(Boolean)));
         return (
-            <div className="mt-2 space-y-1" onClick={(event) => event.stopPropagation()}>
+            <div className="mt-2 space-y-1.5" onClick={(event) => event.stopPropagation()}>
                 <InlineSelect
                     value={selectedChannelId}
                     options={normalized.configs.map((cfgItem) => ({
@@ -527,7 +526,7 @@ const WorkflowGraphSettings: React.FC<{
                     }}
                     disabled={normalized.configs.length === 0 || !onSave}
                     placeholder="选择渠道"
-                    buttonClassName="min-h-0 border-gray-700 bg-black/35 px-2 py-1 text-[10px]"
+                    buttonClassName="min-h-0 rounded-sm border-gray-700 bg-black/35 px-2 py-1 text-[10px]"
                 />
                 <div className="flex gap-1">
                     <div className="min-w-0 flex-1">
@@ -543,26 +542,27 @@ const WorkflowGraphSettings: React.FC<{
                             }}
                             disabled={modelOptions.length === 0 || !onSave}
                             placeholder="选择模型"
-                            buttonClassName="min-h-0 border-gray-700 bg-black/35 px-2 py-1 text-[10px]"
+                            buttonClassName="min-h-0 rounded-sm border-gray-700 bg-black/35 px-2 py-1 text-[10px]"
                         />
                     </div>
-                    <GameButton
+                    <button
+                        type="button"
                         onClick={() => fetchModelsForStage(stage)}
-                        variant="secondary"
-                        className="shrink-0 px-2 py-1 text-[10px]"
+                        className="h-[28px] w-10 shrink-0 rounded-sm border border-wuxia-cyan/45 bg-wuxia-cyan/10 px-2 text-center text-[10px] font-bold text-wuxia-cyan shadow-sm transition hover:border-wuxia-cyan hover:bg-wuxia-cyan/20 disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={!onSave || loadingStageId === stage.id}
                     >
                         {loadingStageId === stage.id ? '...' : '刷'}
-                    </GameButton>
+                    </button>
                 </div>
-                {stageMessages[stage.id] && <div className="truncate text-[10px] text-wuxia-cyan">{stageMessages[stage.id]}</div>}
+                {stageMessages[stage.id] && <div className="text-[10px] leading-4 text-wuxia-cyan">{stageMessages[stage.id]}</div>}
             </div>
         );
     };
 
     const stageCard = (stage: FlowStage) => {
         const clickable = Boolean(stage.configTab && onNavigate);
-        const className = `h-[194px] w-[210px] shrink-0 overflow-hidden rounded border px-3 py-2 text-left shadow-inner transition ${statusClass[stage.status]} ${
+        const hasInlineControls = Boolean(stage.modelConfig && !stage.localOnly);
+        const className = `${hasInlineControls ? 'min-h-[214px]' : 'min-h-[132px]'} w-[210px] shrink-0 rounded border px-3 py-2 text-left shadow-inner transition ${statusClass[stage.status]} ${
             clickable ? 'hover:-translate-y-0.5 hover:border-wuxia-gold/70' : ''
         }`;
         const content = (
@@ -580,11 +580,11 @@ const WorkflowGraphSettings: React.FC<{
                 <div className="truncate text-gray-300">渠道：<span className="text-wuxia-cyan">{stage.channel}</span></div>
                 <div className="truncate text-gray-300">模型：<span className="text-wuxia-gold">{stage.model}</span></div>
                 {stageInlineSelector(stage)}
-                <div className="max-h-[28px] overflow-hidden text-gray-500">{stage.note}</div>
+                <div className="text-gray-500">{stage.note}</div>
                 {clickable && (
                     <button
                         type="button"
-                        className="pt-0.5 text-[10px] text-wuxia-gold hover:text-yellow-200"
+                        className="mt-1 inline-flex h-6 items-center rounded-sm border border-wuxia-gold/35 bg-wuxia-gold/10 px-2 text-[10px] font-bold text-wuxia-gold transition hover:border-wuxia-gold hover:bg-wuxia-gold/20"
                         onClick={() => stage.configTab && onNavigate?.(stage.configTab)}
                     >
                         完整配置
