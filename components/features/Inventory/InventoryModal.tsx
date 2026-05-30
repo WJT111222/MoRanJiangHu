@@ -14,7 +14,7 @@ import { 获取物品明细分组 } from '../../../utils/rulebook';
 import { 是否杂物类物品 } from '../../../utils/inventoryActions';
 import { 规范化消耗品使用效果 } from '../../../utils/itemEffects';
 import { 获取题材模式配置 } from '../../../utils/topicModeProfiles';
-import { 获取货币完整单位标签 } from '../../../utils/currencyDisplay';
+import { 获取货币显示模式, 获取货币完整单位标签 } from '../../../utils/currencyDisplay';
 
 interface Props {
     character: any;
@@ -238,6 +238,8 @@ const InventoryModal: React.FC<Props> = ({ character, openingConfig, onClose, on
     const totalValue = items.reduce((sum, item) => (
         sum + getSafeNumber(item?.价值) * getSafeNumber(item?.堆叠数量, 1)
     ), 0);
+    const currencyMode = 获取货币显示模式(openingConfig, character);
+    const valueUnit = 获取货币完整单位标签('铜钱', currencyMode);
     const selectedEquipSlots = selectedItem ? 获取物品可装备槽位(selectedItem) : [];
     const selectedCanEquip = selectedItem ? 是否可装备物品(selectedItem) : false;
     const selectedCanUse = getSafeText(selectedItem?.类型) === '消耗品';
