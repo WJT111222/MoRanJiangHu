@@ -516,6 +516,9 @@ describe('NSFW prompt generation', () => {
         expect(result).toContain('NSFW');
         expect(result).toContain('肉棒');
         expect(result).toContain('小穴');
+        expect(result).toContain('action + senses + body reaction + psychological change + relationship tension');
+        expect(result).toContain('invitation/approach');
+        expect(result).toContain('afterglow');
     });
 
     it('构建运行时额外提示词 returns empty when NSFW disabled', () => {

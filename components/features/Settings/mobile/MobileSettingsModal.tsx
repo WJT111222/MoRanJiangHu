@@ -16,7 +16,7 @@ const GameSettings = React.lazy(() => lazyImportWithReload('mobile-settings-game
 const RealitySettings = React.lazy(() => lazyImportWithReload('mobile-settings-reality', () => import('../RealitySettings')));
 const TavernPresetSettings = React.lazy(() => lazyImportWithReload('mobile-settings-tavern-preset', () => import('../TavernPresetSettings')));
 const MemorySettings = React.lazy(() => lazyImportWithReload('mobile-settings-memory', () => import('../MemorySettings')));
-const HistoryViewer = React.lazy(() => import('../HistoryViewer'));
+const HistoryViewer = React.lazy(() => lazyImportWithReload('mobile-settings-history-viewer', () => import('../HistoryViewer')));
 const ContextViewer = React.lazy(() => lazyImportWithReload('mobile-settings-context-viewer', () => import('../ContextViewer')));
 const LogViewer = React.lazy(() => lazyImportWithReload('mobile-settings-log-viewer', () => import('../LogViewer')));
 const WorkflowGraphSettings = React.lazy(() => lazyImportWithReload('mobile-settings-workflow-graph', () => import('../WorkflowGraphSettings')));

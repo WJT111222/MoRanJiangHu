@@ -1,7 +1,7 @@
 
 import type { NPC图片档案 } from './imageGeneration';
 
-export type NPC性别 = '男' | '女';
+export type NPC性别 = '男' | '女' | '男娘' | '扶她';
 
 export interface NPC记忆 {
     内容: string;
@@ -36,6 +36,23 @@ export interface 子宫档案 {
     状态: string;       // "未受孕", "受孕中", "妊娠一月" 等
     宫口状态: string;   // "紧致", "微张", "松弛"
     内射记录: 子宫记录[];
+}
+
+export type 亲密行为类型 = '口交' | '肛交' | '阴道交' | '乳交' | '手交' | '足交' | '股交';
+
+export interface 首次亲密记录 {
+    类型: 亲密行为类型;
+    是否已发生: boolean;
+    第一次对象?: string;
+    第一次时间?: string;
+    第一次描述?: string;
+}
+
+export interface 失贞档案 {
+    是否失贞: boolean;
+    第一次对象?: string;
+    第一次时间?: string;
+    第一次描述?: string;
 }
 
 // 新增：NPC装备结构
@@ -210,6 +227,8 @@ export interface NPC结构 {
     初夜夺取者?: string;
     初夜时间?: string;
     初夜描述?: string;
+    失贞档案?: 失贞档案;
+    首次亲密记录?: 首次亲密记录[];
 
     // 记忆系统
     记忆: NPC记忆[];

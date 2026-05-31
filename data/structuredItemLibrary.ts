@@ -201,6 +201,55 @@ const 仙侠预设物品: 结构化物品条目[] = [
     { 名称: '洞府禁牌', 物品: '禁牌', 类型: '任务道具', 品质: '上品', 视觉标签: ['cave mansion pass token', 'dark jade plaque'], 生图描述: 'dark jade cave-mansion access plaque with abstract seal marks, no readable text' },
 ];
 
+const 西方奇幻预设物品: 结构化物品条目[] = [
+    { 名称: '骑士长剑', 材质: '钢', 物品: '长剑', 类型: '武器', 品质: '良品', 武器子类: '剑', 视觉标签: ['western fantasy', 'medieval arming sword', 'polished steel', 'leather grip', 'crossguard'], 生图描述: 'medieval arming sword with polished steel blade, simple crossguard, leather wrapped grip and round pommel, isolated museum prop, no blood' },
+    { 名称: '冒险者短剑', 材质: '钢', 物品: '短剑', 类型: '武器', 品质: '凡品', 武器子类: '剑', 视觉标签: ['western fantasy', 'short sword', 'simple steel', 'worn leather grip'], 生图描述: 'practical medieval short sword with worn leather grip and plain steel blade, single inventory prop, no person' },
+    { 名称: '猎人匕首', 材质: '钢', 物品: '匕首', 类型: '武器', 品质: '凡品', 武器子类: '暗器', 视觉标签: ['western fantasy', 'hunting dagger', 'small blade', 'leather sheath'], 生图描述: 'small hunting dagger with leather sheath beside it, simple steel blade, realistic product photo, no blood' },
+    { 名称: '橡木法杖', 材质: '橡木', 物品: '法杖', 类型: '武器', 品质: '良品', 武器子类: '棍', 视觉标签: ['western fantasy', 'wizard staff', 'oak wood', 'small crystal'], 生图描述: 'oak wizard staff with a small blue crystal set near the top, carved wooden grain, isolated prop, restrained magic glow' },
+    { 名称: '牧师钉头锤', 材质: '铁', 物品: '钉头锤', 类型: '武器', 品质: '良品', 武器子类: '棍', 视觉标签: ['western fantasy', 'mace', 'iron head', 'wooden handle'], 生图描述: 'medieval iron mace with a flanged head and wooden handle, ceremonial display prop, no violence' },
+    { 名称: '战斧', 材质: '铁', 物品: '战斧', 类型: '武器', 品质: '良品', 武器子类: '刀', 视觉标签: ['western fantasy', 'battle axe', 'iron blade', 'wooden haft'], 生图描述: 'single medieval battle axe with iron blade and wooden haft, catalog product photo, no blood' },
+    { 名称: '长矛', 材质: '铁', 物品: '矛', 类型: '武器', 品质: '凡品', 武器子类: '枪', 视觉标签: ['western fantasy', 'spear', 'wooden shaft', 'iron spearhead'], 生图描述: 'medieval spear with long wooden shaft and iron leaf-shaped spearhead, isolated diagonal product shot' },
+    { 名称: '短弓', 物品: '弓', 类型: '武器', 品质: '凡品', 武器子类: '暗器', 视觉标签: ['western fantasy', 'short bow', 'wood', 'bowstring'], 生图描述: 'simple medieval short bow with taut bowstring, one quiver strap nearby but no arrows flying, isolated prop' },
+    { 名称: '轻弩', 物品: '弩', 类型: '武器', 品质: '良品', 武器子类: '暗器', 视觉标签: ['western fantasy', 'crossbow', 'wood stock', 'iron limbs'], 生图描述: 'compact medieval crossbow with wooden stock, iron bow limbs and trigger, museum prop only, no projectile in flight' },
+    { 名称: '圆盾', 材质: '木铁', 物品: '盾', 类型: '防具', 品质: '凡品', 装备位置: '手部', 视觉标签: ['western fantasy', 'round shield', 'wooden shield', 'iron boss'], 生图描述: 'round wooden shield with iron rim and central boss, worn leather straps visible, isolated product photo' },
+    { 名称: '皮甲', 材质: '皮革', 物品: '护甲', 类型: '防具', 品质: '凡品', 装备位置: '胸部', 视觉标签: ['western fantasy', 'leather armor', 'stitched hide', 'buckles'], 生图描述: 'empty medieval leather chest armor laid flat, stitched hide panels and buckle straps, no mannequin, no person' },
+    { 名称: '锁子甲', 材质: '铁', 物品: '锁子甲', 类型: '防具', 品质: '良品', 装备位置: '胸部', 视觉标签: ['western fantasy', 'chainmail shirt', 'interlocking rings'], 生图描述: 'empty medieval chainmail shirt folded on a table, interlocking iron rings, no person wearing it' },
+    { 名称: '板甲胸甲', 材质: '钢', 物品: '胸甲', 类型: '防具', 品质: '上品', 装备位置: '胸部', 视觉标签: ['western fantasy', 'plate breastplate', 'polished steel'], 生图描述: 'polished steel plate breastplate photographed alone, medieval armor chest piece, no full armor suit, no person' },
+    { 名称: '铁盔', 材质: '铁', 物品: '头盔', 类型: '防具', 品质: '良品', 装备位置: '头部', 视觉标签: ['western fantasy', 'iron helmet', 'nasal guard'], 生图描述: 'single medieval iron helmet with nasal guard, worn metal texture, empty helmet on neutral background' },
+    { 名称: '兜帽披风', 物品: '披风', 类型: '防具', 品质: '凡品', 装备位置: '胸部', 视觉标签: ['western fantasy', 'hooded cloak', 'wool cloth'], 生图描述: 'empty hooded wool cloak laid flat with hood visible, travel-worn fabric, no person or mannequin' },
+    { 名称: '皮靴', 材质: '皮革', 物品: '靴', 类型: '防具', 品质: '凡品', 装备位置: '足部', 视觉标签: ['western fantasy', 'leather boots', 'travel footwear'], 生图描述: 'pair of empty medieval leather travel boots lying side by side, scuffed soles, visible hollow openings' },
+    { 名称: '旅行干粮', 物品: '干粮', 类型: '消耗品', 品质: '凡品', 视觉标签: ['western fantasy', 'travel rations', 'hard bread', 'dried meat', 'cloth wrap'], 生图描述: 'bundle of medieval travel rations: hard bread, dried meat and cheese wrapped in plain cloth, no label' },
+    { 名称: '清水水囊', 物品: '水囊', 类型: '消耗品', 品质: '凡品', 视觉标签: ['western fantasy', 'waterskin', 'leather flask'], 生图描述: 'leather waterskin flask with cork stopper and strap, slightly worn travel gear, no writing' },
+    { 名称: '治疗药水', 物品: '药水', 类型: '消耗品', 品质: '良品', 视觉标签: ['western fantasy', 'healing potion', 'red glass vial', 'cork'], 生图描述: 'small round glass vial of red healing potion with cork stopper, wax seal without text, realistic glass and liquid' },
+    { 名称: '法力药水', 物品: '药水', 类型: '消耗品', 品质: '良品', 视觉标签: ['western fantasy', 'mana potion', 'blue glass vial', 'cork'], 生图描述: 'small glass vial of blue mana potion with cork stopper, subtle liquid glow, no label or runes' },
+    { 名称: '解毒药剂', 物品: '药剂', 类型: '消耗品', 品质: '良品', 视觉标签: ['western fantasy', 'antidote', 'green vial', 'apothecary'], 生图描述: 'green antidote potion in a small unmarked apothecary vial, cork stopper, no readable text' },
+    { 名称: '火把', 物品: '火把', 类型: '杂物', 品质: '凡品', 视觉标签: ['western fantasy', 'torch', 'wooden handle', 'cloth wrapped end'], 生图描述: 'unlit wooden torch with cloth wrapped head and tar-darkened end, single object on neutral tabletop, no flame scene' },
+    { 名称: '火绒盒', 物品: '火绒盒', 类型: '杂物', 品质: '凡品', 视觉标签: ['western fantasy', 'tinderbox', 'flint', 'steel striker'], 生图描述: 'small metal tinderbox opened to show flint, steel striker and dry tinder, no text' },
+    { 名称: '冒险者绳索', 物品: '绳索', 类型: '杂物', 品质: '凡品', 视觉标签: ['western fantasy', 'hemp rope', 'adventuring gear'], 生图描述: 'coil of thick hemp rope with a simple brass hook, adventurer utility gear, no label' },
+    { 名称: '王国地图', 物品: '地图', 类型: '杂物', 品质: '良品', 视觉标签: ['western fantasy', 'parchment map', 'kingdom roads'], 生图描述: 'aged parchment kingdom map with abstract roads, rivers and mountain symbols, no readable names or letters' },
+    { 名称: '指南针', 物品: '指南针', 类型: '杂物', 品质: '良品', 视觉标签: ['western fantasy', 'brass compass', 'navigation'], 生图描述: 'brass compass with glass cover on parchment background, abstract dial marks only, no readable letters' },
+    { 名称: '公会徽章', 物品: '徽章', 类型: '饰品', 品质: '良品', 视觉标签: ['western fantasy', 'adventurer guild badge', 'bronze emblem'], 生图描述: 'bronze adventurer guild badge with abstract crossed-tool emblem, no letters, no readable symbol text' },
+    { 名称: '护佑圣徽', 物品: '圣徽', 类型: '饰品', 品质: '上品', 视觉标签: ['western fantasy', 'holy symbol', 'silver amulet'], 生图描述: 'silver holy amulet with abstract sunburst relief on a chain, no readable letters, no real religious symbol' },
+    { 名称: '魔晶吊坠', 物品: '吊坠', 类型: '饰品', 品质: '上品', 视觉标签: ['western fantasy', 'mana crystal pendant', 'blue crystal', 'silver chain'], 生图描述: 'blue mana crystal pendant set in a simple silver frame, small chain, realistic mineral glow, no text' },
+    { 名称: '家族纹章戒指', 物品: '戒指', 类型: '饰品', 品质: '良品', 视觉标签: ['western fantasy', 'signet ring', 'brass ring', 'blank crest'], 生图描述: 'brass signet ring with blank abstract crest, photographed alone, no letters or readable heraldry' },
+    { 名称: '铁矿石', 物品: '矿石', 类型: '材料', 品质: '凡品', 视觉标签: ['western fantasy', 'iron ore', 'raw mineral'], 生图描述: 'single raw iron ore chunk with dark metallic veins, mineral specimen, no label' },
+    { 名称: '秘银矿石', 物品: '矿石', 类型: '材料', 品质: '上品', 视觉标签: ['western fantasy', 'mithril ore', 'silver blue mineral'], 生图描述: 'single silver-blue mithril ore chunk with fine metallic veins, raw fantasy mineral, no text' },
+    { 名称: '魔晶', 物品: '魔晶', 类型: '材料', 品质: '上品', 视觉标签: ['western fantasy', 'mana crystal', 'blue crystal', 'magic material'], 生图描述: 'faceted blue mana crystal as a raw magical crafting material, subtle inner glow, no jewelry setting' },
+    { 名称: '狼皮', 物品: '兽皮', 类型: '材料', 品质: '凡品', 视觉标签: ['western fantasy', 'wolf pelt', 'fur hide'], 生图描述: 'rough cured grey wolf pelt folded as crafting leather material, no animal body, no blood' },
+    { 名称: '龙鳞', 物品: '鳞片', 类型: '材料', 品质: '极品', 视觉标签: ['western fantasy', 'dragon scale', 'iridescent scale'], 生图描述: 'single iridescent dragon scale displayed on dark cloth, hard enamel texture, no creature, no text' },
+    { 名称: '银叶草', 物品: '草药', 类型: '材料', 品质: '良品', 视觉标签: ['western fantasy', 'silverleaf herb', 'botanical specimen'], 生图描述: 'small silver-green medicinal herb sprig with pale leaves, botanical specimen on parchment, no label' },
+    { 名称: '初级魔法书', 物品: '魔法书', 类型: '秘籍', 品质: '凡品', 视觉标签: ['western fantasy', 'spellbook', 'leather cover', 'unreadable diagrams'], 生图描述: 'small worn leather spellbook opened to pages with abstract unreadable arcane diagrams, no real letters or symbols' },
+    { 名称: '火球术卷轴', 物品: '魔法卷轴', 类型: '秘籍', 品质: '良品', 视觉标签: ['western fantasy', 'spell scroll', 'fire magic', 'parchment'], 生图描述: 'rolled parchment spell scroll partly open, abstract red ink circles and fire motif, no readable text or letters' },
+    { 名称: '治疗祷文', 物品: '祷文书页', 类型: '秘籍', 品质: '良品', 视觉标签: ['western fantasy', 'healing prayer page', 'parchment', 'gold border'], 生图描述: 'single parchment prayer page with gold border and abstract unreadable script-like lines, no real text' },
+    { 名称: '炼金笔记', 物品: '炼金笔记', 类型: '秘籍', 品质: '上品', 视觉标签: ['western fantasy', 'alchemy notebook', 'diagram pages'], 生图描述: 'open alchemy notebook with abstract potion diagrams, glass vial sketch shapes, unreadable marks only, no real text' },
+    { 名称: '委托羊皮卷', 物品: '委托书', 类型: '任务道具', 品质: '凡品', 视觉标签: ['western fantasy', 'quest parchment', 'wax seal'], 生图描述: 'rolled quest parchment tied with cord and plain wax seal, abstract unreadable lines only, no real letters' },
+    { 名称: '冒险者执照', 物品: '执照', 类型: '任务道具', 品质: '良品', 视觉标签: ['western fantasy', 'adventurer license', 'metal token', 'parchment card'], 生图描述: 'adventurer license set: small bronze token beside blank parchment card with unreadable marks, no readable text' },
+    { 名称: '地牢钥匙', 材质: '铁', 物品: '钥匙', 类型: '任务道具', 品质: '凡品', 视觉标签: ['western fantasy', 'dungeon key', 'old iron key'], 生图描述: 'large old iron dungeon key with simple teeth, lying on worn leather, no label' },
+    { 名称: '铜币袋', 物品: '钱袋', 类型: '杂物', 品质: '凡品', 视觉标签: ['western fantasy', 'copper coins', 'coin pouch'], 生图描述: 'small leather pouch spilled with plain copper coins, no faces, no letters, no readable mint marks' },
+    { 名称: '银币袋', 物品: '钱袋', 类型: '杂物', 品质: '良品', 视觉标签: ['western fantasy', 'silver coins', 'coin pouch'], 生图描述: 'small leather pouch spilled with plain silver coins, no portraits, no letters, no readable mint marks' },
+    { 名称: '金币袋', 物品: '钱袋', 类型: '杂物', 品质: '上品', 视觉标签: ['western fantasy', 'gold coins', 'coin pouch'], 生图描述: 'small leather pouch spilled with plain gold coins, no portraits, no letters, no readable mint marks' },
+];
+
 const 现代预设物品: 结构化物品条目[] = [
     { 名称: '智能手机', 物品: '智能手机', 类型: '杂物', 品质: '良品', 视觉标签: ['smartphone', 'cracked screen', 'modern device'], 生图描述: 'used modern smartphone with a slightly cracked screen, isolated product prop, no readable text' },
     { 名称: '录音笔', 物品: '录音笔', 类型: '杂物', 品质: '上品', 视觉标签: ['digital voice recorder', 'investigation tool'], 生图描述: 'small black digital voice recorder on a desk, modern investigation prop, no readable text' },
@@ -313,13 +362,14 @@ const 生成材质物品 = (): 结构化物品条目[] => {
         视觉标签: [...material.标签, template.物品],
         生图描述: `a ${material.标签.join(', ')} wuxia ${template.物品}, leather defensive gear or footwear, isolated product prop, visible stitched hide texture`
     })));
-    return [...weapons, ...hardArmors, ...metalFootwear, ...clothItems, ...leatherItems, ...无材质物品, ...仙侠预设物品, ...现代预设物品, ...末日预设物品];
+    return [...weapons, ...hardArmors, ...metalFootwear, ...clothItems, ...leatherItems, ...无材质物品, ...仙侠预设物品, ...西方奇幻预设物品, ...现代预设物品, ...末日预设物品];
 };
 
 export const 结构化物品库: 结构化物品条目[] = 生成材质物品();
 
 const 取名称 = (items: readonly 结构化物品条目[]) => items.map((item) => item.名称);
 const 仙侠专属名称 = new Set(取名称(仙侠预设物品));
+const 西方奇幻专属名称 = new Set(取名称(西方奇幻预设物品));
 const 现代专属名称 = new Set(取名称(现代预设物品));
 const 末日专属名称 = new Set(取名称(末日预设物品));
 const 额外仙侠法宝名称 = new Set(['玉骨扇']);
@@ -328,6 +378,7 @@ const 去重名称 = (...groups: string[][]): string[] => Array.from(new Set(gro
 const 武侠基础物品名称 = 结构化物品库
     .filter((entry) => (
         !仙侠专属名称.has(entry.名称)
+        && !西方奇幻专属名称.has(entry.名称)
         && !现代专属名称.has(entry.名称)
         && !末日专属名称.has(entry.名称)
         && entry.类型 !== '法宝'
@@ -342,6 +393,10 @@ const 仙侠物品名称 = 结构化物品库
     ))
     .map((entry) => entry.名称);
 
+const 西方奇幻物品名称 = 结构化物品库
+    .filter((entry) => 西方奇幻专属名称.has(entry.名称))
+    .map((entry) => entry.名称);
+
 const 现代都市物品名称 = 结构化物品库
     .filter((entry) => 现代专属名称.has(entry.名称))
     .map((entry) => entry.名称);
@@ -353,7 +408,7 @@ const 末日物品名称 = 结构化物品库
 export const 题材模式预设物品名称清单: Record<题材模式类型, string[]> = {
     武侠: 去重名称(武侠基础物品名称),
     仙侠: 去重名称(仙侠物品名称),
-    西方奇幻: 去重名称(武侠基础物品名称),
+    西方奇幻: 去重名称(西方奇幻物品名称),
     灵气复苏: 去重名称(现代都市物品名称, 仙侠物品名称, ['急救包', '便携检测仪', '防护服', '异常样本盒', '灵能探测器', '灵气抑制贴', '古玉残佩', '灵晶']),
     都市修仙: 去重名称(现代都市物品名称, 仙侠物品名称, ['银行卡', '合同文件', '智能手机', '古玉残佩', '下品灵石', '符箓入门', '护身符']),
     现代都市: 去重名称(现代都市物品名称),

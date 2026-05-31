@@ -321,4 +321,34 @@ describe('NPC old save compatibility', () => {
         expect(npc.名器档案.some((item: any) => item.品质 !== '无')).toBe(true);
         expect(npc.名器档案.every((item: any) => item.效果?.说明)).toBe(true);
     });
+
+    it('filters impossible femboy vaginal records but keeps anal sex loss', () => {
+        const [npc] = 规范化社交列表([
+            {
+                id: 'npc_femboy_records',
+                姓名: '洛溪',
+                性别: '男娘',
+                是否主要角色: true,
+                男娘设定: '女性化气质明显，但身体结构不存在阴道。',
+                失贞档案: {
+                    是否失贞: true,
+                    第一次对象: '杨培强',
+                    第一次时间: '四月初二 子时'
+                },
+                首次亲密记录: [
+                    { 类型: '阴道交', 是否已发生: true, 第一次对象: '杨培强' },
+                    { 类型: '口交', 是否已发生: true, 第一次对象: '杨培强' },
+                    { 类型: '肛交', 是否已发生: true, 第一次对象: '杨培强' }
+                ]
+            }
+        ], { 合并同名: false });
+
+        expect(npc.性别).toBe('男娘');
+        expect(npc.失贞档案).toMatchObject({
+            是否失贞: true,
+            第一次对象: '杨培强',
+            第一次时间: '四月初二 子时'
+        });
+        expect(npc.首次亲密记录.map((item: any) => item.类型)).toEqual(['口交', '肛交']);
+    });
 });

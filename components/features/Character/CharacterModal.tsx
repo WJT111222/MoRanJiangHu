@@ -12,6 +12,7 @@ import ToggleSwitch from '../../ui/ToggleSwitch';
 import { 规范化接口设置 } from '../../../utils/apiConfig';
 import { 获取图片展示地址 } from '../../../utils/imageAssets';
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
+import type { 可分配六维属性键 } from '../../../utils/characterAttributePoints';
 
 type 主角生图选项 = {
     构图?: '头像' | '半身' | '立绘';
@@ -38,6 +39,7 @@ interface Props {
     onSelectPlayerPortraitImage?: (imageId: string) => void;
     onClearPlayerPortraitImage?: () => void;
     onRemovePlayerImageRecord?: (imageId: string) => void;
+    onAllocateAttributePoint?: (key: 可分配六维属性键) => void;
 }
 
 type 页面标签 = 'image' | 'profile' | 'skills';
@@ -118,7 +120,8 @@ const CharacterModal: React.FC<Props> = ({
     onClearPlayerAvatarImage,
     onSelectPlayerPortraitImage,
     onClearPlayerPortraitImage,
-    onRemovePlayerImageRecord
+    onRemovePlayerImageRecord,
+    onAllocateAttributePoint
 }) => {
     use图片资源回源预取(character);
     const [activeTab, setActiveTab] = React.useState<页面标签>('image');
@@ -307,7 +310,11 @@ const CharacterModal: React.FC<Props> = ({
                 <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(120,90,30,0.08),transparent_35%)] p-5 custom-scrollbar md:p-6">
                     {activeTab === 'profile' ? (
                         <div className="flex justify-center">
-                            <CharacterProfileCard character={character} visualConfig={visualConfig} />
+                            <CharacterProfileCard
+                                character={character}
+                                visualConfig={visualConfig}
+                                onAllocateAttributePoint={onAllocateAttributePoint}
+                            />
                         </div>
                     ) : activeTab === 'skills' ? (
                         <div className="mx-auto w-full max-w-6xl space-y-5">

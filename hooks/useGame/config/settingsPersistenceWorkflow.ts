@@ -20,7 +20,7 @@ import { 按场景图上限裁剪档案 } from '../sceneImageArchiveWorkflow';
 import { 规范化游戏设置 } from '../../../utils/gameSettings';
 import { 规范化图片管理设置 } from '../../../utils/imageManagerSettings';
 import { 设置键 } from '../../../utils/settingsSchema';
-import { 规范化接口设置 } from '../../../utils/apiConfig';
+import { 写入接口设置本地镜像, 规范化接口设置 } from '../../../utils/apiConfig';
 import { 内置提示词存储键, 规范化内置提示词列表 } from '../../../utils/builtinPrompts';
 import { 世界书存储键, 世界书预设组存储键, 规范化世界书列表, 规范化世界书预设组列表 } from '../../../utils/worldbook';
 import { 规范化记忆配置 } from '../memoryUtils';
@@ -94,6 +94,7 @@ export const 创建设置持久化工作流 = (deps: 设置持久化工作流依
     const saveSettings = async (newConfig: 接口设置结构) => {
         const normalized = 规范化接口设置(newConfig);
         deps.同步接口配置(normalized);
+        写入接口设置本地镜像(normalized);
         await dbService.保存设置(设置键.API配置, normalized);
     };
 

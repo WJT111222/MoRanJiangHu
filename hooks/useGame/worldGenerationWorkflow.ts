@@ -142,6 +142,23 @@ const 创建阶段超时错误 = (stageLabel: string, timeoutMs: number, idleTim
     return error;
 };
 
+const 是否模式包题材片段 = (text: string): boolean => {
+    const source = (text || '').trim();
+    if (!source) return false;
+    return /【\s*(题材口径|模式专属世界书|世界规则|运行时模式配置)\s*】/.test(source)
+        && !/<\s*世界观\s*>/i.test(source)
+        && !/"world_prompt"\s*:/.test(source)
+        && !/"worldPrompt"\s*:/.test(source);
+};
+
+const 是否模式包能力片段 = (text: string): boolean => {
+    const source = (text || '').trim();
+    if (!source) return false;
+    return /【\s*(能力体系|运行时模式配置)\s*】/.test(source)
+        && !/<\s*境界体系\s*>/i.test(source)
+        && !/【\s*境界映射母板\s*】/.test(source);
+};
+
 const 执行带超时 = async <T,>(
     stageLabel: string,
     timeoutMs: number,
@@ -285,14 +302,18 @@ export const 执行世界生成工作流 = async (
         const normalizedManualWorldPrompt = typeof worldConfig.manualWorldPrompt === 'string'
             ? worldConfig.manualWorldPrompt.trim()
             : '';
+        const manualWorldPromptIsModePackageFragment = 是否模式包题材片段(normalizedManualWorldPrompt);
         const normalizedManualRealmPrompt = typeof worldConfig.manualRealmPrompt === 'string'
             ? worldConfig.manualRealmPrompt.trim()
             : '';
-        const useManualWorldPrompt = normalizedManualWorldPrompt.length > 0;
+        const manualRealmPromptIsModePackageFragment = 是否模式包能力片段(normalizedManualRealmPrompt);
+        const useManualWorldPrompt = normalizedManualWorldPrompt.length > 0 && !manualWorldPromptIsModePackageFragment;
         const isXianxiaOpening = openingConfig?.题材模式 === '仙侠';
-        const normalizedWorldExtraRequirement = typeof worldConfig.worldExtraRequirement === 'string'
-            ? worldConfig.worldExtraRequirement.trim()
-            : '';
+        const normalizedWorldExtraRequirement = [
+            typeof worldConfig.worldExtraRequirement === 'string' ? worldConfig.worldExtraRequirement.trim() : '',
+            manualWorldPromptIsModePackageFragment ? normalizedManualWorldPrompt : '',
+            manualRealmPromptIsModePackageFragment ? normalizedManualRealmPrompt : ''
+        ].filter(Boolean).join('\n\n');
         const useWorldRefinement = !useManualWorldPrompt && normalizedWorldExtraRequirement.length > 0;
         const initialFandomBundle = 构建同人运行时提示词包({ openingConfig });
         const fandomEnabled = initialFandomBundle.enabled;
@@ -301,7 +322,7 @@ export const 执行世界生成工作流 = async (
             : '';
         const realmPromptSource = 选择开局境界体系来源({
             启用修炼体系,
-            手动境界提示词: normalizedManualRealmPrompt,
+            手动境界提示词: manualRealmPromptIsModePackageFragment ? '' : normalizedManualRealmPrompt,
             是仙侠题材: isXianxiaOpening,
             题材模式: openingConfig?.题材模式,
             启用同人境界: fandomEnabled

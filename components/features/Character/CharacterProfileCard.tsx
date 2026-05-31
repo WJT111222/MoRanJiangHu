@@ -2,12 +2,14 @@ import React, { useMemo } from 'react';
 import { 角色数据结构, 视觉设置结构 } from '../../../types';
 import { 构建区域文字样式 } from '../../../utils/visualSettings';
 import { 格式化月日, 计算角色总气血 } from '../../../utils/characterVitals';
+import { 读取可分配属性点, type 可分配六维属性键 } from '../../../utils/characterAttributePoints';
 interface Props {
     character: 角色数据结构;
     visualConfig?: 视觉设置结构;
+    onAllocateAttributePoint?: (key: 可分配六维属性键) => void;
 }
 
-const CharacterProfileCard: React.FC<Props> = ({ character, visualConfig }) => {
+const CharacterProfileCard: React.FC<Props> = ({ character, visualConfig, onAllocateAttributePoint }) => {
     const 天赋列表 = Array.isArray(character.天赋列表) ? character.天赋列表 : [];
     const areaStyle = 构建区域文字样式(visualConfig, '角色档案');
     const profileFontStyle = {
@@ -39,13 +41,14 @@ const CharacterProfileCard: React.FC<Props> = ({ character, visualConfig }) => {
         悟: '悟性：影响功法理解、修炼效率、术法/技能加成判定。',
         福: '福源：影响机缘、掉落、随机事件倾向与逢凶化吉概率。',
     };
-    const attributes = [
-        { key: '力', val: character.力量, title: 六维说明.力 },
-        { key: '敏', val: character.敏捷, title: 六维说明.敏 },
-        { key: '体', val: character.体质, title: 六维说明.体 },
-        { key: '根', val: character.根骨, title: 六维说明.根 },
-        { key: '悟', val: character.悟性, title: 六维说明.悟 },
-        { key: '福', val: character.福源, title: 六维说明.福 },
+    const 可用属性点 = 读取可分配属性点(character);
+    const attributes: Array<{ key: string; attributeKey: 可分配六维属性键; val: number; title: string }> = [
+        { key: '力', attributeKey: '力量', val: character.力量, title: 六维说明.力 },
+        { key: '敏', attributeKey: '敏捷', val: character.敏捷, title: 六维说明.敏 },
+        { key: '体', attributeKey: '体质', val: character.体质, title: 六维说明.体 },
+        { key: '根', attributeKey: '根骨', val: character.根骨, title: 六维说明.根 },
+        { key: '悟', attributeKey: '悟性', val: character.悟性, title: 六维说明.悟 },
+        { key: '福', attributeKey: '福源', val: character.福源, title: 六维说明.福 },
     ];
     const 读取文本字段 = (key: string): string => {
         const value = (character as any)?.[key];
@@ -173,12 +176,30 @@ const CharacterProfileCard: React.FC<Props> = ({ character, visualConfig }) => {
                     </div>
 
                     <div className="border border-[#c7a56a]/35 bg-[#fffdf6] p-4">
-                        <div className="mb-3 text-[10px] uppercase tracking-[0.35em] text-[#9b5a22]" title="悬浮每个六维格可查看具体影响">基础六维</div>
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                            <div className="text-[10px] uppercase tracking-[0.35em] text-[#9b5a22]" title="悬浮每个六维格可查看具体影响">基础六维</div>
+                            {可用属性点 > 0 && (
+                                <div className="rounded-sm border border-[#c7a56a]/55 bg-[#fff4df] px-2 py-1 text-[10px] font-semibold tracking-[0.16em] text-[#7a3f12]">
+                                    可分配 {可用属性点}
+                                </div>
+                            )}
+                        </div>
                         <div className="grid grid-cols-3 gap-2">
                             {attributes.map((attr) => (
-                                <div key={`detail-${attr.key}`} title={attr.title} className="cursor-help border border-[#d8c4a2] bg-[#fffaf0] px-2 py-3 text-center">
+                                <div key={`detail-${attr.key}`} title={attr.title} className="relative cursor-help border border-[#d8c4a2] bg-[#fffaf0] px-2 py-3 text-center">
                                     <div className="text-[10px] tracking-[0.2em] text-[#8a5a2f]">{attr.key}</div>
                                     <div className="mt-1 text-lg font-mono font-bold text-[#7a3f12]">{attr.val}</div>
+                                    {可用属性点 > 0 && onAllocateAttributePoint && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onAllocateAttributePoint(attr.attributeKey)}
+                                            className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-[#c7a56a]/70 bg-[#7a3f12] text-sm font-bold leading-none text-[#fffaf0] shadow-sm transition-transform hover:scale-105 hover:bg-[#9b5a22]"
+                                            aria-label={`分配1点到${attr.attributeKey}`}
+                                            title={`分配1点到${attr.attributeKey}`}
+                                        >
+                                            +
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>

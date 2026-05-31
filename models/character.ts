@@ -119,6 +119,7 @@ export interface 角色数据结构 {
     根骨: number;
     悟性: number;
     福源: number;
+    可分配属性点?: number;
 
     // 身体部位状态
     头部当前血量: number; 头部最大血量: number; 头部状态: string;

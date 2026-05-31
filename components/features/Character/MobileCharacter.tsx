@@ -14,6 +14,7 @@ import { 获取图片展示地址 } from '../../../utils/imageAssets';
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
 import { 计算角色总气血 } from '../../../utils/characterVitals';
 import { 格式化角色金钱行, 获取货币显示模式 } from '../../../utils/currencyDisplay';
+import { 读取可分配属性点, type 可分配六维属性键 } from '../../../utils/characterAttributePoints';
 
 interface Props {
     character: 角色数据结构;
@@ -27,6 +28,7 @@ interface Props {
     onSelectPlayerPortraitImage?: (imageId: string) => void;
     onClearPlayerPortraitImage?: () => void;
     onRemovePlayerImageRecord?: (imageId: string) => void;
+    onAllocateAttributePoint?: (key: 可分配六维属性键) => void;
     onClose: () => void;
 }
 
@@ -122,6 +124,7 @@ const MobileCharacter: React.FC<Props> = ({
     onSelectPlayerPortraitImage,
     onClearPlayerPortraitImage,
     onRemovePlayerImageRecord,
+    onAllocateAttributePoint,
     onClose
 }) => {
     use图片资源回源预取(character);
@@ -190,13 +193,14 @@ const MobileCharacter: React.FC<Props> = ({
         [pngStylePresets, generateOptions.PNG画风预设ID]
     );
 
-    const attributes = [
-        { key: '力', val: character.力量 },
-        { key: '敏', val: character.敏捷 },
-        { key: '体', val: character.体质 },
-        { key: '根', val: character.根骨 },
-        { key: '悟', val: character.悟性 },
-        { key: '福', val: character.福源 },
+    const 可用属性点 = 读取可分配属性点(character);
+    const attributes: Array<{ key: string; attributeKey: 可分配六维属性键; val: number }> = [
+        { key: '力', attributeKey: '力量', val: character.力量 },
+        { key: '敏', attributeKey: '敏捷', val: character.敏捷 },
+        { key: '体', attributeKey: '体质', val: character.体质 },
+        { key: '根', attributeKey: '根骨', val: character.根骨 },
+        { key: '悟', attributeKey: '悟性', val: character.悟性 },
+        { key: '福', attributeKey: '福源', val: character.福源 },
     ];
     const 读取仙侠文本字段 = (key: string): string => {
         const value = (character as any)?.[key];
@@ -529,12 +533,30 @@ const MobileCharacter: React.FC<Props> = ({
                             </div>
 
                             <div className="rounded-2xl border border-gray-800 bg-black/30 p-4">
-                                <div className="mb-3 text-[10px] tracking-[0.3em] text-wuxia-gold/70">六维属性</div>
+                                <div className="mb-3 flex items-center justify-between gap-2">
+                                    <div className="text-[10px] tracking-[0.3em] text-wuxia-gold/70">六维属性</div>
+                                    {可用属性点 > 0 && (
+                                        <div className="rounded-full border border-wuxia-gold/35 bg-wuxia-gold/10 px-2.5 py-1 text-[10px] font-semibold tracking-[0.14em] text-wuxia-gold">
+                                            可分配 {可用属性点}
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="grid grid-cols-3 gap-2">
                                     {attributes.map((attr) => (
-                                        <div key={attr.key} className="rounded-lg border border-gray-800 px-2 py-2 text-center transition-colors hover:border-wuxia-gold/50">
+                                        <div key={attr.key} className="relative rounded-lg border border-gray-800 px-2 py-2 text-center transition-colors hover:border-wuxia-gold/50">
                                             <div className="text-[9px] text-gray-500">{attr.key}</div>
                                             <div className="text-sm font-bold font-mono text-wuxia-gold">{attr.val}</div>
+                                            {可用属性点 > 0 && onAllocateAttributePoint && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onAllocateAttributePoint(attr.attributeKey)}
+                                                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full border border-wuxia-gold/40 bg-wuxia-gold/15 text-sm font-bold leading-none text-wuxia-gold transition-transform hover:scale-105 hover:bg-wuxia-gold/25"
+                                                    aria-label={`分配1点到${attr.attributeKey}`}
+                                                    title={`分配1点到${attr.attributeKey}`}
+                                                >
+                                                    +
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

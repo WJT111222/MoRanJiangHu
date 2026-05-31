@@ -26,4 +26,14 @@ describe('lazyImportWithReload', () => {
 
         expect(reload).not.toHaveBeenCalled();
     });
+
+    it('treats Safari text/html module MIME errors as deployed chunk failures', async () => {
+        vi.stubGlobal('window', { location: { reload: vi.fn() } });
+
+        await expect(lazyImportWithReload('settings-panel', async () => {
+            throw new TypeError("'text/html' is not a valid JavaScript MIME type.");
+        })).rejects.toMatchObject({
+            name: 'DynamicImportDeferredReloadError'
+        });
+    });
 });

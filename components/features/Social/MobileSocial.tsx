@@ -329,6 +329,37 @@ const MobileSocial: React.FC<Props> = ({
     const 展示关系驱动面板 = 展示女性扩展;
     const 当前关系网 = currentNPC ? 读取关系网(currentNPC) : [];
     const 当前子宫档案 = currentNPC ? 读取当前子宫档案(currentNPC) : undefined;
+    const 读取失贞档案 = (npc: NPC结构) => {
+        const source = (npc as any)?.失贞档案;
+        if (source && typeof source === 'object' && !Array.isArray(source)) {
+            return {
+                是否失贞: Boolean(source.是否失贞),
+                第一次对象: 取首个非空文本(source.第一次对象),
+                第一次时间: 取首个非空文本(source.第一次时间),
+                第一次描述: 取首个非空文本(source.第一次描述)
+            };
+        }
+        if ((npc as any).是否处女 === false || (npc as any).初夜夺取者 || (npc as any).初夜时间 || (npc as any).初夜描述) {
+            return {
+                是否失贞: (npc as any).是否处女 === false,
+                第一次对象: 取首个非空文本((npc as any).初夜夺取者),
+                第一次时间: 取首个非空文本((npc as any).初夜时间),
+                第一次描述: 取首个非空文本((npc as any).初夜描述)
+            };
+        }
+        return undefined;
+    };
+    const 读取首次亲密记录 = (npc: NPC结构) => (
+        Array.isArray((npc as any)?.首次亲密记录) ? (npc as any).首次亲密记录 : []
+    ).map((record: any) => ({
+        类型: 取首个非空文本(record?.类型),
+        是否已发生: Boolean(record?.是否已发生),
+        第一次对象: 取首个非空文本(record?.第一次对象),
+        第一次时间: 取首个非空文本(record?.第一次时间),
+        第一次描述: 取首个非空文本(record?.第一次描述)
+    })).filter((record: any) => record.类型);
+    const 当前失贞档案 = currentNPC ? 读取失贞档案(currentNPC) : undefined;
+    const 当前首次亲密记录 = currentNPC ? 读取首次亲密记录(currentNPC) : [];
     const 切换重要角色状态 = (npc: NPC结构) => {
         if (!onToggleMajorRole) return;
         onToggleMajorRole(npc.id, !Boolean(npc.是否主要角色));
@@ -469,6 +500,46 @@ const MobileSocial: React.FC<Props> = ({
             <span className={`font-serif text-[11px] ${color} drop-shadow-sm`}>{value || "???"}</span>
         </div>
     );
+    const 首次亲密档案框: React.FC = () => {
+        if (!当前失贞档案 && 当前首次亲密记录.length <= 0) return null;
+        return (
+            <div className="mb-4 rounded-lg border border-pink-900/35 bg-black/45 p-3">
+                <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[9px] font-bold tracking-[0.18em] text-pink-300">NSFW经历档案</span>
+                    {当前失贞档案 && (
+                        <span className={`rounded border px-1.5 py-0.5 text-[9px] ${当前失贞档案.是否失贞 ? 'border-wuxia-gold/40 text-wuxia-gold bg-wuxia-gold/10' : 'border-pink-700/40 text-pink-300 bg-pink-950/20'}`}>
+                            {当前失贞档案.是否失贞 ? '已失贞' : '未失贞'}
+                        </span>
+                    )}
+                </div>
+                {当前失贞档案?.是否失贞 && (
+                    <div className="mb-2 rounded border border-wuxia-gold/20 bg-wuxia-gold/5 p-2 text-[10px] text-pink-100">
+                        <span className="text-wuxia-gold/80">{当前失贞档案.第一次时间 || '未知时间'}</span>
+                        <span className="mx-1 text-gray-500">第一次交给</span>
+                        <span className="font-bold text-wuxia-gold">{当前失贞档案.第一次对象 || '未知对象'}</span>
+                        {当前失贞档案.第一次描述 && <div className="mt-1 leading-relaxed text-pink-200/75">{当前失贞档案.第一次描述}</div>}
+                    </div>
+                )}
+                <div className="space-y-1.5">
+                    {当前首次亲密记录.map((record: any) => (
+                        <div key={record.类型} className="rounded border border-pink-900/25 bg-black/35 p-2 text-[10px]">
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                                <span className="font-bold text-pink-300">{record.类型}</span>
+                                <span className={`rounded px-1.5 py-0.5 text-[8px] ${record.是否已发生 ? 'bg-pink-500/15 text-pink-200' : 'bg-gray-800 text-gray-500'}`}>{record.是否已发生 ? '已发生' : '未发生'}</span>
+                            </div>
+                            {record.是否已发生 && (
+                                <div className="space-y-0.5 text-pink-100/85">
+                                    <div><span className="text-gray-500">对象：</span>{record.第一次对象 || '未知对象'}</div>
+                                    <div><span className="text-gray-500">时间：</span>{record.第一次时间 || '未知时间'}</div>
+                                    {record.第一次描述 && <div className="leading-relaxed text-pink-200/75">{record.第一次描述}</div>}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
     const RelationTag: React.FC<{ label: string; value?: string; accent?: string }> = ({ label, value, accent = "text-cyan-300" }) => (
         <div className="bg-black/30 border border-gray-800 rounded p-2.5 h-full">
             <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1.5">{label}</div>
@@ -1303,6 +1374,8 @@ const MobileSocial: React.FC<Props> = ({
                                                  </div>
                                              )}
 
+                                             <首次亲密档案框 />
+
                                              <div className="flex flex-col gap-2 mb-4">
                                                 {香闺部位列表.map((item) => {
                                                     const result = 读取香闺秘档图片结果(currentNPC, item.key);
@@ -1414,6 +1487,7 @@ const MobileSocial: React.FC<Props> = ({
                                             <div className="space-y-3">
                                                 <PrivateTag label="男娘设定" value={读取男娘设定(currentNPC) || '暂无记录'} color="text-sky-300" />
                                                 <PrivateTag label="扶她设定" value={读取扶她设定(currentNPC) || '暂无记录'} color="text-sky-300" />
+                                                <首次亲密档案框 />
                                                 <div className="flex flex-col gap-2">
                                                     {香闺部位列表.map((item) => {
                                                         const result = 读取香闺秘档图片结果(currentNPC, item.key);

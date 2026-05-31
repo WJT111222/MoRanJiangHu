@@ -779,12 +779,25 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                 }
                 const modeWorldbooks = Array.isArray(module.modeWorldbooks) ? module.modeWorldbooks : Array.isArray((module.payload as any)?.modeWorldbooks) ? (module.payload as any).modeWorldbooks : undefined;
                 const extractedPrompts = 从模式世界书提取提示词(modeWorldbooks);
+                const isModePackage = (module.payload as any)?.packagePart === 'mode_package' || (module.payload as any)?.schema === 'moranjianghu-creative-workshop-mode-package';
                 const topicPrompt = String(extractedPrompts.manualWorldPrompt || (module.payload as any)?.manualWorldPrompt || (!module.preset ? content : '')).trim();
-                if (topicPrompt) setWorldConfig((prev) => ({ ...prev, manualWorldPrompt: 拼接额外要求(prev.manualWorldPrompt, topicPrompt) }));
+                if (topicPrompt) {
+                    if (isModePackage) {
+                        setWorldConfig((prev) => ({ ...prev, worldExtraRequirement: 拼接额外要求(prev.worldExtraRequirement, topicPrompt) }));
+                    } else {
+                        setWorldConfig((prev) => ({ ...prev, manualWorldPrompt: 拼接额外要求(prev.manualWorldPrompt, topicPrompt) }));
+                    }
+                }
                 const worldExtra = String(extractedPrompts.worldExtraRequirement || (module.payload as any)?.worldExtraRequirement || module.preset?.openingExtraRequirement || '').trim();
                 if (worldExtra) setWorldConfig((prev) => ({ ...prev, worldExtraRequirement: 拼接额外要求(prev.worldExtraRequirement, worldExtra) }));
                 const realmPrompt = String(extractedPrompts.manualRealmPrompt || (module.payload as any)?.manualRealmPrompt || module.preset?.worldConfig?.manualRealmPrompt || '').trim();
-                if (realmPrompt) setWorldConfig((prev) => ({ ...prev, manualRealmPrompt: realmPrompt }));
+                if (realmPrompt) {
+                    if (isModePackage) {
+                        setWorldConfig((prev) => ({ ...prev, worldExtraRequirement: 拼接额外要求(prev.worldExtraRequirement, realmPrompt) }));
+                    } else {
+                        setWorldConfig((prev) => ({ ...prev, manualRealmPrompt: realmPrompt }));
+                    }
+                }
             } else if (module.type === 'world_rules') {
                 const extra = String((module.payload as any)?.worldExtraRequirement || module.preset?.openingExtraRequirement || content).trim();
                 if (extra) setWorldConfig((prev) => ({ ...prev, worldExtraRequirement: 拼接额外要求(prev.worldExtraRequirement, extra) }));
