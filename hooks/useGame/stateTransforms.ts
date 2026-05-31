@@ -1285,6 +1285,103 @@ const 读取敏感点 = (obj: any): string | undefined => {
     return text;
 };
 
+const 亲密行为类型列表 = ['口交', '肛交', '阴道交', '乳交', '手交', '足交', '股交'] as const;
+type 亲密行为类型 = typeof 亲密行为类型列表[number];
+
+const 标准化亲密行为类型 = (value: unknown): 亲密行为类型 | '' => {
+    const text = 规范化文本(value).replace(/\s+/g, '');
+    if (!text) return '';
+    if (/口交|口淫|口活|含弄|吮弄|舔弄/.test(text)) return '口交';
+    if (/肛交|后庭|屁穴|肛门/.test(text)) return '肛交';
+    if (/阴道交|阴道|小穴|蜜穴|破处|初夜|失贞|性交|交合|同房/.test(text)) return '阴道交';
+    if (/乳交|胸交|乳房/.test(text)) return '乳交';
+    if (/手交|手淫|手弄|掌心/.test(text)) return '手交';
+    if (/足交|脚交|足弄|脚掌|足心/.test(text)) return '足交';
+    if (/股交|腿交|腿间|大腿/.test(text)) return '股交';
+    return '';
+};
+
+const NPC允许亲密行为类型 = (npc: any, type: 亲密行为类型): boolean => {
+    const gender = 规范化文本(npc?.性别);
+    const text = [gender, npc?.男娘设定, npc?.扶她设定, npc?.简介, npc?.身份]
+        .map((value) => 规范化文本(value))
+        .join(' ');
+    const isFuta = /扶她/.test(text);
+    const isFemale = gender === '女' || (/女/.test(text) && !/男娘/.test(text));
+    if (type === '阴道交') return isFemale || isFuta;
+    if (type === '乳交') return isFemale || isFuta || /男娘/.test(text);
+    return true;
+};
+
+const 标准化失贞档案 = (raw: any): any | undefined => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+    const 是否失贞 = typeof raw?.是否失贞 === 'boolean'
+        ? raw.是否失贞
+        : typeof raw?.失贞 === 'boolean'
+            ? raw.失贞
+            : undefined;
+    const 第一次对象 = 取首个非空文本(raw?.第一次对象, raw?.对象, raw?.夺取者, raw?.交给谁);
+    const 第一次时间 = 解析任意时间字段(raw?.第一次时间 ?? raw?.时间);
+    const 第一次描述 = 取首个非空文本(raw?.第一次描述, raw?.描述);
+    if (是否失贞 === undefined && !第一次对象 && !第一次时间 && !第一次描述) return undefined;
+    return {
+        是否失贞: 是否失贞 ?? Boolean(第一次对象 || 第一次时间 || 第一次描述),
+        ...(第一次对象 ? { 第一次对象 } : {}),
+        ...(第一次时间 ? { 第一次时间 } : {}),
+        ...(第一次描述 ? { 第一次描述 } : {})
+    };
+};
+
+const 合并失贞档案 = (a: any, b: any): any | undefined => {
+    const left = 标准化失贞档案(a);
+    const right = 标准化失贞档案(b);
+    if (!left && !right) return undefined;
+    return {
+        是否失贞: Boolean(left?.是否失贞 || right?.是否失贞),
+        ...(取更优文本(left?.第一次对象, right?.第一次对象) ? { 第一次对象: 取更优文本(left?.第一次对象, right?.第一次对象) } : {}),
+        ...(取更优文本(left?.第一次时间, right?.第一次时间) ? { 第一次时间: 取更优文本(left?.第一次时间, right?.第一次时间) } : {}),
+        ...(取更优文本(left?.第一次描述, right?.第一次描述) ? { 第一次描述: 取更优文本(left?.第一次描述, right?.第一次描述) } : {})
+    };
+};
+
+const 标准化首次亲密记录列表 = (raw: any, npc: any): any[] | undefined => {
+    const source = Array.isArray(raw)
+        ? raw
+        : (raw && typeof raw === 'object' && !Array.isArray(raw)
+            ? Object.entries(raw).map(([类型, value]) => ({ ...(value && typeof value === 'object' ? value as any : {}), 类型 }))
+            : []);
+    const merged = new Map<亲密行为类型, any>();
+    source.forEach((item: any) => {
+        const 类型 = 标准化亲密行为类型(item?.类型 ?? item?.行为 ?? item?.名称);
+        if (!类型 || !NPC允许亲密行为类型(npc, 类型)) return;
+        const 第一次对象 = 取首个非空文本(item?.第一次对象, item?.对象, item?.交给谁, item?.对方);
+        const 第一次时间 = 解析任意时间字段(item?.第一次时间 ?? item?.时间);
+        const 第一次描述 = 取首个非空文本(item?.第一次描述, item?.描述);
+        const 是否已发生 = typeof item?.是否已发生 === 'boolean'
+            ? item.是否已发生
+            : typeof item?.已发生 === 'boolean'
+                ? item.已发生
+                : Boolean(第一次对象 || 第一次时间 || 第一次描述);
+        const existing = merged.get(类型);
+        merged.set(类型, {
+            类型,
+            是否已发生: Boolean(existing?.是否已发生 || 是否已发生),
+            ...(取更优文本(existing?.第一次对象, 第一次对象) ? { 第一次对象: 取更优文本(existing?.第一次对象, 第一次对象) } : {}),
+            ...(取更优文本(existing?.第一次时间, 第一次时间) ? { 第一次时间: 取更优文本(existing?.第一次时间, 第一次时间) } : {}),
+            ...(取更优文本(existing?.第一次描述, 第一次描述) ? { 第一次描述: 取更优文本(existing?.第一次描述, 第一次描述) } : {})
+        });
+    });
+    const out = Array.from(merged.values());
+    return out.length > 0 ? out : undefined;
+};
+
+const 合并首次亲密记录列表 = (a: any, b: any, npc: any): any[] | undefined => {
+    return 标准化首次亲密记录列表([
+        ...(标准化首次亲密记录列表(a, npc) || []),
+        ...(标准化首次亲密记录列表(b, npc) || [])
+    ], npc);
+};
+
 const 生成主要角色默认性癖 = (npc: any): string => {
     const personality = 规范化文本(npc?.核心性格特征 || npc?.性格 || npc?.关系状态, '谨慎');
     return `更重视信任、情绪安全与关系递进，受${personality}影响，需要稳定互动后才会放松。`;
@@ -2649,6 +2746,45 @@ const 标准化单个NPC = (rawNpc: any, fallbackIndex: number): any => {
     const 名器档案 = 标准化名器档案(npc?.名器档案, npc, {
         forceFemaleMajor: 推断性别 === '女' && npc?.是否主要角色 === true
     });
+    const 旧初夜失贞档案 = (推断性别 === '女' || 推断性别 === '扶她') && (
+        npc?.是否处女 === false
+        || 取字段文本(npc, '初夜夺取者')
+        || 取字段文本(npc, '初夜时间')
+        || 取字段文本(npc, '初夜描述')
+    ) ? {
+        是否失贞: npc?.是否处女 === false,
+        第一次对象: 取字段文本(npc, '初夜夺取者'),
+        第一次时间: 解析任意时间字段(npc?.初夜时间),
+        第一次描述: 取字段文本(npc, '初夜描述')
+    } : undefined;
+    const 原始失贞档案 = (推断性别 === '女' || 推断性别 === '扶她' || 推断性别 === '男娘')
+        ? 合并失贞档案(npc?.失贞档案, 旧初夜失贞档案)
+        : undefined;
+    const 旧阴道首次记录 = (推断性别 === '女' || 推断性别 === '扶她') && 原始失贞档案?.是否失贞 ? [{
+        类型: '阴道交',
+        是否已发生: true,
+        第一次对象: 原始失贞档案.第一次对象,
+        第一次时间: 原始失贞档案.第一次时间,
+        第一次描述: 原始失贞档案.第一次描述
+    }] : undefined;
+    const 首次亲密记录 = 合并首次亲密记录列表(npc?.首次亲密记录 ?? npc?.性经历档案, 旧阴道首次记录, { ...npc, 性别: 推断性别 });
+    const 男娘肛交失贞档案 = 推断性别 === '男娘'
+        ? (() => {
+            const analRecord = (首次亲密记录 || []).find((record: any) => record?.类型 === '肛交' && record?.是否已发生);
+            if (!analRecord) return undefined;
+            return {
+                是否失贞: true,
+                第一次对象: analRecord.第一次对象,
+                第一次时间: analRecord.第一次时间,
+                第一次描述: analRecord.第一次描述
+            };
+        })()
+        : undefined;
+    const 失贞档案 = 推断性别 === '女' || 推断性别 === '扶她'
+        ? 原始失贞档案
+        : 推断性别 === '男娘'
+            ? 合并失贞档案(原始失贞档案, 男娘肛交失贞档案)
+            : undefined;
 
     return {
         ...npc其他字段,
@@ -2735,6 +2871,8 @@ const 标准化单个NPC = (rawNpc: any, fallbackIndex: number): any => {
         ...(敏感点 ? { 敏感点 } : {}),
         ...(名器档案 ? { 名器档案 } : {}),
         ...(子宫 ? { 子宫 } : {}),
+        失贞档案,
+        ...(首次亲密记录 ? { 首次亲密记录 } : {}),
         ...(上次更新时间 ? { 上次更新时间 } : {}),
         ...(图片档案 ? { 图片档案, 最近生图结果: 图片档案.最近生图结果 } : {})
     };
@@ -2789,6 +2927,8 @@ const 合并NPC对象 = (leftRaw: any, rightRaw: any, fallbackIndex: number): an
     })();
     const mergedRelationNet = 合并关系网变量(left?.关系网变量, right?.关系网变量);
     const mergedImageArchive = 合并NPC图片档案对象(left?.图片档案, right?.图片档案);
+    const mergedSexLossArchive = 合并失贞档案(left?.失贞档案, right?.失贞档案);
+    const mergedFirstIntimacyRecords = 合并首次亲密记录列表(left?.首次亲密记录, right?.首次亲密记录, { ...left, ...right });
     const mergedBaseAttrs = 标准化NPC基础属性({ ...left, ...right });
     const mergedBaseForCombat = {
         ...left,
@@ -2908,6 +3048,8 @@ const 合并NPC对象 = (leftRaw: any, rightRaw: any, fallbackIndex: number): an
         敏感点: 取更优文本(读取敏感点(left), 读取敏感点(right)),
         ...(mergedArtifactArchive ? { 名器档案: mergedArtifactArchive } : {}),
         子宫: mergedWomb,
+        ...(mergedSexLossArchive ? { 失贞档案: mergedSexLossArchive } : {}),
+        ...(mergedFirstIntimacyRecords ? { 首次亲密记录: mergedFirstIntimacyRecords } : {}),
         是否处女: typeof right?.是否处女 === 'boolean'
             ? right.是否处女
             : (typeof left?.是否处女 === 'boolean' ? left.是否处女 : undefined),

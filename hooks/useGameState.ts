@@ -29,7 +29,7 @@ import { 默认中期转长期提示词, 默认短期转中期提示词, 默认N
 import { 节日列表 } from '../data/world'; 
 import * as dbService from '../services/dbService';
 import { THEMES, 应用主题到根元素 } from '../styles/themes';
-import { 创建空接口设置, 规范化接口设置 } from '../utils/apiConfig';
+import { 创建空接口设置, 读取接口设置本地镜像, 写入接口设置本地镜像, 规范化接口设置 } from '../utils/apiConfig';
 import { 默认游戏设置, 规范化游戏设置 } from '../utils/gameSettings';
 import { 设置键 } from '../utils/settingsSchema';
 import { 规范化视觉设置 } from '../utils/visualSettings';
@@ -195,7 +195,7 @@ export const useGameState = () => {
     const [activeTab, setActiveTab] = useState<'api' | 'image_generation' | 'recall' | 'memory_summary_model' | 'memory_refine_model' | 'map_model' | 'polish' | 'world_evolution' | 'variable_model' | 'planning_model' | 'independent_api_gpt' | 'novel_decomposition' | 'novel_decomposition_runtime' | 'prompt' | 'storage' | 'theme' | 'visual' | 'world' | 'game' | 'reality' | 'tavern_preset' | 'memory' | 'history' | 'context' | 'logs' | 'music' | 'npc_management' | 'variable_manager'>('api');
     
     // Config State
-    const [apiConfig, setApiConfig] = useState<接口设置结构>(() => 创建空接口设置());
+    const [apiConfig, setApiConfig] = useState<接口设置结构>(() => 读取接口设置本地镜像() || 创建空接口设置());
     const [visualConfig, setVisualConfig] = useState<视觉设置结构>(() => 规范化视觉设置({
         时间显示格式: '传统',
         渲染层数: 10,
@@ -292,8 +292,13 @@ export const useGameState = () => {
                 const savedTheme = await dbService.读取设置(设置键.应用主题);
                 if (savedTheme && THEMES[savedTheme as ThemePreset]) setCurrentTheme(savedTheme as ThemePreset);
                 const savedApi = await dbService.读取设置(设置键.API配置);
+                const localApiMirror = 读取接口设置本地镜像();
                 if (savedApi) {
-                    setApiConfig(规范化接口设置(savedApi));
+                    const normalizedApi = 规范化接口设置(savedApi);
+                    setApiConfig(normalizedApi);
+                    写入接口设置本地镜像(normalizedApi);
+                } else if (localApiMirror) {
+                    setApiConfig(localApiMirror);
                 } else {
                     setApiConfig(创建空接口设置());
                 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { 从模式世界书提取提示词, 创意工坊模块分区, type 创意工坊模块条目, type 创意工坊模块类型 } from '../../../data/creativeWorkshopModules';
-import type { ModeRuntimeProfile, 世界书结构 } from '../../../types';
+import type { 接口设置结构, ModeRuntimeProfile, 世界书结构 } from '../../../types';
 import type { 题材模式类型 } from '../../../models/system';
 import { 题材模式配置表, 题材模式顺序 } from '../../../utils/topicModeProfiles';
 import { 构建官方模式运行时配置, 规范化模式运行时配置, 渲染模式运行时配置世界书内容 } from '../../../utils/modeRuntimeProfile';
@@ -9,15 +9,18 @@ import {
     删除创意工坊模块,
     发布创意工坊模块,
     导入本地创意工坊模块,
-    列出创意工坊模块
+    列出创意工坊模块,
+    提取ComfyUI工作流模块JSON
 } from '../../../services/creativeWorkshop';
 import { 读取云端游玩会话 } from '../../../services/cloudPlayService';
+import { 校验ComfyUI工作流可生图 } from '../../../services/ai/comfyWorkflowValidation';
 
 interface Props {
     open: boolean;
     onClose: () => void;
     onNovelDecomposition: () => void;
     onRequireLogin?: () => void;
+    apiConfig?: 接口设置结构;
 }
 
 type 来源筛选 = 'all' | 'builtin' | 'cloud' | 'local';
@@ -611,7 +614,7 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string): 创意
     };
 };
 
-const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecomposition, onRequireLogin }) => {
+const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecomposition, onRequireLogin, apiConfig }) => {
     const [activeType, setActiveType] = useState<创意工坊模块类型>('topic');
     const [sourceFilter, setSourceFilter] = useState<来源筛选>('all');
     const [entries, setEntries] = useState<创意工坊模块条目[]>([]);
@@ -698,6 +701,14 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
 
     if (!open) return null;
 
+    const 校验发布前ComfyUI工作流 = async (entry: 创意工坊模块条目) => {
+        if (entry.type !== 'comfy_workflow') return;
+        setStatus(`正在真实校验 ComfyUI 工作流「${entry.title}」能否生图...`);
+        const workflowJson = 提取ComfyUI工作流模块JSON(entry);
+        const result = await 校验ComfyUI工作流可生图({ settings: apiConfig, workflowJson });
+        setStatus(`${result.message} 正在继续发布「${entry.title}」。`);
+    };
+
     const 发布模块 = async (entry: 创意工坊模块条目) => {
         if (!cloudUsername) {
             setStatus('正在前往联机登录。登录后回到创意工坊即可继续发布。');
@@ -706,6 +717,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         }
         setBusyId(entry.id);
         try {
+            await 校验发布前ComfyUI工作流(entry);
             const published = await 发布创意工坊模块({ module: entry, contributor, anonymous: anonymousContribution });
             setStatus(`已发布到社区工坊：${published.title}。`);
             await refreshEntries();
@@ -729,6 +741,9 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         setBusyId('contribution-suite');
         try {
             const published: 创意工坊模块条目[] = [];
+            if (contributionDraft.type === 'comfy_workflow') {
+                await 校验发布前ComfyUI工作流(contributionModules[0]);
+            }
             for (const module of contributionModules) {
                 published.push(await 发布创意工坊模块({ module, contributor, anonymous: anonymousContribution }));
             }

@@ -1506,6 +1506,38 @@ export const 规范化接口设置 = (raw: unknown): 接口设置结构 => {
     };
 };
 
+export const API_CONFIG_LOCAL_MIRROR_KEY = 'moranjianghu.apiConfig.localMirror.v1';
+
+const 获取本地设置镜像存储 = (): Storage | null => {
+    try {
+        return typeof globalThis !== 'undefined' ? ((globalThis as any).localStorage || null) : null;
+    } catch {
+        return null;
+    }
+};
+
+export const 读取接口设置本地镜像 = (): 接口设置结构 | null => {
+    const storage = 获取本地设置镜像存储();
+    if (!storage) return null;
+    try {
+        const raw = storage.getItem(API_CONFIG_LOCAL_MIRROR_KEY);
+        if (!raw) return null;
+        return 规范化接口设置(JSON.parse(raw));
+    } catch {
+        return null;
+    }
+};
+
+export const 写入接口设置本地镜像 = (settings: 接口设置结构): void => {
+    const storage = 获取本地设置镜像存储();
+    if (!storage) return;
+    try {
+        storage.setItem(API_CONFIG_LOCAL_MIRROR_KEY, JSON.stringify(规范化接口设置(settings)));
+    } catch {
+        // IndexedDB remains the source of truth; this mirror only protects reload-time recovery.
+    }
+};
+
 export type 当前可用接口结构 = Pick<单接口配置结构, 'id' | '名称' | '供应商' | '协议覆盖' | 'baseUrl' | 'apiKey' | 'model' | 'maxTokens' | 'temperature'> & {
     图片后端类型?: 功能模型占位配置结构['文生图后端类型'];
     图片接口路径?: string;

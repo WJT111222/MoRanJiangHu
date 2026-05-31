@@ -321,6 +321,17 @@ html[data-theme="day"] .backdrop-blur-lg {
   color: rgb(var(--c-paper-white));
 }
 
+html[data-theme="day"] .app-play-mode-badge {
+  background: rgba(255, 251, 235, 0.96) !important;
+  border-color: rgba(21, 128, 61, 0.62) !important;
+  color: #14532d !important;
+  box-shadow: 0 8px 20px rgba(75, 63, 38, 0.14) !important;
+}
+
+html[data-theme="day"] .app-play-mode-badge[title*="云端"] {
+  color: #14532d !important;
+}
+
 html[data-theme="day"] [style*="color: rgb(var(--c-wuxia-gold))"],
 html[data-theme="day"] [style*="color:rgb(var(--c-wuxia-gold))"] {
   color: rgb(var(--c-paper-white)) !important;

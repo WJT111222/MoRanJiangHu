@@ -47,6 +47,7 @@ import {
     规范化OpenAI图片模型名称
 } from '../../../services/ai/imageGenerationDiagnostics';
 import { generateImageByPrompt } from '../../../services/ai/image';
+import { 校验ComfyUI工作流可生图 } from '../../../services/ai/comfyWorkflowValidation';
 
 interface Props {
     settings: 接口设置结构;
@@ -1032,8 +1033,10 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
         setComfyWorkflowBusy(`publish:${target}`);
         try {
             const module = 构建ComfyUI工作流创意工坊模块({ title, workflowJson, scope: target, style, contributor });
+            setMessage(`正在真实校验 ComfyUI 工作流「${module.title}」能否生图...`);
+            const validation = await 校验ComfyUI工作流可生图({ settings: form, workflowJson });
             const local = 导入本地创意工坊模块(module);
-            let statusText = `已保存为本地工坊工作流「${local.title}」。`;
+            let statusText = `${validation.message} 已保存为本地工坊工作流「${local.title}」。`;
             try {
                 const published = await 发布创意工坊模块({ module: local, contributor });
                 statusText = `已发布到创意工坊：${published.title}。其他玩家刷新后可在下拉框选择。`;

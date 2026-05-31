@@ -6,7 +6,7 @@ import { checkForAppUpdate, downloadLatestApkPackage, openExternalUrl } from '..
 import { fetchOnlinePresencePublicStats, type OnlinePresencePublicStats } from '../../services/onlinePresence';
 import { 读取云端游玩会话 } from '../../services/cloudPlayService';
 import { isNativeCapacitorEnvironment, setNativeSystemBarsHidden } from '../../utils/nativeRuntime';
-import { ThemePreset } from '../../types';
+import { 接口设置结构, ThemePreset } from '../../types';
 import CreativeWorkshopModal from '../features/Workshop/CreativeWorkshopModal';
 
 const WORKSHOP_PENDING_LOGIN_KEY = 'creative_workshop_pending_login';
@@ -76,6 +76,7 @@ interface Props {
     currentTheme: ThemePreset;
     onThemeChange: (theme: ThemePreset) => void;
     hasSave: boolean;
+    apiConfig?: 接口设置结构;
 }
 
 const actionButtonStyle: React.CSSProperties = {
@@ -400,7 +401,8 @@ const LandingPage: React.FC<Props> = ({
     onOpenReleaseNotes,
     currentTheme,
     onThemeChange,
-    hasSave
+    hasSave,
+    apiConfig
 }) => {
     const isNativeApp = React.useMemo(() => isNativeCapacitorEnvironment(), []);
     const [isCheckingUpdate, setIsCheckingUpdate] = React.useState(false);
@@ -799,6 +801,7 @@ const LandingPage: React.FC<Props> = ({
                 onClose={() => setWorkshopOpen(false)}
                 onNovelDecomposition={onNovelDecomposition}
                 onRequireLogin={handleRequireWorkshopLogin}
+                apiConfig={apiConfig}
             />
         </div>
     );

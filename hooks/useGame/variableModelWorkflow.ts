@@ -368,6 +368,8 @@ const 构建社交档案完整性审计提示 = (
                 重要女性缺口.push('子宫档案');
             }
             if (typeof npc?.是否处女 !== 'boolean') 重要女性缺口.push('是否处女');
+            if (!npc?.失贞档案 || typeof npc?.失贞档案?.是否失贞 !== 'boolean') 重要女性缺口.push('失贞档案');
+            if (!Array.isArray(npc?.首次亲密记录)) 重要女性缺口.push('首次亲密记录');
         }
         if (判断是否主要男性NPC(npc, { femboyNsfwEnabled })) {
             if (文本疑似占位(npc?.生日)) 重要男性缺口.push('生日');
@@ -382,6 +384,7 @@ const 构建社交档案完整性审计提示 = (
             if (文本疑似占位(npc?.屁穴描述)) 重要男性缺口.push('屁穴描述');
             if (文本疑似占位(npc?.性癖)) 重要男性缺口.push('性癖');
             if (文本疑似占位(npc?.敏感点)) 重要男性缺口.push('敏感点');
+            if (!Array.isArray(npc?.首次亲密记录)) 重要男性缺口.push('首次亲密记录');
         }
 
         const allMissing = [...通用缺口, ...重要女性缺口, ...重要男性缺口];

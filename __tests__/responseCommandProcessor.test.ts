@@ -692,6 +692,21 @@ describe('responseCommandProcessor NSFW female state fallback', () => {
         expect(result.社交[0].初夜夺取者).toBe('杨培强');
         expect(result.社交[0].初夜时间).toBe('三月十五日 夜');
         expect(result.社交[0].初夜描述).toContain('初次亲密关系');
+        expect(result.社交[0].失贞档案).toMatchObject({
+            是否失贞: true,
+            第一次对象: '杨培强',
+            第一次时间: '三月十五日 夜'
+        });
+        expect(result.社交[0].首次亲密记录).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    类型: '阴道交',
+                    是否已发生: true,
+                    第一次对象: '杨培强',
+                    第一次时间: '三月十五日 夜'
+                })
+            ])
+        );
         expect(result.社交[0].小穴描述).toContain('原“未经人事”状态失效');
         expect(result.社交[0].小穴描述).not.toContain('未经人事，');
     });
@@ -815,6 +830,56 @@ describe('responseCommandProcessor NSFW female state fallback', () => {
         expect(result.社交[0].初夜时间).toBe('三月十六日 清晨');
         expect(result.社交[0].小穴描述).toContain('原“未经人事”状态失效');
         expect(result.社交[0].子宫.内射记录).toHaveLength(0);
+        expect(result.社交[0].失贞档案).toMatchObject({
+            是否失贞: true,
+            第一次对象: '杨培强',
+            第一次时间: '三月十六日 清晨'
+        });
+        expect(result.社交[0].首次亲密记录).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ 类型: '阴道交', 是否已发生: true, 第一次对象: '杨培强' })
+            ])
+        );
+    });
+
+    it('records femboy first anal intimacy as sex loss without vaginal archive', () => {
+        const state = 构建基础状态();
+        state.环境 = { 时间: '四月初二 子时' } as any;
+        state.社交 = 规范化社交列表([
+            {
+                id: 'npc_luo_xi',
+                姓名: '洛溪',
+                性别: '男娘',
+                身份: '随行者',
+                简介: '纤细漂亮的男娘同伴。',
+                是否在场: true,
+                是否主要角色: true,
+                男娘设定: '女性化气质明显，但身体结构不存在阴道。',
+                首次亲密记录: []
+            }
+        ], { 合并同名: false });
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '这一夜，洛溪第一次口交，也第一次肛交，主动把这些亲密经历交给杨培强。' }
+            ],
+            tavern_commands: []
+        } as any, state, deps, undefined, { applyState: false });
+
+        const records = result.社交[0].首次亲密记录 || [];
+        expect(records).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ 类型: '口交', 是否已发生: true, 第一次对象: '杨培强', 第一次时间: '四月初二 子时' }),
+                expect.objectContaining({ 类型: '肛交', 是否已发生: true, 第一次对象: '杨培强', 第一次时间: '四月初二 子时' })
+            ])
+        );
+        expect(records.some((record: any) => record.类型 === '阴道交')).toBe(false);
+        expect(result.社交[0].失贞档案).toMatchObject({
+            是否失贞: true,
+            第一次对象: '杨培强',
+            第一次时间: '四月初二 子时'
+        });
+        expect(result.社交[0].失贞档案.第一次描述).toContain('第一次肛交');
     });
 });
 

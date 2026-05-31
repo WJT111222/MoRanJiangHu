@@ -2,6 +2,8 @@ const DYNAMIC_IMPORT_FAILURE_PATTERNS = [
     'Failed to fetch dynamically imported module',
     'Importing a module script failed',
     'error loading dynamically imported module',
+    'is not a valid JavaScript MIME type',
+    'text/html',
     'ChunkLoadError',
     'Loading chunk'
 ];

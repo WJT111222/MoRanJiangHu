@@ -9,6 +9,7 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -77,6 +78,11 @@ const chatEndpoint = (base) => {
 };
 
 const safeFileName = (name) => name.replace(/[\\/:*?"<>|]/g, '_');
+const safeUploadFileName = (name, attempt = 1) => {
+  const hash = Array.from(String(name || 'item')).reduce((acc, ch) => ((acc * 131) + ch.charCodeAt(0)) >>> 0, 2166136261);
+  const random = Math.random().toString(36).slice(2, 8);
+  return `preset-${hash.toString(36)}-${Date.now().toString(36)}-${attempt}-${random}.png`;
+};
 
 const parsePresetRegistry = async () => {
   const source = await fs.readFile(registryPath, 'utf8');
@@ -115,11 +121,54 @@ const typeMap = {
   杂项: 'miscellaneous inventory prop',
 };
 
+const westernTypeMap = {
+  武器: 'western medieval fantasy adventuring equipment prop, nonfunctional display replica',
+  防具: 'western medieval fantasy armor, clothing, or protective gear',
+  消耗品: 'western fantasy potion, ration, or apothecary consumable',
+  材料: 'western fantasy crafting material',
+  秘籍: 'western fantasy spellbook, parchment, scroll, or lore manuscript',
+  饰品: 'western fantasy accessory or amulet',
+  任务道具: 'western fantasy quest item prop',
+  杂物: 'western fantasy adventuring utility prop',
+  杂项: 'western fantasy adventuring utility prop',
+};
+
+const westernFantasyPresetNameSet = new Set(题材模式预设物品名称清单.西方奇幻 || []);
+
+const isWesternFantasyItem = (item, structured) => {
+  const tags = Array.isArray(structured?.视觉标签) ? structured.视觉标签.join(' ') : '';
+  const text = [
+    item?.名称,
+    item?.类型,
+    structured?.物品,
+    structured?.生图描述,
+    tags,
+  ].filter(Boolean).join(' ');
+  return westernFantasyPresetNameSet.has(item?.名称)
+    || /western fantasy|medieval|adventurer|guild|mana|potion|apothecary|mithril|dragon scale|coin pouch|spellbook|parchment|chainmail|plate breastplate|crossguard|dungeon|quest parchment|holy symbol|骑士|冒险|公会|药水|法力|魔法|秘银|龙鳞|金币|银币|铜币|地牢|羊皮卷|圣徽|锁子甲|板甲/i.test(text);
+};
+
 const itemSpecificPrompt = (item, structured) => {
   const name = item.名称;
   const object = structured?.物品 || name;
+  const westernFantasyLike = isWesternFantasyItem(item, structured);
   if (name === '蛇胆') {
     return 'Must be one real snake gallbladder organ: a small oval dark green translucent bile sac on a shallow porcelain dish, wet glossy membrane, no snake body, no snake head, no worm, no eel, no bottle, no vial.';
+  }
+  if (westernFantasyLike && /药水|药剂|potion|vial|antidote|healing|mana/i.test(`${name} ${object}`)) {
+    return 'Must be a western fantasy glass potion bottle or apothecary vial with visible colored liquid and a cork stopper. Absolutely not a pill, not a Chinese elixir, not a porcelain medicine bottle, no readable label.';
+  }
+  if (westernFantasyLike && /钱袋|金币|银币|铜币|coin|pouch/i.test(`${name} ${object}`)) {
+    return 'Must be a small medieval leather coin pouch spilling plain round western coins. Absolutely no Chinese yuanbao, no sycee, no paper money, no Chinese characters, no portraits or mint text.';
+  }
+  if (westernFantasyLike && /魔法书|卷轴|祷文|炼金笔记|委托书|地图|执照|spellbook|scroll|parchment|notebook|map|license/i.test(`${name} ${object}`)) {
+    return 'Must use western fantasy parchment, leather-bound book, scroll, or adventurer document materials. Pages may show abstract unreadable marks, circles, diagrams, or map symbols only. No real letters, no Chinese calligraphy, no jade slips.';
+  }
+  if (westernFantasyLike && /法杖|短弓|轻弩|圆盾|长剑|短剑|匕首|钉头锤|战斧|长矛|staff|bow|crossbow|shield|sword|dagger|mace|axe|spear/i.test(`${name} ${object}`)) {
+    return 'Must be a medieval western fantasy equipment prop with leather, wood, steel, iron, crossguard, bowstring, shield boss, or adventurer craftsmanship as appropriate. No Chinese wuxia weapon styling, no guofeng ornament, no cultivation artifact.';
+  }
+  if (westernFantasyLike && /皮甲|锁子甲|板甲|铁盔|披风|皮靴|chainmail|plate|helmet|cloak|boots|armor/i.test(`${name} ${object}`)) {
+    return 'Must be empty western medieval clothing or armor photographed alone: chainmail rings, plate steel, leather straps, wool cloak, or worn travel boots. No person, no mannequin, no Chinese ancient robe.';
   }
   if (/弩$/.test(name) || object === '弩') {
     return 'Must clearly be a compact nonfunctional display replica of an ancient crossbow: horizontal bow limbs, central stock, trigger shape, short bolt groove, viewed from a three-quarter top angle. Museum prop only, no projectile, not a gun, not armor.';
@@ -174,10 +223,16 @@ const buildPrompt = (item) => {
   const material = structured?.材质 ? `material: ${structured.材质}` : '';
   const object = structured?.物品 ? `object category: ${structured.物品}` : '';
   const tags = Array.isArray(structured?.视觉标签) ? structured.视觉标签.join(', ') : '';
-  const modernLike = tags && /modern|urban|laptop|smartphone|USB|battery|radio|survival|apocalypse|tool|detector|medical|ration|camp|protective|electronic/i.test(tags);
-  const settingLine = modernLike
-    ? 'Create a single high-quality inventory preset image for a Chinese narrative RPG with modern urban, spiritual-revival, or apocalypse modes.'
-    : 'Create a single high-quality inventory preset image for a Chinese wuxia/xianxia RPG.';
+  const westernFantasyLike = isWesternFantasyItem(item, structured);
+  const modernLike = !westernFantasyLike && tags && /modern|urban|laptop|smartphone|USB|battery|radio|survival|apocalypse|tool|detector|medical|ration|camp|protective|electronic/i.test(tags);
+  const settingLine = westernFantasyLike
+    ? 'Create a single high-quality inventory preset image for a western fantasy adventure RPG with medieval guild, dungeon, and magic-world equipment.'
+    : modernLike
+      ? 'Create a single high-quality inventory preset image for a Chinese narrative RPG with modern urban, spiritual-revival, or apocalypse modes.'
+      : 'Create a single high-quality inventory preset image for a Chinese wuxia/xianxia RPG.';
+  const avoidLine = westernFantasyLike
+    ? 'No people, no hands, no face, no full body, no UI, no card frame, no border, no collage, no text, no letters, no numbers, no Chinese characters, no calligraphy, no labels, no logo, no watermark. Avoid wuxia, xianxia, Chinese ancient clothing, guofeng illustration, cultivation artifacts, jade slips, talismans, elixir pills, porcelain medicine bottles, anime, cartoon, painterly brushwork, vector art, 3D render, CGI, plastic toy look, exaggerated glow, fantasy poster composition.'
+    : 'No people, no hands, no face, no full body, no UI, no card frame, no border, no collage, no text, no letters, no numbers, no Chinese characters, no calligraphy, no labels, no logo, no watermark. Avoid icon style, 3D render, CGI, game concept art, guofeng illustration, anime, cartoon, painterly brushwork, vector art, plastic toy look, exaggerated glow, fantasy poster composition.';
   const description = String(structured?.生图描述 || `${item.名称}, ${item.类型}, ${item.品质}`)
     .replace(/\bweapon\b/gi, 'decorative prop replica')
     .replace(/\bbattle\b/gi, 'display')
@@ -191,13 +246,13 @@ const buildPrompt = (item) => {
       'Use real-world surfaces such as metal, leather, cloth, wood, paper, stone, ceramic, plastic, rubber, glass, or worn survival materials as appropriate.'
     ].join(' '),
     `Item name: ${item.名称}.`,
-    `Item class: ${qualityMap[item.品质] || item.品质} ${typeMap[item.类型] || item.类型}.`,
+    `Item class: ${qualityMap[item.品质] || item.品质} ${(westernFantasyLike ? westernTypeMap[item.类型] : typeMap[item.类型]) || item.类型}.`,
     material,
     object,
     `Form and materials: ${description}.`,
     tags ? `Visual tags: ${tags}.` : '',
     itemSpecificPrompt(item, structured),
-    'No people, no hands, no face, no full body, no UI, no card frame, no border, no collage, no text, no letters, no numbers, no Chinese characters, no calligraphy, no labels, no logo, no watermark. Avoid icon style, 3D render, CGI, game concept art, guofeng illustration, anime, cartoon, painterly brushwork, vector art, plastic toy look, exaggerated glow, fantasy poster composition.',
+    avoidLine,
   ].filter(Boolean).join('\n');
 };
 
@@ -447,11 +502,16 @@ async function judgeCandidates(item, a, b) {
 
 async function uploadImageToHost(item, buf) {
   if (noUpload) return `/assets/item-presets/${safeFileName(item.名称)}.png`;
+  if (process.platform === 'win32' && !process.env.DISABLE_CURL_IMAGE_UPLOAD) {
+    return uploadImageToHostWithCurl(item, buf);
+  }
   let lastError = null;
   for (let attempt = 1; attempt <= uploadRetries; attempt += 1) {
     try {
       const form = new FormData();
-      form.append('file', new Blob([buf], { type: 'image/png' }), `${item.名称}.png`);
+      // Keep multipart filenames ASCII-only. Chinese filenames can trigger ECONNRESET
+      // on some Node/proxy/upload paths before the worker receives the body.
+      form.append('file', new Blob([buf], { type: 'image/png' }), safeUploadFileName(item.名称, attempt));
       const res = await fetchWithTimeout(`${uploadBase}/api/image-host/upload?storage=${encodeURIComponent(uploadStorage)}`, {
         method: 'POST',
         body: form,
@@ -493,6 +553,69 @@ async function uploadImageToHost(item, buf) {
     }
   }
   throw lastError;
+}
+
+async function uploadImageToHostWithCurl(item, buf) {
+  const uploadUrl = `${uploadBase}/api/image-host/upload?storage=${encodeURIComponent(uploadStorage)}`;
+  const tempDir = path.join(outDir, '.upload-temp');
+  await fs.mkdir(tempDir, { recursive: true });
+  let lastError = null;
+  for (let attempt = 1; attempt <= uploadRetries; attempt += 1) {
+    const uploadName = safeUploadFileName(item.名称, attempt);
+    const tempPath = path.join(tempDir, uploadName);
+    await fs.writeFile(tempPath, buf);
+    try {
+      const text = await runCurlUpload(tempPath, uploadName, uploadUrl);
+      const payload = JSON.parse(text);
+      if (payload?.success === false || payload?.ok === false) {
+        throw new Error(`upload failed: ${String(payload?.error || payload?.message || text).slice(0, 500)}`);
+      }
+      const remoteUrl = payload?.url
+        || payload?.file?.url
+        || payload?.links?.download
+        || payload?.data?.url
+        || payload?.data?.downloadUrl;
+      if (!remoteUrl) throw new Error(`upload response has no url: ${text.slice(0, 500)}`);
+      return remoteUrl;
+    } catch (error) {
+      lastError = error;
+      if (attempt >= uploadRetries) break;
+      const waitMs = attempt * 5000;
+      console.warn(`  curl upload retry ${attempt}/${uploadRetries} after ${waitMs}ms: ${String(error?.message || error).slice(0, 180)}`);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    } finally {
+      await fs.rm(tempPath, { force: true }).catch(() => undefined);
+    }
+  }
+  throw lastError;
+}
+
+async function runCurlUpload(filePath, uploadName, uploadUrl) {
+  const timeoutSeconds = Math.max(30, Math.ceil(requestTimeoutMs / 1000));
+  const args = [
+    '--max-time', String(timeoutSeconds),
+    '-sS',
+    '-X', 'POST',
+    '-F', `file=@${filePath};filename=${uploadName};type=image/png`,
+    uploadUrl,
+  ];
+  return new Promise((resolve, reject) => {
+    const child = spawn('curl.exe', args, { windowsHide: true });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve(stdout);
+        return;
+      }
+      reject(new Error(`curl upload failed ${code}: ${stderr || stdout}`));
+    });
+  });
 }
 
 async function updateRegistry(results) {
