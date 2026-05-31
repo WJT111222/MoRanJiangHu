@@ -20,17 +20,23 @@ describe('creativeWorkshopModules', () => {
                 && entry.preset?.openingConfig?.题材模式 === mode
             ));
             expect(matches.length, mode).toBeGreaterThanOrEqual(1);
-            expect(matches[0].payload?.packagePart).toBe('mode_package');
-            expect(Array.isArray(matches[0].modeWorldbooks), mode).toBe(true);
-            expect(matches[0].modeWorldbooks?.[0]?.条目.length, mode).toBeGreaterThanOrEqual(3);
-            expect(matches[0].payload?.modeWorldbooks).toEqual(matches[0].modeWorldbooks);
-            expect(String(matches[0].payload?.manualWorldPrompt || '')).toBeTruthy();
-            expect(String(matches[0].payload?.worldExtraRequirement || '')).toBeTruthy();
-            expect(String(matches[0].payload?.manualRealmPrompt || '')).toBeTruthy();
+            const entry = matches[0];
+            expect(entry.payload?.packagePart).toBe('mode_package');
+            expect(Array.isArray(entry.modeWorldbooks), mode).toBe(true);
+            expect(entry.modeWorldbooks?.[0]?.条目.length, mode).toBeGreaterThanOrEqual(4);
+            expect(entry.modeWorldbooks?.[0]?.条目.some((item) => item.标题 === '运行时模式配置'), mode).toBe(true);
+            expect(entry.payload?.modeWorldbooks).toEqual(entry.modeWorldbooks);
+            expect(entry.modeRuntimeProfile?.identity.baseMode, mode).toBe(mode);
+            expect(entry.payload?.modeRuntimeProfile).toEqual(entry.modeRuntimeProfile);
+            expect(entry.preset?.openingConfig?.modeRuntimeProfile?.identity.baseMode, mode).toBe(mode);
+            expect(entry.preset?.worldConfig?.modeRuntimeProfile?.identity.baseMode, mode).toBe(mode);
+            expect(String(entry.payload?.manualWorldPrompt || '')).toBeTruthy();
+            expect(String(entry.payload?.worldExtraRequirement || '')).toBeTruthy();
+            expect(String(entry.payload?.manualRealmPrompt || '')).toBeTruthy();
         }
     });
 
-    it('新建存档官方模式包恰好对应六个官方题材模式', () => {
+    it('新建存档官方模式包恰好对应当前官方题材模式', () => {
         const entries = 创意工坊模块列表.filter((entry) => entry.source === 'builtin' && entry.contributor === '官方' && entry.type === 'topic');
         expect(entries.length).toBe(题材模式顺序.length);
         expect(new Set(entries.map((entry) => entry.preset?.openingConfig?.题材模式))).toEqual(new Set(题材模式顺序));
@@ -44,7 +50,19 @@ describe('creativeWorkshopModules', () => {
             expect(entries[0].payload?.packagePart, suiteId).toBe('mode_package');
             expect(entries[0].modeWorldbooks?.[0]?.条目.some((entry) => entry.标题 === '世界规则'), suiteId).toBe(true);
             expect(entries[0].modeWorldbooks?.[0]?.条目.some((entry) => entry.标题 === '能力体系'), suiteId).toBe(true);
+            expect(entries[0].modeWorldbooks?.[0]?.条目.some((entry) => entry.标题 === '运行时模式配置'), suiteId).toBe(true);
+            expect(entries[0].modeRuntimeProfile?.identity.displayName, suiteId).toBeTruthy();
+            expect(entries[0].payload?.modeRuntimeProfile, suiteId).toEqual(entries[0].modeRuntimeProfile);
             expect(entries.every((entry) => entry.formatVersion === 2 && entry.workshopKind === 'standard_module'), suiteId).toBe(true);
+        }
+    });
+
+    it('轨迹和女骑模式包继承西方奇幻基础模式', () => {
+        for (const suiteId of ['community-trails-suite', 'community-rideress-suite']) {
+            const entry = 创意工坊模块列表.find((item) => item.payload?.suiteId === suiteId);
+            expect(entry?.modeRuntimeProfile?.identity.baseMode, suiteId).toBe('西方奇幻');
+            expect(entry?.preset?.openingConfig?.题材模式, suiteId).toBe('西方奇幻');
+            expect(entry?.payload?.modeRuntimeProfile?.identity.baseMode, suiteId).toBe('西方奇幻');
         }
     });
 
@@ -69,6 +87,8 @@ describe('creativeWorkshopModules', () => {
             const normalized = 标准化开局预设方案(entry.preset);
             expect(normalized?.id).toBe(entry.preset?.id);
             expect(normalized?.openingConfig?.题材模式).toBeTruthy();
+            expect(normalized?.openingConfig?.modeRuntimeProfile?.identity.baseMode).toBeTruthy();
+            expect(normalized?.worldConfig?.modeRuntimeProfile?.identity.baseMode).toBe(normalized?.openingConfig?.modeRuntimeProfile?.identity.baseMode);
         }
     });
 

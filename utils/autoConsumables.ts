@@ -100,6 +100,45 @@ const MODERN_CONSUMABLES: AutoConsumableTemplate[] = [
     }
 ];
 
+const FANTASY_CONSUMABLES: AutoConsumableTemplate[] = [
+    {
+        id: 'auto_fantasy_ration',
+        name: '旅行干粮',
+        description: '冒险者常备口粮，饱腹过低时会自动食用。',
+        visual: 'realistic medieval fantasy travel ration, hard bread, dried meat and wrapped cheese on plain cloth, no text',
+        value: 60,
+        count: 3,
+        effects: [{ 目标属性: '当前饱腹', 数值: 55 }]
+    },
+    {
+        id: 'auto_fantasy_waterskin',
+        name: '清水水囊',
+        description: '皮革水囊装着可饮用清水，水分过低时会自动饮用。',
+        visual: 'realistic leather waterskin with water droplets, medieval fantasy adventurer gear, no readable text',
+        value: 45,
+        count: 2,
+        effects: [{ 目标属性: '当前水分', 数值: 55 }]
+    },
+    {
+        id: 'auto_fantasy_healing_potion',
+        name: '治疗药水',
+        description: '基础红色药水，精力过低时会自动用于简单恢复。',
+        visual: 'small red healing potion bottle with cork, medieval fantasy item icon, realistic glass and leather, no text',
+        value: 130,
+        count: 2,
+        effects: [{ 目标属性: '当前精力', 数值: 55 }]
+    },
+    {
+        id: 'auto_fantasy_mana_potion',
+        name: '法力药水',
+        description: '基础蓝色药水，法力/内力过低时会自动补充。',
+        visual: 'small blue mana potion bottle with cork, medieval fantasy item icon, realistic glass, no text',
+        value: 160,
+        count: 1,
+        effects: [{ 目标属性: '当前内力', 数值: 60 }]
+    }
+];
+
 const 获取自动消耗品模板 = (options?: 自动丹药预设选项): AutoConsumableTemplate[] => {
     const profile = 获取题材模式配置(options?.题材模式);
     if (profile.group === 'apocalypse') {
@@ -110,6 +149,12 @@ const 获取自动消耗品模板 = (options?: 自动丹药预设选项): AutoCo
         return templates;
     }
     if (profile.group === 'modern') return MODERN_CONSUMABLES;
+    if (profile.group === 'western_fantasy') {
+        if (options?.启用饱腹口渴系统 === false) {
+            return FANTASY_CONSUMABLES.filter((template) => !template.effects.some((effect) => effect.目标属性 === '当前饱腹' || effect.目标属性 === '当前水分'));
+        }
+        return FANTASY_CONSUMABLES;
+    }
     if (options?.启用饱腹口渴系统 === false) {
         return AUTO_CONSUMABLES.filter((template) => !template.effects.some((effect) => effect.目标属性 === '当前饱腹' || effect.目标属性 === '当前水分'));
     }
@@ -167,13 +212,15 @@ export const 补齐自动丹药预设 = (items: any[], options?: 自动丹药预
 export const 自动预设丹药ID集合 = new Set([
     ...AUTO_CONSUMABLES,
     ...APOCALYPSE_CONSUMABLES,
-    ...MODERN_CONSUMABLES
+    ...MODERN_CONSUMABLES,
+    ...FANTASY_CONSUMABLES
 ].map((template) => template.id));
 export const 自动预设丹药名称集合 = new Set(AUTO_CONSUMABLES.map((template) => template.name));
 export const 全部自动预设消耗品名称集合 = new Set([
     ...AUTO_CONSUMABLES,
     ...APOCALYPSE_CONSUMABLES,
-    ...MODERN_CONSUMABLES
+    ...MODERN_CONSUMABLES,
+    ...FANTASY_CONSUMABLES
 ].map((template) => template.name));
 export const 古风丹药预设名称集合 = 自动预设丹药名称集合;
 export const 生存补给预设名称集合 = new Set(['辟谷丹', '饮水瓶', '压缩饼干']);

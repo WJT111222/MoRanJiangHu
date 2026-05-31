@@ -1,5 +1,6 @@
 import type { 开局预设方案结构 } from '../data/newGamePresets';
 import { 属性最大值, 属性最小值, 规范化可选开局配置 } from './openingConfig';
+import { 规范化模式运行时配置 } from './modeRuntimeProfile';
 import { normalizeRealmDraft, normalizeWorldMapDraft } from './newGameDiy';
 
 export const 自定义开局预设存储键 = 'new_game_custom_start_presets';
@@ -27,6 +28,11 @@ export const 标准化开局预设方案 = (raw: any): 开局预设方案结构 
         acc[key] = 标准化数值(raw?.character?.属性?.[key], 属性最小值, 属性最小值, 属性最大值);
         return acc;
     }, {} as 开局预设方案结构['character']['属性']);
+    const openingConfig = 规范化可选开局配置(raw?.openingConfig);
+    const rawRuntimeProfile = raw?.worldConfig?.modeRuntimeProfile || openingConfig?.modeRuntimeProfile;
+    const modeRuntimeProfile = (rawRuntimeProfile || openingConfig)
+        ? 规范化模式运行时配置(rawRuntimeProfile, openingConfig?.题材模式)
+        : undefined;
 
     return {
         id,
@@ -48,6 +54,7 @@ export const 标准化开局预设方案 = (raw: any): 开局预设方案结构 
             worldExtraRequirement: 标准化文本(raw?.worldConfig?.worldExtraRequirement),
             manualWorldPrompt: 标准化文本(raw?.worldConfig?.manualWorldPrompt),
             manualRealmPrompt: 标准化文本(raw?.worldConfig?.manualRealmPrompt),
+            ...(modeRuntimeProfile ? { modeRuntimeProfile } : {}),
             realmDiyDraft: normalizeRealmDraft(raw?.worldConfig?.realmDiyDraft),
             mapDiyDraft: normalizeWorldMapDraft(raw?.worldConfig?.mapDiyDraft)
         },
@@ -65,7 +72,9 @@ export const 标准化开局预设方案 = (raw: any): 开局预设方案结构 
                 ? raw.character.天赋名称列表.map((item: unknown) => 标准化文本(item)).filter(Boolean).slice(0, 3)
                 : []
         },
-        openingConfig: 规范化可选开局配置(raw?.openingConfig),
+        openingConfig: openingConfig && modeRuntimeProfile
+            ? { ...openingConfig, modeRuntimeProfile }
+            : openingConfig,
         openingStreaming: raw?.openingStreaming !== false,
         openingExtraRequirement: 标准化文本(raw?.openingExtraRequirement)
     };

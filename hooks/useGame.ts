@@ -1714,7 +1714,7 @@ export const useGame = () => {
     const 构建文生图额外要求 = (extra?: string): string => {
         const runtimeGameConfig = 规范化游戏设置(gameConfig);
         const runtimeImageExtraPrompt = 构建文生图运行时额外提示词(runtimeGameConfig.额外提示词 || '', runtimeGameConfig);
-        const topicImageGuidance = 构建题材生图额外要求(开局配置?.题材模式);
+        const topicImageGuidance = 构建题材生图额外要求(开局配置?.题材模式, 开局配置?.modeRuntimeProfile);
         return [(extra || '').trim(), runtimeImageExtraPrompt, topicImageGuidance].filter(Boolean).join('\n\n').trim();
     };
     const {

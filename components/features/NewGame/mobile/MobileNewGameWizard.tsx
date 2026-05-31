@@ -34,6 +34,7 @@ import {
     规范化可选开局配置
 } from '../../../../utils/openingConfig';
 import { 合并题材世界默认值, 获取题材模式配置, 题材模式顺序 } from '../../../../utils/topicModeProfiles';
+import { 构建官方模式运行时配置, 规范化模式运行时配置 } from '../../../../utils/modeRuntimeProfile';
 import { 构建默认技艺 } from '../../../../utils/skillDefaults';
 import { 默认境界母板提示词 } from '../../../../prompts/runtime/fandom';
 import { 设置键 } from '../../../../utils/settingsSchema';
@@ -183,7 +184,8 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
         worldExtraRequirement: '',
         manualWorldPrompt: '',
         manualRealmPrompt: '',
-        difficulty: 'normal' as 游戏难度 // Default difficulty
+        difficulty: 'normal' as 游戏难度, // Default difficulty
+        modeRuntimeProfile: 构建官方模式运行时配置('武侠')
     });
 
     // --- State: Character Config ---
@@ -573,7 +575,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
             右腿当前血量: 右腿最大血量, 右腿最大血量, 右腿状态: '正常',
             装备: { 头部: '无', 胸部: '无', 盔甲: '无', 内衬: '无', 腿部: '无', 手部: '无', 足部: '无', 主武器: '无', 副武器: '无', 暗器: '无', 背部: '无', 腰部: '无', 坐骑: '无' },
             物品列表: [], 功法列表: [],
-            技艺: 构建默认技艺(openingConfig.题材模式),
+            技艺: 构建默认技艺(openingConfig.题材模式, openingConfig.modeRuntimeProfile),
             当前经验: 0, 升级经验: 初始升级经验, 玩家BUFF: [], 突破条件: []
         };
     };
@@ -698,11 +700,16 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
         openingConfig
     ]);
     const 更新题材模式 = (题材模式: OpeningConfig['题材模式']) => {
+        const modeRuntimeProfile = 构建官方模式运行时配置(题材模式);
         setOpeningConfig((prev) => ({
             ...prev,
-            题材模式
+            题材模式,
+            modeRuntimeProfile
         }));
-        setWorldConfig((prev) => 合并题材世界默认值(题材模式, prev) as WorldGenConfig);
+        setWorldConfig((prev) => ({
+            ...(合并题材世界默认值(题材模式, prev) as WorldGenConfig),
+            modeRuntimeProfile
+        }));
     };
     const 拼接额外要求 = (current: string | undefined, addition: string): string => {
         const base = (current || '').trim();
@@ -742,17 +749,32 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
             const module = await 下载创意工坊模块(entry);
             const mode = 读取模块模式(module);
             if (mode) 更新题材模式(mode);
+            const modeRuntimeProfile = 规范化模式运行时配置(
+                module.modeRuntimeProfile || (module.payload as any)?.modeRuntimeProfile,
+                mode || openingConfig.题材模式
+            );
+            setOpeningConfig((prev) => ({
+                ...prev,
+                题材模式: modeRuntimeProfile.identity.baseMode,
+                modeRuntimeProfile
+            }));
+            setWorldConfig((prev) => ({ ...prev, modeRuntimeProfile }));
             const content = String((module.payload as any)?.content || '').trim();
             if (module.type === 'topic') {
                 if (module.preset) {
                     setWorldConfig((prev) => ({
                         ...prev,
                         ...module.preset!.worldConfig,
+                        modeRuntimeProfile,
                         manualWorldPrompt: prev.manualWorldPrompt,
                         manualRealmPrompt: prev.manualRealmPrompt
                     }));
                     if (module.preset.openingConfig?.题材模式) {
-                        setOpeningConfig((prev) => ({ ...prev, 题材模式: module.preset!.openingConfig!.题材模式 }));
+                        setOpeningConfig((prev) => ({
+                            ...prev,
+                            题材模式: module.preset!.openingConfig!.题材模式,
+                            modeRuntimeProfile
+                        }));
                     }
                 }
                 const modeWorldbooks = Array.isArray(module.modeWorldbooks) ? module.modeWorldbooks : Array.isArray((module.payload as any)?.modeWorldbooks) ? (module.payload as any).modeWorldbooks : undefined;

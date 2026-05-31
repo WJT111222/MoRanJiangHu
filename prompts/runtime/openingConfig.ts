@@ -2,6 +2,7 @@ import type { OpeningConfig } from '../../types';
 import { 构建修炼体系附加块 } from '../../utils/promptFeatureToggles';
 import { 获取题材开局配置文案 } from '../../utils/openingConfig';
 import { 获取题材模式配置, 题材是否仙侠 } from '../../utils/topicModeProfiles';
+import { 规范化模式运行时配置 } from '../../utils/modeRuntimeProfile';
 
 export const 是否仙侠开局模式 = (openingConfig?: OpeningConfig | null): boolean => (
     题材是否仙侠(openingConfig?.题材模式)
@@ -9,6 +10,7 @@ export const 是否仙侠开局模式 = (openingConfig?: OpeningConfig | null): 
 
 export const 构建题材模式提示词 = (openingConfig?: OpeningConfig | null): string => {
     const profile = 获取题材模式配置(openingConfig?.题材模式);
+    const runtime = 规范化模式运行时配置(openingConfig?.modeRuntimeProfile, openingConfig?.题材模式);
     return [
         `【题材模式：${profile.label}】`,
         ...profile.promptLines.map((line) => `- ${line}`),
@@ -16,6 +18,11 @@ export const 构建题材模式提示词 = (openingConfig?: OpeningConfig | null
         `- 交易/货币口径：${profile.currencyPrompt}`,
         `- 统一换算口径：${profile.currencyExchangePrompt}`,
         `- 市场入口名称：${profile.auctionName}；相关物品应自然${profile.marketVerb}，不要使用与题材冲突的市场术语。`,
+        `- 运行时组织口径：组织称为“${runtime.organization.organizationName}”，成员称为“${runtime.organization.memberName}”，贡献/信用称为“${runtime.organization.contributionName}”。`,
+        `- 运行时能力口径：${runtime.ability.primaryAxis}；阶段/等级：${runtime.ability.progressionNames.join('、')}；技艺池：${runtime.ability.skillPool.join('、')}。`,
+        `- 运行时物品口径：初始物品优先从 ${runtime.items.initialItemPool.join('、')} 中选择；奖励物品优先从 ${runtime.items.rewardItemPool.join('、')} 中选择；禁止混入 ${runtime.items.bannedItemKeywords.join('、') || '无'}。`,
+        `- 运行时地图口径：地点类型优先使用 ${runtime.map.locationTypes.join('、')}；POI 优先使用 ${runtime.map.poiTypes.join('、') || '当前题材默认地点'}。`,
+        `- 运行时生图口径：人物服饰=${runtime.image.characterClothingEra}；场景材质=${runtime.image.sceneMaterials}；负面提示=${runtime.image.negativePrompt || '无'}。`,
         '- 仍沿用现有变量树、境界层级、品质枚举和战斗结算口径；不要另造根路径或第二套不可落地字段。'
     ].join('\n');
 };

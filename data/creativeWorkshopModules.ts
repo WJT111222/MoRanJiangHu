@@ -1,6 +1,7 @@
 import type { 开局预设方案结构 } from './newGamePresets';
-import type { 世界书结构, 世界书条目结构, 世界书类型, 世界书作用域 } from '../types';
+import type { ModeRuntimeProfile, 世界书结构, 世界书条目结构, 世界书类型, 世界书作用域 } from '../types';
 import { 题材模式配置表, 题材模式顺序 } from '../utils/topicModeProfiles';
+import { 构建官方模式运行时配置, 规范化模式运行时配置, 渲染模式运行时配置世界书内容 } from '../utils/modeRuntimeProfile';
 import { 默认ComfyUI工作流JSON, 默认NSFWComfyUI工作流JSON } from './defaultComfyWorkflow';
 
 export type 创意工坊模块类型 = 'topic' | 'world_rules' | 'opening' | 'ability' | 'comfy_workflow';
@@ -17,6 +18,7 @@ export interface 创意工坊模块条目 {
     tags: string[];
     payload: Record<string, unknown>;
     modeWorldbooks?: 世界书结构[];
+    modeRuntimeProfile?: ModeRuntimeProfile;
     contentBlocks?: Array<{
         id: string;
         title: string;
@@ -140,6 +142,7 @@ const 构建题材预设 = (
     openingExtraRequirement = ''
 ): 开局预设方案结构 => {
     const profile = 题材模式配置表[mode];
+    const modeRuntimeProfile = 构建官方模式运行时配置(mode);
     return {
         id,
         名称,
@@ -148,12 +151,14 @@ const 构建题材预设 = (
             ...profile.worldDefaults,
             difficulty: 'normal',
             manualWorldPrompt: profile.promptLines.join('\n'),
-            manualRealmPrompt: ''
+            manualRealmPrompt: '',
+            modeRuntimeProfile
         },
         character,
         openingConfig: {
             配置约束启用: true,
             题材模式: mode,
+            modeRuntimeProfile,
             初始关系模板: mode === '末日丧尸' ? '独行少系' : mode === '现代都市' ? '世家官门' : '师门牵引',
             关系侧重: mode === '末日丧尸' ? ['友情', '利益'] : ['师门', '友情'],
             开局切入偏好: mode === '末日丧尸' ? '风波前夜' : mode === '现代都市' ? '日常低压' : '门派起手',
@@ -203,6 +208,7 @@ export const 创意工坊模块分区: Array<{ id: 创意工坊模块类型; tit
 const 题材默认角色: Record<keyof typeof 题材模式配置表, { 姓名: string; 背景: string; 天赋: string[]; 开局补充: string }> = {
     武侠: { 姓名: '沈砚', 背景: '门派外门', 天赋: ['稳扎稳打', '人情练达'], 开局补充: '第一幕从镖局、门派外门、药铺或江湖小镇切入，保持武侠尺度。' },
     仙侠: { 姓名: '沈玄', 背景: '宗门旧徒', 天赋: ['药灵体', '静心观微'], 开局补充: '第一幕从低阶宗门、坊市或灵田压力切入，不直接赠送高阶法宝。' },
+    西方奇幻: { 姓名: '莱恩', 背景: '冒险者学徒', 天赋: ['魔力亲和', '骑士誓言'], 开局补充: '第一幕从冒险者公会、边境酒馆、护送委托、魔物骚扰或地下城入口切入，不直接赠送神器。' },
     灵气复苏: { 姓名: '林澈', 背景: '城市学生', 天赋: ['灵觉敏锐', '耐苦心性'], 开局补充: '第一幕从校园、医院、研究点或异常封控现场切入，保留现代社会惯性。' },
     都市修仙: { 姓名: '许临安', 背景: '都市散修', 天赋: ['静心观微', '经商嗅觉'], 开局补充: '第一幕从公司、家族、人脉债务或城市暗市切入，不要直接进入成熟宗门社会。' },
     现代都市: { 姓名: '周行', 背景: '普通职员', 天赋: ['人情练达', '稳扎稳打'], 开局补充: '第一幕从现实工作、家庭、人情、商业或城市案件切入，不写成超凡常态。' },
@@ -288,6 +294,8 @@ const 构建能力模块 = (mode: keyof typeof 题材模式配置表): 创意工
         ? '能力体系：外功、内功、轻功、招式、医毒、机关与兵器熟练度；高手仍受体力、伤势、距离、兵器和江湖规矩限制。'
         : mode === '仙侠'
         ? '境界体系：练气、筑基、金丹、元婴、化神。每个大境界分初期/中期/后期/圆满；突破需要资源、心境、功法契合与风险。'
+        : mode === '西方奇幻'
+        ? '能力体系：见习、初阶、中阶、高阶、大师、传奇；成长来自职业训练、魔力/神术掌控、装备、契约、公会声望和地下城经验，不写成修仙破境。'
         : mode === '灵气复苏'
         ? '能力体系：未觉醒、灵感初启、觉醒者、稳定者、领域雏形；现代科研、封控和副作用必须参与约束。'
         : mode === '都市修仙'
@@ -503,7 +511,7 @@ const 轨迹题材模块 = 构建标准内容模块({
     subtitle: '塞姆利亚、导力革命、游击士协会',
     description: '把开局切到轨迹系列同人冒险口径，统一塞姆利亚大陆、导力科技、米拉货币和协会/军政组织叙事。',
     tags: ['同人融合', '轨迹', '题材模板', '导力'],
-    mode: '武侠',
+    mode: '西方奇幻',
     contributor: 玩家贡献者,
     suiteId: 轨迹套装ID,
     suiteTitle: '轨迹系列完整模式包',
@@ -534,7 +542,7 @@ const 轨迹世界规则模块 = 构建标准内容模块({
     subtitle: '塞姆利亚大陆、导力科技年表、米拉货币',
     description: '把轨迹系列世界观整理为可注入的世界规则，强调导力科技民用化时间线、国家组织登场口径和米拉货币。',
     tags: ['同人融合', '轨迹', '世界规则', '米拉'],
-    mode: '武侠',
+    mode: '西方奇幻',
     contributor: 玩家贡献者,
     suiteId: 轨迹套装ID,
     suiteTitle: '轨迹系列完整模式包',
@@ -572,7 +580,7 @@ const 轨迹能力模块 = 构建标准内容模块({
     subtitle: 'F级到S级、导力魔法、战技边界',
     description: '把轨迹角色战力拆为 F/E/D/C/B/A/A+/A++/准S/S，并补充导力魔法、战技和装备对战力的影响。',
     tags: ['同人融合', '轨迹', '能力体系', '战力平衡'],
-    mode: '武侠',
+    mode: '西方奇幻',
     contributor: 玩家贡献者,
     suiteId: 轨迹套装ID,
     suiteTitle: '轨迹系列完整模式包',
@@ -710,7 +718,7 @@ const 女骑题材模块 = 构建标准内容模块({
     subtitle: '成人奇幻、双人战斗、光暗阵营',
     description: '把开局切到成人向奇幻女骑世界口径，只保留成年人自愿搭档、荒诞爽文和光暗阵营冲突。',
     tags: ['成人向', '奇幻', '题材模板', '女骑'],
-    mode: '仙侠',
+    mode: '西方奇幻',
     contributor: 玩家贡献者,
     suiteId: 女骑套装ID,
     suiteTitle: '女骑世界完整模式包',
@@ -722,7 +730,7 @@ const 女骑题材模块 = 构建标准内容模块({
             title: '题材入口',
             purpose: '建立安全版女骑成人奇幻舞台。',
             injectionTarget: 'manualWorldPrompt',
-            content: '本局为成人奇幻女骑题材，舞台包含帝国、教会、宗门、魔王军、精灵、兽人、龙族、吸血鬼与魅魔等势力。所有亲密关系和搭档关系均限定为成年人自愿。'
+            content: '本局为成人奇幻女骑题材，舞台包含帝国、教会、骑士团、魔法学院、冒险者公会、魔王军、精灵、兽人、龙族、吸血鬼与魅魔等势力。所有亲密关系和搭档关系均限定为成年人自愿。'
         },
         {
             id: 'topic-pair',
@@ -739,9 +747,9 @@ const 女骑世界规则模块 = 构建标准内容模块({
     type: 'world_rules',
     title: '女骑世界规则包',
     subtitle: '成人向奇幻、骑女/骑士组合、光暗阵营',
-    description: '整理成人向中式西幻女骑世界的社会结构、战斗组合、光暗阵营和 B 级片式荒诞文风。',
+    description: '整理成人向西方奇幻女骑世界的社会结构、战斗组合、光暗阵营和 B 级片式荒诞文风。',
     tags: ['成人向', '奇幻', '世界规则', '女骑'],
-    mode: '仙侠',
+    mode: '西方奇幻',
     contributor: 玩家贡献者,
     suiteId: 女骑套装ID,
     suiteTitle: '女骑世界完整模式包',
@@ -753,7 +761,7 @@ const 女骑世界规则模块 = 构建标准内容模块({
             title: '世界核心',
             purpose: '建立女骑世界的成人奇幻基调。',
             injectionTarget: 'manualWorldPrompt',
-            content: '这是一个中式西幻混合世界，有帝国、宗门、教会、精灵、兽人、龙、魔王、吸血鬼、魅魔等阵营。光明势力大体在东，黑暗势力大体在西，人类城市采用类似分封制度。'
+            content: '这是一个西方奇幻世界，有帝国、骑士团、魔法学院、教会、冒险者公会、精灵、兽人、龙、魔王、吸血鬼、魅魔等阵营。光明势力大体在东，黑暗势力大体在西，人类城市采用类似分封制度。'
         },
         {
             id: 'rider-pair',
@@ -767,7 +775,7 @@ const 女骑世界规则模块 = 构建标准内容模块({
             title: '文风与社会',
             purpose: '约束叙事味道。',
             injectionTarget: 'manualWorldPrompt',
-            content: '叙事风格接近中国网文与 B 级电影式荒诞爽文：通俗、直白、节奏快、一本正经地处理夸张规则。女性在社会中多担任城主、将军、校长、宗门高层等职位。'
+            content: '叙事风格接近网文与 B 级电影式荒诞爽文：通俗、直白、节奏快、一本正经地处理夸张规则。女性在社会中多担任城主、将军、校长、公会高层、骑士团长或学院院长等职位。'
         }
     ]
 });
@@ -779,7 +787,7 @@ const 女骑能力模块 = 构建标准内容模块({
     subtitle: '驮马/军马/战马到神骑士',
     description: '把女骑世界的双人战斗能力拆为女/男双名称境界，并强调组合战力与单独战力不同。',
     tags: ['成人向', '女骑', '能力体系', '双人战斗'],
-    mode: '仙侠',
+    mode: '西方奇幻',
     contributor: 玩家贡献者,
     suiteId: 女骑套装ID,
     suiteTitle: '女骑世界完整模式包',
@@ -960,6 +968,17 @@ const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创
     const manualWorldPrompt = 取模块文本(topic, 'manualWorldPrompt');
     const worldExtraRequirement = worldRules ? 取模块文本(worldRules, 'worldExtraRequirement') : '';
     const manualRealmPrompt = ability ? 取模块文本(ability, 'manualRealmPrompt') : '';
+    const rawRuntimeProfile = (topic as any).modeRuntimeProfile || (topic.payload as any)?.modeRuntimeProfile || (worldRules?.payload as any)?.modeRuntimeProfile || (ability?.payload as any)?.modeRuntimeProfile;
+    const modeRuntimeProfile = 规范化模式运行时配置({
+        ...(rawRuntimeProfile && typeof rawRuntimeProfile === 'object' ? rawRuntimeProfile : {}),
+        identity: {
+            ...(rawRuntimeProfile && typeof rawRuntimeProfile === 'object' ? rawRuntimeProfile.identity : {}),
+            modeId: suiteId || (profile?.value || topic.id),
+            displayName: suiteTitle || title,
+            baseMode: mode,
+            isFandomIp: Boolean(suiteId && !String(suiteId).startsWith('official-'))
+        }
+    }, mode);
     const contentBlocks: NonNullable<创意工坊模块条目['contentBlocks']> = [
         ...重标注内容块(topic, '题材模板', 'manualWorldPrompt'),
         ...(worldRules ? 重标注内容块(worldRules, '世界规则', 'worldExtraRequirement') : []),
@@ -971,7 +990,17 @@ const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创
         description: `${title}的模式专属世界书。切换/启用该模式包时，这组世界书决定题材口径、世界规则和能力体系。`,
         topicPrompt: manualWorldPrompt,
         worldRulesPrompt: worldExtraRequirement,
-        abilityPrompt: manualRealmPrompt
+        abilityPrompt: manualRealmPrompt,
+        extraEntries: [
+            构建模式世界书条目(
+                `${suiteId || `mode-${profile?.value || topic.id}`}-runtime-profile`,
+                '运行时模式配置',
+                渲染模式运行时配置世界书内容(modeRuntimeProfile),
+                'system_rule',
+                全流程模式世界书作用域,
+                104
+            )
+        ]
     });
     const preset = topic.preset ? {
         ...topic.preset,
@@ -979,8 +1008,12 @@ const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创
             ...topic.preset.worldConfig,
             manualWorldPrompt: topic.preset.worldConfig.manualWorldPrompt || manualWorldPrompt,
             worldExtraRequirement: worldExtraRequirement || topic.preset.worldConfig.worldExtraRequirement,
-            manualRealmPrompt: manualRealmPrompt || topic.preset.worldConfig.manualRealmPrompt
+            manualRealmPrompt: manualRealmPrompt || topic.preset.worldConfig.manualRealmPrompt,
+            modeRuntimeProfile
         },
+        openingConfig: topic.preset.openingConfig
+            ? { ...topic.preset.openingConfig, modeRuntimeProfile }
+            : topic.preset.openingConfig,
         openingExtraRequirement: worldExtraRequirement || topic.preset.openingExtraRequirement || ''
     } : undefined;
     return {
@@ -1010,6 +1043,7 @@ const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创
                 skillNames: profile.skillNames,
                 presetItemKeywords: profile.presetItemKeywords
             } : undefined,
+            modeRuntimeProfile,
             modeWorldbooks,
             manualWorldPrompt,
             worldExtraRequirement,
@@ -1020,6 +1054,7 @@ const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创
             safetyNotes: topic.safetyNotes || []
         },
         modeWorldbooks,
+        modeRuntimeProfile,
         contentBlocks,
         usagePrompt: '作为完整模式包注入新建存档：模式专属世界书会统一接管题材口径、世界规则和能力体系。',
         injectionPreview: [
