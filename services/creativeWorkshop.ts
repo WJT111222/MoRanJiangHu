@@ -115,6 +115,11 @@ const 规范化模块 = (raw: any, source: 创意工坊模块条目['source']): 
             : Array.isArray(raw.payload?.modeWorldbooks)
                 ? raw.payload.modeWorldbooks
                 : undefined,
+        modeRuntimeProfile: raw.modeRuntimeProfile && typeof raw.modeRuntimeProfile === 'object' && !Array.isArray(raw.modeRuntimeProfile)
+            ? raw.modeRuntimeProfile
+            : raw.payload?.modeRuntimeProfile && typeof raw.payload.modeRuntimeProfile === 'object' && !Array.isArray(raw.payload.modeRuntimeProfile)
+                ? raw.payload.modeRuntimeProfile
+                : undefined,
         injectionPreview: Array.isArray(raw.injectionPreview) ? raw.injectionPreview.map((item: unknown) => String(item || '').trim()).filter(Boolean).slice(0, 12) : [],
         formatVersion: Number(raw.formatVersion) === 2 ? 2 : undefined,
         workshopKind: raw.workshopKind === 'standard_module' ? 'standard_module' : undefined,

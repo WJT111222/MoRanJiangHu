@@ -132,6 +132,15 @@ describe('题材模式自动消耗品预设', () => {
         expect(names).toEqual(['急救包']);
         expect(names).not.toContain('回气丹');
     });
+
+    it('西方奇幻模式补齐冒险补给而不是修仙丹药', () => {
+        const items = 补齐自动丹药预设([], { 题材模式: '西方奇幻' });
+        const names = items.map((item: any) => item.名称);
+        expect(names).toEqual(expect.arrayContaining(['旅行干粮', '清水水囊', '治疗药水', '法力药水']));
+        ['辟谷丹', '回气丹', '凝元丹', '破境丹'].forEach((name) => {
+            expect(names).not.toContain(name);
+        });
+    });
 });
 
 

@@ -481,7 +481,7 @@ export type 游戏难度 = 'relaxed' | 'easy' | 'normal' | 'hard' | 'extreme';
 export type 初始关系模板类型 = '独行少系' | '家族牵引' | '师门牵引' | '世家官门' | '青梅旧识' | '旧仇旧债';
 export type 关系侧重类型 = '亲情' | '友情' | '师门' | '情缘' | '利益' | '仇怨';
 export type 开局切入偏好类型 = '日常低压' | '在途起手' | '家宅起手' | '门派起手' | '风波前夜';
-export type 题材模式类型 = '武侠' | '仙侠' | '灵气复苏' | '都市修仙' | '现代都市' | '末日丧尸';
+export type 题材模式类型 = '武侠' | '仙侠' | '西方奇幻' | '灵气复苏' | '都市修仙' | '现代都市' | '末日丧尸';
 export type 同人来源类型 = '小说' | '动漫' | '游戏' | '影视';
 export type 同人融合强度类型 = '轻度映射' | '中度混编' | '显性同台';
 
@@ -537,9 +537,104 @@ export interface 初始伙伴配置结构 {
     备注: string;
 }
 
+export interface ModeRuntimeProfile {
+    identity: {
+        modeId: string;
+        displayName: string;
+        baseMode: 题材模式类型;
+        isModern: boolean;
+        usesCultivation: boolean;
+        isApocalypse: boolean;
+        isSurvival: boolean;
+        isFandomIp: boolean;
+    };
+    economy: {
+        currencyDisplayMode: 'wuxia' | 'xianxia' | 'fantasy' | 'urban' | 'modern' | 'apocalypse';
+        primaryCurrency: string;
+        accountingUnit: string;
+        exchangeRules: string;
+        marketName: string;
+        marketVerb: string;
+        allowedItemTypes: string[];
+        bannedKeywords: string[];
+    };
+    organization: {
+        organizationName: string;
+        memberName: string;
+        contributionName: string;
+        rankNames: string[];
+        organizationAliases: string[];
+        memberAliases: string[];
+    };
+    ability: {
+        primaryAxis: string;
+        progressionNames: string[];
+        attributePointRules: string;
+        skillPool: string[];
+        skillGrowthVerb: string;
+        combatResolution: string;
+    };
+    items: {
+        initialItemPool: string[];
+        rewardItemPool: string[];
+        bannedItemKeywords: string[];
+        exclusiveItemTypes: string[];
+        resourceToggles: {
+            food: boolean;
+            water: boolean;
+            ammo: boolean;
+            medicine: boolean;
+            fuel: boolean;
+            batteries: boolean;
+            spiritStones: boolean;
+        };
+    };
+    map: {
+        layerNames: string[];
+        locationTypes: string[];
+        poiTypes: string[];
+        bannedLocationKeywords: string[];
+        mapPrompt: string;
+    };
+    task: {
+        mainQuestStyle: string;
+        sideQuestDedupeKeys: string[];
+        rewardDistributor: string;
+        rewardVisualizationTemplate: string;
+    };
+    npc: {
+        defaultIdentityPool: string[];
+        relationTemplates: string[];
+        requiredMainCharacterFields: string[];
+        sexualityFallback: string;
+        sensitivityFallback: string;
+        autoImageStyle: string;
+    };
+    image: {
+        characterClothingEra: string;
+        sceneMaterials: string;
+        itemRealismPrompt: string;
+        negativePrompt: string;
+        visualStyle: string;
+    };
+    opening: {
+        defaultBackgrounds: string[];
+        defaultTalents: string[];
+        companionTemplate: string;
+        cutInTemplates: string[];
+        initialQuestTemplates: string[];
+    };
+    validation: {
+        bannedWords: string[];
+        conflictChecks: string[];
+        migrationCleanupRules: string[];
+    };
+}
+
 export interface OpeningConfig {
     配置约束启用?: boolean;
     题材模式: 题材模式类型;
+    modeRuntimeProfile?: ModeRuntimeProfile;
     初始关系模板: 初始关系模板类型;
     关系侧重: 关系侧重类型[];
     开局切入偏好: 开局切入偏好类型;
@@ -559,6 +654,7 @@ export interface WorldGenConfig {
     manualWorldPrompt: string;
     manualRealmPrompt: string;
     difficulty: 游戏难度;
+    modeRuntimeProfile?: ModeRuntimeProfile;
     realmDiyDraft?: RealmDiyDraft;
     mapDiyDraft?: WorldMapDiyDraft;
 }

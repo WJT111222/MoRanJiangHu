@@ -148,6 +148,12 @@ type 组织题材 = '营地' | '组织' | '宗门' | '门派' | '';
 const 推导组织语义 = (source?: any, openingConfig?: OpeningConfig): 组织题材 => {
     const explicit = 取文本(source?.组织语义 || source?.组织类型 || source?.题材组织类型);
     if (['营地', '组织', '宗门', '门派'].includes(explicit)) return explicit as 组织题材;
+    const runtimeProfile = openingConfig?.modeRuntimeProfile;
+    if (runtimeProfile?.identity?.isApocalypse || runtimeProfile?.identity?.isSurvival) return '营地';
+    const runtimeOrganizationName = 取文本(runtimeProfile?.organization?.organizationName);
+    if (/营地|避难|安全区|车队|哨站|幸存/u.test(runtimeOrganizationName)) return '营地';
+    if (/宗门|仙宗|道院|灵门|玄府|真宫/u.test(runtimeOrganizationName)) return '宗门';
+    if (runtimeOrganizationName && runtimeOrganizationName !== '门派') return '组织';
     if (openingConfig?.题材模式 === '末日丧尸') return '营地';
     if (openingConfig?.题材模式 === '现代都市') return '组织';
     if (openingConfig?.题材模式 === '仙侠') return '宗门';

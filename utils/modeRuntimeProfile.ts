@@ -1,0 +1,547 @@
+import type { ModeRuntimeProfile, 题材模式类型 } from '../models/system';
+import { 获取题材模式配置, 规范化题材模式 } from './topicModeProfiles';
+
+const 文本 = (value: unknown, fallback = ''): string => (
+    typeof value === 'string' && value.trim() ? value.trim() : fallback
+);
+
+const 布尔 = (value: unknown, fallback = false): boolean => (
+    typeof value === 'boolean' ? value : fallback
+);
+
+export const 拆分模式配置短语 = (value: unknown): string[] => {
+    const source = Array.isArray(value)
+        ? value
+        : typeof value === 'string'
+            ? value.split(/[，,、\n;；]+/u)
+            : [];
+    const seen = new Set<string>();
+    const result: string[] = [];
+    source.forEach((item) => {
+        const next = 文本(item);
+        if (!next || seen.has(next)) return;
+        seen.add(next);
+        result.push(next);
+    });
+    return result;
+};
+
+const 判断现代 = (mode: 题材模式类型): boolean => {
+    const group = 获取题材模式配置(mode).group;
+    return group === 'urban_xianxia' || group === 'modern' || group === 'apocalypse';
+};
+
+const 判断修炼 = (mode: 题材模式类型): boolean => {
+    const group = 获取题材模式配置(mode).group;
+    return group === 'xianxia' || group === 'urban_xianxia';
+};
+
+const 取记账单位 = (currencyDisplayMode: ModeRuntimeProfile['economy']['currencyDisplayMode']): string => {
+    if (currencyDisplayMode === 'apocalypse') return '营地信用点';
+    if (currencyDisplayMode === 'xianxia') return '下品灵石';
+    if (currencyDisplayMode === 'fantasy') return '铜币';
+    return '信用点/铜钱';
+};
+
+const 组织默认值 = (mode: 题材模式类型) => {
+    const profile = 获取题材模式配置(mode);
+    if (profile.group === 'apocalypse') {
+        return {
+            organizationName: '营地',
+            memberName: '幸存者',
+            contributionName: '营地信用',
+            rankNames: ['临时成员', '营地成员', '巡逻队员', '骨干成员', '区域负责人'],
+            organizationAliases: ['避难所', '安全区', '车队', '哨站', '幸存者小队'],
+            memberAliases: ['队友', '营地成员', '幸存者', '巡逻员', '后勤人员']
+        };
+    }
+    if (profile.group === 'modern') {
+        return {
+            organizationName: '组织',
+            memberName: '成员',
+            contributionName: '信用',
+            rankNames: ['临时协作者', '正式成员', '项目骨干', '负责人', '合伙人'],
+            organizationAliases: ['公司', '学校', '社区', '项目组', '门店', '合作团队'],
+            memberAliases: ['同事', '联系人', '合作对象', '亲友', '邻里']
+        };
+    }
+    if (profile.group === 'urban_xianxia') {
+        const isRecovery = mode === '灵气复苏';
+        return {
+            organizationName: isRecovery ? '机构' : '隐门',
+            memberName: isRecovery ? '协作者' : '同道',
+            contributionName: isRecovery ? '研究额度' : '圈内信用',
+            rankNames: isRecovery
+                ? ['观察对象', '协作者', '调查员', '稳定者', '负责人']
+                : ['外缘同道', '入门同道', '家族/隐门成员', '核心同道', '主事人'],
+            organizationAliases: isRecovery
+                ? ['研究小组', '管控机构', '觉醒者互助点', '异常处理小队']
+                : ['隐秘家族', '暗线组织', '同道据点', '都市隐门', '异闻暗市'],
+            memberAliases: isRecovery
+                ? ['研究员', '调查员', '觉醒者', '互助者', '协作者']
+                : ['同道', '师承联系人', '家族成员', '暗线伙伴']
+        };
+    }
+    if (profile.group === 'xianxia') {
+        return {
+            organizationName: '宗门',
+            memberName: '同道',
+            contributionName: '宗门贡献',
+            rankNames: ['杂役弟子', '外门弟子', '内门弟子', '真传弟子', '执事', '长老'],
+            organizationAliases: ['仙宗', '道院', '灵门', '玄府', '坊市'],
+            memberAliases: ['师长', '同门', '道友', '宗门外缘人物']
+        };
+    }
+    if (profile.group === 'western_fantasy') {
+        return {
+            organizationName: '公会',
+            memberName: '冒险者',
+            contributionName: '公会声望',
+            rankNames: ['见习冒险者', '正式冒险者', '资深冒险者', '银章成员', '金章成员', '传奇顾问'],
+            organizationAliases: ['冒险者公会', '骑士团', '魔法学院', '教会', '佣兵团', '商会'],
+            memberAliases: ['冒险者', '骑士', '法师学徒', '牧师', '佣兵', '斥候']
+        };
+    }
+    return {
+        organizationName: '门派',
+        memberName: '同门',
+        contributionName: '门派贡献',
+        rankNames: ['杂役弟子', '外门弟子', '内门弟子', '真传弟子', '执事', '长老'],
+        organizationAliases: ['门派', '帮会', '镖局', '武馆', '堂口'],
+        memberAliases: ['师长', '同门', '帮众', '门人', '江湖联系人']
+    };
+};
+
+const 能力默认值 = (mode: 题材模式类型) => {
+    const profile = 获取题材模式配置(mode);
+    if (mode === '末日丧尸') {
+        return {
+            primaryAxis: '生存能力、物资管理、感染风险控制与团队信任',
+            progressionNames: ['普通幸存者', '熟练搜寻者', '营地骨干', '感染适应者', '区域领袖'],
+            attributePointRules: '属性点代表体能、反应、抗压、求生经验和团队协作提升；不得写成修仙突破。',
+            skillGrowthVerb: '提升熟练度',
+            combatResolution: '战斗必须计算噪音、距离、弹药、伤病、防护、感染暴露和撤离路线。'
+        };
+    }
+    if (mode === '现代都市') {
+        return {
+            primaryAxis: '职业技能、人脉信用、资产管理、心理韧性和社会资源',
+            progressionNames: ['普通人', '熟练从业者', '圈层骨干', '资源整合者', '城市影响者'],
+            attributePointRules: '属性点代表现实能力与资源整合提升；不要常态化超凡力量。',
+            skillGrowthVerb: '提升熟练度',
+            combatResolution: '冲突以现实后果、法律风险、人际成本、资金与信息差结算。'
+        };
+    }
+    if (mode === '灵气复苏') {
+        return {
+            primaryAxis: '觉醒稳定度、现代资源、研究认知和异常风险控制',
+            progressionNames: ['未觉醒', '灵感初启', '觉醒者', '稳定者', '领域雏形'],
+            attributePointRules: '属性点可表现为觉醒适应、现代技能和风险承受力提升。',
+            skillGrowthVerb: '提升掌控度',
+            combatResolution: '冲突必须兼顾现代环境、封控、科研认知、副作用和普通社会后果。'
+        };
+    }
+    if (mode === '都市修仙') {
+        return {
+            primaryAxis: '修行境界、现代身份、资源渠道和人脉风险',
+            progressionNames: ['炼体', '引气', '凝神', '筑基', '金丹'],
+            attributePointRules: '属性点同时影响现实能力和修行根基，但日常身份仍受现代社会约束。',
+            skillGrowthVerb: '提升熟练度',
+            combatResolution: '战斗必须兼顾修行差距、现代场景暴露、人脉风险和法律/舆论后果。'
+        };
+    }
+    if (mode === '仙侠') {
+        return {
+            primaryAxis: '灵根、灵力、神识、法宝、术法和道心',
+            progressionNames: ['练气', '筑基', '金丹', '元婴', '化神'],
+            attributePointRules: '属性点代表根基、体魄、悟性、神识、灵力运转与机缘承载提升。',
+            skillGrowthVerb: '提升熟练度',
+            combatResolution: '战斗必须考虑境界压制、法宝品阶、灵力消耗、神识、阵法与因果代价。'
+        };
+    }
+    if (mode === '西方奇幻') {
+        return {
+            primaryAxis: '职业等级、剑盾弓弩、魔法/神术、炼金、契约、装备和公会声望',
+            progressionNames: ['见习', '初阶', '中阶', '高阶', '大师', '传奇'],
+            attributePointRules: '属性点代表职业训练、体能、魔力掌控、战技熟练、装备适配和冒险经验提升；不得写成修仙突破。',
+            skillGrowthVerb: '提升熟练度',
+            combatResolution: '战斗必须考虑职业克制、站位、护甲、法力/神术消耗、材料、魔物特性、队伍配合和撤退路线。'
+        };
+    }
+    return {
+        primaryAxis: '内力、招式、身法、兵器、医毒、机关与江湖经验',
+        progressionNames: ['不入流', '三流', '二流', '一流', '后天', '先天'],
+        attributePointRules: '属性点代表体魄、根骨、悟性、福源、江湖经验和武学根基提升。',
+        skillGrowthVerb: '提升熟练度',
+        combatResolution: '战斗必须考虑体力、伤势、距离、兵器、身法、内力和江湖规矩。'
+    };
+};
+
+const 物品默认值 = (mode: 题材模式类型) => {
+    if (mode === '末日丧尸') {
+        return {
+            initialItemPool: ['急救包', '罐头', '净水片', '电池', '燃油', '手电', '弩机'],
+            rewardItemPool: ['净水', '抗生素', '弹药', '燃油', '电池', '维修工具', '营地信用'],
+            bannedItemKeywords: ['破境丹', '回气丹', '凝元丹', '辟谷丹', '灵石', '法宝', '飞剑'],
+            exclusiveItemTypes: ['食物', '饮水', '药品', '弹药', '工具', '燃油', '情报'],
+            resourceToggles: { food: true, water: true, ammo: true, medicine: true, fuel: true, batteries: true, spiritStones: false }
+        };
+    }
+    if (mode === '现代都市') {
+        return {
+            initialItemPool: ['手机', '笔记本电脑', '银行卡', '合同', '录音笔', '急救包'],
+            rewardItemPool: ['现金', '转账', '合同资源', '客户线索', '技能培训', '人情债'],
+            bannedItemKeywords: ['破境丹', '回气丹', '凝元丹', '辟谷丹', '灵石', '宗门法宝'],
+            exclusiveItemTypes: ['电子设备', '证件', '合同', '工具', '药品', '生活用品'],
+            resourceToggles: { food: false, water: false, ammo: false, medicine: true, fuel: false, batteries: true, spiritStones: false }
+        };
+    }
+    if (mode === '西方奇幻') {
+        return {
+            initialItemPool: ['长剑', '皮甲', '治疗药水', '魔晶', '羊皮地图', '火把', '短弓', '法术卷轴'],
+            rewardItemPool: ['金币', '魔晶', '治疗药水', '法术卷轴', '附魔材料', '公会声望'],
+            bannedItemKeywords: ['破境丹', '回气丹', '凝元丹', '辟谷丹', '灵石', '宗门法宝', '飞剑', '现代手机', '银行卡'],
+            exclusiveItemTypes: ['武器', '防具', '药水', '卷轴', '魔晶', '附魔材料', '任务道具'],
+            resourceToggles: { food: false, water: false, ammo: false, medicine: true, fuel: false, batteries: false, spiritStones: false }
+        };
+    }
+    const profile = 获取题材模式配置(mode);
+    return {
+        initialItemPool: profile.presetItemKeywords,
+        rewardItemPool: profile.presetItemKeywords,
+        bannedItemKeywords: profile.group === 'wuxia'
+            ? ['灵石', '飞剑', '法宝', '现代手机', '银行卡']
+            : profile.group === 'xianxia'
+                ? ['现代手机', '银行卡', '手枪', '燃油票']
+                : ['古代银票', '门派腰牌', '宗门山门'],
+        exclusiveItemTypes: profile.group === 'xianxia' || profile.group === 'urban_xianxia'
+            ? ['丹药', '符箓', '法器', '灵材', '功法', '现代物资']
+            : ['兵器', '药品', '秘籍', '护具', '信物'],
+        resourceToggles: {
+            food: false,
+            water: false,
+            ammo: false,
+            medicine: true,
+            fuel: profile.group === 'urban_xianxia',
+            batteries: profile.group === 'urban_xianxia',
+            spiritStones: profile.group === 'xianxia' || profile.group === 'urban_xianxia'
+        }
+    };
+};
+
+export const 构建官方模式运行时配置 = (
+    mode?: unknown,
+    overrides?: Partial<ModeRuntimeProfile>
+): ModeRuntimeProfile => {
+    const baseMode = 规范化题材模式(mode);
+    const profile = 获取题材模式配置(baseMode);
+    const organization = 组织默认值(baseMode);
+    const ability = 能力默认值(baseMode);
+    const items = 物品默认值(baseMode);
+    const isModern = 判断现代(baseMode);
+    const isApocalypse = profile.group === 'apocalypse';
+    const runtime: ModeRuntimeProfile = {
+        identity: {
+            modeId: profile.value,
+            displayName: profile.label,
+            baseMode,
+            isModern,
+            usesCultivation: 判断修炼(baseMode),
+            isApocalypse,
+            isSurvival: isApocalypse,
+            isFandomIp: false
+        },
+        economy: {
+            currencyDisplayMode: profile.currencyDisplayMode,
+            primaryCurrency: profile.currencyPrompt,
+            accountingUnit: 取记账单位(profile.currencyDisplayMode),
+            exchangeRules: profile.currencyExchangePrompt,
+            marketName: profile.auctionName,
+            marketVerb: profile.marketVerb,
+            allowedItemTypes: items.exclusiveItemTypes,
+            bannedKeywords: items.bannedItemKeywords
+        },
+        organization,
+        ability: {
+            ...ability,
+            skillPool: profile.skillNames
+        },
+        items,
+        map: {
+            layerNames: ['寰宇', '大地点', '中地点', '小地点', '区地点', '子地点'],
+            locationTypes: profile.mapPrompt.split(/[、，,]/u).map((item) => item.replace(/世界版图应按|组织。|等/u, '').trim()).filter(Boolean),
+            poiTypes: profile.group === 'apocalypse'
+                ? ['感染区', '医院', '商超', '仓库', '避难所', '公路', '封锁线', '营地', '市场', '资源点']
+                : profile.group === 'modern'
+                    ? ['社区', '商圈', '写字楼', '学校', '医院', '交通站点', '灰色渠道']
+                    : profile.group === 'xianxia'
+                        ? ['宗门', '坊市', '秘境入口', '洞府', '禁地', '凡俗城镇']
+                        : profile.group === 'western_fantasy'
+                            ? ['王国', '城堡', '教会', '魔法学院', '冒险者公会', '港口', '地下城', '遗迹', '魔物巢穴']
+                            : ['城镇', '门派', '山道', '关隘', '渡口', '市场', '野外险地'],
+            bannedLocationKeywords: profile.group === 'apocalypse'
+                ? ['宗门', '山门', '藏经阁', '洞府', '仙坊']
+                : profile.group === 'modern'
+                    ? ['宗门', '山门', '藏经阁', '仙坊', '坊市']
+                    : profile.group === 'western_fantasy'
+                        ? ['宗门', '山门', '藏经阁', '仙坊', '坊市', '写字楼', '地铁站']
+                        : [],
+            mapPrompt: profile.mapPrompt
+        },
+        task: {
+            mainQuestStyle: isApocalypse ? '围绕求生、营地、感染风险和物资路线推进主线。' : `围绕${profile.label}的身份、组织、资源与长期目标推进主线。`,
+            sideQuestDedupeKeys: ['目标地点', '发放者', '奖励类型', '核心行动', '关联NPC'],
+            rewardDistributor: organization.organizationName,
+            rewardVisualizationTemplate: '正文中用【任务奖励】展示发放者、到账物品、技能提升、贡献/信用、属性点或境界变化。'
+        },
+        npc: {
+            defaultIdentityPool: organization.memberAliases,
+            relationTemplates: profile.group === 'apocalypse'
+                ? ['互助', '物资合作', '冲突', '临时同行']
+                : profile.group === 'western_fantasy'
+                    ? ['契约', '同伴', '委托', '阵营', '旧怨']
+                    : ['师门', '友情', '利益', '旧怨'],
+            requiredMainCharacterFields: ['姓名', '性别', '年龄', '外貌', '性格', '身份', '位置', '关系', '性癖', '敏感点'],
+            sexualityFallback: '按角色性格与经历生成明确偏好，不得写未知。',
+            sensitivityFallback: '按角色身体/心理特征生成明确敏感点，不得写未知。',
+            autoImageStyle: isModern
+                ? '现代服饰、现实材质、题材道具清晰可见。'
+                : profile.group === 'western_fantasy'
+                    ? '中世纪西方奇幻服饰、职业装备、公会/城堡/地下城环境和魔法道具清晰可见。'
+                    : '符合题材时代与身份的服饰、武器和环境。'
+        },
+        image: {
+            characterClothingEra: isApocalypse ? '现代末日生存服饰' : isModern ? '当代城市服饰' : profile.group === 'xianxia' ? '古典修真服饰' : profile.group === 'western_fantasy' ? '中世纪西方奇幻服饰' : '武侠江湖服饰',
+            sceneMaterials: isApocalypse ? '现代废墟、混凝土、铁皮、塑料布、车辆、临时照明' : isModern ? '城市街区、玻璃、混凝土、电子设备、办公室、商场' : profile.group === 'western_fantasy' ? '石砌城堡、木梁酒馆、羊皮卷、皮革、锁甲、彩绘玻璃、森林、矿洞、地下城、遗迹' : '木石、布帛、山水、院落、兵器、古道',
+            itemRealismPrompt: '物品必须按真实用途、材质、尺寸和磨损状态绘制，不要把普通物资画成法宝或装饰概念图。',
+            negativePrompt: isModern ? '禁止古装、仙侠长袍、山门、丹炉、飞剑、宗门弟子。' : profile.group === 'western_fantasy' ? '禁止东方仙侠长袍、宗门山门、丹炉、飞剑、古代江湖侠客服、现代城市通勤装。' : '',
+            visualStyle: isApocalypse ? '写实、压抑、物资细节明确' : isModern ? '写实、当代、职业和城市细节明确' : profile.group === 'western_fantasy' ? '写实西方奇幻，职业装备、材质和冒险氛围明确' : '写实国风，服饰和物件符合题材'
+        },
+        opening: {
+            defaultBackgrounds: profile.backgroundSuggestions,
+            defaultTalents: profile.talentSuggestions,
+            companionTemplate: `${organization.memberName}或同行者，能承接${profile.label}的第一幕冲突。`,
+            cutInTemplates: ['日常低压', '在途起手', '家宅起手', '门派起手', '风波前夜'],
+            initialQuestTemplates: isApocalypse ? ['确认安全点', '获取饮水与药品', '建立营地联系'] : ['确认身份牵引', '接触初始组织', '取得第一条主线线索']
+        },
+        validation: {
+            bannedWords: items.bannedItemKeywords,
+            conflictChecks: ['货币口径冲突', '组织称呼冲突', '物品题材冲突', '地图地点冲突', '生图服饰时代冲突'],
+            migrationCleanupRules: items.bannedItemKeywords.map((keyword) => `清理或替换不合题材关键词：${keyword}`)
+        }
+    };
+    return 规范化模式运行时配置({ ...runtime, ...overrides }, baseMode);
+};
+
+export const 规范化模式运行时配置 = (raw?: any, fallbackMode?: unknown): ModeRuntimeProfile => {
+    const fallback = 构建官方模式运行时配置基础(fallbackMode);
+    const baseMode = 规范化题材模式(raw?.identity?.baseMode || fallback.identity.baseMode);
+    const official = 构建官方模式运行时配置基础(baseMode);
+    const resource = raw?.items?.resourceToggles || {};
+    return {
+        identity: {
+            modeId: 文本(raw?.identity?.modeId, official.identity.modeId),
+            displayName: 文本(raw?.identity?.displayName, official.identity.displayName),
+            baseMode,
+            isModern: 布尔(raw?.identity?.isModern, official.identity.isModern),
+            usesCultivation: 布尔(raw?.identity?.usesCultivation, official.identity.usesCultivation),
+            isApocalypse: 布尔(raw?.identity?.isApocalypse, official.identity.isApocalypse),
+            isSurvival: 布尔(raw?.identity?.isSurvival, official.identity.isSurvival),
+            isFandomIp: 布尔(raw?.identity?.isFandomIp, official.identity.isFandomIp)
+        },
+        economy: {
+            currencyDisplayMode: ['wuxia', 'xianxia', 'fantasy', 'urban', 'modern', 'apocalypse'].includes(raw?.economy?.currencyDisplayMode)
+                ? raw.economy.currencyDisplayMode
+                : official.economy.currencyDisplayMode,
+            primaryCurrency: 文本(raw?.economy?.primaryCurrency, official.economy.primaryCurrency),
+            accountingUnit: 文本(raw?.economy?.accountingUnit, official.economy.accountingUnit),
+            exchangeRules: 文本(raw?.economy?.exchangeRules, official.economy.exchangeRules),
+            marketName: 文本(raw?.economy?.marketName, official.economy.marketName),
+            marketVerb: 文本(raw?.economy?.marketVerb, official.economy.marketVerb),
+            allowedItemTypes: 拆分模式配置短语(raw?.economy?.allowedItemTypes).length ? 拆分模式配置短语(raw.economy.allowedItemTypes) : official.economy.allowedItemTypes,
+            bannedKeywords: 拆分模式配置短语(raw?.economy?.bannedKeywords).length ? 拆分模式配置短语(raw.economy.bannedKeywords) : official.economy.bannedKeywords
+        },
+        organization: {
+            organizationName: 文本(raw?.organization?.organizationName, official.organization.organizationName),
+            memberName: 文本(raw?.organization?.memberName, official.organization.memberName),
+            contributionName: 文本(raw?.organization?.contributionName, official.organization.contributionName),
+            rankNames: 拆分模式配置短语(raw?.organization?.rankNames).length ? 拆分模式配置短语(raw.organization.rankNames) : official.organization.rankNames,
+            organizationAliases: 拆分模式配置短语(raw?.organization?.organizationAliases).length ? 拆分模式配置短语(raw.organization.organizationAliases) : official.organization.organizationAliases,
+            memberAliases: 拆分模式配置短语(raw?.organization?.memberAliases).length ? 拆分模式配置短语(raw.organization.memberAliases) : official.organization.memberAliases
+        },
+        ability: {
+            primaryAxis: 文本(raw?.ability?.primaryAxis, official.ability.primaryAxis),
+            progressionNames: 拆分模式配置短语(raw?.ability?.progressionNames).length ? 拆分模式配置短语(raw.ability.progressionNames) : official.ability.progressionNames,
+            attributePointRules: 文本(raw?.ability?.attributePointRules, official.ability.attributePointRules),
+            skillPool: 拆分模式配置短语(raw?.ability?.skillPool).length ? 拆分模式配置短语(raw.ability.skillPool) : official.ability.skillPool,
+            skillGrowthVerb: 文本(raw?.ability?.skillGrowthVerb, official.ability.skillGrowthVerb),
+            combatResolution: 文本(raw?.ability?.combatResolution, official.ability.combatResolution)
+        },
+        items: {
+            initialItemPool: 拆分模式配置短语(raw?.items?.initialItemPool).length ? 拆分模式配置短语(raw.items.initialItemPool) : official.items.initialItemPool,
+            rewardItemPool: 拆分模式配置短语(raw?.items?.rewardItemPool).length ? 拆分模式配置短语(raw.items.rewardItemPool) : official.items.rewardItemPool,
+            bannedItemKeywords: 拆分模式配置短语(raw?.items?.bannedItemKeywords).length ? 拆分模式配置短语(raw.items.bannedItemKeywords) : official.items.bannedItemKeywords,
+            exclusiveItemTypes: 拆分模式配置短语(raw?.items?.exclusiveItemTypes).length ? 拆分模式配置短语(raw.items.exclusiveItemTypes) : official.items.exclusiveItemTypes,
+            resourceToggles: {
+                food: 布尔(resource.food, official.items.resourceToggles.food),
+                water: 布尔(resource.water, official.items.resourceToggles.water),
+                ammo: 布尔(resource.ammo, official.items.resourceToggles.ammo),
+                medicine: 布尔(resource.medicine, official.items.resourceToggles.medicine),
+                fuel: 布尔(resource.fuel, official.items.resourceToggles.fuel),
+                batteries: 布尔(resource.batteries, official.items.resourceToggles.batteries),
+                spiritStones: 布尔(resource.spiritStones, official.items.resourceToggles.spiritStones)
+            }
+        },
+        map: {
+            layerNames: 拆分模式配置短语(raw?.map?.layerNames).length ? 拆分模式配置短语(raw.map.layerNames) : official.map.layerNames,
+            locationTypes: 拆分模式配置短语(raw?.map?.locationTypes).length ? 拆分模式配置短语(raw.map.locationTypes) : official.map.locationTypes,
+            poiTypes: 拆分模式配置短语(raw?.map?.poiTypes).length ? 拆分模式配置短语(raw.map.poiTypes) : official.map.poiTypes,
+            bannedLocationKeywords: 拆分模式配置短语(raw?.map?.bannedLocationKeywords).length ? 拆分模式配置短语(raw.map.bannedLocationKeywords) : official.map.bannedLocationKeywords,
+            mapPrompt: 文本(raw?.map?.mapPrompt, official.map.mapPrompt)
+        },
+        task: {
+            mainQuestStyle: 文本(raw?.task?.mainQuestStyle, official.task.mainQuestStyle),
+            sideQuestDedupeKeys: 拆分模式配置短语(raw?.task?.sideQuestDedupeKeys).length ? 拆分模式配置短语(raw.task.sideQuestDedupeKeys) : official.task.sideQuestDedupeKeys,
+            rewardDistributor: 文本(raw?.task?.rewardDistributor, official.task.rewardDistributor),
+            rewardVisualizationTemplate: 文本(raw?.task?.rewardVisualizationTemplate, official.task.rewardVisualizationTemplate)
+        },
+        npc: {
+            defaultIdentityPool: 拆分模式配置短语(raw?.npc?.defaultIdentityPool).length ? 拆分模式配置短语(raw.npc.defaultIdentityPool) : official.npc.defaultIdentityPool,
+            relationTemplates: 拆分模式配置短语(raw?.npc?.relationTemplates).length ? 拆分模式配置短语(raw.npc.relationTemplates) : official.npc.relationTemplates,
+            requiredMainCharacterFields: 拆分模式配置短语(raw?.npc?.requiredMainCharacterFields).length ? 拆分模式配置短语(raw.npc.requiredMainCharacterFields) : official.npc.requiredMainCharacterFields,
+            sexualityFallback: 文本(raw?.npc?.sexualityFallback, official.npc.sexualityFallback),
+            sensitivityFallback: 文本(raw?.npc?.sensitivityFallback, official.npc.sensitivityFallback),
+            autoImageStyle: 文本(raw?.npc?.autoImageStyle, official.npc.autoImageStyle)
+        },
+        image: {
+            characterClothingEra: 文本(raw?.image?.characterClothingEra, official.image.characterClothingEra),
+            sceneMaterials: 文本(raw?.image?.sceneMaterials, official.image.sceneMaterials),
+            itemRealismPrompt: 文本(raw?.image?.itemRealismPrompt, official.image.itemRealismPrompt),
+            negativePrompt: 文本(raw?.image?.negativePrompt, official.image.negativePrompt),
+            visualStyle: 文本(raw?.image?.visualStyle, official.image.visualStyle)
+        },
+        opening: {
+            defaultBackgrounds: 拆分模式配置短语(raw?.opening?.defaultBackgrounds).length ? 拆分模式配置短语(raw.opening.defaultBackgrounds) : official.opening.defaultBackgrounds,
+            defaultTalents: 拆分模式配置短语(raw?.opening?.defaultTalents).length ? 拆分模式配置短语(raw.opening.defaultTalents) : official.opening.defaultTalents,
+            companionTemplate: 文本(raw?.opening?.companionTemplate, official.opening.companionTemplate),
+            cutInTemplates: 拆分模式配置短语(raw?.opening?.cutInTemplates).length ? 拆分模式配置短语(raw.opening.cutInTemplates) : official.opening.cutInTemplates,
+            initialQuestTemplates: 拆分模式配置短语(raw?.opening?.initialQuestTemplates).length ? 拆分模式配置短语(raw.opening.initialQuestTemplates) : official.opening.initialQuestTemplates
+        },
+        validation: {
+            bannedWords: 拆分模式配置短语(raw?.validation?.bannedWords).length ? 拆分模式配置短语(raw.validation.bannedWords) : official.validation.bannedWords,
+            conflictChecks: 拆分模式配置短语(raw?.validation?.conflictChecks).length ? 拆分模式配置短语(raw.validation.conflictChecks) : official.validation.conflictChecks,
+            migrationCleanupRules: 拆分模式配置短语(raw?.validation?.migrationCleanupRules).length ? 拆分模式配置短语(raw.validation.migrationCleanupRules) : official.validation.migrationCleanupRules
+        }
+    };
+};
+
+const 构建官方模式运行时配置基础 = (mode?: unknown): ModeRuntimeProfile => {
+    const baseMode = 规范化题材模式(mode);
+    const profile = 获取题材模式配置(baseMode);
+    const organization = 组织默认值(baseMode);
+    const ability = 能力默认值(baseMode);
+    const items = 物品默认值(baseMode);
+    const isModern = 判断现代(baseMode);
+    const isApocalypse = profile.group === 'apocalypse';
+    return {
+        identity: {
+            modeId: profile.value,
+            displayName: profile.label,
+            baseMode,
+            isModern,
+            usesCultivation: 判断修炼(baseMode),
+            isApocalypse,
+            isSurvival: isApocalypse,
+            isFandomIp: false
+        },
+        economy: {
+            currencyDisplayMode: profile.currencyDisplayMode,
+            primaryCurrency: profile.currencyPrompt,
+            accountingUnit: 取记账单位(profile.currencyDisplayMode),
+            exchangeRules: profile.currencyExchangePrompt,
+            marketName: profile.auctionName,
+            marketVerb: profile.marketVerb,
+            allowedItemTypes: items.exclusiveItemTypes,
+            bannedKeywords: items.bannedItemKeywords
+        },
+        organization,
+        ability: { ...ability, skillPool: profile.skillNames },
+        items,
+        map: {
+            layerNames: ['寰宇', '大地点', '中地点', '小地点', '区地点', '子地点'],
+            locationTypes: profile.mapPrompt.split(/[、，,]/u).map((item) => item.replace(/世界版图应按|组织。|等/u, '').trim()).filter(Boolean),
+            poiTypes: profile.group === 'apocalypse'
+                ? ['感染区', '医院', '商超', '仓库', '避难所', '公路', '封锁线', '营地', '市场', '资源点']
+                : profile.group === 'modern'
+                    ? ['社区', '商圈', '写字楼', '学校', '医院', '交通站点', '灰色渠道']
+                    : profile.group === 'xianxia'
+                        ? ['宗门', '坊市', '秘境入口', '洞府', '禁地', '凡俗城镇']
+                        : profile.group === 'western_fantasy'
+                            ? ['王国', '城堡', '教会', '魔法学院', '冒险者公会', '港口', '地下城', '遗迹', '魔物巢穴']
+                            : ['城镇', '门派', '山道', '关隘', '渡口', '市场', '野外险地'],
+            bannedLocationKeywords: profile.group === 'apocalypse'
+                ? ['宗门', '山门', '藏经阁', '洞府', '仙坊']
+                : profile.group === 'modern'
+                    ? ['宗门', '山门', '藏经阁', '仙坊', '坊市']
+                    : profile.group === 'western_fantasy'
+                        ? ['宗门', '山门', '藏经阁', '仙坊', '坊市', '写字楼', '地铁站']
+                        : [],
+            mapPrompt: profile.mapPrompt
+        },
+        task: {
+            mainQuestStyle: isApocalypse ? '围绕求生、营地、感染风险和物资路线推进主线。' : `围绕${profile.label}的身份、组织、资源与长期目标推进主线。`,
+            sideQuestDedupeKeys: ['目标地点', '发放者', '奖励类型', '核心行动', '关联NPC'],
+            rewardDistributor: organization.organizationName,
+            rewardVisualizationTemplate: '正文中用【任务奖励】展示发放者、到账物品、技能提升、贡献/信用、属性点或境界变化。'
+        },
+        npc: {
+            defaultIdentityPool: organization.memberAliases,
+            relationTemplates: profile.group === 'apocalypse'
+                ? ['互助', '物资合作', '冲突', '临时同行']
+                : profile.group === 'western_fantasy'
+                    ? ['契约', '同伴', '委托', '阵营', '旧怨']
+                    : ['师门', '友情', '利益', '旧怨'],
+            requiredMainCharacterFields: ['姓名', '性别', '年龄', '外貌', '性格', '身份', '位置', '关系', '性癖', '敏感点'],
+            sexualityFallback: '按角色性格与经历生成明确偏好，不得写未知。',
+            sensitivityFallback: '按角色身体/心理特征生成明确敏感点，不得写未知。',
+            autoImageStyle: isModern
+                ? '现代服饰、现实材质、题材道具清晰可见。'
+                : profile.group === 'western_fantasy'
+                    ? '中世纪西方奇幻服饰、职业装备、公会/城堡/地下城环境和魔法道具清晰可见。'
+                    : '符合题材时代与身份的服饰、武器和环境。'
+        },
+        image: {
+            characterClothingEra: isApocalypse ? '现代末日生存服饰' : isModern ? '当代城市服饰' : profile.group === 'xianxia' ? '古典修真服饰' : profile.group === 'western_fantasy' ? '中世纪西方奇幻服饰' : '武侠江湖服饰',
+            sceneMaterials: isApocalypse ? '现代废墟、混凝土、铁皮、塑料布、车辆、临时照明' : isModern ? '城市街区、玻璃、混凝土、电子设备、办公室、商场' : profile.group === 'western_fantasy' ? '石砌城堡、木梁酒馆、羊皮卷、皮革、锁甲、彩绘玻璃、森林、矿洞、地下城、遗迹' : '木石、布帛、山水、院落、兵器、古道',
+            itemRealismPrompt: '物品必须按真实用途、材质、尺寸和磨损状态绘制，不要把普通物资画成法宝或装饰概念图。',
+            negativePrompt: isModern ? '禁止古装、仙侠长袍、山门、丹炉、飞剑、宗门弟子。' : profile.group === 'western_fantasy' ? '禁止东方仙侠长袍、宗门山门、丹炉、飞剑、古代江湖侠客服、现代城市通勤装。' : '',
+            visualStyle: isApocalypse ? '写实、压抑、物资细节明确' : isModern ? '写实、当代、职业和城市细节明确' : profile.group === 'western_fantasy' ? '写实西方奇幻，职业装备、材质和冒险氛围明确' : '写实国风，服饰和物件符合题材'
+        },
+        opening: {
+            defaultBackgrounds: profile.backgroundSuggestions,
+            defaultTalents: profile.talentSuggestions,
+            companionTemplate: `${organization.memberName}或同行者，能承接${profile.label}的第一幕冲突。`,
+            cutInTemplates: ['日常低压', '在途起手', '家宅起手', '门派起手', '风波前夜'],
+            initialQuestTemplates: isApocalypse ? ['确认安全点', '获取饮水与药品', '建立营地联系'] : ['确认身份牵引', '接触初始组织', '取得第一条主线线索']
+        },
+        validation: {
+            bannedWords: items.bannedItemKeywords,
+            conflictChecks: ['货币口径冲突', '组织称呼冲突', '物品题材冲突', '地图地点冲突', '生图服饰时代冲突'],
+            migrationCleanupRules: items.bannedItemKeywords.map((keyword) => `清理或替换不合题材关键词：${keyword}`)
+        }
+    };
+};
+
+export const 渲染模式运行时配置世界书内容 = (profile: ModeRuntimeProfile): string => ([
+    `题材身份：${profile.identity.displayName}（继承 ${profile.identity.baseMode}；现代=${profile.identity.isModern ? '是' : '否'}；修炼=${profile.identity.usesCultivation ? '是' : '否'}；生存=${profile.identity.isSurvival ? '是' : '否'}；同人/IP=${profile.identity.isFandomIp ? '是' : '否'}）`,
+    `经济系统：市场=${profile.economy.marketName}；行为=${profile.economy.marketVerb}；货币=${profile.economy.primaryCurrency}；换算=${profile.economy.exchangeRules}`,
+    `组织系统：组织=${profile.organization.organizationName}；成员=${profile.organization.memberName}；贡献=${profile.organization.contributionName}；等级=${profile.organization.rankNames.join('、')}`,
+    `能力系统：主轴=${profile.ability.primaryAxis}；阶段=${profile.ability.progressionNames.join('、')}；技艺=${profile.ability.skillPool.join('、')}；结算=${profile.ability.combatResolution}`,
+    `物品系统：初始池=${profile.items.initialItemPool.join('、')}；奖励池=${profile.items.rewardItemPool.join('、')}；禁用=${profile.items.bannedItemKeywords.join('、')}`,
+    `地图系统：地点=${profile.map.locationTypes.join('、')}；POI=${profile.map.poiTypes.join('、')}；禁用地点=${profile.map.bannedLocationKeywords.join('、')}`,
+    `任务系统：主线=${profile.task.mainQuestStyle}；去重=${profile.task.sideQuestDedupeKeys.join('、')}；奖励发放=${profile.task.rewardDistributor}；可视化=${profile.task.rewardVisualizationTemplate}`,
+    `NPC系统：身份池=${profile.npc.defaultIdentityPool.join('、')}；关系=${profile.npc.relationTemplates.join('、')}；主要角色必填=${profile.npc.requiredMainCharacterFields.join('、')}；生图=${profile.npc.autoImageStyle}`,
+    `生图系统：服饰=${profile.image.characterClothingEra}；场景=${profile.image.sceneMaterials}；物品=${profile.image.itemRealismPrompt}；负面=${profile.image.negativePrompt}`,
+    `开局系统：背景=${profile.opening.defaultBackgrounds.join('、')}；天赋=${profile.opening.defaultTalents.join('、')}；切入=${profile.opening.cutInTemplates.join('、')}；初始任务=${profile.opening.initialQuestTemplates.join('、')}`,
+    `校验系统：禁词=${profile.validation.bannedWords.join('、')}；冲突检测=${profile.validation.conflictChecks.join('、')}；迁移清理=${profile.validation.migrationCleanupRules.join('、')}`
+]).join('\n');
