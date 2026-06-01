@@ -568,3 +568,44 @@
 - API key 只能保存在本机用户环境变量 `MORAN_E2E_AI_API_KEY` 中。
 - 不要把密钥写入仓库文件、提交、日志、截图、客户更新说明或聊天总结。
 - 测试调用方式按 OpenAI 兼容 Chat Completions 处理，并从上述环境变量读取配置。
+
+## 2026-06-01 111666 图床记录
+
+- 备用图床 `https://i.111666.best` 上传方式：
+  - `curl -F image=@localfile https://i.111666.best/image -H "Auth-Token: $MORAN_111666_AUTH_TOKEN"`
+- 删除凭据只保存在本机用户环境变量 `MORAN_111666_AUTH_TOKEN`。
+- 不要把这个 token 写入仓库文件、提交、日志、截图、客户更新说明或聊天总结。
+- 删除方式：
+  - `curl -XDELETE https://i.111666.best/image/IMAGE-PATH -H "Auth-Token: $MORAN_111666_AUTH_TOKEN"`
+- 下载/嵌入地址：
+  - `https://i.111666.best/image/IMAGE-PATH`
+- 本机测试发现的重要行为：
+  - 裸直链下载可能返回一张生成的 `403 Forbidden` 图片，提示禁止直接下载。
+  - 带网站 `Referer` 的浏览器式图片嵌入请求可以加载原图。
+  - 2.7 MB 测试图在带 `Referer: https://msjh.bacon159.pp.ua/` 的 12 并发 curl 请求下全部成功，本机测试平均约 0.6 秒/次。
+- 如果后续把该图床用于公开预设图，必须在主域名 `https://msjh.bacon159.pp.ua/` 与备用域名 `https://msjh.bacon.de5.net/` 上用真实浏览器 `<img>` 加载验证，因为 CLI/Node 裸请求行为和浏览器嵌入行为不完全一致。
+
+## 2026-06-01 GPT Image 2 预设图重生记录
+
+- GPT image 2 预设图重生所需凭据只能保存在本机用户环境变量中。
+- 主 OpenAI 兼容图片接口变量：
+  - `MORAN_GPT_IMAGE2_BASE_URL`
+  - `MORAN_GPT_IMAGE2_API_KEY`
+- Hostcentral 备用接口变量：
+  - `MORAN_GPT_IMAGE2_HOSTCENTRAL_BASE_URL`
+  - `MORAN_GPT_IMAGE2_HOSTCENTRAL_API_KEY`
+- Wanfeng 备用接口变量：
+  - `MORAN_GPT_IMAGE2_WANFENG_BASE_URL`
+  - `MORAN_GPT_IMAGE2_WANFENG_API_KEY`
+- 当前非密钥端点记录：
+  - 主端点 Base URL：`https://688.qzz.io`
+  - Hostcentral Base URL：`https://api.hostcentral.cc/v1`
+  - Wanfeng Base URL：`https://api.wanfeng.me`
+- 不要把图片 API key 写入仓库文件、提交、日志、截图、客户更新说明或聊天总结。
+- 辅助脚本 `scripts/regenerate-preset-images-gpt-image2.mjs` 可以用 GPT image 2 重生预设物品图，并上传到 nodeimage 或 111666：
+  - Deepark 任务接口模式：`--provider=deepark`
+  - OpenAI 兼容图片接口模式：`--provider=openai`
+  - 111666 上传模式：`--host=111666`
+  - 反向处理：`--reverse`
+  - 独立报表：`--report=some-report.json`
+- 截至 2026-06-01 本轮处理，`现代都市` 与 `末日丧尸` 的预设图已全部通过 GPT image 2 重生，并迁移到 111666 图床。

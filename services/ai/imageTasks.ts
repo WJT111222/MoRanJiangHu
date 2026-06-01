@@ -2032,7 +2032,7 @@ const 构建ComfyUI工作流 = (
         : hasConditioningZeroOut
             ? cleanedPrompt
             : 为不支持独立负面字段的模型附加负面提示词(cleanedPrompt, negativePrompt);
-    const isZImageTurboWorkflow = /mPMix_NSFW_V9_fp8|qwen_3_4b\.safetensors|qwen-image-2512-Q6_K|res_multistep|sgm_uniform/i.test(workflowText || '');
+    const isZImageTurboWorkflow = /zImageTurbo|z-image|Mystic-XXX-ZIT|mPMix_NSFW_V9_fp8|qwen_3_4b\.safetensors|qwen-image-2512-Q6_K|res_multistep|sgm_uniform/i.test(workflowText || '');
     const isQwenImageWorkflow = /qwen_image_fp8_e4m3fn|qwen_2\.5_vl_7b_fp8_scaled|qwen_image_vae/i.test(workflowText || '');
     const defaultSteps = isZImageTurboWorkflow ? 9 : (isQwenImageWorkflow ? 20 : 28);
     const defaultCfg = isZImageTurboWorkflow ? 1 : (isQwenImageWorkflow ? 2.5 : 7);
