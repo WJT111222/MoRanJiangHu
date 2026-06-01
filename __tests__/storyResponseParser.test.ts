@@ -141,7 +141,8 @@ describe('storyResponseParser', () => {
 
         expect(rendered).toEqual([
             { sender: '杨培强', text: '“弟子，领命。”' },
-            { sender: '旁白', text: '风，渐渐停了。\n\n铅灰色的云层开始散去。\n“遵命！”\n风声穿过长廊。' },
+            { sender: '旁白', text: '风，渐渐停了。\n\n铅灰色的云层开始散去。\n“遵命！”' },
+            { sender: '杨镇远', text: '风声穿过长廊。' },
             { sender: '杨青儿', text: '“哥，小心些。”' },
             { sender: '林云轩', text: '（将铜盆放稳，拧干热帕子）“娘，先净净面吧。”' }
         ]);

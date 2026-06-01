@@ -145,11 +145,11 @@ const 默认NunchakuQwenImageComfyUI工作流 = {
 const 默认ZImageTurboComfyUI工作流 = {
   "3": {
     "inputs": {
-      "seed": 31718977384718,
-      "steps": 4,
-      "cfg": 1,
-      "sampler_name": "euler",
-      "scheduler": "simple",
+      "seed": "__SEED__",
+      "steps": "__STEPS__",
+      "cfg": "__CFG__",
+      "sampler_name": "__SAMPLER__",
+      "scheduler": "__SCHEDULER__",
       "denoise": 1,
       "model": [
         "57",
@@ -239,7 +239,7 @@ const 默认ZImageTurboComfyUI工作流 = {
   },
   "53": {
     "inputs": {
-      "width": "__WIDTH__ ",
+      "width": "__WIDTH__",
       "height": "__HEIGHT__",
       "batch_size": 1
     },

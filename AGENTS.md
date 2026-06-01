@@ -575,3 +575,44 @@ If the task is "confirm this UI works" and the opening flow depends on external 
 - The API key must stay only in the local user environment variable `MORAN_E2E_AI_API_KEY`.
 - Never write the key into repository files, commits, logs, screenshots, customer changelogs, or chat summaries.
 - Test calls should treat the endpoint as OpenAI-compatible Chat Completions and read configuration from the variables above.
+
+## 2026-06-01 111666 Image Host Notes
+
+- The fallback image host `https://i.111666.best` accepts uploads with:
+  - `curl -F image=@localfile https://i.111666.best/image -H "Auth-Token: $MORAN_111666_AUTH_TOKEN"`
+- Store the delete credential only in the local user environment variable `MORAN_111666_AUTH_TOKEN`.
+- Do not write this token into repository files, commits, logs, screenshots, customer changelogs, or chat summaries.
+- Delete syntax:
+  - `curl -XDELETE https://i.111666.best/image/IMAGE-PATH -H "Auth-Token: $MORAN_111666_AUTH_TOKEN"`
+- Download/embed syntax:
+  - `https://i.111666.best/image/IMAGE-PATH`
+- Important behavior from local testing:
+  - Bare direct downloads can return a generated `403 Forbidden` image saying direct-link downloads are prohibited.
+  - Browser-style embedded image requests with a site `Referer` can load the original image.
+  - A 2.7 MB test image loaded successfully under 12 concurrent curl requests with `Referer: https://msjh.bacon159.pp.ua/`, averaging about 0.6 seconds per request in the local test.
+- If this host is used for public preset images, verify real browser `<img>` loading on both the primary domain `https://msjh.bacon159.pp.ua/` and backup domain `https://msjh.bacon.de5.net/`, because CLI/Node direct fetch behavior does not match browser embedding behavior.
+
+## 2026-06-01 GPT Image 2 Preset Regeneration Notes
+
+- GPT image 2 preset regeneration credentials must stay in local user environment variables only.
+- Primary OpenAI-compatible image endpoint variables:
+  - `MORAN_GPT_IMAGE2_BASE_URL`
+  - `MORAN_GPT_IMAGE2_API_KEY`
+- Hostcentral fallback endpoint variables:
+  - `MORAN_GPT_IMAGE2_HOSTCENTRAL_BASE_URL`
+  - `MORAN_GPT_IMAGE2_HOSTCENTRAL_API_KEY`
+- Wanfeng fallback endpoint variables:
+  - `MORAN_GPT_IMAGE2_WANFENG_BASE_URL`
+  - `MORAN_GPT_IMAGE2_WANFENG_API_KEY`
+- Current non-secret endpoint memory:
+  - Primary base URL: `https://688.qzz.io`
+  - Hostcentral base URL: `https://api.hostcentral.cc/v1`
+  - Wanfeng base URL: `https://api.wanfeng.me`
+- Never write image API keys into repository files, commits, logs, screenshots, customer changelogs, or chat summaries.
+- The helper script `scripts/regenerate-preset-images-gpt-image2.mjs` can regenerate preset item images with GPT image 2 and upload results to either nodeimage or 111666:
+  - Deepark task API mode: `--provider=deepark`
+  - OpenAI-compatible image API mode: `--provider=openai`
+  - 111666 upload mode: `--host=111666`
+  - Reverse processing: `--reverse`
+  - Separate reports: `--report=some-report.json`
+- As of the 2026-06-01 run, all `现代都市` and `末日丧尸` preset images were regenerated through GPT image 2 and moved to the 111666 image host.

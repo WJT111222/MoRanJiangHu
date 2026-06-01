@@ -697,7 +697,20 @@ const ManualTabContent: React.FC<TabProps> = ({ socialList, cultivationSystemEna
         });
     };
     const handleSecretPartSubmit = async (part: 香闺秘档部位类型 | '全部') => {
-        if (!onGenerateSecretPartImage || !selectedNpcId || secretPartRecords.length <= 0) return;
+        if (!onGenerateSecretPartImage) {
+            setSecretStatusText('当前图片管理器未接入私密部位生图入口，请更新到最新版本后重试。');
+            return;
+        }
+        if (!selectedNpcId) {
+            setSecretStatusText('请先选择一个角色，再生成私密部位特写。');
+            return;
+        }
+        if (secretPartRecords.length <= 0) {
+            setSecretStatusText(NPC是否男性或男娘(selectedNpc) && !femboyNsfwEnabled
+                ? '当前已关闭男娘 / 扶她相关 NSFW 内容，男性/男娘/扶她角色不会显示或生成私密部位特写。'
+                : '当前角色没有可生成的私密部位入口，请先确认角色性别与香闺秘档部位描述。');
+            return;
+        }
         const resolvedStyle = secretStyle === '二次元' || secretStyle === '写实' || secretStyle === '国风'
             ? secretStyle
             : undefined;

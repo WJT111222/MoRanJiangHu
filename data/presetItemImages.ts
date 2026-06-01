@@ -593,15 +593,15 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     { 名称: '宗门令牌', 类型: '任务道具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/wqjYlbMNo0DisdisivvI1f3kaUV8aAId.jpg' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '智能手机', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/ooIVVmheZ6SHI55JYMRZXEAmAzZKmkxT.jpg' },
+    { 名称: '智能手机', 类型: '杂物', 品质: '良品', 图片URL: 'https://i.111666.best/image/6IBBdfUndPZL8xU6KhQPkh.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     { 名称: '洞府禁牌', 类型: '任务道具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/SJDC0aqC13EpW20xndD7SYz2h1ZYnOTs.jpg' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '急救包', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/61Ij9shISjRPj65bKrEs0BkJWBAqmsEm.jpg' },
+    { 名称: '急救包', 类型: '消耗品', 品质: '良品', 图片URL: 'https://i.111666.best/image/I6cgU8J6gKcXRbAHRSSOdL.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '录音笔', 类型: '杂物', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/ogYPHMxJP1W45nuEoGTECDJYfYh4ByWA.jpg' },
+    { 名称: '录音笔', 类型: '杂物', 品质: '上品', 图片URL: 'https://i.111666.best/image/DnEM2IDVFfo6z6teC29z0o.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '笔记本电脑', 类型: '杂物', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/2AJVlzcL5e7NppKNnlXyiZPHS1XPE6eP.jpg' },
+    { 名称: '笔记本电脑', 类型: '杂物', 品质: '上品', 图片URL: 'https://i.111666.best/image/Ug15IXjckzxjyrn30kIziC.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     { 名称: '镖局凭证', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/Db4HMKZUPVxmUcmxE11i344T2myGAGXe.jpg' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
@@ -609,107 +609,107 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     { 名称: '传承玉符', 类型: '任务道具', 品质: '绝世', 图片URL: 'https://cdn.nodeimage.com/i/TAcXQUHvfkgXv2WxmKlw22xI48El1YEI.jpg' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '防割手套', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/lJuBSDS49P8pFzccVcPirNQ82qPtoM8Y.jpg' },
+    { 名称: '防割手套', 类型: '防具', 品质: '良品', 图片URL: 'https://i.111666.best/image/UCwjtVpIaHhKCPltt88xU9.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '银行卡', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/283aeUCXst8HetqkS7ZvxgxrYAHFHXYU.jpg' },
+    { 名称: '银行卡', 类型: '杂物', 品质: '良品', 图片URL: 'https://i.111666.best/image/PrgMYdsH2ZwfAFl5Ho30CQ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '古玉残佩', 类型: '饰品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/KzALbyaXRqtXM0h9FocLerleOKNQAlW8.jpg' },
+    { 名称: '古玉残佩', 类型: '饰品', 品质: '上品', 图片URL: 'https://i.111666.best/image/ysZZ5Ou6IKAWbfPuTFLaT9.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '现金信封', 类型: '杂物', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/CJcBhSH4QdHoKVWVtAgBqGu45cK0eQyU.jpg' },
+    { 名称: '现金信封', 类型: '杂物', 品质: '凡品', 图片URL: 'https://i.111666.best/image/ujnfITZ5an3wQO7wPCLcJ7.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '合同文件', 类型: '任务道具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/OIltUoAkwZsb0EysIaAobwOr5fHqPYXR.jpg' },
+    { 名称: '合同文件', 类型: '任务道具', 品质: '良品', 图片URL: 'https://i.111666.best/image/oZmIYiXB962Js0v1zadaCd.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '证件夹', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/EUnUL1YO6hNF80HyiyUb8Ri7RJTY0mXO.jpg' },
+    { 名称: '证件夹', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://i.111666.best/image/42BnkJFEaCDR5iy51hf4Vt.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '数据U盘', 类型: '任务道具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/S9y8d2NpOl5yVI2zWxza9NEdevfW73v6.jpg' },
+    { 名称: '数据U盘', 类型: '任务道具', 品质: '上品', 图片URL: 'https://i.111666.best/image/KTZXAoBBn20zsMYaRyRYSY.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '维修工具箱', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/2ZBvWH8XOgFeV0Q0tNeMCYaPd0FIHuVe.jpg' },
+    { 名称: '维修工具箱', 类型: '杂物', 品质: '良品', 图片URL: 'https://i.111666.best/image/Cng10A9sMD53JjGjJo2OiA.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '车钥匙', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/IYMUZUutE2tqyZp5KYQZ85Yeo24Iygwj.jpg' },
+    { 名称: '车钥匙', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://i.111666.best/image/mBbtJGmxRA1q9E4R0lrfqS.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '电子元件包', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/EwJSL4ckEUe0lcKemFWAdKbU2R8iY7cM.jpg' },
+    { 名称: '电子元件包', 类型: '材料', 品质: '良品', 图片URL: 'https://i.111666.best/image/PkRxqXONNDWSjS3lCgBQsQ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '多功能工具钳', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/jkxGoAo9K4XHKH9C3oyi2QWPmOmG8lUj.jpg' },
+    { 名称: '多功能工具钳', 类型: '杂物', 品质: '良品', 图片URL: 'https://i.111666.best/image/pUiL9qjhcQoDBlOIwkf19E.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '备用电池组', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/y5nfBWYNy6YkYKHGtszjOKIGdrX9L8qK.jpg' },
+    { 名称: '备用电池组', 类型: '材料', 品质: '良品', 图片URL: 'https://i.111666.best/image/5WydIeZiP34aFS6tmEm974.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '防身喷雾', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/Czn3zDYhJVmVqzHSMAd6DELHXuC5703b.jpg' },
+    { 名称: '防身喷雾', 类型: '武器', 品质: '凡品', 图片URL: 'https://i.111666.best/image/ShhI253BWRyGfeDDyWEEJc.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '伸缩警棍', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/gTbqBBPIF9EVA2fIPCJLpKYd6XcMWYLz.jpg' },
+    { 名称: '伸缩警棍', 类型: '武器', 品质: '良品', 图片URL: 'https://i.111666.best/image/ojX5c5xmrFoR7tlc5hd60k.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '轻便夹克', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/yr76LWnhngimkLGkYOEeXFHGFAwFSMQp.jpg' },
+    { 名称: '轻便夹克', 类型: '防具', 品质: '凡品', 图片URL: 'https://i.111666.best/image/1moZuNNJM8P4QaJ114NVSa.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '运动鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/qC7d1SnobE2mCLGFCBOnYBnzs3pYltuY.jpg' },
+    { 名称: '运动鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://i.111666.best/image/FFtFOFzKKMtjzKeTKbP1zE.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '防护口罩', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/CrEqpGiQeB7J5jrKSx6Ula8xAWIf4LIS.jpg' },
+    { 名称: '防护口罩', 类型: '防具', 品质: '凡品', 图片URL: 'https://i.111666.best/image/VVelOqQ59QqrILu3Gzd14H.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '电脑维修手册', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/ZYWPaq4L0G6acUsQSXtEPk1JsHrRjeuo.jpg' },
+    { 名称: '电脑维修手册', 类型: '秘籍', 品质: '良品', 图片URL: 'https://i.111666.best/image/FOAXnQ2liQ7tF9jFeox9q5.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '急救手册', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/82u1X9Sh4uxwxdcsbCCPC6KWHIYge48g.jpg' },
+    { 名称: '急救手册', 类型: '秘籍', 品质: '良品', 图片URL: 'https://i.111666.best/image/87OkwULuiLJw0BQGIfPKv2.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '便携检测仪', 类型: '杂物', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/MS4kDWZdtRk1Lzm9sGvgjX6sqTjTpF1s.jpg' },
+    { 名称: '便携检测仪', 类型: '杂物', 品质: '上品', 图片URL: 'https://i.111666.best/image/GNudr1hzVs2KEJO6Up4Edq.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '防护服', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/v0Rr4Yv2Or6mhotxviYah4mDnbXzapVy.jpg' },
+    { 名称: '防护服', 类型: '防具', 品质: '上品', 图片URL: 'https://i.111666.best/image/93pnzPbiHmrhyaVg1COl90.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '异常样本盒', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/zMwRJEEXkAYFPpDTwIvsjxuYjGV4l0dP.jpg' },
+    { 名称: '异常样本盒', 类型: '材料', 品质: '上品', 图片URL: 'https://i.111666.best/image/vFB41Ha6GDXUJtEL3NI7WL.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '灵能探测器', 类型: '杂物', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/cN9qYYQt1kAN4skS31U3qMwPgsZGxBRM.jpg' },
+    { 名称: '灵能探测器', 类型: '杂物', 品质: '上品', 图片URL: 'https://i.111666.best/image/sEPaSvjHzQb95O3eXBVirE.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '银戒指', 类型: '饰品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/XCcWeEHcnozNtnWdG9gSdXmw7VYvY2HI.jpg' },
+    { 名称: '银戒指', 类型: '饰品', 品质: '良品', 图片URL: 'https://i.111666.best/image/JOF1eG8icKyG5Vqz1Qs3ct.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '灵气抑制贴', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/bQBCDg8EflvwyyQ7HQUr7d89OAiYBEeA.jpg' },
+    { 名称: '灵气抑制贴', 类型: '消耗品', 品质: '良品', 图片URL: 'https://i.111666.best/image/eMnU5yem1FlPm1Dr7qJ6G3.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '罐头包', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/xfBFAJ81HV2pS3QSZwnhNM010gIZylOI.jpg' },
+    { 名称: '罐头包', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://i.111666.best/image/zzSb3xf6lYaQNMiJ6Eqg0g.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '怀表', 类型: '饰品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/WwWNGs4tG2y4fEs1wukejIAEK35PQRB8.jpg' },
+    { 名称: '怀表', 类型: '饰品', 品质: '良品', 图片URL: 'https://i.111666.best/image/zAjTcOR9gDeQzW3fYeP5BQ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '净水片', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/u6i5gVTReTXzopaof6NPXlCftHZktx1O.jpg' },
+    { 名称: '净水片', 类型: '消耗品', 品质: '良品', 图片URL: 'https://i.111666.best/image/3PWthr9JWX9eEo5bADCLY0.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '手摇电筒', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/ccwxZxEV0tRn4BDq1lQhwm0ptlDOB5Yu.jpg' },
+    { 名称: '手摇电筒', 类型: '杂物', 品质: '良品', 图片URL: 'https://i.111666.best/image/7XnfUs7qbG9eKkDgX2P5LS.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '弩机组件', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/nbvqyABFda3HGgnyH5uDisC6jGTZ34Sm.jpg' },
+    { 名称: '弩机组件', 类型: '武器', 品质: '上品', 图片URL: 'https://i.111666.best/image/rLMR31hO1HZrnGBrZKoxHy.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '抗生素散盒', 类型: '消耗品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/FSbSrfPfU7I5FGfesv7GTPare0I3wPw2.jpg' },
+    { 名称: '抗生素散盒', 类型: '消耗品', 品质: '上品', 图片URL: 'https://i.111666.best/image/ZlDthQ1DrBWwUwkxrZupHP.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '饮水瓶', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/UnNGj4dQ0uDoNPB7X0tCBp006CZcb3T9.jpg' },
+    { 名称: '饮水瓶', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://i.111666.best/image/QvUPDcfAD6NlZntkZQ7NYI.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '汽油桶', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/wceQL3JpihpiZdbgNTblxzYL7DTruRD4.jpg' },
+    { 名称: '汽油桶', 类型: '材料', 品质: '良品', 图片URL: 'https://i.111666.best/image/m3XxcLIsLjEz1XdVO4fDzb.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '压缩饼干', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/7YK0wVz7GaFO0t1CDyHkZaOOP3kgCd0C.jpg' },
+    { 名称: '压缩饼干', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://i.111666.best/image/3sISFn1QTrvvEH59RqdtF4.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '医用绷带', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/MswWJUEhh4iSFXDHcTomWrEopf3YUrF1.jpg' },
+    { 名称: '医用绷带', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://i.111666.best/image/eNFAAbhywx4884YpIHwIh9.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '止血带', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/Lp5sjoyPU6d7pyNMnBrpWts6pNRZNDXx.jpg' },
+    { 名称: '止血带', 类型: '消耗品', 品质: '良品', 图片URL: 'https://i.111666.best/image/GR7AdlesbqPS70uSrxQWNi.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '过滤水壶', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/fhKmBhzgCpRXOB1oMhFiQWpF9CYDhnDW.jpg' },
+    { 名称: '过滤水壶', 类型: '杂物', 品质: '良品', 图片URL: 'https://i.111666.best/image/EU8TjIq5R8ANYnMIbKHv76.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '干电池组', 类型: '材料', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/gMjgrgMZKioyCSiIldXqNUpkpDL2Nymu.jpg' },
+    { 名称: '干电池组', 类型: '材料', 品质: '凡品', 图片URL: 'https://i.111666.best/image/dw0notRPnDmob5k78vi0eQ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '净水滤芯', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/Y8AbadatS0UpejhYluKXloLRp4ItellI.jpg' },
+    { 名称: '净水滤芯', 类型: '材料', 品质: '良品', 图片URL: 'https://i.111666.best/image/kynT9EsJA5YrIL7TtLs0ik.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '太阳能充电板', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/MQLoQy2ZRmh2eboOInBtKrSxZ6LLVYsm.jpg' },
+    { 名称: '太阳能充电板', 类型: '材料', 品质: '上品', 图片URL: 'https://i.111666.best/image/y4CqGZs8ddsXXSlMhhCh0r.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '弹药盒', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/Bo7ff9nkWsHYfIGnsdP0nfKBQUgNvlut.jpg' },
+    { 名称: '弹药盒', 类型: '材料', 品质: '上品', 图片URL: 'https://i.111666.best/image/1VpIEKsvrWWq7RhNKaOge3.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '护目镜', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/Y30W0Wt4dyNq96TSQGlBJgz1PTkfnuvD.jpg' },
+    { 名称: '护目镜', 类型: '防具', 品质: '良品', 图片URL: 'https://i.111666.best/image/SUFmb8jLy2JrpZBeHe9Hfg.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '防毒面具', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/4YwIArERXgfYo0DPsFLcpKOtvFM4hSMU.jpg' },
+    { 名称: '防毒面具', 类型: '防具', 品质: '上品', 图片URL: 'https://i.111666.best/image/boBlSERrR4J7UhV91WLDwK.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '撬棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/RbIjYYhXpfBCvM5zkZawiSNqPp5E8nCc.jpg' },
+    { 名称: '撬棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://i.111666.best/image/8eG4bO2N5STl3EzW9Qab9D.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '战术背心', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/JblCgJAjtprxiCySY598fZY2R2YBXa9T.jpg' },
+    { 名称: '战术背心', 类型: '防具', 品质: '良品', 图片URL: 'https://i.111666.best/image/GhqDeuMMNPao0yvgexT0ng.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '消音弩', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/3JLFrH2cEm4tMTooW0BlX9x8u1s8GJYe.jpg' },
+    { 名称: '消音弩', 类型: '武器', 品质: '上品', 图片URL: 'https://i.111666.best/image/8bUPYvBiDdrs4DosKcoTH6.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '求生手册', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/RPoN4UKHYK6KvAMtSUCj44WAVOFvQnEJ.jpg' },
+    { 名称: '求生手册', 类型: '秘籍', 品质: '良品', 图片URL: 'https://i.111666.best/image/H08DlaqQVs1XX4VByjHuoF.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '营地通行证', 类型: '任务道具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/aS7Y1vnxES4ywsGuYNXVBPccMJXsljSi.jpg' },
+    { 名称: '营地通行证', 类型: '任务道具', 品质: '良品', 图片URL: 'https://i.111666.best/image/PN80ictaOV68rvPiub7UUy.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '无线电台', 类型: '杂物', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/GBGA9JfCqrE2WIxUbAf8Oc1R2EBat48i.jpg' },
+    { 名称: '无线电台', 类型: '杂物', 品质: '上品', 图片URL: 'https://i.111666.best/image/AjajF5c8k308rwxjRJfnoZ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '防水火柴', 类型: '杂物', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/SF3zKZCJrBdrEMqLgOBz8JMdzvGEZTXb.jpg' },
+    { 名称: '防水火柴', 类型: '杂物', 品质: '凡品', 图片URL: 'https://i.111666.best/image/hqAAgA2YJpae44ZflOfd6k.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '感染检测卡', 类型: '任务道具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/zYfYLnVQP9jn2xZHzAKZYcMPyzaJTB1j.jpg' },
+    { 名称: '感染检测卡', 类型: '任务道具', 品质: '上品', 图片URL: 'https://i.111666.best/image/Ic63GnqD9M8BFscpH8Rktl.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     { 名称: '骑士长剑', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/mCFyE6rWvboTDf7rEYgzgYtkHQR4EMBj.jpg' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
