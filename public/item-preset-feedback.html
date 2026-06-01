@@ -346,9 +346,11 @@ const maxConcurrentImageLoads = Number.POSITIVE_INFINITY;
 let activeImageLoads = 0;
 const imageLoadQueue = [];
 const queuedImages = new WeakSet();
+const loadedImageUrls = new Set();
+const pendingImageLoads = new Map();
+const presetCardCache = new Map();
 function imageUrlForAttempt(url, attempt) {
-  if (!attempt) return url;
-  return `${url}${url.includes('?') ? '&' : '?'}retry=${attempt}`;
+  return url;
 }
 function setImageStatus(imgbox, className, text) {
   if (!imgbox) return;
@@ -357,40 +359,92 @@ function setImageStatus(imgbox, className, text) {
 }
 function enqueueImageLoad(img, imgbox, item, attempt = 0) {
   if (!img || !imgbox || !item || img.dataset.loaded === '1') return;
-  if (queuedImages.has(img) && attempt === Number(img.dataset.attempt || 0)) return;
+  if (loadedImageUrls.has(item.src)) {
+    img.src = item.src;
+    img.dataset.loaded = '1';
+    setImageStatus(imgbox, '', '');
+    return;
+  }
+  if (queuedImages.has(img) && img.dataset.attempt === String(attempt)) return;
   img.dataset.attempt = String(attempt);
   queuedImages.add(img);
   imageLoadQueue.push({ img, imgbox, item, attempt });
   pumpImageLoadQueue();
 }
+function loadPresetImageWithRetry(url, attempt = 0) {
+  return new Promise((resolve, reject) => {
+    const loader = new Image();
+    let settled = false;
+    const retry = () => {
+      if (settled) return;
+      settled = true;
+      if (attempt >= 4) {
+        reject(new Error('Image load failed'));
+        return;
+      }
+      const delay = Math.min(12000, 1200 * (2 ** attempt));
+      window.setTimeout(() => {
+        loadPresetImageWithRetry(url, attempt + 1).then(resolve, reject);
+      }, delay);
+    };
+    const timer = window.setTimeout(retry, Math.min(20000, 8000 + attempt * 3000));
+    loader.decoding = 'async';
+    loader.onload = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      resolve(url);
+    };
+    loader.onerror = () => {
+      window.clearTimeout(timer);
+      retry();
+    };
+    loader.src = imageUrlForAttempt(url, attempt);
+  });
+}
+function loadPresetImageOnce(url) {
+  if (loadedImageUrls.has(url)) return Promise.resolve(url);
+  const pending = pendingImageLoads.get(url);
+  if (pending) return pending;
+  const promise = loadPresetImageWithRetry(url)
+    .then((loadedUrl) => {
+      loadedImageUrls.add(url);
+      return loadedUrl;
+    })
+    .finally(() => {
+      pendingImageLoads.delete(url);
+    });
+  pendingImageLoads.set(url, promise);
+  return promise;
+}
 function pumpImageLoadQueue() {
   while (activeImageLoads < maxConcurrentImageLoads && imageLoadQueue.length) {
     const task = imageLoadQueue.shift();
     const { img, imgbox, item, attempt } = task;
-    if (!img.isConnected || img.dataset.loaded === '1') continue;
+    if (img.dataset.loaded === '1') continue;
     queuedImages.delete(img);
     activeImageLoads += 1;
     setImageStatus(imgbox, 'loading', attempt > 0 ? `图片重试中（${attempt}/4）` : '图片加载中');
-    img.onload = () => {
+    if (!img.getAttribute('src')) {
+      img.src = item.src;
+    }
+    loadPresetImageOnce(item.src).then((loadedUrl) => {
       activeImageLoads = Math.max(0, activeImageLoads - 1);
-      img.dataset.loaded = '1';
-      setImageStatus(imgbox, '', '');
+      if (img.isConnected) {
+        img.src = loadedUrl;
+        img.dataset.loaded = '1';
+        setImageStatus(imgbox, '', '');
+      }
       pumpImageLoadQueue();
-    };
-    img.onerror = () => {
+    }).catch(() => {
       activeImageLoads = Math.max(0, activeImageLoads - 1);
-      img.removeAttribute('src');
-      if (attempt < 4 && img.isConnected) {
-        const delay = Math.min(12000, 1200 * (2 ** attempt));
-        setImageStatus(imgbox, 'loading', `图片稍后重试（${attempt + 1}/4）`);
-        window.setTimeout(() => enqueueImageLoad(img, imgbox, item, attempt + 1), delay);
-      } else {
+      if (img.isConnected) {
+        img.removeAttribute('src');
         setImageStatus(imgbox, 'fail', '图片加载失败，滚动停留后可刷新重试');
         if (!imgbox.querySelector('.badge')) imgbox.appendChild(el('span', 'badge', item.source));
       }
       pumpImageLoadQueue();
-    };
-    img.src = imageUrlForAttempt(item.src, attempt);
+    });
   }
 }
 function watchPresetImage(img, imgbox, item) {
@@ -448,6 +502,67 @@ function rebuildTypeOptions() {
   }
   type.value = values.includes(previous) ? previous : '';
 }
+function getPresetCard(item, key, mark) {
+  let cached = presetCardCache.get(key);
+  if (!cached) {
+    const card = el('article', 'card');
+    const imgbox = el('div', 'imgbox');
+    const img = document.createElement('img');
+    img.loading = 'eager';
+    img.decoding = 'async';
+    img.alt = item.name;
+    img.title = '点击放大';
+    img.style.cursor = 'zoom-in';
+    img.onclick = () => openViewer(item);
+    imgbox.appendChild(img);
+    if (item.source === '远程图') imgbox.appendChild(el('span', 'badge', '远程图'));
+
+    const meta = el('div', 'meta');
+    meta.appendChild(el('div', 'name', item.name));
+    const tags = el('div', 'tags');
+    tags.appendChild(el('span', 'tag', item.type));
+    tags.appendChild(el('span', 'tag', item.quality));
+    tags.appendChild(el('span', 'tag', item.source));
+    meta.appendChild(tags);
+
+    const note = document.createElement('textarea');
+    note.className = 'note';
+    note.placeholder = '这里写问题，例如：像盔甲不是鞋';
+    note.oninput = () => {
+      marks[key] = { ...(marks[key] || {}), note: note.value };
+      save();
+    };
+    meta.appendChild(note);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'mark';
+    button.onclick = () => {
+      const currentMark = marks[key] || {};
+      marks[key] = { ...currentMark, problem: !currentMark.problem, note: note.value };
+      save();
+      render();
+    };
+    meta.appendChild(button);
+    card.appendChild(imgbox);
+    card.appendChild(meta);
+    cached = { card, imgbox, img, note, button, item };
+    presetCardCache.set(key, cached);
+    watchPresetImage(img, imgbox, item);
+  }
+  cached.card.className = 'card ' + (mark.problem ? 'problem' : '');
+  if (document.activeElement !== cached.note) {
+    cached.note.value = mark.note || '';
+  }
+  cached.button.className = 'mark ' + (mark.problem ? 'active' : '');
+  cached.button.textContent = mark.problem ? '已标问题' : '标为有问题';
+  if (cached.img.getAttribute('src') && cached.img.complete && cached.img.naturalWidth > 0) {
+    cached.img.dataset.loaded = '1';
+    loadedImageUrls.add(item.src);
+    setImageStatus(cached.imgbox, '', '');
+  }
+  return cached.card;
+}
 function render() {
   const query = q.value.trim().toLowerCase();
   const typeFilter = type.value;
@@ -466,49 +581,7 @@ function render() {
     if (stateFilter === 'todo' && mark.problem) continue;
     shown += 1;
 
-    const card = el('article', 'card ' + (mark.problem ? 'problem' : ''));
-    const imgbox = el('div', 'imgbox');
-    const img = document.createElement('img');
-    img.loading = 'eager';
-    img.decoding = 'async';
-    img.alt = item.name;
-    img.title = '点击放大';
-    img.style.cursor = 'zoom-in';
-    img.onclick = () => openViewer(item);
-    imgbox.appendChild(img);
-    if (item.source === '远程图') imgbox.appendChild(el('span', 'badge', '远程图'));
-    watchPresetImage(img, imgbox, item);
-
-    const meta = el('div', 'meta');
-    meta.appendChild(el('div', 'name', item.name));
-    const tags = el('div', 'tags');
-    tags.appendChild(el('span', 'tag', item.type));
-    tags.appendChild(el('span', 'tag', item.quality));
-    tags.appendChild(el('span', 'tag', item.source));
-    meta.appendChild(tags);
-
-    const note = document.createElement('textarea');
-    note.className = 'note';
-    note.placeholder = '这里写问题，例如：像盔甲不是鞋';
-    note.value = mark.note || '';
-    note.oninput = () => {
-      marks[key] = { ...(marks[key] || {}), note: note.value };
-      save();
-    };
-    meta.appendChild(note);
-
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'mark ' + (mark.problem ? 'active' : '');
-    button.textContent = mark.problem ? '已标问题' : '标为有问题';
-    button.onclick = () => {
-      marks[key] = { ...(marks[key] || {}), problem: !mark.problem, note: note.value };
-      save();
-      render();
-    };
-    meta.appendChild(button);
-    card.appendChild(imgbox);
-    card.appendChild(meta);
+    const card = getPresetCard(item, key, mark);
     grid.appendChild(card);
   }
   const problemCount = scopedItems.filter(item => (marks[itemKey(item)] || {}).problem).length;
