@@ -56,6 +56,50 @@ const statusText: Record<StageStatus, string> = {
     blocked: '未就绪'
 };
 
+type StageToggleConfig = {
+    enableKey: PlaceholderKey;
+    tipText: string;
+};
+
+const stageToggleTips: Record<string, StageToggleConfig> = {
+    recall: {
+        enableKey: '剧情回忆独立模型开关',
+        tipText: '剧情回忆会在指定回合后检索历史事件并注入上下文。关闭后主剧情不会参考之前的关键剧情回忆，推荐保持开启。'
+    },
+    polish: {
+        enableKey: '文章优化独立模型开关',
+        tipText: '文章优化会对主剧情正文做润色扩写。关闭后正文保持原始输出，可以减少格式类 bug 出现几率，但文笔可能会略粗糙。可开可不开。'
+    },
+    variable: {
+        enableKey: '变量计算独立模型开关',
+        tipText: '强烈建议开启！变量生成负责产出角色状态、物品、装备、技能等结构化命令。关闭后游戏基本只剩下纯文字，角色面板、背包、战斗系统等都不会正常更新。'
+    },
+    world: {
+        enableKey: '世界演变功能启用',
+        tipText: '动态世界会模拟势力消长、NPC 行动、商路变化等宏观演变。关闭后江湖不会再自行演化，世界会相对静止。按需开启。'
+    },
+    planning: {
+        enableKey: '规划分析功能启用',
+        tipText: '规划分析会在每回合后检查剧情连贯性、女主塑造和长期走向，并输出修正建议。关闭后剧情完全靠主剧情模型自由发挥。按需开启。'
+    },
+    map: {
+        enableKey: '地图生成功能启用',
+        tipText: '地图更新会在每回合后增量维护地点树。目前地图系统仍有已知 bug，如果遇到显示异常或卡顿，可以考虑关闭。受不了 bug 就关掉。'
+    },
+    summary: {
+        enableKey: '记忆总结独立模型开关',
+        tipText: '记忆总结会在短期记忆累积到阈值后自动合并为长期记忆。关闭后短期记忆不会自动精简，上下文窗口可能会更快占满。推荐开启。'
+    },
+    refine: {
+        enableKey: '记忆精炼独立模型开关',
+        tipText: '记忆精炼由玩家手动触发，可将多条历史回忆合并为一条纪要。关闭后无法使用回忆整理功能。按需开启。'
+    },
+    novel: {
+        enableKey: '小说拆分功能启用',
+        tipText: '小说分解是离线数据处理阶段，用于构建同人小说的结构化数据集。不玩同人模式可以关闭。按需开启。'
+    }
+};
+
 const statusClass: Record<StageStatus, string> = {
     enabled: 'border-emerald-400/45 bg-emerald-950/25 text-emerald-100',
     disabled: 'border-gray-700 bg-black/25 text-gray-400',
@@ -563,9 +607,26 @@ const WorkflowGraphSettings: React.FC<{
         );
     };
 
+    const StageTipTooltip: React.FC<{ tipText: string }> = ({ tipText }) => {
+        const [showTip, setShowTip] = useState(false);
+        return (
+            <div className="relative" onMouseEnter={() => setShowTip(true)} onMouseLeave={() => setShowTip(false)}>
+                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 bg-black/30 text-[10px] text-gray-400 cursor-help">?</span>
+                {showTip && (
+                    <div className="absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-md border border-wuxia-gold/30 bg-gray-950 px-3 py-2 text-[10px] leading-5 text-gray-200 shadow-lg">
+                        {tipText}
+                        <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-950" />
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     const stageCard = (stage: FlowStage) => {
         const clickable = Boolean(stage.configTab && onNavigate);
         const hasInlineControls = Boolean(stage.modelConfig && !stage.localOnly);
+        const toggleConfig = stageToggleTips[stage.id];
+        const isToggleOn = toggleConfig ? (normalized.功能模型占位[toggleConfig.enableKey] !== false) : undefined;
         const className = `${hasInlineControls ? 'min-h-[214px]' : 'min-h-[132px]'} w-[210px] shrink-0 rounded border px-3 py-2 text-left shadow-inner transition ${statusClass[stage.status]} ${
             clickable ? 'hover:-translate-y-0.5 hover:border-wuxia-gold/70' : ''
         }`;
@@ -580,6 +641,38 @@ const WorkflowGraphSettings: React.FC<{
                     {statusText[stage.status]}
                 </span>
             </div>
+            {toggleConfig && (
+                <div className="mt-2 flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (!onSave) return;
+                            const currentValue = normalized.功能模型占位[toggleConfig.enableKey];
+                            const nextValue = currentValue === false;
+                            persistForm((prev) => ({
+                                ...prev,
+                                功能模型占位: {
+                                    ...prev.功能模型占位,
+                                    [toggleConfig.enableKey]: nextValue
+                                }
+                            }));
+                        }}
+                        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                            isToggleOn !== false
+                                ? 'bg-emerald-500/80'
+                                : 'bg-gray-600/80'
+                        } ${onSave ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+                    >
+                        <span
+                            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+                                isToggleOn !== false ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                            }`}
+                        />
+                    </button>
+                    <span className="text-[10px] text-gray-300">{isToggleOn !== false ? '开启' : '关闭'}</span>
+                    <StageTipTooltip tipText={toggleConfig.tipText} />
+                </div>
+            )}
             <div className="mt-1 space-y-0.5 text-[10px] leading-4">
                 <div className="truncate text-gray-300">渠道：<span className="text-wuxia-cyan">{stage.channel}</span></div>
                 <div className="truncate text-gray-300">模型：<span className="text-wuxia-gold">{stage.model}</span></div>
