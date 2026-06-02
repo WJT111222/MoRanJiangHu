@@ -299,8 +299,10 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
     };
     const 当前题材预设背景 = useMemo(() => 获取题材预设背景(openingConfig.题材模式), [openingConfig.题材模式]);
     const 当前题材预设天赋 = useMemo(() => 获取题材预设天赋(openingConfig.题材模式), [openingConfig.题材模式]);
-    const 当前题材预设背景名称集合 = useMemo(() => new Set(当前题材预设背景.map(item => item.名称)), [当前题材预设背景]);
-    const 当前题材预设天赋名称集合 = useMemo(() => new Set(当前题材预设天赋.map(item => item.名称)), [当前题材预设天赋]);
+    const 模式包背景名称集合 = useMemo(() => new Set(模式包背景列表.map(item => item.名称)), [模式包背景列表]);
+    const 模式包天赋名称集合 = useMemo(() => new Set(模式包天赋列表.map(item => item.名称)), [模式包天赋列表]);
+    const 当前题材预设背景名称集合 = useMemo(() => new Set([...当前题材预设背景, ...模式包背景列表].map(item => item.名称)), [当前题材预设背景, 模式包背景列表]);
+    const 当前题材预设天赋名称集合 = useMemo(() => new Set([...当前题材预设天赋, ...模式包天赋列表].map(item => item.名称)), [当前题材预设天赋, 模式包天赋列表]);
     const 全部背景选项 = useMemo(
         () => 合并去重背景([...模式包背景列表, ...当前题材预设背景, ...自定义背景列表]),
         [模式包背景列表, 当前题材预设背景, 自定义背景列表]
@@ -790,32 +792,22 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
             const resolvedMode = modeRuntimeProfile.identity.baseMode as 题材模式类型;
             const moduleBackgrounds = 提取模块背景列表(module);
             const moduleTalents = 提取模块天赋列表(module);
-            const nextCustomBackgrounds = moduleBackgrounds.length > 0
-                ? 合并去重背景([...自定义背景列表, ...moduleBackgrounds])
-                : 自定义背景列表;
-            const nextCustomTalents = moduleTalents.length > 0
-                ? 合并去重天赋([...自定义天赋列表, ...moduleTalents])
-                : 自定义天赋列表;
             if (moduleBackgrounds.length > 0) {
-                设置自定义背景列表(nextCustomBackgrounds);
-                await dbService.保存设置(自定义背景存储键, nextCustomBackgrounds);
+                设置模式包背景列表(moduleBackgrounds);
             }
             if (moduleTalents.length > 0) {
-                设置自定义天赋列表(nextCustomTalents);
-                await dbService.保存设置(自定义天赋存储键, nextCustomTalents);
+                设置模式包天赋列表(moduleTalents);
             }
             const backgroundCandidates = 合并去重背景([
                 ...moduleBackgrounds,
                 ...获取题材预设背景(resolvedMode),
                 ...全部背景选项,
-                ...nextCustomBackgrounds,
                 ...预设背景
             ]);
             const talentCandidates = 合并去重天赋([
                 ...moduleTalents,
                 ...获取题材预设天赋(resolvedMode),
                 ...全部天赋选项,
-                ...nextCustomTalents,
                 ...预设天赋
             ]);
             const presetCharacter = module.preset?.character;
