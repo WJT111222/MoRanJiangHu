@@ -537,6 +537,13 @@ export interface 初始伙伴配置结构 {
     备注: string;
 }
 
+export interface 性别比例配置 {
+    男: number;
+    女: number;
+    男娘: number;
+    扶她: number;
+}
+
 export interface ModeRuntimeProfile {
     identity: {
         modeId: string;
@@ -609,7 +616,7 @@ export interface ModeRuntimeProfile {
         sexualityFallback: string;
         sensitivityFallback: string;
         autoImageStyle: string;
-        genderRatio: string;
+        genderRatio: string | 性别比例配置;
     };
     image: {
         characterClothingEra: string;

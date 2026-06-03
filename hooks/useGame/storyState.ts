@@ -879,6 +879,27 @@ const 生成开局门派名称 = (charData: 角色数据结构, openingConfig?: 
     return `${按种子取项(prefix, seed)}${按种子取项(suffix, seed, 11)}`;
 };
 
+const 按性别比例取性别 = (ratio: string | { 男: number; 女: number; 男娘: number; 扶她: number } | undefined, seed: number, index: number): string => {
+    if (ratio && typeof ratio === 'object') {
+        const total = ratio.男 + ratio.女 + ratio.男娘 + ratio.扶她;
+        if (total <= 0) return '男';
+        const pool: string[] = [];
+        if (ratio.男 > 0) pool.push(...Array(Math.max(1, Math.round(ratio.男 / total * 20))).fill('男'));
+        if (ratio.女 > 0) pool.push(...Array(Math.max(1, Math.round(ratio.女 / total * 20))).fill('女'));
+        if (ratio.男娘 > 0) pool.push(...Array(Math.max(1, Math.round(ratio.男娘 / total * 20))).fill('男娘'));
+        if (ratio.扶她 > 0) pool.push(...Array(Math.max(1, Math.round(ratio.扶她 / total * 20))).fill('扶她'));
+        return 按种子取项(pool, seed, index * 3 + 1);
+    }
+    if (typeof ratio === 'string' && ratio.includes(':')) {
+        const parts = ratio.split(':');
+        const maleCount = parseInt(parts[0], 10) || 1;
+        const femaleCount = parseInt(parts[1], 10) || 1;
+        const pool = [...Array(maleCount).fill('男'), ...Array(femaleCount).fill('女')];
+        return 按种子取项(pool, seed, index * 3 + 1);
+    }
+    return index % 3 === 1 ? '女' : '男';
+};
+
 const 创建默认同门名录 = (sectName: string, openingConfig?: OpeningConfig): 详细门派结构['重要成员'] => {
     if (openingConfig?.开局生成同门 === false) return [];
     const seed = 生成稳定哈希(`${sectName}|${openingConfig?.题材模式 || ''}|同门`);
@@ -895,6 +916,7 @@ const 创建默认同门名录 = (sectName: string, openingConfig?: OpeningConfi
                 ? ['公会负责人', '资深冒险者', '骑士侍从', '见习法师', '炼金助手', '委托登记员', '佣兵同伴', '教会联络人']
             : ['掌事师叔', '外务执事', '内门师兄', '内门师姐', '外门弟子', '外门弟子', '杂役弟子', '藏经阁值守'];
     const count = 6 + (seed % 5);
+    const genderRatio = openingConfig?.modeRuntimeProfile?.npc?.genderRatio;
     return Array.from({ length: count }, (_, index) => {
         const name = `${按种子取项(surnames, seed, index * 3)}${按种子取项(givenNames, seed, index * 5 + 1)}`;
         const identity = 按种子取项(roles, seed, index * 7 + 2);
@@ -908,7 +930,7 @@ const 创建默认同门名录 = (sectName: string, openingConfig?: OpeningConfi
         return {
             id: `sect_member_opening_${生成稳定哈希(`${sectName}|${name}|${index}`).toString(36)}`,
             姓名: name,
-            性别: index % 3 === 1 ? '女' : '男',
+            性别: 按性别比例取性别(genderRatio, seed, index),
             年龄: identity.includes('执事') || identity.includes('掌事') ? 34 + (seed + index) % 18 : 16 + (seed + index) % 12,
             境界: isApocalypse
                 ? 按种子取项(['普通幸存者', '老练幸存者', '一线搜救者', '营地骨干'], seed, index)
