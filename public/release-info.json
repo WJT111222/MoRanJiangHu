@@ -2,7 +2,7 @@
   "versionCode": 400,
   "versionName": "1.0.400",
   "releaseChannel": "stable",
-  "releasePublishedAt": "2026-06-04 14:04",
+  "releasePublishedAt": "2026-06-04T21:35:00+08:00",
   "releaseNotes": [
     "修复新建存档时应用界面加载失败的问题：PR #17 的参数顺序错误导致运行时崩溃。",
     "修复死亡判定误杀问题：角色杀死敌人时不再被错误判定为自己死亡，死亡判定与死因识别全部交给AI判断。",
