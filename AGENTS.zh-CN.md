@@ -1,5 +1,12 @@
 # MoRanJiangHu 代理协作说明（中文版）
 
+## 沟通语言规则
+
+- 始终使用中文（中文）与用户沟通。
+- 所有解释、摘要、更新日志和状态报告必须用中文编写。
+- 代码、文件路径、变量名和技术标识符保持英文不变。
+- 除非用户明确要求使用其他语言，否则此规则适用于所有对话。
+
 ## AGENTS 更新输出规则
 
 - 每次更新 `AGENTS.md` 时，都要在同一回复里给用户提供中文版本或中文摘要。
@@ -623,6 +630,26 @@
 - 截至 2026-06-01 本轮处理，`现代都市` 与 `末日丧尸` 的预设图已全部通过 GPT image 2 重生，并迁移到 111666 图床。
 - 预设物品图必须是写实产品摄影风格：单个真实可触摸物体、完整可见、材质真实、 neutral 桌面/背景、无 UI 边框、无文字标签、无人像、不要插画图标风。
 - 不要把本地 SVG/图标兜底图作为正式 `data/presetItemImages.ts` 注册表条目。若 GPT image 2 密钥、端点或余额不可用，必须明确报告阻塞；最多只能临时复用现有写实预设图占位，并在端点恢复后用 GPT image 2 重生覆盖。
+- GPT image 2 新端点：`https://ai.songsongai.com/v1`，密钥存放在 `MORAN_GPT_IMAGE2_SONGSONGAI_API_KEY`（或复用主端点环境变量）。
+
+## 预设物品图存储规则
+
+- 预设物品图应上传到 hi168 S3 对象存储，不再使用 111666 或 nodeimage。
+- S3 上传路径：`MoRanJiangHu/preset-items/<filename>.png`
+- 公开 URL 格式：`https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/<filename>.png`
+- hi168 S3 不需要 Referer 头（不像 111666 有防盗链），图片在任何上下文都能可靠加载。
+- 上传使用 AWS Signature V4 签名，path-style 寻址，region `auto`，service `s3`。
+- `scripts/regenerate-preset-images-gpt-image2.mjs` 脚本应支持 `--host=hi168` 进行 S3 上传。
+
+## 物品图提示词过滤规则
+
+- 物品图生成提示词只能描述物体的物理外观，不能包含游戏机制文字。
+- `services/ai/itemImageGeneration.ts` `构建物品视觉描述`：
+  - 当结构化物品有 `生图描述` 时，只使用 `生图描述` + `视觉标签`；不要混入 `描述`、`词条列表`、`来源描述`、`关联事件`。
+  - 当没有结构化 `生图描述` 时，通过 `是否游戏机制文案` 过滤掉包含游戏机制关键词（兑换/强化/支线剧情/奖励点/属性/技能/等级/经验/伤害/冷却/暴击/命中等）的 `描述` 文本。
+  - `构建物品视觉主体描述` 回退到 `item?.描述` 时也必须通过同样的过滤。
+- 错误提示词示例："承载一段c级支线剧情用于兑换高级强化" → 对于卷轴物品应该是 "an ornate scroll with aged paper and wax seal"。
+- `structuredItemLibrary.ts` 中的 `生图描述` 必须始终是纯英文物理描述，不能包含游戏机制文字。
 
 ## 题材模式预设图反馈规则
 

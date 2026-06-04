@@ -149,7 +149,7 @@ type 组织题材 = '营地' | '组织' | '宗门' | '门派' | '';
 const 获取开局题材分组 = (openingConfig?: OpeningConfig) => 获取题材模式配置(openingConfig?.题材模式).group;
 const 开局题材属于 = (openingConfig: OpeningConfig | undefined, groups: string[]) => groups.includes(获取开局题材分组(openingConfig));
 const 是末日题材 = (openingConfig?: OpeningConfig) => 开局题材属于(openingConfig, ['apocalypse']);
-const 是现代组织题材 = (openingConfig?: OpeningConfig) => 开局题材属于(openingConfig, ['modern', 'urban_xianxia']);
+const 是现代组织题材 = (openingConfig?: OpeningConfig) => 开局题材属于(openingConfig, ['modern', 'urban_xianxia', 'infinite']);
 const 是西幻题材 = (openingConfig?: OpeningConfig) => 开局题材属于(openingConfig, ['western_fantasy']);
 const 是仙侠宗门题材 = (openingConfig?: OpeningConfig) => 开局题材属于(openingConfig, ['xianxia']);
 const 开局配置允许生成组织 = (openingConfig?: OpeningConfig): boolean => (

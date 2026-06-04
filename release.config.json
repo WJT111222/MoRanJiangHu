@@ -1,16 +1,17 @@
 {
-  "versionCode": 396,
-  "versionName": "1.0.395",
+  "versionCode": 397,
+  "versionName": "1.0.396",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "江湖谱新增「动态状态」区块：显示 NPC 当前位置、位置路径、当前任务、行动意图、待执行指令，变量更新后可在社交界面直接查看。",
-    "创意工坊新增 NPC 男女比例配置：各题材模式可自定义世界观性别比例（如 1:5），AI 生成 NPC 时会参考该设定。",
-    "NPC 死亡判定放宽：新增尸体/残尸/一分为二等关键词，正文明确描述即可判定死亡，不再要求血量归零前置。",
-    "随行队伍系统重构：删除自动展开无名群体逻辑，只有正文明确点名的 NPC 才能成为队友。",
-    "无限流支线剧情资源视为可堆叠消耗品，不再当作唯一任务道具。",
-    "任务完成时自动消耗对应任务道具。",
+    "修复无限流模式组织名称、标签和任务仍为武侠风格的问题，现在正确显示为轮回小队。",
+    "修复战术服生图生成古代盔甲的问题，战术服现在生成现代风格服装。",
+    "修复角色图片生成后消失的问题，图片地址在本地缓存失效后会自动回退到远程链接。",
+    "优化自动存档频率，生图不再频繁触发强制存档，只在回合结束和返回首页时强制存档。",
+    "修复开局文章优化丢失对白标签的问题，现在会自动重试一次再兜底保留原文。",
+    "预设物品图片迁移到对象存储，减少对第三方图床的依赖。",
+    "队列面板移除遮罩层和毛玻璃效果，显示更通透。",
     "官网：https://msjh.bacon159.pp.ua/",
-    "同步更新 Web、APK 与更新清单到 v1.0.395。"
+    "同步更新 Web、APK 与更新清单到 v1.0.396。"
   ],
   "releaseHistory": [
     {
@@ -2618,7 +2619,7 @@
   "r2Bucket": "quark-downloads-bacon",
   "r2Prefix": "moranjianghu",
   "backupWebsiteUrl": "https://msjh.bacon.de5.net",
-  "releasePublishedAt": "2026-06-03T21:50:00+08:00",
+  "releasePublishedAt": "2026-06-04T00:21:30.792Z",
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [

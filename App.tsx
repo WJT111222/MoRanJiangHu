@@ -1475,14 +1475,16 @@ const App: React.FC = () => {
     const 当前题材市场名称 = 当前题材配置.auctionName;
     const 组织入口显示名称 = 当前题材配置.group === 'apocalypse'
         ? '营地'
-        : 当前题材配置.group === 'modern'
-            ? '组织'
-            : 当前题材配置.group === 'xianxia' || 当前题材配置.group === 'urban_xianxia'
-                ? '宗门'
-                : '门派';
+        : 当前题材配置.group === 'infinite'
+            ? '队伍'
+            : 当前题材配置.group === 'modern'
+                ? '组织'
+                : 当前题材配置.group === 'xianxia' || 当前题材配置.group === 'urban_xianxia'
+                    ? '宗门'
+                    : '门派';
     const 功法显示名称 = state.开局配置?.题材模式 === '末日丧尸'
         ? '技能'
-        : state.开局配置?.题材模式 === '现代都市'
+        : state.开局配置?.题材模式 === '现代都市' || state.开局配置?.题材模式 === '无限流'
             ? '能力'
             : '功法';
     const activeMobileWindow =

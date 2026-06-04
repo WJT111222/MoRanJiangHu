@@ -1545,7 +1545,7 @@ export const useGame = () => {
         设置社交,
         规范化社交列表: 规范化社交列表安全,
         执行社交自动存档: (socialSnapshot) => {
-            void performAutoSave({ social: socialSnapshot, history: 历史记录, force: true });
+            void performAutoSave({ social: socialSnapshot, history: 历史记录 });
         },
         获取社交列表: () => 社交Ref.current,
         获取NPC唯一标识,

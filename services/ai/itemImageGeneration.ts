@@ -49,9 +49,15 @@ const 构建物品生图接口配置 = (imageApi: 当前可用接口结构 | nul
  * 注意：物品生图的 prompt 必须避免出现"名称:X 类型:Y 品质:Z"这种结构化中文键值对，
  * 否则大量模型会直接把它当成要画在图上的文字/标签 (历史事故：青钢剑图上出现 "名称:青钢剑 类型:武型 品质:良品")。
  * 这里只保留描述性自然语言，不保留字段标签。
+ *
+ * 当结构化物品有 `生图描述` 时，只使用 `生图描述` + `视觉标签`，
+ * 不再混入 `描述`、`词条列表`、`来源描述`、`关联事件` 等游戏机制文字，
+ * 否则 AI 会把"承载一段c级支线剧情用于兑换高级强化"这类文案画进图片。
  */
+const 游戏机制关键词 = /兑换|强化|支线剧情|奖励点|属性|技能|等级|经验|伤害|生命值|法力值|冷却|暴击|命中|闪避|抗性|穿透|吸血|回蓝|buff|debuff|增益|减益|附加|提升|降低|增加|减少|触发|释放|消耗|恢复|回复|持续|回合|概率|倍率|加成/i;
+
+const 是否游戏机制文案 = (text: string): boolean => 游戏机制关键词.test(text);
 export const 构建物品视觉描述 = (item: any): string => {
-    const parts: string[] = [];
     const structured = 查找结构化物品(
         读取文本(item?.规范物品名称)
         || 读取文本(item?.预设物品名称)
@@ -60,23 +66,27 @@ export const 构建物品视觉描述 = (item: any): string => {
         || 读取文本(item?.图片匹配名称)
         || 读取文本(item?.名称)
     );
-    if (structured?.生图描述) parts.push(structured.生图描述);
-    if (Array.isArray(structured?.视觉标签) && structured.视觉标签.length > 0) {
-        parts.push(`结构化材质与物品：${structured.视觉标签.join('，')}`);
+    if (structured?.生图描述) {
+        const parts: string[] = [structured.生图描述];
+        if (Array.isArray(structured.视觉标签) && structured.视觉标签.length > 0) {
+            parts.push(`结构化材质与物品：${structured.视觉标签.join('，')}`);
+        }
+        return parts.join('\n');
     }
+    const parts: string[] = [];
     const 描述 = 读取文本(item?.描述);
-    if (描述) parts.push(描述);
+    if (描述 && !是否游戏机制文案(描述)) parts.push(描述);
     if (Array.isArray(item?.词条列表) && item.词条列表.length > 0) {
         const 词条文案 = item.词条列表
             .map((entry: any) => [entry?.名称, entry?.属性, entry?.数值].filter(Boolean).join(' '))
             .filter(Boolean)
             .join('；');
-        if (词条文案) parts.push(词条文案);
+        if (词条文案 && !是否游戏机制文案(词条文案)) parts.push(词条文案);
     }
     const 来源 = 读取文本(item?.来源描述);
-    if (来源) parts.push(来源);
+    if (来源 && !是否游戏机制文案(来源)) parts.push(来源);
     const 关联 = 读取文本(item?.关联事件);
-    if (关联) parts.push(关联);
+    if (关联 && !是否游戏机制文案(关联)) parts.push(关联);
     return parts.join('\n');
 };
 
@@ -111,7 +121,7 @@ const 物品类型转英文 = (type: string): string => {
 };
 
 const 物品名称是否柔性服装 = (name: string): boolean => (
-    /弟子服|门派服|内门服|外门服|制式服|练功服|武服|劲装|布衣|布衫|青衫|衣服|衣裳|衣物|服装|长衫|短衫|衫|袍|法袍|道袍|僧衣|寝衣|内衬|内衣|裤|长裤|短裤|裙|鞋|靴|袜|披风|斗篷|罩衫|外袍|长袍|便服|常服|军装|旧军装|作训服|迷彩服|制服|夹克|外套/.test(name)
+    /弟子服|门派服|内门服|外门服|制式服|练功服|武服|劲装|布衣|布衫|青衫|衣服|衣裳|衣物|服装|长衫|短衫|衫|袍|法袍|道袍|僧衣|寝衣|内衬|内衣|裤|长裤|短裤|裙|鞋|靴|袜|披风|斗篷|罩衫|外袍|长袍|便服|常服|军装|旧军装|作训服|迷彩服|制服|夹克|外套|战术服/.test(name)
 );
 
 const 物品是否柔性服装 = (item: any): boolean => {
@@ -341,6 +351,7 @@ const 物品名称转英文描述 = (name: string): string => {
         '旧军装': 'worn modern military uniform, faded cloth jacket and trousers, fabric patches, frayed seams, soft garment only, no armor plates',
         '军装': 'modern military uniform, cloth jacket and trousers, soft textile garment, no armor plates',
         '作训服': 'modern combat training uniform, cloth shirt and trousers, fabric folds, no armor plates',
+        '战术服': 'modern tactical clothing, dark fabric shirt and trousers, utility pockets, soft textile garment, no armor plates, no metal plating',
         '弓': 'traditional bow weapon, curved wooden bow with taut string',
         '弩': 'crossbow weapon, horizontal bow limbs, stock, trigger, taut string and bolt rail clearly visible',
         '枪': 'spear weapon, long shaft with metal spearhead',
@@ -490,7 +501,7 @@ const 构建物品视觉主体描述 = (item: any): string => {
     const typeEn = isLivingMount ? 'living mount animal' : isFan ? 'folded Chinese hand fan' : isModernFirearm ? 'modern firearm' : isCrossbow ? 'crossbow' : isWeapon ? 'traditional wuxia weapon' : isSoftGarment ? 'cloth garment' : isTacticalVest ? 'wearable tactical vest' : isWearableArmor ? 'wearable torso armor vest' : isAncientMedicine ? 'ancient medicinal powder or pills' : isBotanicalHerb ? 'botanical medicinal herb' : 物品类型转英文(读取文本(item?.类型, '物品'));
     const qualityEn = 物品品质转英文(读取文本(item?.品质, '普通'));
     const nameEn = 物品名称转英文描述(name);
-    const description = 读取文本(item?.视觉描述 || item?.描述);
+    const description = 读取文本(item?.视觉描述) || (!是否游戏机制文案(读取文本(item?.描述) || '') ? 读取文本(item?.描述) : '');
     const tags = Array.isArray(item?.视觉标签)
         ? item.视觉标签.map((tag: unknown) => 读取文本(tag)).filter(Boolean).join(', ')
         : '';

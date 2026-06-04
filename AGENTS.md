@@ -1,5 +1,12 @@
 # MoRanJiangHu Agent Notes
 
+## Communication Language Rule
+
+- Always communicate with the user in Chinese (中文).
+- All explanations, summaries, changelogs, and status reports must be written in Chinese.
+- Code, file paths, variable names, and technical identifiers remain in English.
+- This rule applies to all conversations unless the user explicitly requests another language.
+
 ## AGENTS Update Output Rule
 
 - Whenever `AGENTS.md` is updated, also provide the user with a Chinese version or Chinese summary in the same reply.
@@ -630,6 +637,26 @@ If the task is "confirm this UI works" and the opening flow depends on external 
 - As of the 2026-06-01 run, all `现代都市` and `末日丧尸` preset images were regenerated through GPT image 2 and moved to the 111666 image host.
 - Preset item images must be realistic product-photography style: one tangible object, full object visible, realistic material texture, neutral tabletop/background, no UI frame, no text labels, no people, no illustrated icon style.
 - Do not use local SVG/icon fallback images as final `data/presetItemImages.ts` registry entries. If GPT image 2 credentials, endpoint, or balance are unavailable, report the blocker or use an existing realistic preset image only as a clearly temporary placeholder, then regenerate with GPT image 2 when the endpoint is restored.
+- New endpoint for GPT image 2: `https://ai.songsongai.com/v1` with key in `MORAN_GPT_IMAGE2_SONGSONGAI_API_KEY` (or reuse primary env var).
+
+## Preset Item Image Storage Rule
+
+- Preset item images should be uploaded to hi168 S3 object storage, not 111666 or nodeimage.
+- S3 upload path: `MoRanJiangHu/preset-items/<filename>.png`
+- Public URL format: `https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/<filename>.png`
+- hi168 S3 does not require Referer headers (unlike 111666 which has anti-hotlink), so images load reliably in all contexts.
+- Upload uses AWS Signature V4 signing with path-style addressing, region `auto`, service `s3`.
+- The `scripts/regenerate-preset-images-gpt-image2.mjs` script should be updated to support `--host=hi168` for S3 upload.
+
+## Item Image Prompt Filtering Rule
+
+- Item image generation prompts must only describe the physical appearance of the object, never game mechanics.
+- `services/ai/itemImageGeneration.ts` `构建物品视觉描述`:
+  - When structured item has `生图描述`, use only `生图描述` + `视觉标签`; do NOT mix in `描述`, `词条列表`, `来源描述`, `关联事件`.
+  - When no structured `生图描述` exists, filter out `描述` text containing game-mechanic keywords (兑换/强化/支线剧情/奖励点/属性/技能/等级/经验/伤害/冷却/暴击/命中 etc.) via `是否游戏机制文案`.
+  - The `构建物品视觉主体描述` fallback to `item?.描述` must also pass through the same filter.
+- Examples of bad prompts: "承载一段c级支线剧情用于兑换高级强化" → should be "an ornate scroll with aged paper and wax seal" for a scroll item.
+- The `生图描述` in `structuredItemLibrary.ts` must always be a pure physical description in English, never containing game mechanic text.
 
 ## Topic Mode Preset Feedback Rule
 

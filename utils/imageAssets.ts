@@ -304,7 +304,7 @@ export const 压缩图片资源字段 = <T extends 图片资源结构 | null | u
     return {
         ...compactAsset,
         本地路径,
-        图片URL: undefined
+        ...(图片URL ? { 图片URL } : {})
     };
 };
 

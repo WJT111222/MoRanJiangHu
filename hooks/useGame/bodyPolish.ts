@@ -470,7 +470,32 @@ export const 执行正文润色 = async (
         return { response: baseResponse, applied: false, error: '优化后正文为空，已保留原文。', rawText: polishedResult.rawText };
     }
     if (sourceDialogueCount > 0 && 统计角色对白条数(polishedLogs) < sourceDialogueCount) {
-        return { response: baseResponse, applied: false, error: '文章优化丢失了角色对白标签，已保留原文。', rawText: polishedResult.rawText };
+        // 对白标签丢失，尝试重生成一次
+        const dialogueRetryPrompt = [
+            effectivePolishPrompt,
+            '【对白保留要求】',
+            `原文包含 ${sourceDialogueCount} 条角色对白（格式为 "【角色名】：内容" 或 "「角色名」：内容"），优化后必须完整保留所有对白标签，不能丢失、合并或改写任何一条。`,
+            '对白标签是独立变量系统识别角色互动的关键锚点，丢失会导致角色关系和情绪状态无法同步。'
+        ].join('\n\n');
+        const dialogueRetryResult = await textAIService.generatePolishedBody(
+            sourceBody,
+            dialogueRetryPrompt,
+            polishApi,
+            options?.signal,
+            polishExtraPrompt,
+            polishCotPseudoPrompt,
+            deps.onDelta ? { stream: true, onDelta: deps.onDelta } : undefined
+        );
+        const dialogueRetryLogs = 净化角色对白行(规范化对白日志(限制润色结果判定数量(
+            sourceLogs,
+            解析正文日志文本(dialogueRetryResult.bodyText)
+        )));
+        if (dialogueRetryLogs.length > 0 && 统计角色对白条数(dialogueRetryLogs) >= sourceDialogueCount) {
+            polishedResult = dialogueRetryResult;
+            polishedLogs = dialogueRetryLogs;
+        } else {
+            return { response: baseResponse, applied: false, error: '文章优化丢失了角色对白标签，已保留原文。', rawText: polishedResult.rawText };
+        }
     }
     const sourceLength = 统计润色正文字符数(sourceLogs);
     let polishedLength = 统计润色正文字符数(polishedLogs);
