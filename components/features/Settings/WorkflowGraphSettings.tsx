@@ -541,13 +541,18 @@ const WorkflowGraphSettings: React.FC<{
         const selectedConfig = getSelectedConfig(selectedChannelId);
         const modelValue = cfg.kind === 'main'
             ? trim(selectedConfig?.model || normalized.功能模型占位.主剧情使用模型)
-            : trim(normalized.功能模型占位[cfg.modelKey!]) || trim(selectedConfig?.model) || trim(mainApi?.model);
-        const modelOptions = Array.from(new Set([
-            ...(modelOptionsByStage[stage.id] || []),
-            modelValue,
-            trim(selectedConfig?.model),
-            trim(mainApi?.model)
-        ].filter(Boolean)));
+            : trim(normalized.功能模型占位[cfg.modelKey!]);
+        const modelOptions = cfg.kind === 'main'
+            ? Array.from(new Set([
+                ...(modelOptionsByStage[stage.id] || []),
+                modelValue,
+                trim(selectedConfig?.model),
+                trim(mainApi?.model)
+            ].filter(Boolean)))
+            : Array.from(new Set([
+                ...(modelOptionsByStage[stage.id] || []),
+                modelValue
+            ].filter(Boolean)));
         return (
             <div className="mt-2 space-y-1.5" onClick={(event) => event.stopPropagation()}>
                 <InlineSelect
@@ -562,8 +567,7 @@ const WorkflowGraphSettings: React.FC<{
                             updateMainChannel(channelId);
                         } else {
                             updatePlaceholderStage(stage, {
-                                [cfg.channelKey!]: channelId,
-                                [cfg.modelKey!]: trim(nextConfig?.model)
+                                [cfg.channelKey!]: channelId
                             } as Partial<功能模型占位配置结构>);
                         }
                         setModelOptionsByStage((prev) => ({ ...prev, [stage.id]: [] }));
