@@ -57,12 +57,14 @@ const 题材组默认定制 = (mode: 题材模式类型): {
     currency: Record<string, number>;
     resourceTypes: string[];
     attributeBias: Record<string, RegExp>;
+    kungfuTypes: string[];
 } => {
     const group = 获取题材模式配置(mode).group;
     if (group === 'apocalypse') return {
         equipment: 末世装备模板,
         currency: 末世金钱模板,
         resourceTypes: ['体力', '精力', '气血', '弹药', '燃料'],
+        kungfuTypes: ['射击', '格斗', '战术', '生存', '被动', '驾驶', '工程', '医疗', '侦查'],
         attributeBias: {
             力量: /枪|炮|锤|重|壮|魁|格斗|猛|护卫|领袖/,
             敏捷: /侦查|狙击|潜行|刺客|快|斥候|盗|偷|斥候|游走/,
@@ -76,6 +78,7 @@ const 题材组默认定制 = (mode: 题材模式类型): {
         equipment: 现代装备模板,
         currency: 现代金钱模板,
         resourceTypes: ['体力', '精力', '理智'],
+        kungfuTypes: ['格斗', '射击', '驾驶', '战术', '科技', '医疗', '社交', '潜入', '被动'],
         attributeBias: {
             力量: /枪|格斗|壮|魁|猛|护卫|保镖|打手/,
             敏捷: /侦查|跑|快|盗|偷|灵活|驾驶员|刺客/,
@@ -89,6 +92,7 @@ const 题材组默认定制 = (mode: 题材模式类型): {
         equipment: 奇幻装备模板,
         currency: 奇幻金钱模板,
         resourceTypes: ['魔力', '精力', '体力', '气血'],
+        kungfuTypes: ['剑术', '格斗', '魔法', '神术', '射击', '被动', '潜行', '召唤', '炼金'],
         attributeBias: {
             力量: /剑|斧|锤|拳|壮|魁|猛|战士|护卫|骑士/,
             敏捷: /弓|刺|影|盗|斥候|游侠|快|灵活/,
@@ -102,6 +106,7 @@ const 题材组默认定制 = (mode: 题材模式类型): {
         equipment: 现代装备模板,
         currency: 现代金钱模板,
         resourceTypes: ['精神力', '体力', '积分'],
+        kungfuTypes: ['格斗', '射击', '异能', '科技', '血统', '魔法', '被动', '侦查', '强化'],
         attributeBias: {
             力量: /枪|拳|壮|格斗|猛|战士|近战/,
             敏捷: /侦查|潜行|刺客|快|斥候|狙击|盗/,
@@ -115,6 +120,7 @@ const 题材组默认定制 = (mode: 题材模式类型): {
         equipment: 仙侠装备模板,
         currency: 仙侠金钱模板,
         resourceTypes: ['灵力', '神识', '法力', '气血'],
+        kungfuTypes: ['剑诀', '法诀', '术法', '神通', '遁法', '阵诀', '被动', '内功', '轻功'],
         attributeBias: {
             力量: /剑|刀|斧|锤|拳|力|壮|魁|猛|体修|护卫/,
             敏捷: /剑|刺|影|盗|飞剑|遁法|身法|步|快|灵活/,
@@ -128,6 +134,7 @@ const 题材组默认定制 = (mode: 题材模式类型): {
         equipment: 武侠装备模板,
         currency: 武侠金钱模板,
         resourceTypes: ['内力', '精力', '气血'],
+        kungfuTypes: ['内功', '外功', '轻功', '绝技', '被动'],
         attributeBias: {
             力量: /刀|斧|锤|拳|力|壮|魁|猛|护卫|镖/,
             敏捷: /剑|刺|影|盗|弓|暗器|轻功|斥候|快/,
@@ -153,11 +160,26 @@ let _当前题材默认值: ReturnType<typeof 题材组默认定制> = 题材组
 
 export const 获取当前境界配置 = (): 境界配置 | undefined => _当前境界配置;
 
+const 合并运行时覆写 = (
+    base: ReturnType<typeof 题材组默认定制>,
+    profile: ModeRuntimeProfile | null
+): ReturnType<typeof 题材组默认定制> => {
+    if (!profile?.ability) return base;
+    const ab = profile.ability;
+    return {
+        equipment: ab.defaultEquipment ?? base.equipment,
+        currency: ab.defaultCurrency ?? base.currency,
+        resourceTypes: ab.resourceTypes ?? base.resourceTypes,
+        kungfuTypes: ab.kungfuTypes ?? base.kungfuTypes,
+        attributeBias: base.attributeBias,
+    };
+};
+
 export const 设置默认技艺运行时配置 = (mode: 题材模式类型, runtimeProfile?: ModeRuntimeProfile | null) => {
     _当前题材模式 = mode;
     _当前运行时配置 = runtimeProfile ?? null;
     _当前境界配置 = 获取境界配置(mode, runtimeProfile);
-    _当前题材默认值 = 题材组默认定制(mode);
+    _当前题材默认值 = 合并运行时覆写(题材组默认定制(mode), _当前运行时配置);
 };
 
 const 当前题材默认值 = (): ReturnType<typeof 题材组默认定制> => _当前题材默认值;
@@ -687,7 +709,7 @@ const 功法品质预算: Record<string, {
 };
 
 const 功法品质列表 = Object.keys(功法品质预算);
-const 功法类型列表 = ['内功', '外功', '轻功', '绝技', '被动', '法诀', '术法', '神通', '遁法', '阵诀'];
+const 功法类型列表 = (): string[] => 当前题材默认值().kungfuTypes;
 const 功法消耗类型列表 = (): string[] => 当前题材默认值().resourceTypes;
 const 功法伤害类型列表 = ['物理', '内功', '真实', '混合'];
 const 功法目标类型列表 = ['单体', '全体', '扇形', '自身', '随机'];
@@ -697,7 +719,11 @@ const 规范化功法枚举 = (value: unknown, allowed: string[], fallback: stri
     return allowed.includes(text) ? text : fallback;
 };
 
-const 功法偏被动 = (类型: string): boolean => /^(内功|轻功|被动|阵诀|遁法)$/.test(类型);
+const 功法偏被动 = (类型: string): boolean => {
+    const 被动类 = ['内功', '轻功', '被动', '阵诀', '遁法', '战术', '驾驶', '工程', '医疗', '侦查', '生存', '社交', '潜入', '强化', '召唤', '炼金', '血统'];
+    return 被动类.includes(类型);
+};
+
 
 const 构建功法重数描述 = (名称: string, 品质: string, 类型: string, 最高重数: number): Array<{ 重数: number; 描述: string }> => {
     const pivots = Array.from(new Set([1, Math.max(1, Math.ceil(最高重数 / 2)), 最高重数]))
@@ -719,7 +745,7 @@ const 标准化功法列表 = (raw: any): any[] => {
             const item = { ...source } as any;
             const 名称 = 规范化文本(item?.名称, `未命名功法${index + 1}`) || `未命名功法${index + 1}`;
             const 品质 = 规范化功法枚举(item?.品质, 功法品质列表, '凡品');
-            const 类型 = 规范化功法枚举(item?.类型, 功法类型列表, '外功');
+            const 类型 = 规范化功法枚举(item?.类型, 功法类型列表(), '被动');
             const budget = 功法品质预算[品质] || 功法品质预算.凡品;
             const passiveLike = 功法偏被动(类型);
             const 最高重数 = Math.max(1, 规范化整数(item?.最高重数, budget.最高重数), budget.最高重数);

@@ -587,6 +587,7 @@ export interface ModeRuntimeProfile {
         resourceTypes?: string[];
         defaultEquipment?: Record<string, string>;
         defaultCurrency?: Record<string, number>;
+        kungfuTypes?: string[];
     };
     items: {
         initialItemPool: string[];
