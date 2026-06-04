@@ -537,6 +537,13 @@ export interface 初始伙伴配置结构 {
     备注: string;
 }
 
+export interface 性别比例配置 {
+    男: number;
+    女: number;
+    男娘: number;
+    扶她: number;
+}
+
 export interface ModeRuntimeProfile {
     identity: {
         modeId: string;
@@ -609,7 +616,7 @@ export interface ModeRuntimeProfile {
         sexualityFallback: string;
         sensitivityFallback: string;
         autoImageStyle: string;
-        genderRatio: string;
+        genderRatio: string | 性别比例配置;
     };
     image: {
         characterClothingEra: string;
@@ -857,6 +864,7 @@ export interface 游戏设置结构 {
         小说拆分: boolean;
     };
     额外提示词: string; // Custom prompt injected at the end
+    activeModuleExtraRules?: string; // Creative workshop module safety/usage rules, injected as system_rule
 }
 
 export interface 记忆配置结构 {

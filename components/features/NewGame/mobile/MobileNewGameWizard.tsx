@@ -49,7 +49,8 @@ interface Props {
         openingConfig: OpeningConfig | undefined,
         mode: 'all' | 'step',
         openingStreaming: boolean,
-        openingExtraPrompt?: string
+        openingExtraPrompt?: string,
+        activeModuleExtraRules?: string
     ) => void;
     onCancel: () => void;
     loading: boolean;
@@ -246,7 +247,8 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
     const [已选创意工坊子项, 设置已选创意工坊子项] = useState<Partial<Record<创意工坊模块类型, string>>>({});
     const [创意工坊注入状态, 设置创意工坊注入状态] = useState('');
     const [创意工坊注入中, 设置创意工坊注入中] = useState(false);
-    
+    const [activeModuleExtraRules, setActiveModuleExtraRules] = useState('');
+
     // Custom Inputs
     const [customTalent, setCustomTalent] = useState<天赋结构>({ 名称: '', 描述: '', 效果: '' });
     const [showCustomTalent, setShowCustomTalent] = useState(false);
@@ -792,6 +794,26 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
             const resolvedMode = modeRuntimeProfile.identity.baseMode as 题材模式类型;
             const moduleBackgrounds = 提取模块背景列表(module);
             const moduleTalents = 提取模块天赋列表(module);
+            const extraParts: string[] = [];
+            if (module.safetyNotes?.length) {
+                extraParts.push('【模块安全说明】', ...module.safetyNotes.map((n) => `- ${n}`));
+            }
+            if (module.usagePrompt) {
+                extraParts.push('【模块使用说明】', module.usagePrompt);
+            }
+            if (moduleBackgrounds.length > 0) {
+                extraParts.push(
+                    '【本世界可用出身背景池】',
+                    ...moduleBackgrounds.map((b, i) => `${i + 1}. ${b.名称}：${b.描述}${b.效果 ? `（效果：${b.效果}）` : ''}`)
+                );
+            }
+            if (moduleTalents.length > 0) {
+                extraParts.push(
+                    '【本世界可用天赋池】',
+                    ...moduleTalents.map((t, i) => `${i + 1}. ${t.名称}：${t.描述}${t.效果 ? `（效果：${t.效果}）` : ''}`)
+                );
+            }
+            setActiveModuleExtraRules(extraParts.join('\n'));
             if (moduleBackgrounds.length > 0) {
                 设置模式包背景列表(moduleBackgrounds);
             }
@@ -1455,7 +1477,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
             })
             : true;
         if (!ok) return;
-        onComplete(effectiveWorldConfig, charData, effectiveOpeningConfig, 'all', true, effectiveOpeningExtraRequirement.trim());
+        onComplete(effectiveWorldConfig, charData, effectiveOpeningConfig, 'all', true, effectiveOpeningExtraRequirement.trim(), activeModuleExtraRules || undefined);
     };
 
     if (loading) {

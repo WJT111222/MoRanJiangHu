@@ -1,9 +1,25 @@
-import type { ModeRuntimeProfile, 题材模式类型 } from '../models/system';
+import type { ModeRuntimeProfile, 题材模式类型, 性别比例配置 } from '../models/system';
 import { 获取题材模式配置, 规范化题材模式 } from './topicModeProfiles';
 
 const 文本 = (value: unknown, fallback = ''): string => (
     typeof value === 'string' && value.trim() ? value.trim() : fallback
 );
+
+const 规范化性别比例 = (value: unknown, fallback: string | 性别比例配置): string | 性别比例配置 => {
+    if (!value || typeof value !== 'object') return 文本(value as any, typeof fallback === 'string' ? fallback : '');
+    if (typeof value === 'object' && !Array.isArray(value)) {
+        const obj = value as Record<string, unknown>;
+        if (typeof obj.男 === 'number' && typeof obj.女 === 'number') {
+            return {
+                男: obj.男,
+                女: obj.女,
+                男娘: typeof obj.男娘 === 'number' ? obj.男娘 : 0,
+                扶她: typeof obj.扶她 === 'number' ? obj.扶她 : 0,
+            } as 性别比例配置;
+        }
+    }
+    return typeof fallback === 'string' ? fallback : '1:1';
+};
 
 const 布尔 = (value: unknown, fallback = false): boolean => (
     typeof value === 'boolean' ? value : fallback
@@ -451,7 +467,7 @@ export const 规范化模式运行时配置 = (raw?: any, fallbackMode?: unknown
             sexualityFallback: 文本(raw?.npc?.sexualityFallback, official.npc.sexualityFallback),
             sensitivityFallback: 文本(raw?.npc?.sensitivityFallback, official.npc.sensitivityFallback),
             autoImageStyle: 文本(raw?.npc?.autoImageStyle, official.npc.autoImageStyle),
-            genderRatio: 文本(raw?.npc?.genderRatio, official.npc.genderRatio)
+            genderRatio: 规范化性别比例(raw?.npc?.genderRatio, official.npc.genderRatio)
         },
         image: {
             characterClothingEra: 文本(raw?.image?.characterClothingEra, official.image.characterClothingEra),
@@ -590,7 +606,7 @@ export const 渲染模式运行时配置世界书内容 = (profile: ModeRuntimeP
     `物品系统：初始池=${profile.items.initialItemPool.join('、')}；奖励池=${profile.items.rewardItemPool.join('、')}；禁用=${profile.items.bannedItemKeywords.join('、')}`,
     `地图系统：地点=${profile.map.locationTypes.join('、')}；POI=${profile.map.poiTypes.join('、')}；禁用地点=${profile.map.bannedLocationKeywords.join('、')}`,
     `任务系统：主线=${profile.task.mainQuestStyle}；去重=${profile.task.sideQuestDedupeKeys.join('、')}；奖励发放=${profile.task.rewardDistributor}；可视化=${profile.task.rewardVisualizationTemplate}`,
-    `NPC系统：身份池=${profile.npc.defaultIdentityPool.join('、')}；关系=${profile.npc.relationTemplates.join('、')}；主要角色必填=${profile.npc.requiredMainCharacterFields.join('、')}；男女比例=${profile.npc.genderRatio}；生图=${profile.npc.autoImageStyle}`,
+    `NPC系统：身份池=${profile.npc.defaultIdentityPool.join('、')}；关系=${profile.npc.relationTemplates.join('、')}；主要角色必填=${profile.npc.requiredMainCharacterFields.join('、')}；男女比例=${typeof profile.npc.genderRatio === 'string' ? profile.npc.genderRatio : `男${profile.npc.genderRatio.男}%:女${profile.npc.genderRatio.女}%:男娘${profile.npc.genderRatio.男娘}%:扶她${profile.npc.genderRatio.扶她}%`}；生图=${profile.npc.autoImageStyle}`,
     `生图系统：服饰=${profile.image.characterClothingEra}；场景=${profile.image.sceneMaterials}；物品=${profile.image.itemRealismPrompt}；负面=${profile.image.negativePrompt}`,
     `开局系统：背景=${profile.opening.defaultBackgrounds.join('、')}；天赋=${profile.opening.defaultTalents.join('、')}；切入=${profile.opening.cutInTemplates.join('、')}；初始任务=${profile.opening.initialQuestTemplates.join('、')}`,
     `校验系统：禁词=${profile.validation.bannedWords.join('、')}；冲突检测=${profile.validation.conflictChecks.join('、')}；迁移清理=${profile.validation.migrationCleanupRules.join('、')}`
