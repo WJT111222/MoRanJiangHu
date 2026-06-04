@@ -15,6 +15,8 @@ import {
     接口配置是否可用,
     规范化接口设置
 } from '../../../utils/apiConfig';
+import type { 当前可用接口结构 } from '../../../utils/apiConfig';
+import { 请求模型文本, type 通用消息 } from '../../../services/ai/chatCompletionClient';
 
 type StageStatus = 'enabled' | 'disabled' | 'fallback' | 'blocked';
 
@@ -158,6 +160,7 @@ const WorkflowGraphSettings: React.FC<{
     const [form, setForm] = useState<接口设置结构>(() => 规范化接口设置(settings));
     const [modelOptionsByStage, setModelOptionsByStage] = useState<Record<string, string[]>>({});
     const [loadingStageId, setLoadingStageId] = useState('');
+    const [testingStageId, setTestingStageId] = useState('');
     const [stageMessages, setStageMessages] = useState<Record<string, string>>({});
 
     useEffect(() => {
@@ -490,23 +493,57 @@ const WorkflowGraphSettings: React.FC<{
         }));
     };
 
-    const fetchModelsForStage = async (stage: FlowStage) => {
+    const resolveStageApi = (stage: FlowStage): 当前可用接口结构 | null => {
         const cfg = stage.modelConfig;
-        if (!cfg) return;
+        if (!cfg || stage.localOnly) return null;
         const selectedChannelId = cfg.kind === 'main'
             ? (normalized.activeConfigId || normalized.configs[0]?.id || '')
             : trim(normalized.功能模型占位[cfg.channelKey!]) || normalized.activeConfigId || normalized.configs[0]?.id || '';
-        const selectedConfig = getSelectedConfig(selectedChannelId);
-        const resolvedBaseUrl = cfg.kind === 'placeholder' ? trim(normalized.功能模型占位[cfg.baseUrlKey!]) || trim(selectedConfig?.baseUrl) : trim(selectedConfig?.baseUrl);
-        const resolvedApiKey = cfg.kind === 'placeholder' ? trim(normalized.功能模型占位[cfg.apiKeyKey!]) || trim(selectedConfig?.apiKey) : trim(selectedConfig?.apiKey);
-        if (!resolvedBaseUrl || !resolvedApiKey) {
+        const selectedConfig = getSelectedConfig(selectedChannelId) || {
+            id: selectedChannelId || `${stage.id}_dedicated`,
+            名称: `${stage.title}独立接口`,
+            供应商: 'openai_custom' as const,
+            协议覆盖: 'auto' as const,
+            baseUrl: '',
+            apiKey: '',
+            model: '',
+            maxTokens: undefined,
+            temperature: undefined
+        };
+        const baseUrl = cfg.kind === 'placeholder'
+            ? trim(normalized.功能模型占位[cfg.baseUrlKey!]) || trim(selectedConfig.baseUrl)
+            : trim(selectedConfig.baseUrl);
+        const apiKey = cfg.kind === 'placeholder'
+            ? trim(normalized.功能模型占位[cfg.apiKeyKey!]) || trim(selectedConfig.apiKey)
+            : trim(selectedConfig.apiKey);
+        const model = cfg.kind === 'main'
+            ? trim(selectedConfig.model || normalized.功能模型占位.主剧情使用模型)
+            : trim(normalized.功能模型占位[cfg.modelKey!]);
+        return {
+            id: selectedConfig.id,
+            名称: selectedConfig.名称,
+            供应商: selectedConfig.供应商,
+            协议覆盖: selectedConfig.协议覆盖,
+            baseUrl,
+            apiKey,
+            model,
+            maxTokens: selectedConfig.maxTokens,
+            temperature: selectedConfig.temperature
+        };
+    };
+
+    const fetchModelsForStage = async (stage: FlowStage) => {
+        const cfg = stage.modelConfig;
+        if (!cfg) return;
+        const api = resolveStageApi(stage);
+        if (!api?.baseUrl || !api?.apiKey) {
             setStageMessage(stage.id, '请先选择有 Base URL 和 API Key 的渠道。');
             return;
         }
         setLoadingStageId(stage.id);
         setStageMessage(stage.id, '');
         try {
-            const base = resolvedBaseUrl.replace(/\/+$/, '');
+            const base = api.baseUrl.replace(/\/+$/, '');
             const normalizedBase = base.replace(/\/v1$/i, '');
             const candidateUrls = Array.from(new Set([
                 `${normalizedBase}/v1/models`,
@@ -514,7 +551,7 @@ const WorkflowGraphSettings: React.FC<{
                 `${base}/models`
             ]));
             for (const url of candidateUrls) {
-                const res = await fetch(url, { headers: { Authorization: `Bearer ${resolvedApiKey}` } });
+                const res = await fetch(url, { headers: { Authorization: `Bearer ${api.apiKey}` } });
                 if (!res.ok) continue;
                 const data = await res.json();
                 if (Array.isArray(data?.data)) {
@@ -529,6 +566,46 @@ const WorkflowGraphSettings: React.FC<{
             setStageMessage(stage.id, `获取失败：${error?.message || '网络异常'}`);
         } finally {
             setLoadingStageId('');
+        }
+    };
+
+    const testStageConnection = async (stage: FlowStage) => {
+        const api = resolveStageApi(stage);
+        if (!api?.baseUrl) {
+            setStageMessage(stage.id, '测试失败：缺少 Base URL。');
+            return;
+        }
+        if (!api.apiKey) {
+            setStageMessage(stage.id, '测试失败：缺少 API Key。');
+            return;
+        }
+        if (!api.model) {
+            setStageMessage(stage.id, '测试失败：请先为该阶段选择模型。');
+            return;
+        }
+        const messages: 通用消息[] = [
+            { role: 'user', content: '你好，请只回复 OK。' }
+        ];
+        const startedAt = Date.now();
+        setTestingStageId(stage.id);
+        setStageMessage(stage.id, '正在发送测试消息...');
+        try {
+            const text = await 请求模型文本(api, messages, {
+                temperature: 0,
+                streamOptions: { stream: false },
+                errorDetailLimit: 1200,
+                disableThinking: true,
+                stripReasoning: true
+            });
+            const elapsed = Date.now() - startedAt;
+            const reply = trim(text).replace(/\s+/g, ' ').slice(0, 80) || '无文本回复';
+            setStageMessage(stage.id, `测试成功：${elapsed}ms，回复：${reply}`);
+        } catch (error: any) {
+            const raw = error?.detail ?? error?.message ?? error ?? '未知错误';
+            const detail = typeof raw === 'string' ? raw : JSON.stringify(raw);
+            setStageMessage(stage.id, `测试失败：${detail.slice(0, 240)}`);
+        } finally {
+            setTestingStageId('');
         }
     };
 
@@ -604,6 +681,14 @@ const WorkflowGraphSettings: React.FC<{
                         disabled={!onSave || loadingStageId === stage.id}
                     >
                         {loadingStageId === stage.id ? '...' : '刷'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => testStageConnection(stage)}
+                        className="h-[28px] w-10 shrink-0 rounded-sm border border-emerald-400/45 bg-emerald-500/10 px-2 text-center text-[10px] font-bold text-emerald-200 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={testingStageId === stage.id || !modelValue}
+                    >
+                        {testingStageId === stage.id ? '...' : '测'}
                     </button>
                 </div>
                 {stageMessages[stage.id] && <div className="text-[10px] leading-4 text-wuxia-cyan">{stageMessages[stage.id]}</div>}
