@@ -93,3 +93,4 @@ Desktop.ini
 *.njsproj
 *.sln
 *.sw?
+.serena/
