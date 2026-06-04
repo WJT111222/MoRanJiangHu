@@ -18,6 +18,7 @@
 android/keystore.properties
 android/app/*.jks
 android/app/*.keystore
+opencode.json
 
 # Logs
 /logs/
