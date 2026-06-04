@@ -52,10 +52,36 @@ const 现代晋升梯队: RankStep[] = [
     { rank: '负责人', lvl: 6, required: 3200, discount: 0.22, perks: ['关键决策', '资源调配'] }
 ];
 
+const 无限流晋升梯队: RankStep[] = [
+    { rank: '新人', lvl: 1, required: 0, discount: 0, perks: ['基础任务', '新人补给'] },
+    { rank: '正式成员', lvl: 2, required: 150, discount: 0.05, perks: ['支线任务权限', '主神商城九五折'] },
+    { rank: '骨干成员', lvl: 3, required: 500, discount: 0.1, perks: ['高级任务优先', '主神商城九折'] },
+    { rank: '副队长', lvl: 4, required: 1200, discount: 0.15, perks: ['小队管理权限', '主神商城八五折'] },
+    { rank: '队长', lvl: 5, required: 3000, discount: 0.2, perks: ['小队决策权', '主神商城八折'] },
+    { rank: '核心轮回者', lvl: 6, required: 6000, discount: 0.28, perks: ['独立任务权限', '主神商城七二折'] }
+];
+
 const 获取组织显示文案 = (sectData: 详细门派结构) => {
     const text = JSON.stringify(sectData || {});
-    const isApocalypse = /末日|丧尸|营地|避难|安全点|据点|车队|搜救|医疗维修|后勤|巡逻|物资|燃油|口粮|弹药|尸群/u.test(text);
-    const isModern = !isApocalypse && /现代|都市|公司|项目组|事务所|社区中心|门店|合作团队|合同|客户|技术成员|行政联系人|培训|手机|电脑/u.test(text);
+    const semantic = String((sectData as any)?.组织语义 || (sectData as any)?.组织类型 || (sectData as any)?.题材组织类型 || '').trim();
+    const isInfinite = semantic === '轮回小队' || /主神|轮回|奖励点|支线剧情|基因锁|主神空间|副本|恐怖片|轮回者/u.test(text);
+    const isApocalypse = !isInfinite && /末日|丧尸|营地|避难|安全点|据点|车队|搜救|医疗维修|后勤|巡逻|物资|燃油|口粮|弹药|尸群/u.test(text);
+    const isModern = !isApocalypse && !isInfinite && /现代|都市|公司|项目组|事务所|社区中心|门店|合作团队|合同|客户|技术成员|行政联系人|培训|手机|电脑/u.test(text);
+    if (isInfinite) {
+        return {
+            tabs: { hall: '小队', exchange: '商城', library: '技能', members: '名录' },
+            organizationPower: '小队战力',
+            memberCount: '轮回者',
+            principle: '小队信条',
+            rules: '准则',
+            rankPath: '轮回进阶',
+            contribution: '奖励点',
+            capabilitySuffix: '',
+            exchangeName: '主神商城',
+            rankLadder: 无限流晋升梯队,
+            rankMap: {} as Record<string, string>
+        };
+    }
     if (isModern) {
         return {
             tabs: { hall: '组织', exchange: '资源', library: '资料', members: '成员' },

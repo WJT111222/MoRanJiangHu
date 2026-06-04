@@ -1451,9 +1451,9 @@ const 标准化亲密行为类型 = (value: unknown): 亲密行为类型 | '' =>
     if (/肛交|后庭|屁穴|肛门/.test(text)) return '肛交';
     if (/阴道交|阴道|小穴|蜜穴|破处|初夜|失贞|性交|交合|同房/.test(text)) return '阴道交';
     if (/乳交|胸交|乳房/.test(text)) return '乳交';
-    if (/手交|手淫|手弄|掌心/.test(text)) return '手交';
+    if (/手交|(?:手淫|手弄|掌心)(?:肉棒|阴茎|龟头|下体|性器)/.test(text)) return '手交';
     if (/足交|脚交|足弄|脚掌|足心/.test(text)) return '足交';
-    if (/股交|腿交|腿间|大腿/.test(text)) return '股交';
+    if (/股交|腿交(?!叠)|(?:腿间|大腿)(?:肉棒|阴茎|下体|性器|夹住|夹着|磨蹭|摩擦|抽送)/.test(text)) return '股交';
     return '';
 };
 
