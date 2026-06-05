@@ -660,6 +660,7 @@ export interface OpeningConfig {
     开局生成同门: boolean;
     初始伙伴?: 初始伙伴配置结构;
     同人融合: 同人融合配置结构;
+    启用女主剧情规划?: boolean;
 }
 
 export interface WorldGenConfig {

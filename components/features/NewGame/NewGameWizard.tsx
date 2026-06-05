@@ -3067,6 +3067,27 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                                         />
                                     </div>
                                 </div>
+                                <div className="mt-4 flex items-center justify-between rounded-2xl border border-gray-800 bg-black/25 px-4 py-4">
+                                    <div>
+                                        <div className="text-sm text-gray-200">女主剧情规划</div>
+                                        <div className="text-[11px] text-gray-500 mt-1">控制是否主动生成女主 NPC 和推进情感线；创意工坊可预设此项</div>
+                                    </div>
+                                    <select
+                                        value={openingConfig.启用女主剧情规划 === undefined ? '默认' : openingConfig.启用女主剧情规划 ? '启用' : '关闭'}
+                                        onChange={(e) => {
+                                            const v = e.target.value;
+                                            setOpeningConfig((prev) => ({
+                                                ...prev,
+                                                启用女主剧情规划: v === '默认' ? undefined : v === '启用'
+                                            }));
+                                        }}
+                                        className="bg-black/40 border border-gray-700 text-xs text-gray-200 rounded-lg px-3 py-1.5 focus:border-wuxia-gold/50 focus:outline-none"
+                                    >
+                                        <option value="默认">默认</option>
+                                        <option value="启用">启用</option>
+                                        <option value="关闭">关闭</option>
+                                    </select>
+                                </div>
                             </OrnateBorder>
 
 
