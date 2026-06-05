@@ -149,6 +149,7 @@ import { countOpenAIChatMessagesTokens, countOpenAITextTokens } from '../utils/t
 import { 执行游戏后台重计算 } from '../utils/gameHeavyWorkerClient';
 import { 保存NPC变量本地备份, 自动备份NPC变量 } from '../services/npcVariableBackup';
 import { 合并保留既有NPC列表 } from '../utils/npcRetentionGuard';
+import { 设置默认技艺运行时配置 } from './useGame/stateTransforms';
 
 const 加载图片AI服务 = () => import('../services/ai/image/runtime');
 const 加载NPC生图工作流 = () => import('./useGame/npcImageWorkflow');
@@ -496,6 +497,12 @@ export const useGame = () => {
     useEffect(() => {
         imageManagerConfigRef.current = 规范化图片管理设置(imageManagerConfig);
     }, [imageManagerConfig]);
+
+    useEffect(() => {
+        if (开局配置) {
+            设置默认技艺运行时配置(开局配置.题材模式, 开局配置.modeRuntimeProfile);
+        }
+    }, [开局配置]);
 
     useEffect(() => {
         刷新NPC记忆总结队列(Array.isArray(社交) ? 社交 : [], { 静默: NPC记忆总结阶段 === 'processing' || NPC记忆总结阶段 === 'review' });
@@ -2558,11 +2565,14 @@ export const useGame = () => {
 
     const 构建门派同门社交档案 = (member: any, index: number) => {
         const sectText = JSON.stringify(玩家门派 || {});
-        const isApocalypseSect = /末日|丧尸|营地|避难|安全点|据点|车队|搜救|后勤|巡逻|物资|燃油|口粮|弹药|尸群/u.test(sectText);
-        const memberLabel = isApocalypseSect ? '同伴' : '同门';
-        const orgLabel = isApocalypseSect ? '营地' : '门派';
+        const semantic = String((玩家门派 as any)?.组织语义 || (玩家门派 as any)?.组织类型 || (玩家门派 as any)?.题材组织类型 || '').trim();
+        const isInfiniteSect = semantic === '轮回小队' || /主神|轮回|奖励点|支线剧情|基因锁|主神空间|恐怖片|轮回者/u.test(sectText);
+        const isApocalypseSect = !isInfiniteSect && /末日|丧尸|营地|避难|安全点|据点|车队|搜救|后勤|巡逻|物资|燃油|口粮|弹药|尸群/u.test(sectText);
+        const memberLabel = isInfiniteSect ? '队友' : isApocalypseSect ? '同伴' : '同门';
+        const orgLabel = isInfiniteSect ? '轮回小队' : isApocalypseSect ? '营地' : '门派';
         const formatRelation = (value?: string) => {
             const text = String(value || '').trim() || memberLabel;
+            if (isInfiniteSect) return text.replace(/同门/g, '队友').replace(/门派成员/g, '轮回小队成员').replace(/营地成员/g, '轮回小队成员');
             return isApocalypseSect ? text.replace(/同门/g, '同伴').replace(/门派成员/g, '营地成员') : text;
         };
         return {

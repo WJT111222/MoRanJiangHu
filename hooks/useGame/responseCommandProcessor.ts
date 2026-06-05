@@ -244,6 +244,9 @@ const 随行者占位名正则 = /^随行者([1-9]\d*)$/;
 
 const NPC已死亡 = (npc: any): boolean => {
     const statusText = [
+        npc?.状态,
+        npc?.生死状态,
+        npc?.生命状态,
         npc?.死亡描述,
         ...(Array.isArray(npc?.DEBUFF) ? npc.DEBUFF.flatMap((item: any) => [item?.名称, item?.描述, item?.效果]) : [])
     ].filter(Boolean).join(' ');
@@ -526,10 +529,13 @@ const 亲密行为事实规则 = [
     { 类型: '肛交', 正则: /肛交|后庭交合|进入(?:了)?屁穴|插(?:进|入)(?:了)?屁穴|屁穴(?:被|让)?(?:进入|贯穿|占有)/ },
     { 类型: '阴道交', 正则: /阴道交|破处|初夜|失贞|插(?:进|入)(?:了)?(?:小穴|阴道|蜜穴)|进入(?:了)?(?:小穴|阴道|蜜穴)|(?:小穴|阴道|蜜穴)(?:被|让)?(?:进入|贯穿|占有)|体内射精|内射|中出/ },
     { 类型: '乳交', 正则: /乳交|胸交|乳房(?:夹|包|贴).*?(?:肉棒|阴茎)|肉棒.*?(?:乳房|胸部).*?(?:夹|磨|蹭)/ },
-    { 类型: '手交', 正则: /手交|用手(?:抚弄|套弄|握住|撸动)|掌心(?:套弄|摩挲).*?(?:肉棒|阴茎)/ },
+    { 类型: '手交', 正则: /手交|(?:用手|掌心|手指)(?:[^。！？\n\r]{0,12})?(?:抚弄|套弄|握住|撸动|摩挲)(?:[^。！？\n\r]{0,12})?(?:肉棒|阴茎|龟头|下体|性器)/ },
     { 类型: '足交', 正则: /足交|脚交|足心(?:夹|磨|蹭)|脚掌(?:夹|磨|蹭)/ },
-    { 类型: '股交', 正则: /股交|腿交|腿间(?:夹|磨|蹭)|大腿(?:夹|磨|蹭)/ }
+    { 类型: '股交', 正则: /股交|(?:腿交)(?!叠)|(?:腿间|大腿)(?:[^。！？\n\r]{0,10})?(?:夹住|夹着|磨蹭|摩擦|抽送|套弄|蹭弄)(?:[^。！？\n\r]{0,12})?(?:肉棒|阴茎|下体|性器)?/ }
 ] as const;
+
+const 亲密行为明确性器上下文正则 = /肉棒|阴茎|龟头|下体|性器|阴道|小穴|蜜穴|屁穴|后庭/u;
+const 亲密行为噪声片段正则 = /腿交叠|双腿交叠|两腿交叠|腿脚交叠|手指|脚趾|掌心出汗|手心出汗|腿间发力/u;
 const 私密状态未经历正则 = /(未经人事|未经房事|未曾人事|未曾经人事|尚未人事|尚未完全开发|未完全开发|处子|处女|完璧|无人采撷|未被使用|未曾使用|未开苞|初绽未开)/;
 
 const 句子存在肯定事实 = (text: string, positive: RegExp, negative?: RegExp): boolean => (
@@ -571,7 +577,11 @@ const 提取亲密行为类型 = (text: string, npc: any): string[] => {
         if (初次关系否定正则.test(sentence) || 体内射精否定正则.test(sentence)) return;
         亲密行为事实规则.forEach((rule) => {
             rule.正则.lastIndex = 0;
-            if (rule.正则.test(sentence) && NPC允许亲密行为类型(npc, rule.类型)) {
+            if (!rule.正则.test(sentence)) return;
+            if ((rule.类型 === '手交' || rule.类型 === '股交') && (!亲密行为明确性器上下文正则.test(sentence) || 亲密行为噪声片段正则.test(sentence))) {
+                return;
+            }
+            if (NPC允许亲密行为类型(npc, rule.类型)) {
                 types.add(rule.类型);
             }
         });
@@ -1095,7 +1105,7 @@ const 是否社交生理高风险命令 = (cmd: any): boolean => {
     const normalizedKey = normalizeStateCommandKey(typeof cmd?.key === 'string' ? cmd.key : '');
     if (!normalizedKey.startsWith('gameState.社交[')) return false;
     const action = (cmd?.action || 'set') as string;
-    if (/\.初夜(?:夺取者|时间|描述)$/.test(normalizedKey)) return true;
+    if (/\.初夜(?:夺取者|时间|描述)$/.test(normalizedKey) && !/\.死亡时间$/.test(normalizedKey)) return true;
     if (/\.失贞档案(?:$|\.)/.test(normalizedKey) && action !== 'delete') return true;
     if (/\.首次亲密记录(?:$|\[)/.test(normalizedKey) && action !== 'delete') return true;
     if (/\.是否处女$/.test(normalizedKey) && action !== 'delete' && cmd?.value === false) return true;
@@ -1167,6 +1177,17 @@ const 规范化命令姓名 = (value: unknown): string => (
         : ''
 );
 
+const 社交新增保留栏目名 = new Set([
+    '队伍', '社交', '背包', '装备', '战斗', '世界', '地图', '门派', '任务', '约定', '剧情', '规划', '记忆',
+    '玩家', '角色', '主角', '同伴', '队友', '同行', '随行者', '关系', '人物', 'NPC'
+]);
+
+const 是否保留栏目式社交姓名 = (name: string): boolean => {
+    if (!name) return false;
+    if (社交新增保留栏目名.has(name)) return true;
+    return /^(?:队伍|社交|背包|装备|战斗|世界|地图|门派|任务|约定|剧情|规划|记忆)(?:数据|信息|列表|面板|状态|更新)?$/u.test(name);
+};
+
 const 提取社交姓名命令索引 = (rawKey: unknown): number | null => {
     const normalizedKey = normalizeStateCommandKey(typeof rawKey === 'string' ? rawKey : '');
     const match = normalizedKey.match(/^gameState\.社交\[(\d+)\]\.姓名$/);
@@ -1205,6 +1226,7 @@ const 净化新增社交命令 = (
 ): any | null => {
     const nextName = 提取新增社交命令姓名(cmd);
     if (!nextName) return cmd;
+    if (是否保留栏目式社交姓名(nextName)) return null;
     const nextKey = 归一化文本键(nextName);
     const existing = (Array.isArray(currentSocial) ? currentSocial : []).some((npc: any) => (
         [npc?.id, ...读取NPC名称列表(npc)]
@@ -1261,6 +1283,7 @@ export const 执行响应命令处理 = (
                         charBuffer,
                         responseFactText
                     ),
+                    socialBuffer
                 ),
                 socialBuffer,
                 responseFactText,
@@ -1341,7 +1364,7 @@ export const 执行响应命令处理 = (
             { 合并同名: false }
         );
         socialBuffer = deps.规范化社交列表(
-            应用死亡事实到NPC(response, socialBuffer, envBuffer),
+            清理无依据死亡状态(socialBuffer),
             { 合并同名: false }
         );
         socialBuffer = deps.规范化社交列表(
@@ -1422,8 +1445,7 @@ export const 执行响应命令处理 = (
                 response,
                 同步当前视角在场状态(
                     response,
-                    应用死亡事实到NPC(
-                        response,
+                    清理无依据死亡状态(
                         应用女性关系目标主要角色兜底(
                             response,
                             应用首次亲密事实到NPC(
@@ -1437,8 +1459,7 @@ export const 执行响应命令处理 = (
                                 envBuffer,
                                 charBuffer?.姓名
                             )
-                        ),
-                        envBuffer
+                        )
                     ),
                     charBuffer?.姓名
                 ),

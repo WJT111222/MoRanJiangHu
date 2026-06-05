@@ -1,5 +1,6 @@
 import type { NPC生图任务记录, 香闺秘档部位类型 } from '../../types';
 import { 获取图片展示地址, 压缩图片资源字段 } from '../../utils/imageAssets';
+import { recordDiagnosticLog } from '../../services/diagnosticLog';
 
 type NPC图片状态工作流依赖 = {
     设置社交: (updater: any) => void;
@@ -115,6 +116,42 @@ const 是否可作立绘图片 = (record: any): boolean => (
     && Boolean(获取图片展示地址(record))
 );
 
+const 香闺秘档部位列表: 香闺秘档部位类型[] = ['胸部', '小穴', '屁穴', '肉棒'];
+
+const 是否可作香闺秘档部位图片 = (record: any): boolean => (
+    record?.构图 === '部位特写'
+    && 香闺秘档部位列表.includes(record?.部位)
+    && record?.状态 === 'success'
+    && Boolean(record?.id)
+    && Boolean(获取图片展示地址(record))
+);
+
+const 从历史回填香闺秘档部位档案 = (currentArchive: any, history: any[], meta?: { npcKey?: string; npcName?: string; source?: string }) => {
+    const currentSecretArchive = 标准化香闺秘档部位档案(currentArchive?.香闺秘档部位档案) || {};
+    let changed = false;
+    const nextSecretArchive: any = { ...currentSecretArchive };
+    香闺秘档部位列表.forEach((part) => {
+        const current = nextSecretArchive?.[part];
+        if (current && 获取图片展示地址(current)) return;
+        const fallback = history.find((item: any) => item?.部位 === part && 是否可作香闺秘档部位图片(item));
+        if (!fallback) return;
+        nextSecretArchive[part] = fallback;
+        changed = true;
+        recordDiagnosticLog('warn', 'NPC私密部位图片档案自动回填', {
+            npcKey: meta?.npcKey,
+            npcName: meta?.npcName,
+            source: meta?.source,
+            part,
+            recordId: fallback?.id,
+            hasImageUrl: Boolean(fallback?.图片URL),
+            hasLocalPath: Boolean(fallback?.本地路径),
+            displayable: Boolean(获取图片展示地址(fallback)),
+            historyCount: history.length
+        });
+    });
+    return changed ? 标准化香闺秘档部位档案(nextSecretArchive) : currentSecretArchive;
+};
+
 const 生图记录属于当前角色 = (currentNpc: any, record: any): boolean => {
     if (!record || typeof record !== 'object') return false;
     const currentName = typeof currentNpc?.姓名 === 'string' ? currentNpc.姓名.trim() : '';
@@ -203,9 +240,18 @@ export const 合并NPC图片档案 = (currentNpc: any, payload: any) => {
     const selectedBackgroundImageId = incomingSelectedBackgroundImageId
         || (typeof currentArchive?.已选背景图片ID === 'string' ? currentArchive.已选背景图片ID.trim() : '')
         || undefined;
-    const 香闺秘档部位档案 = 合并香闺秘档部位档案(
+    const rawSecretArchive = 合并香闺秘档部位档案(
         currentArchive?.香闺秘档部位档案,
         payload?.图片档案?.香闺秘档部位档案 || payload?.香闺秘档部位档案
+    );
+    const 香闺秘档部位档案 = 从历史回填香闺秘档部位档案(
+        { 香闺秘档部位档案: rawSecretArchive },
+        mergedHistory,
+        {
+            npcKey: currentNpc?.id,
+            npcName: currentNpc?.姓名,
+            source: 'merge'
+        }
     );
     return {
         最近生图结果: normalizedRecent,
@@ -300,6 +346,11 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
                 const nextSelectedPortraitImageId = currentSelectedPortraitImageId && nextHistory.some((item: any) => item?.id === currentSelectedPortraitImageId && 是否可作立绘图片(item))
                     ? currentSelectedPortraitImageId
                     : (nextHistory.find(是否可作立绘图片)?.id || undefined);
+                const nextSecretArchive = 从历史回填香闺秘档部位档案(archive, nextHistory, {
+                    npcKey,
+                    npcName: npc?.姓名,
+                    source: 'write-history'
+                });
                 return {
                     ...npc,
                     图片档案: {
@@ -308,7 +359,8 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
                         生图历史: nextHistory,
                         已选头像图片ID: nextSelectedAvatarImageId,
                         已选立绘图片ID: nextSelectedPortraitImageId,
-                        已选背景图片ID: currentSelectedBackgroundImageId
+                        已选背景图片ID: currentSelectedBackgroundImageId,
+                        ...(nextSecretArchive ? { 香闺秘档部位档案: nextSecretArchive } : {})
                     },
                     最近生图结果: nextRecent
                 };
