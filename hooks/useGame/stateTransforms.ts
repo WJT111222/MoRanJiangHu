@@ -164,13 +164,14 @@ const 合并运行时覆写 = (
     base: ReturnType<typeof 题材组默认定制>,
     profile: ModeRuntimeProfile | null
 ): ReturnType<typeof 题材组默认定制> => {
-    if (!profile?.ability) return base;
-    const ab = profile.ability;
+    const ab = profile?.ability;
+    const it = profile?.items;
+    const op = profile?.opening;
     return {
-        equipment: ab.defaultEquipment ?? base.equipment,
-        currency: ab.defaultCurrency ?? base.currency,
-        resourceTypes: ab.resourceTypes ?? base.resourceTypes,
-        kungfuTypes: ab.kungfuTypes ?? base.kungfuTypes,
+        equipment: op?.defaultEquipment ?? base.equipment,
+        currency: op?.defaultCurrency ?? base.currency,
+        resourceTypes: it?.resourceTypes ?? ab?.resourceTypes ?? base.resourceTypes,
+        kungfuTypes: ab?.kungfuTypes ?? base.kungfuTypes,
         attributeBias: base.attributeBias,
     };
 };
