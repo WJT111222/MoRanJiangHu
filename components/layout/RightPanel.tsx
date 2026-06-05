@@ -2,6 +2,7 @@ import React from 'react';
 import GameButton from '../ui/GameButton';
 import { useMusic } from '../features/Music/MusicProvider';
 import MusicPlayerUI from '../features/Music/MusicPlayerUI';
+import type { 题材界面文案 } from '../../utils/resourceLabels';
 
 interface Props {
     onOpenSettings: () => void;
@@ -25,6 +26,7 @@ interface Props {
     onOpenAuctionHouse?: () => void;
     auctionHouseLabel?: string;
     sectLabel?: string;
+    uiLabels?: 题材界面文案;
     worldEvolutionEnabled?: boolean;
     worldEvolutionUpdating?: boolean;
     enableWorldPanel?: boolean;
@@ -62,6 +64,7 @@ const RightPanel: React.FC<Props> = ({
     onOpenAuctionHouse,
     auctionHouseLabel = '拍卖行',
     sectLabel = '门派',
+    uiLabels,
     worldEvolutionEnabled = false,
     worldEvolutionUpdating = false,
     enableWorldPanel = true,
@@ -97,14 +100,16 @@ const RightPanel: React.FC<Props> = ({
         action();
     };
 
+    const menuLabel = uiLabels?.菜单;
+    const titleLabel = uiLabels?.标题;
     const menuItems = [
-        { label: '战斗', action: onOpenBattle, color: 'primary' as const, changeKeys: ['战斗'] },
-        { label: '装备', action: onOpenEquipment, color: 'primary' as const, changeKeys: ['装备'] },
-        { label: '背包', action: onOpenInventory, color: 'primary' as const, changeKeys: ['背包'] },
+        { label: menuLabel?.battle || '战斗', action: onOpenBattle, color: 'primary' as const, changeKeys: ['战斗'] },
+        { label: menuLabel?.equipment || '装备', action: onOpenEquipment, color: 'primary' as const, changeKeys: ['装备'] },
+        { label: menuLabel?.inventory || '背包', action: onOpenInventory, color: 'primary' as const, changeKeys: ['背包'] },
         ...(onOpenAuctionHouse ? [{ label: auctionHouseLabel, action: onOpenAuctionHouse, color: 'primary' as const }] : []),
-        { label: '社交', action: onOpenSocial, color: 'primary' as const, changeKeys: ['社交'] },
+        { label: menuLabel?.social || '社交', action: onOpenSocial, color: 'primary' as const, changeKeys: ['社交'] },
         ...(enableWorldPanel ? [{
-            label: worldEvolutionUpdating ? '世界·更新中' : '世界',
+            label: worldEvolutionUpdating ? `${menuLabel?.world || '世界'}·更新中` : (menuLabel?.world || '世界'),
             action: onOpenWorld,
             color: worldEvolutionUpdating ? 'secondary' as const : 'primary' as const,
             changeKeys: ['世界'],
@@ -112,24 +117,24 @@ const RightPanel: React.FC<Props> = ({
                 ? 'animate-pulse shadow-[0_0_18px_rgba(90,220,220,0.35)]'
                 : ''
         }] : []),
-        { label: '队伍', action: onOpenTeam, color: 'primary' as const, changeKeys: ['队伍'] },
+        { label: menuLabel?.team || '队伍', action: onOpenTeam, color: 'primary' as const, changeKeys: ['队伍'] },
         ...(enableKungfu ? [{ label: kungfuLabel, action: onOpenKungfu, color: 'primary' as const, changeKeys: ['功法'] }] : []),
-        { label: '地图', action: onOpenMap, color: 'primary' as const, changeKeys: ['地图'] },
+        { label: menuLabel?.map || '地图', action: onOpenMap, color: 'primary' as const, changeKeys: ['地图'] },
         { label: sectLabel, action: onOpenSect, color: 'primary' as const, changeKeys: ['玩家门派'] },
-        { label: '任务', action: onOpenTask, color: 'primary' as const, changeKeys: ['任务列表'] },
-        { label: '约定', action: onOpenAgreement, color: 'primary' as const, changeKeys: ['约定列表'] },
-        { label: '剧情', action: onOpenStory, color: 'primary' as const, changeKeys: ['剧情'] },
-        ...(enablePlanningPanel && enableHeroinePlan ? [{ label: '规划', action: onOpenHeroinePlan, color: 'primary' as const, changeKeys: ['剧情规划'] }] : []),
-        { label: '记忆', action: onOpenMemory, color: 'primary' as const, changeKeys: ['记忆系统'] },
+        { label: menuLabel?.task || '任务', action: onOpenTask, color: 'primary' as const, changeKeys: ['任务列表'] },
+        { label: menuLabel?.agreement || '约定', action: onOpenAgreement, color: 'primary' as const, changeKeys: ['约定列表'] },
+        { label: menuLabel?.story || '剧情', action: onOpenStory, color: 'primary' as const, changeKeys: ['剧情'] },
+        ...(enablePlanningPanel && enableHeroinePlan ? [{ label: menuLabel?.plan || '规划', action: onOpenHeroinePlan, color: 'primary' as const, changeKeys: ['剧情规划'] }] : []),
+        { label: menuLabel?.memory || '记忆', action: onOpenMemory, color: 'primary' as const, changeKeys: ['记忆系统'] },
         ...(onOpenNovelExport ? [{ label: '导出小说', action: onOpenNovelExport, color: 'secondary' as const }] : []),
-        ...(onOpenImageManager ? [{ label: '图册', action: onOpenImageManager, color: 'secondary' as const }] : []),
+        ...(onOpenImageManager ? [{ label: menuLabel?.imageManager || '图册', action: onOpenImageManager, color: 'secondary' as const }] : []),
         ...(onOpenNovelDecomposition ? [{ label: '分解工坊', action: onOpenNovelDecomposition, color: 'secondary' as const }] : []),
     ];
 
     const systemItems = [
         { label: '保存进度', action: onSave },
         { label: '读取进度', action: onLoad },
-        { label: '江湖设置', action: onOpenSettings },
+        { label: titleLabel?.系统设置 || '江湖设置', action: onOpenSettings },
         ...(onReturnToHome ? [{
             label: returnHomeSaving ? '正在保存存档中' : '返回首页',
             action: onReturnToHome,

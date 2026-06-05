@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useMusic } from '../features/Music/MusicProvider';
+import type { 题材界面文案 } from '../../utils/resourceLabels';
 
 type MenuId =
     | 'character'
@@ -40,6 +41,7 @@ interface Props {
     enableNovelDecomposition?: boolean;
     auctionHouseLabel?: string;
     sectLabel?: string;
+    uiLabels?: 题材界面文案;
 }
 
 type IconName =
@@ -109,7 +111,8 @@ const MobileQuickMenu: React.FC<Props> = ({
     enableImageManager = false,
     enableNovelDecomposition = false,
     auctionHouseLabel = '拍卖',
-    sectLabel = '门派'
+    sectLabel = '门派',
+    uiLabels
 }) => {
     const [collapsed, setCollapsed] = useState(false);
     const [showAllMenus, setShowAllMenus] = useState(false);
@@ -120,49 +123,58 @@ const MobileQuickMenu: React.FC<Props> = ({
         [tracks, currentTrackId]
     );
 
+    const labelFor = (id: Exclude<MenuId, 'more'>, fallback = MENU_META[id].label) => {
+        const labels = uiLabels?.菜单;
+        if (!labels) return fallback;
+        if (id === 'auction_house') return labels.auctionHouse || fallback;
+        if (id === 'image_manager') return labels.imageManager || fallback;
+        return (labels as Record<string, string>)[id] || fallback;
+    };
+    const metaFor = (meta: MenuMeta, label?: string): MenuMeta => ({ ...meta, label: label || labelFor(meta.id as Exclude<MenuId, 'more'>, meta.label) });
+
     const visibleMenus = useMemo<MenuMeta[]>(() => ([
-        MENU_META.character,
-        MENU_META.battle,
-        MENU_META.equipment,
-        MENU_META.inventory,
+        metaFor(MENU_META.character),
+        metaFor(MENU_META.battle),
+        metaFor(MENU_META.equipment),
+        metaFor(MENU_META.inventory),
         { ...MENU_META.auction_house, label: auctionHouseLabel },
-        MENU_META.social,
-        ...(enableKungfu ? [MENU_META.kungfu] : []),
-        MENU_META.map,
-        MENU_META.team,
+        metaFor(MENU_META.social),
+        ...(enableKungfu ? [metaFor(MENU_META.kungfu)] : []),
+        metaFor(MENU_META.map),
+        metaFor(MENU_META.team),
         { ...MENU_META.sect, label: sectLabel },
-        MENU_META.task,
-        ...(enableWorldPanel ? [MENU_META.world] : []),
-        MENU_META.story,
-        MENU_META.save,
+        metaFor(MENU_META.task),
+        ...(enableWorldPanel ? [metaFor(MENU_META.world)] : []),
+        metaFor(MENU_META.story),
+        metaFor(MENU_META.save),
         ...(enabled ? [MENU_META.music] : []),
-        MENU_META.settings,
-    ]), [auctionHouseLabel, enableKungfu, enableWorldPanel, enabled, sectLabel]);
+        metaFor(MENU_META.settings),
+    ]), [auctionHouseLabel, enableKungfu, enableWorldPanel, enabled, sectLabel, uiLabels]);
 
     const allMenus = useMemo<MenuMeta[]>(() => ([
-        MENU_META.character,
-        MENU_META.battle,
-        MENU_META.equipment,
-        MENU_META.inventory,
+        metaFor(MENU_META.character),
+        metaFor(MENU_META.battle),
+        metaFor(MENU_META.equipment),
+        metaFor(MENU_META.inventory),
         { ...MENU_META.auction_house, label: auctionHouseLabel },
-        MENU_META.social,
-        ...(enableKungfu ? [MENU_META.kungfu] : []),
-        MENU_META.map,
-        MENU_META.team,
+        metaFor(MENU_META.social),
+        ...(enableKungfu ? [metaFor(MENU_META.kungfu)] : []),
+        metaFor(MENU_META.map),
+        metaFor(MENU_META.team),
         { ...MENU_META.sect, label: sectLabel },
-        MENU_META.task,
-        MENU_META.agreement,
-        ...(enableWorldPanel ? [MENU_META.world] : []),
-        MENU_META.story,
-        ...(enablePlanningPanel && enableHeroinePlan ? [MENU_META.plan] : []),
-        MENU_META.memory,
+        metaFor(MENU_META.task),
+        metaFor(MENU_META.agreement),
+        ...(enableWorldPanel ? [metaFor(MENU_META.world)] : []),
+        metaFor(MENU_META.story),
+        ...(enablePlanningPanel && enableHeroinePlan ? [metaFor(MENU_META.plan)] : []),
+        metaFor(MENU_META.memory),
         MENU_META.export_novel,
-        ...(enableImageManager ? [MENU_META.image_manager] : []),
+        ...(enableImageManager ? [metaFor(MENU_META.image_manager)] : []),
         ...(enableNovelDecomposition ? [MENU_META.novel_decomposition] : []),
-        MENU_META.save,
-        MENU_META.load,
-        MENU_META.settings,
-    ]), [auctionHouseLabel, enableHeroinePlan, enableImageManager, enableKungfu, enableNovelDecomposition, enablePlanningPanel, enableWorldPanel, sectLabel]);
+        metaFor(MENU_META.save),
+        metaFor(MENU_META.load),
+        metaFor(MENU_META.settings),
+    ]), [auctionHouseLabel, enableHeroinePlan, enableImageManager, enableKungfu, enableNovelDecomposition, enablePlanningPanel, enableWorldPanel, sectLabel, uiLabels]);
 
     const handleMenuClick = (menu: MenuId) => {
         onMenuClick(menu);

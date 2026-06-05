@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { 获取物品已选图标地址 } from '../utils/itemImage';
-import { 构建物品图提示词, 构建物品负面提示词 } from '../services/ai/itemImageGeneration';
+import { 构建物品图提示词, 构建物品负面提示词, 构建物品视觉描述 } from '../services/ai/itemImageGeneration';
 
 describe('item image preset fallback', () => {
     const expectHostedPreset = (url: string | undefined) => {
@@ -151,6 +151,26 @@ describe('item image preset fallback', () => {
         };
 
         expect(获取物品已选图标地址(item)).toBe('https://cdn.example.com/items/jade-pendant.png');
+    });
+});
+
+describe('item image visual description', () => {
+    it('uses freeform item descriptions without throwing when no structured preset matches', () => {
+        const description = 构建物品视觉描述({
+            名称: '斑驳旧木盒',
+            描述: '一只边角磨损的旧木盒，铜扣泛着暗沉光泽。'
+        });
+
+        expect(description).toContain('一只边角磨损的旧木盒');
+    });
+
+    it('filters mechanical stat descriptions from generated visual text', () => {
+        const description = 构建物品视觉描述({
+            名称: '临时奖励牌',
+            描述: '生命值恢复 +10，技能冷却减少 1 回合。'
+        });
+
+        expect(description).not.toContain('生命值恢复');
     });
 });
 

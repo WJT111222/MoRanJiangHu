@@ -66,6 +66,13 @@ export interface WorldEvolutionResult {
     rawText: string;
 }
 
+export interface WorldFoundationResult {
+    worldPrompt: string;
+    mapLayers: any[];
+    factions: any[];
+    rawText: string;
+}
+
 export interface VariableCalibrationResult {
     commands: TavernCommand[];
     reports: string[];
@@ -397,7 +404,51 @@ export const generateWorldData = async (
     return 解析世界观提示词内容(rawText);
 };
 
-export const 解析世界观提示词内容 = (content: string): string => {
+export const generateWorldFoundationData = async (
+    worldContext: string,
+    charData: any,
+    apiConfig: 当前可用接口结构,
+    streamOptions?: WorldStreamOptions,
+    extraPrompt?: string,
+    cotPseudoHistoryPrompt?: string,
+    config?: { 启用修炼体系?: boolean; signal?: AbortSignal; openingConfig?: any }
+): Promise<WorldFoundationResult> => {
+    if (!apiConfig.apiKey) throw new Error('Missing API Key');
+
+    const normalizedExtraPrompt = (extraPrompt || '').trim();
+    const normalizedCotPseudoPrompt = (cotPseudoHistoryPrompt || '').trim();
+    const foundationConfig = {
+        ...config,
+        生成世界基底: true
+    };
+    const genSystemPrompt = 获取世界观生成系统提示词(foundationConfig, config?.openingConfig);
+    const genUserPrompt = [
+        构建世界观生成用户提示词(worldContext, charData, foundationConfig, config?.openingConfig),
+        normalizedExtraPrompt ? `【最终输出附加要求】\n${normalizedExtraPrompt}` : ''
+    ].filter(Boolean).join('\n\n');
+
+    const messagesRaw: 通用消息[] = [
+        { role: 'system', content: genSystemPrompt }
+    ];
+    if (normalizedExtraPrompt) {
+        messagesRaw.push({ role: 'user', content: `【额外要求提示词】\n${normalizedExtraPrompt}` });
+    }
+    messagesRaw.push({ role: 'user', content: genUserPrompt });
+    if (normalizedCotPseudoPrompt) {
+        messagesRaw.push({ role: 'assistant', content: normalizedCotPseudoPrompt });
+    }
+    const messages = 规范化文本补全消息链(messagesRaw, { 保留System: true, 合并同角色: false });
+
+    const rawText = await 请求模型文本(apiConfig, messages, {
+        temperature: 0.8,
+        streamOptions,
+        signal: config?.signal
+    });
+
+    return 解析世界观生成结果(rawText);
+};
+
+export const 解析世界观生成结果 = (content: string): WorldFoundationResult => {
     const source = (content || '').trim();
     if (!source) {
         throw new Error('世界观生成解析失败: 输出为空');
@@ -433,20 +484,51 @@ export const 解析世界观提示词内容 = (content: string): string => {
     const worldTagBlock = worldMatches.length > 0
         ? (worldMatches[worldMatches.length - 1]?.[1] || '').trim()
         : '';
-    if (worldTagBlock) return worldTagBlock;
 
     const parsed = parseJsonWithRepair<Record<string, unknown>>(textForParsing);
-    if (!parsed.value || typeof parsed.value !== 'object') {
+    if (!worldTagBlock && (!parsed.value || typeof parsed.value !== 'object')) {
         throw new Error(`世界观生成解析失败: 未找到<世界观>标签，且JSON解析失败: ${parsed.error || '未获得有效 JSON'}`);
     }
-    const prompt = typeof parsed.value.world_prompt === 'string'
+    const prompt = worldTagBlock || (typeof parsed.value?.world_prompt === 'string'
         ? parsed.value.world_prompt.trim()
-        : typeof parsed.value.worldPrompt === 'string'
+        : typeof parsed.value?.worldPrompt === 'string'
             ? parsed.value.worldPrompt.trim()
-            : '';
+            : '');
     if (!prompt) throw new Error('世界观生成解析失败: 未找到<世界观>标签且world_prompt为空');
-    return prompt;
+
+    const foundationMatches = Array.from(source.matchAll(/<\s*世界基底\s*>([\s\S]*?)(?:<\s*\/\s*世界基底\s*>|$)/gi));
+    const foundationBlock = foundationMatches.length > 0
+        ? (foundationMatches[foundationMatches.length - 1]?.[1] || '').trim()
+        : '';
+    const foundationParsed = foundationBlock
+        ? parseJsonWithRepair<Record<string, any>>(foundationBlock).value
+        : undefined;
+    const foundation = foundationParsed && typeof foundationParsed === 'object'
+        ? foundationParsed
+        : (parsed.value && typeof parsed.value === 'object' ? parsed.value as Record<string, any> : {});
+    const worldLike = foundation?.世界 && typeof foundation.世界 === 'object' ? foundation.世界 : foundation;
+    const mapLayers = [
+        worldLike?.地图层级,
+        worldLike?.地点树,
+        worldLike?.mapLayers,
+        worldLike?.map_layers
+    ].find(Array.isArray) || [];
+    const factions = [
+        worldLike?.势力列表,
+        worldLike?.factions,
+        worldLike?.factionList,
+        worldLike?.faction_list
+    ].find(Array.isArray) || [];
+
+    return {
+        worldPrompt: prompt,
+        mapLayers,
+        factions,
+        rawText: source
+    };
 };
+
+export const 解析世界观提示词内容 = (content: string): string => 解析世界观生成结果(content).worldPrompt;
 
 export const 解析境界体系提示词内容 = (content: string): string => {
     const source = (content || '').trim();

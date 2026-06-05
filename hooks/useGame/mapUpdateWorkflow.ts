@@ -280,11 +280,14 @@ export const 构建地图层级替换结果 = (
             名称: 取文本(node?.名称),
             层级: 规范化层级(node?.层级),
             父级ID: 取文本(node?.父级ID),
-            描述: 取文本(node?.描述)
+            描述: 取文本(node?.描述),
+            控制势力: 取文本(node?.控制势力),
+            势力影响: 取文本(node?.势力影响),
+            势力标签: Array.isArray(node?.势力标签) ? node.势力标签.map(取文本).filter(Boolean) : []
         }))
         .filter((node) => node.名称);
     if (!normalizedNodes.some((node) => node.层级 === '寰宇')) {
-        normalizedNodes.unshift({ 名称: '诸天万界', 层级: '寰宇', 父级ID: '', 描述: '诸天万界交汇之地' });
+        normalizedNodes.unshift({ 名称: '诸天万界', 层级: '寰宇', 父级ID: '', 描述: '诸天万界交汇之地', 控制势力: '', 势力影响: '', 势力标签: [] });
     }
 
     let seq = 0;
@@ -304,6 +307,9 @@ export const 构建地图层级替换结果 = (
         层级: node.层级,
         父级ID: node.父级ID ? (nameToId.get(node.父级ID) || oldNameToId.get(node.父级ID) || node.父级ID) : '',
         描述: node.描述,
+        控制势力: node.控制势力,
+        势力影响: node.势力影响,
+        势力标签: node.势力标签,
         归属: { 大地点: '', 中地点: '', 小地点: '' }
     }));
 };

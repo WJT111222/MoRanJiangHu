@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
-import { 角色数据结构, NPC结构 } from '../../../types';
+import { OpeningConfig, 角色数据结构, NPC结构 } from '../../../types';
+import { 获取题材界面文案, 获取题材资源文案 } from '../../../utils/resourceLabels';
 import { IconHeart, IconSwords, IconUsers, IconYinYang } from '../../ui/Icons';
 
 interface Props {
     character: 角色数据结构;
     teammates: NPC结构[];
+    openingConfig?: OpeningConfig;
     onClose: () => void;
 }
 
-const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
+const TeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClose }) => {
     const activeTeammates = teammates.filter(n => n.是否队友 === true);
+    const 资源文案 = 获取题材资源文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
+    const 界面文案 = 获取题材界面文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
     // 默认选中第一个队友
     const [selectedTab, setSelectedTab] = useState<string>(activeTeammates.length > 0 ? activeTeammates[0].id : '');
 
@@ -80,9 +84,18 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
     // Player detail removed
 
     const renderTeammateDetail = (npc: NPC结构) => {
-        const hp = 规范化资源展示(npc.当前血量, npc.最大血量);
-        const sp = 规范化资源展示(npc.当前精力, npc.最大精力);
-        const qi = 规范化资源展示((npc as any).当前内力, (npc as any).最大内力);
+        const hp = 规范化资源展示(
+            资源文案.气血当前字段.map(key => (npc as any)?.[key]).find(value => Number.isFinite(Number(value))),
+            资源文案.气血最大字段.map(key => (npc as any)?.[key]).find(value => Number.isFinite(Number(value)))
+        );
+        const sp = 规范化资源展示(
+            资源文案.精力当前字段.map(key => (npc as any)?.[key]).find(value => Number.isFinite(Number(value))),
+            资源文案.精力最大字段.map(key => (npc as any)?.[key]).find(value => Number.isFinite(Number(value)))
+        );
+        const qi = 规范化资源展示(
+            资源文案.能量当前字段.map(key => (npc as any)?.[key]).find(value => Number.isFinite(Number(value))),
+            资源文案.能量最大字段.map(key => (npc as any)?.[key]).find(value => Number.isFinite(Number(value)))
+        );
         const safeHpMax = hp.max;
         const safeHpCur = hp.current;
         const safeSpMax = sp.max;
@@ -125,7 +138,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                                 <span className="text-[10px] bg-wuxia-gold/20 text-wuxia-gold px-2 py-0.5 rounded border border-wuxia-gold/30">{npc.境界 || '境界不明'}</span>
                             </div>
                             <div className="text-xs text-gray-500 font-mono">
-                                {lastUpdate ? `前尘印记：${lastUpdate}` : '宛如初见，并无变故'}
+                                {lastUpdate ? `${界面文案.标题.队员时间标记}：${lastUpdate}` : 界面文案.标题.队员未变化}
                             </div>
                         </div>
                     </div>
@@ -137,12 +150,12 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                         <div className="bg-gradient-to-br from-black/60 to-black/30 border border-wuxia-gold/10 rounded-2xl p-5 shadow-inner">
                             <div className="flex items-center gap-2 mb-4 border-b border-wuxia-gold/10 pb-2">
                                 <IconHeart size={14} className="text-wuxia-gold/60" />
-                                <div className="text-sm text-wuxia-gold/80 font-serif tracking-widest font-bold">气血精元</div>
+                                <div className="text-sm text-wuxia-gold/80 font-serif tracking-widest font-bold">{资源文案.分组标题}</div>
                             </div>
                             <div className="space-y-4">
                                 <div>
                                     <div className="flex justify-between text-xs mb-1 font-mono">
-                                        <span className="text-red-400 font-serif tracking-widest">气血</span>
+                                        <span className="text-red-400 font-serif tracking-widest">{资源文案.气血}</span>
                                         <span className="text-gray-300">{safeHpCur} / {safeHpMax}</span>
                                     </div>
                                     <div className="h-1.5 rounded-full bg-black border border-white/5 overflow-hidden">
@@ -151,7 +164,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                                 </div>
                                 <div>
                                     <div className="flex justify-between text-xs mb-1 font-mono">
-                                        <span className="text-teal-400 font-serif tracking-widest">精力</span>
+                                        <span className="text-teal-400 font-serif tracking-widest">{资源文案.精力}</span>
                                         <span className="text-gray-300">{safeSpCur} / {safeSpMax}</span>
                                     </div>
                                     <div className="h-1.5 rounded-full bg-black border border-white/5 overflow-hidden">
@@ -160,7 +173,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                                 </div>
                                 <div>
                                     <div className="flex justify-between text-xs mb-1 font-mono">
-                                        <span className="text-indigo-400 font-serif tracking-widest">内力</span>
+                                        <span className="text-indigo-400 font-serif tracking-widest">{资源文案.能量}</span>
                                         <span className="text-gray-300">{safeQiCur} / {safeQiMax}</span>
                                     </div>
                                     <div className="h-1.5 rounded-full bg-black border border-white/5 overflow-hidden">
@@ -173,7 +186,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                         <div className="bg-gradient-to-br from-black/60 to-black/30 border border-wuxia-gold/10 rounded-2xl p-5 shadow-inner">
                             <div className="flex items-center gap-2 mb-4 border-b border-wuxia-gold/10 pb-2">
                                 <IconSwords size={14} className="text-wuxia-gold/60" />
-                                <div className="text-sm text-wuxia-gold/80 font-serif tracking-widest font-bold">武道根基</div>
+                                <div className="text-sm text-wuxia-gold/80 font-serif tracking-widest font-bold">{界面文案.标题.基础属性}</div>
                             </div>
                             <div className="grid grid-cols-3 gap-3">
                                 {基础属性.map(([label, value]) => (
@@ -194,7 +207,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                             </div>
                             <div className="flex items-center gap-2 mb-4 border-b border-wuxia-gold/10 pb-2">
                                 <span className="w-1.5 h-1.5 rotate-45 bg-wuxia-gold/50"></span>
-                                <div className="text-sm text-wuxia-gold/80 font-serif tracking-widest font-bold">神兵利器</div>
+                                <div className="text-sm text-wuxia-gold/80 font-serif tracking-widest font-bold">{界面文案.标题.武器装备}</div>
                             </div>
                             <div className="px-1 relative z-10">
                                 <EquipItem label="主手兵刃" value={npc.当前装备?.主武器} />
@@ -207,7 +220,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                             <div className="bg-pink-950/10 border border-pink-900/20 rounded-2xl p-5 shadow-inner hover:border-pink-900/40 transition-colors">
                                 <div className="flex items-center gap-2 mb-4 border-b border-pink-900/20 pb-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-pink-500/70"></span>
-                                    <div className="text-sm text-pink-400/90 font-serif tracking-widest font-bold">裙衫装束</div>
+                                    <div className="text-sm text-pink-400/90 font-serif tracking-widest font-bold">{界面文案.标题.服饰装备}</div>
                                 </div>
                                 <div className="px-1 relative z-10">
                                     <EquipItem label="外装罗裙" value={npc.当前装备?.服装} highlight />
@@ -222,7 +235,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                         <div className="bg-black/40 border border-wuxia-gold/10 rounded-2xl p-5">
                             <div className="flex items-center gap-2 mb-4 border-b border-wuxia-gold/10 pb-2">
                                 <span className="w-1.5 h-1.5 rotate-45 bg-gray-500"></span>
-                                <div className="text-sm text-gray-400 font-serif tracking-widest font-bold">随身行囊</div>
+                                <div className="text-sm text-gray-400 font-serif tracking-widest font-bold">{界面文案.标题.随身物品}</div>
                             </div>
                             <div className="flex flex-wrap gap-2.5">
                                 {npc.背包 && npc.背包.length > 0 ? (
@@ -233,7 +246,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                                     ))
                                 ) : (
                                     <div className="w-full text-center py-6 border-2 border-dashed border-gray-800 rounded-xl">
-                                        <span className="text-xs text-gray-600 italic font-serif tracking-widest">囊空如洗，并无余物</span>
+                                        <span className="text-xs text-gray-600 italic font-serif tracking-widest">{界面文案.标题.随身物品空状态}</span>
                                     </div>
                                 )}
                             </div>
@@ -260,7 +273,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                     <div className="flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-wuxia-gold animate-pulse shadow-[0_0_10px_rgba(212,175,55,0.8)]"></div>
                         <h3 className="text-wuxia-gold font-serif font-bold text-xl tracking-[0.4em] drop-shadow-md">
-                            队伍预览
+                            {界面文案.标题.队伍}
                             <span className="text-[10px] text-wuxia-gold/50 ml-2 font-mono tracking-widest border border-wuxia-gold/20 px-2 py-0.5 rounded-full">TEAM ROSTER</span>
                         </h3>
                     </div>
@@ -283,7 +296,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                     <div className="w-64 shrink-0 border-r border-wuxia-gold/10 bg-black/40 backdrop-blur-sm flex flex-col relative z-10 overflow-hidden">
                         <div className="p-4 border-b border-wuxia-gold/10 bg-black/60 shadow-md">
                             <div className="text-[10px] text-wuxia-gold/50 tracking-[0.3em] font-serif uppercase mb-2 flex items-center gap-2">
-                                <span className="w-1 h-3 bg-wuxia-gold/50 rounded-full"></span>同行之人 ({activeTeammates.length + 1})
+                                <span className="w-1 h-3 bg-wuxia-gold/50 rounded-full"></span>{界面文案.标题.队伍成员} ({activeTeammates.length + 1})
                             </div>
                         </div>
                         
@@ -314,7 +327,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                             
                             {activeTeammates.length === 0 && (
                                 <div className="text-center py-6 text-gray-600 text-[10px] italic font-serif tracking-widest border border-dashed border-gray-800 rounded-lg m-2">
-                                    暂无其他同行之人
+                                    {界面文案.标题.队伍空状态}
                                 </div>
                             )}
                         </div>
@@ -333,7 +346,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
                                 if (!selectedNpc) return (
                                     <div className="flex flex-col items-center justify-center h-full text-wuxia-gold/40 font-serif">
                                         <IconUsers size={64} className="mb-4" />
-                                        <span className="text-xl tracking-widest">请选择同行之人</span>
+                                        <span className="text-xl tracking-widest">{界面文案.标题.队员选择提示}</span>
                                     </div>
                                 );
                                 return renderTeammateDetail(selectedNpc);

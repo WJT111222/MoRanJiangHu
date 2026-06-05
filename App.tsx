@@ -31,7 +31,7 @@ import { checkForAppUpdate, downloadLatestApkPackage, subscribeAppUpdateProgress
 import { RELEASE_INFO } from './data/releaseInfo';
 import { 读取拍卖行状态, 保存拍卖行状态, 清理并补货, 投放事件拍卖品, 构建拍卖行存储作用域, 上架背包物品, 创建交易记录, 结算玩家寄售, 从势力互动投放拍卖品, type 拍卖行状态 } from './services/auctionHouse';
 import { 获取货币显示模式 } from './utils/currencyDisplay';
-import { 获取题材模式配置 } from './utils/topicModeProfiles';
+import { 获取题材界面文案 } from './utils/resourceLabels';
 import { 整理世界状态客户可见大事 } from './hooks/useGame/worldEvolutionUtils';
 import { 分配角色属性点, type 可分配六维属性键 } from './utils/characterAttributePoints';
 import { getDiagnosticLogs, recordDiagnosticLog, subscribeDiagnosticLogs } from './services/diagnosticLog';
@@ -1471,39 +1471,30 @@ const App: React.FC = () => {
         };
     }, [state.view, state.apiConfig, state.角色, setters, actions, meta.imageGenerationQueue, meta.sceneImageQueue, auctionHouseState, auctionHouseScope]);
 
-    const 当前题材配置 = React.useMemo(() => 获取题材模式配置(state.开局配置?.题材模式), [state.开局配置?.题材模式]);
-    const 当前题材市场名称 = 当前题材配置.auctionName;
-    const 组织入口显示名称 = 当前题材配置.group === 'apocalypse'
-        ? '营地'
-        : 当前题材配置.group === 'infinite'
-            ? '队伍'
-            : 当前题材配置.group === 'modern'
-                ? '组织'
-                : 当前题材配置.group === 'xianxia' || 当前题材配置.group === 'urban_xianxia'
-                    ? '宗门'
-                    : '门派';
-    const 功法显示名称 = state.开局配置?.题材模式 === '末日丧尸'
-        ? '技能'
-        : state.开局配置?.题材模式 === '现代都市' || state.开局配置?.题材模式 === '无限流'
-            ? '能力'
-            : '功法';
+    const 题材界面文案 = React.useMemo(
+        () => 获取题材界面文案(state.开局配置?.题材模式, state.开局配置?.modeRuntimeProfile),
+        [state.开局配置?.题材模式, state.开局配置?.modeRuntimeProfile]
+    );
+    const 当前题材市场名称 = 题材界面文案.菜单.auctionHouse;
+    const 组织入口显示名称 = 题材界面文案.组织.组织入口;
+    const 功法显示名称 = 题材界面文案.菜单.kungfu;
     const activeMobileWindow =
-        showCharacter ? '角色' :
-        state.showBattle ? '战斗' :
-        state.showEquipment ? '装备' :
-        state.showInventory ? '背包' :
-        state.showSocial ? '社交' :
+        showCharacter ? 题材界面文案.菜单.character :
+        state.showBattle ? 题材界面文案.菜单.battle :
+        state.showEquipment ? 题材界面文案.菜单.equipment :
+        state.showInventory ? 题材界面文案.菜单.inventory :
+        state.showSocial ? 题材界面文案.菜单.social :
         (启用修炼体系 && state.showKungfu) ? 功法显示名称 :
-        state.showSkills ? '技艺' :
-        state.showWorld ? '世界' :
-        state.showMap ? '地图' :
-        state.showTeam ? '队伍' :
+        state.showSkills ? 题材界面文案.菜单.skills :
+        state.showWorld ? 题材界面文案.菜单.world :
+        state.showMap ? 题材界面文案.菜单.map :
+        state.showTeam ? 题材界面文案.菜单.team :
         state.showSect ? 组织入口显示名称 :
-        state.showTask ? '任务' :
-        state.showAgreement ? '约定' :
-        state.showStory ? '剧情' :
-        state.showHeroinePlan ? '规划' :
-        state.showMemory ? '记忆' :
+        state.showTask ? 题材界面文案.菜单.task :
+        state.showAgreement ? 题材界面文案.菜单.agreement :
+        state.showStory ? 题材界面文案.菜单.story :
+        state.showHeroinePlan ? 题材界面文案.菜单.plan :
+        state.showMemory ? 题材界面文案.菜单.memory :
         showNovelExport ? '导出小说' :
         showAuctionHouse ? 当前题材市场名称 :
         showCloudPlay ? '云端游玩' :
@@ -1850,8 +1841,8 @@ const App: React.FC = () => {
         };
         setters.setCharacter(nextCharacter as any);
         void actions.performAutoSave?.({ role: nextCharacter, force: true });
-        actions.pushNotification({ title: '藏经阁学习成功', message: `已习得「${learnedSkill.名称}」，可在功法页查看。`, tone: 'success' });
-    }, [actions, setters, state.玩家门派?.名称, state.角色]);
+        actions.pushNotification({ title: `${题材界面文案.组织.能力库}${题材界面文案.组织.学习动作}成功`, message: `已${题材界面文案.组织.学习动作}「${learnedSkill.名称}」，可在${功法显示名称}页查看。`, tone: 'success' });
+    }, [actions, setters, state.玩家门派?.名称, state.角色, 题材界面文案.组织.能力库, 题材界面文案.组织.学习动作, 功法显示名称]);
     const handleClaimMonthlyStipend = React.useCallback(() => {
         const sect = state.玩家门派;
         const rule = sect?.月俸规则;
@@ -1861,7 +1852,7 @@ const App: React.FC = () => {
         const month = match ? Number(match[2]) : 1;
         const monthKey = `${year}:${String(month).padStart(2, '0')}`;
         if (String((sect as any).上次俸禄月份 || '').trim() === monthKey) {
-            actions.pushNotification({ title: '本月已领取', message: '月俸已经领取过了，下月再来。', tone: 'info' });
+            actions.pushNotification({ title: 题材界面文案.组织.已领取补给, message: `${题材界面文案.组织.补给名称}已经领取过了，下期再来。`, tone: 'info' });
             return;
         }
         const amount = Math.max(0,
@@ -1876,11 +1867,11 @@ const App: React.FC = () => {
         setters.setCharacter(nextCharacter);
         void actions.performAutoSave?.({ role: nextCharacter, sect: nextSect, force: true });
         actions.pushNotification({
-            title: '月俸已领取',
+            title: `${题材界面文案.组织.补给名称}已领取`,
             message: amount > 0 ? `已到账 ${amount}。` : '本月领取记录已更新。',
             tone: 'success'
         });
-    }, [actions, setters, state.玩家门派, state.环境?.时间, state.角色]);
+    }, [actions, setters, state.玩家门派, state.环境?.时间, state.角色, 题材界面文案.组织.已领取补给, 题材界面文案.组织.补给名称]);
     const handleLearnNpcSkill = React.useCallback((npc: any, skill: any) => {
         const npcName = String(npc?.姓名 || npc?.名称 || '该人物').trim();
         const skillName = String(skill?.名称 || '技艺').trim();
@@ -1908,7 +1899,7 @@ const App: React.FC = () => {
         const isApocalypseSect = /末日|丧尸|营地|避难|安全点|据点|车队|搜救|后勤|巡逻|物资|燃油|口粮|弹药|尸群/u.test(JSON.stringify(state.玩家门派 || {}));
         const actionLabel = isApocalypseSect ? '营地邀入' : '门派招揽';
         const orgLabel = isApocalypseSect ? '营地' : '门派';
-        insertChatDraft(`[${actionLabel}] 我尝试邀请「${npcName}」加入「${sectName}」。请结合对方身份、关系、利益诉求、当前剧情、${orgLabel}等级/规模/名声、我的交涉表现与相关技艺，判定是否成功，并在成功时更新社交、玩家门派重要成员、弟子总数、战力分布和${orgLabel}等级；如果对方本来就是同${isApocalypseSect ? '营地' : '门派'}成员，正文应明确说明无需重复邀入，只同步其关系状态。`);
+        insertChatDraft(`[${actionLabel}] 我尝试邀请「${npcName}」加入「${sectName}」。请结合对方身份、关系、利益诉求、当前剧情、${orgLabel}等级/规模/名声、我的交涉表现与相关技艺，判定是否成功，并在成功时更新社交、玩家门派重要成员、弟子总数和${orgLabel}等级；如果对方本来就是同${isApocalypseSect ? '营地' : '门派'}成员，正文应明确说明无需重复邀入，只同步其关系状态。`);
         setters.setShowSocial(false);
     }, [insertChatDraft, setters, state.玩家门派, state.角色?.所属门派ID]);
     const handleStealFromNpc = React.useCallback((npc: any, target?: string) => {
@@ -3023,6 +3014,7 @@ const App: React.FC = () => {
                                 onOpenAuctionHouse={openAuctionHouse}
                                 auctionHouseLabel={当前题材市场名称}
                                 sectLabel={组织入口显示名称}
+                                uiLabels={题材界面文案}
                                 onOpenImageManager={openImageManagerWithCheck}
                                 onOpenNovelDecomposition={() => { void openNovelDecompositionWorkbench(); }}
                                 worldEvolutionEnabled={meta.worldEvolutionEnabled}
@@ -3157,6 +3149,7 @@ const App: React.FC = () => {
                         enableNovelDecomposition={true}
                         auctionHouseLabel={当前题材市场名称}
                         sectLabel={组织入口显示名称}
+                        uiLabels={题材界面文案}
                     />
 
                     {!hideBottomTicker && (
@@ -3826,12 +3819,14 @@ const App: React.FC = () => {
                                 <MobileTeamModal
                                     character={state.角色}
                                     teammates={state.社交}
+                                    openingConfig={state.开局配置}
                                     onClose={() => setters.setShowTeam(false)}
                                 />
                             ) : (
                                 <TeamModal
                                     character={state.角色}
                                     teammates={state.社交}
+                                    openingConfig={state.开局配置}
                                     onClose={() => setters.setShowTeam(false)}
                                 />
                             )}
@@ -3844,6 +3839,7 @@ const App: React.FC = () => {
                                 <MobileSocial
                                     socialList={state.社交}
                                     cultivationSystemEnabled={启用修炼体系}
+                                    openingConfig={state.开局配置}
                                     onClose={() => setters.setShowSocial(false)}
                                     selectedNpcId={selectedSocialNpcId}
                                     onSelectedNpcIdChange={setSelectedSocialNpcId}
@@ -3863,6 +3859,7 @@ const App: React.FC = () => {
                                 <SocialModal
                                     socialList={state.社交}
                                     cultivationSystemEnabled={启用修炼体系}
+                                    openingConfig={state.开局配置}
                                     onClose={() => setters.setShowSocial(false)}
                                     selectedNpcId={selectedSocialNpcId}
                                     onSelectedNpcIdChange={setSelectedSocialNpcId}

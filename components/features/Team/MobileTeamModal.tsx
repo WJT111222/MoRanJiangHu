@@ -1,9 +1,11 @@
 import React from 'react';
-import { 角色数据结构, NPC结构 } from '../../../types';
+import { OpeningConfig, 角色数据结构, NPC结构 } from '../../../types';
+import { 获取题材界面文案, 获取题材资源文案 } from '../../../utils/resourceLabels';
 
 interface Props {
     character: 角色数据结构;
     teammates: NPC结构[];
+    openingConfig?: OpeningConfig;
     onClose: () => void;
 }
 
@@ -29,14 +31,25 @@ const 读数 = (value: unknown, fallback = 0) => {
     return Number.isFinite(parsed) ? Math.ceil(parsed) : fallback;
 };
 
-const MobileTeamModal: React.FC<Props> = ({ character, teammates, onClose }) => {
+const 读取资源值 = (source: unknown, keys: string[]) => {
+    const data = source && typeof source === 'object' ? source as Record<string, unknown> : {};
+    for (const key of keys) {
+        const parsed = Number(data[key]);
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    return 0;
+};
+
+const MobileTeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClose }) => {
     const activeTeammates = (Array.isArray(teammates) ? teammates : []).filter((n) => n.是否队友 === true);
+    const 资源文案 = 获取题材资源文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
+    const 界面文案 = 获取题材界面文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
 
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-3 md:hidden animate-fadeIn">
             <div className="bg-ink-black/95 border border-wuxia-gold/30 w-full max-w-[560px] h-[84vh] flex flex-col shadow-[0_0_60px_rgba(0,0,0,0.8)] relative overflow-hidden rounded-2xl">
                 <div className="h-12 shrink-0 border-b border-gray-800/60 bg-black/40 flex items-center justify-between px-4">
-                    <h3 className="text-wuxia-gold font-serif font-bold text-base tracking-[0.3em]">队伍管理</h3>
+                    <h3 className="text-wuxia-gold font-serif font-bold text-base tracking-[0.3em]">{界面文案.标题.队伍}</h3>
                     <button
                         onClick={onClose}
                         className="w-8 h-8 flex items-center justify-center rounded-full bg-black/50 border border-gray-700 text-gray-400 hover:text-wuxia-red hover:border-wuxia-red transition-all"
@@ -58,14 +71,14 @@ const MobileTeamModal: React.FC<Props> = ({ character, teammates, onClose }) => 
                             <div className="text-[10px] text-gray-400">{character.境界}</div>
                         </div>
                         <div className="space-y-2">
-                            <ProgressBar label="精力" cur={character.当前精力} max={character.最大精力} color="bg-teal-500" />
-                            <ProgressBar label="内力" cur={character.当前内力} max={character.最大内力} color="bg-indigo-500" />
+                            <ProgressBar label={资源文案.精力} cur={读取资源值(character, 资源文案.精力当前字段)} max={读取资源值(character, 资源文案.精力最大字段)} color="bg-teal-500" />
+                            <ProgressBar label={资源文案.能量} cur={读取资源值(character, 资源文案.能量当前字段)} max={读取资源值(character, 资源文案.能量最大字段)} color="bg-indigo-500" />
                         </div>
                     </div>
 
                     <div className="bg-black/40 border border-gray-800 rounded-xl p-3">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] text-gray-500 tracking-[0.2em]">队员列表</span>
+                            <span className="text-[10px] text-gray-500 tracking-[0.2em]">{界面文案.标题.队伍成员}</span>
                             <span className="text-[10px] text-wuxia-cyan/80">{activeTeammates.length} 人</span>
                         </div>
 
@@ -83,9 +96,9 @@ const MobileTeamModal: React.FC<Props> = ({ character, teammates, onClose }) => 
                                         </div>
                                     </div>
                                     <div className="mt-2 space-y-2">
-                                        <ProgressBar label="血量" cur={npc.当前血量 || 0} max={npc.最大血量 || 0} color="bg-red-700" />
-                                        <ProgressBar label="精力" cur={npc.当前精力 || 0} max={npc.最大精力 || 0} color="bg-blue-700" />
-                                        <ProgressBar label="内力" cur={npc.当前内力 || 0} max={npc.最大内力 || 0} color="bg-indigo-700" />
+                                        <ProgressBar label={资源文案.气血} cur={读取资源值(npc, 资源文案.气血当前字段)} max={读取资源值(npc, 资源文案.气血最大字段)} color="bg-red-700" />
+                                        <ProgressBar label={资源文案.精力} cur={读取资源值(npc, 资源文案.精力当前字段)} max={读取资源值(npc, 资源文案.精力最大字段)} color="bg-blue-700" />
+                                        <ProgressBar label={资源文案.能量} cur={读取资源值(npc, 资源文案.能量当前字段)} max={读取资源值(npc, 资源文案.能量最大字段)} color="bg-indigo-700" />
                                     </div>
                                     <div className="mt-3 grid grid-cols-3 gap-1.5 text-[10px] text-gray-300">
                                         {[
@@ -107,7 +120,7 @@ const MobileTeamModal: React.FC<Props> = ({ character, teammates, onClose }) => 
                                 </div>
                             ))}
                             {activeTeammates.length === 0 && (
-                                <div className="text-center text-gray-600 text-xs py-8">暂无队员</div>
+                                <div className="text-center text-gray-600 text-xs py-8">{界面文案.标题.队伍空状态}</div>
                             )}
                         </div>
                     </div>

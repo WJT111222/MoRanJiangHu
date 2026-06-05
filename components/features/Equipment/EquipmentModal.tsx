@@ -8,6 +8,7 @@ import { 获取物品已选图标地址 } from '../../../utils/itemImage';
 import { IconSwords, IconDagger, IconShield, IconArmor, IconBackpack, IconRing, IconBelt, IconHelmet, IconBoot, IconPants, IconGlove, IconHorse, ItemTypeIcon } from '../../ui/Icons';
 import { 获取物品可装备槽位, 计算装备评分, 装备物品到角色, 卸下角色装备 } from '../../../utils/equipmentActions';
 import { 获取货币完整单位标签, 获取货币显示模式 } from '../../../utils/currencyDisplay';
+import { 获取题材界面文案 } from '../../../utils/resourceLabels';
 
 interface Props {
     character: 角色数据结构;
@@ -60,6 +61,7 @@ const EquipmentModal: React.FC<Props> = ({ character, openingConfig, onClose, on
     const [selectedItem, setSelectedItem] = useState<游戏物品 | null>(null);
     const [actionMessage, setActionMessage] = useState('');
     const [imageViewer, setImageViewer] = useState<{ src: string; alt: string } | null>(null);
+    const 界面文案 = 获取题材界面文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
     const 估值单位 = 获取货币完整单位标签('铜钱', 获取货币显示模式(openingConfig, character));
     const playerImageHistory = Array.isArray(character?.图片档案?.生图历史) ? character.图片档案!.生图历史 : [];
     const selectedPortraitId = typeof character?.图片档案?.已选立绘图片ID === 'string'
@@ -214,7 +216,7 @@ const EquipmentModal: React.FC<Props> = ({ character, openingConfig, onClose, on
                         </div>
                         <div className="min-w-0">
                             <div className="flex items-center gap-2 md:gap-3">
-                                <h3 className="truncate text-wuxia-gold font-serif font-bold text-base md:text-2xl tracking-[0.18em] md:tracking-[0.4em] drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]">全身披挂</h3>
+                                <h3 className="truncate text-wuxia-gold font-serif font-bold text-base md:text-2xl tracking-[0.18em] md:tracking-[0.4em] drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]">{界面文案.标题.装备}</h3>
                                 <span className="hidden md:inline-block text-[10px] uppercase text-wuxia-gold/50 tracking-widest border border-wuxia-gold/20 px-2 py-0.5 rounded-full mt-1">HERO EQUIPMENT</span>
                             </div>
                             <p className="hidden md:flex text-gray-200 text-sm tracking-[0.12em] mt-1.5 font-serif items-center gap-2">

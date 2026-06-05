@@ -52,6 +52,31 @@ describe('功法品质校准', () => {
         expect(kungfu.重数描述映射.length).toBeGreaterThan(0);
         expect(kungfu.附带效果.length + kungfu.被动修正.length).toBeGreaterThan(0);
     });
+
+    it('功法重数提升会同步抬高功法数值下限', () => {
+        const base = {
+            ID: 'k2',
+            名称: '小周天心法',
+            类型: '外功',
+            品质: '上品',
+            当前熟练度: 0,
+            升级经验: 260,
+            基础伤害: 24,
+            加成系数: 1.05,
+            内力系数: 0.55,
+            被动修正: [{ 属性名: '根骨', 数值: 6, 类型: '百分比' }],
+            附带效果: [{ 名称: '气息调匀', 触发概率: '16%', 持续时间: '1回合', 数值参数: '6', 生效间隔: '每次施展' }],
+            重数描述映射: [],
+            境界特效: []
+        };
+        const low = 标准化功法列表([{ ...base, 当前重数: 1, 最高重数: 6 }])[0];
+        const high = 标准化功法列表([{ ...base, 当前重数: 5, 最高重数: 6 }])[0];
+
+        expect(high.基础伤害).toBeGreaterThan(low.基础伤害);
+        expect(high.加成系数).toBeGreaterThan(low.加成系数);
+        expect(high.内力系数).toBeGreaterThan(low.内力系数);
+        expect(high.被动修正[0].数值).toBeGreaterThan(low.被动修正[0].数值);
+    });
 });
 
 describe('NPC 指令字段保留', () => {

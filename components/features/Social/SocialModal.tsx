@@ -7,6 +7,8 @@ import { 构建NPC记忆展示结果 } from '../../../hooks/useGame/npcMemorySum
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
 import { 获取图片展示地址 } from '../../../utils/imageAssets';
 import { 格式化月日 } from '../../../utils/characterVitals';
+import type { OpeningConfig } from '../../../types';
+import { 获取题材界面文案, 获取题材资源文案 } from '../../../utils/resourceLabels';
 import { IconBeads, IconHeart, IconMars, IconScroll, IconSparkles } from '../../ui/Icons';
 
 interface Props {
@@ -26,6 +28,7 @@ interface Props {
     onStealFromNpc?: (npc: NPC结构, target?: string) => void;
     onRetryImage?: (npcId: string) => void;
     playerSect?: any;
+    openingConfig?: OpeningConfig;
 }
 
 const 是女性角色 = (npc?: NPC结构 | null): boolean => String((npc as any)?.性别 || '').trim() === '女';
@@ -66,7 +69,8 @@ const SocialModal: React.FC<Props> = ({
     onRecruitToSect,
     onStealFromNpc,
     onRetryImage,
-    playerSect
+    playerSect,
+    openingConfig
 }) => {
     const sortedSocialList = React.useMemo(() => (
         [...socialList].sort((a, b) => {
@@ -88,6 +92,8 @@ const SocialModal: React.FC<Props> = ({
     const [imageViewer, setImageViewer] = useState<{ src: string; alt: string } | null>(null);
     const [imageViewerZoom, setImageViewerZoom] = useState(1);
     const [stealTargets, setStealTargets] = useState<Record<string, string>>({});
+    const 资源文案 = 获取题材资源文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
+    const 界面文案 = 获取题材界面文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
     const 组织名称 = String(playerSect?.名称 || '').trim();
     const 当前组织为末世营地 = /末日|丧尸|营地|避难|安全点|据点|车队|搜救|后勤|巡逻|物资|燃油|口粮|弹药|尸群/u.test(JSON.stringify(playerSect || {}));
     const 当前组织为无限流 = /主神|轮回|小队|奖励点|支线剧情|基因锁|主神空间|副本/u.test(JSON.stringify(playerSect || {}));
@@ -545,9 +551,9 @@ const SocialModal: React.FC<Props> = ({
         ['敏捷', 读取数值(currentNPC, ['敏捷'])],
         ['体质', 读取数值(currentNPC, ['体质'])],
         ['根骨', 读取数值(currentNPC, ['根骨'])],
-        ['气血', `${读取数值(currentNPC, ['当前血量'])}/${读取数值(currentNPC, ['最大血量'])}`],
-        ['精力', `${读取数值(currentNPC, ['当前精力'])}/${读取数值(currentNPC, ['最大精力'])}`],
-        ['内力', `${读取数值(currentNPC, ['当前内力'])}/${读取数值(currentNPC, ['最大内力'])}`],
+        [资源文案.气血, `${读取数值(currentNPC, 资源文案.气血当前字段)}/${读取数值(currentNPC, 资源文案.气血最大字段)}`],
+        [资源文案.精力, `${读取数值(currentNPC, 资源文案.精力当前字段)}/${读取数值(currentNPC, 资源文案.精力最大字段)}`],
+        [资源文案.能量, `${读取数值(currentNPC, 资源文案.能量当前字段)}/${读取数值(currentNPC, 资源文案.能量最大字段)}`],
     ] : [];
     const 在场切换文案 = currentNPC
         ? (当前角色已死亡 ? '已故不可调度' : currentNPC.是否在场 ? '设为离场' : '设为在场')
@@ -561,7 +567,7 @@ const SocialModal: React.FC<Props> = ({
                 <div className="h-14 shrink-0 border-b border-white/10 bg-gradient-to-r from-black/80 to-black/40 flex items-center justify-between px-6 relative z-50">
                     <div className="flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-wuxia-gold animate-pulse shadow-[0_0_10px_rgba(212,175,55,0.8)]"></div>
-                        <h3 className="text-wuxia-gold font-serif font-bold text-xl tracking-[0.4em] drop-shadow-md">江湖谱<span className="text-[10px] text-wuxia-gold/50 ml-2 font-mono tracking-widest border border-wuxia-gold/20 px-2 py-0.5 rounded-full">SOCIAL LINK SYSTEM</span></h3>
+                        <h3 className="text-wuxia-gold font-serif font-bold text-xl tracking-[0.4em] drop-shadow-md">{界面文案.标题.社交}<span className="text-[10px] text-wuxia-gold/50 ml-2 font-mono tracking-widest border border-wuxia-gold/20 px-2 py-0.5 rounded-full">SOCIAL LINK SYSTEM</span></h3>
                     </div>
                                                  <button
                         onClick={onClose}

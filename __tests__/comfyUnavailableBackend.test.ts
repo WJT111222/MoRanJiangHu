@@ -139,6 +139,36 @@ describe('ComfyUI unavailable backend detection', () => {
         expect(isImageBackendRecentlyUnavailable('https://bad-8188.cnb.run')).toBe(true);
     });
 
+    it('marks a CNB ComfyUI URL unavailable when /prompt returns Cloudflare 1101 HTML', async () => {
+        vi.stubGlobal('window', {
+            localStorage: createLocalStorageMock(),
+            location: {
+                protocol: 'https:',
+                origin: 'https://msjh.bacon159.pp.ua',
+            },
+        });
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(
+            '<!DOCTYPE html><html><head><title>Worker threw exception | msjh.bacon159.pp.ua | Cloudflare</title></head><body><span class="cf-error-code">1101</span></body></html>',
+            { status: 500, headers: { 'content-type': 'text/html; charset=UTF-8' } }
+        )));
+
+        await expect(generateImageByPrompt('test item', {
+            id: 'test',
+            名称: 'ComfyUI test',
+            供应商: 'openai_compatible',
+            协议覆盖: 'auto',
+            baseUrl: 'https://cloudflare-8188.cnb.run',
+            apiKey: '',
+            model: '',
+            图片后端类型: 'comfyui',
+            图片接口路径: '/prompt',
+            图片响应格式: 'url',
+            ComfyUI工作流JSON: '{"1":{"class_type":"CLIPTextEncode","inputs":{"text":"__PROMPT__"}}}',
+        } as any)).rejects.toThrow(/HTML|不可用|Cloudflare|1101/);
+
+        expect(isImageBackendRecentlyUnavailable('https://cloudflare-8188.cnb.run')).toBe(true);
+    });
+
     it('tries a direct CNB ComfyUI request before falling back to the public proxy in native APK', async () => {
         vi.stubGlobal('window', {
             localStorage: createLocalStorageMock(),

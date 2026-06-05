@@ -8,6 +8,9 @@ export interface 地点树节点 {
     层级: 地点层级类型;
     父级ID: string;
     描述: string;
+    控制势力?: string;
+    势力影响?: string;
+    势力标签?: string[];
     子节点: 地点树节点[];
 }
 
@@ -49,6 +52,9 @@ export const 构建地点树 = (
             层级: 归一化层级(layer?.层级),
             父级ID: 取文本(layer?.父级ID),
             描述: 取文本(layer?.描述),
+            控制势力: 取文本(layer?.控制势力),
+            势力影响: 取文本(layer?.势力影响),
+            势力标签: Array.isArray(layer?.势力标签) ? layer.势力标签.map((item: unknown) => 取文本(item)).filter(Boolean) : [],
             子节点: [],
         });
     });
@@ -84,6 +90,9 @@ export const 构建地点树 = (
         const keeper = g[0];
         g.slice(1).forEach(dup => {
             if (!keeper.描述 && dup.描述) keeper.描述 = dup.描述;
+            if (!keeper.控制势力 && dup.控制势力) keeper.控制势力 = dup.控制势力;
+            if (!keeper.势力影响 && dup.势力影响) keeper.势力影响 = dup.势力影响;
+            if ((!keeper.势力标签 || keeper.势力标签.length <= 0) && dup.势力标签 && dup.势力标签.length > 0) keeper.势力标签 = dup.势力标签;
             节点映射.forEach(n => { if (n.父级ID === dup.ID) n.父级ID = keeper.ID; });
             dup.子节点.forEach(c => { if (!keeper.子节点.some(kc => kc.ID === c.ID)) { keeper.子节点.push(c); c.父级ID = keeper.ID; } });
             节点映射.delete(dup.ID);

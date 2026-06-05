@@ -6,6 +6,8 @@ import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetc
 import { 获取图片展示地址 } from '../../../utils/imageAssets';
 import { 格式化月日 } from '../../../utils/characterVitals';
 import { IconBeads, IconHeart, IconMars, IconScroll } from '../../ui/Icons';
+import type { OpeningConfig } from '../../../types';
+import { 获取题材界面文案 } from '../../../utils/resourceLabels';
 
 interface Props {
     socialList: NPC结构[];
@@ -24,6 +26,7 @@ interface Props {
     onStealFromNpc?: (npc: NPC结构, target?: string) => void;
     onRetryImage?: (npcId: string) => void;
     playerSect?: any;
+    openingConfig?: OpeningConfig;
 }
 
 const 是女性角色 = (npc?: NPC结构 | null): boolean => String((npc as any)?.性别 || '').trim() === '女';
@@ -76,7 +79,8 @@ const MobileSocial: React.FC<Props> = ({
     onRecruitToSect,
     onStealFromNpc,
     onRetryImage,
-    playerSect
+    playerSect,
+    openingConfig
 }) => {
     const sortedSocialList = React.useMemo(() => (
         [...socialList].sort((a, b) => {
@@ -94,6 +98,7 @@ const MobileSocial: React.FC<Props> = ({
     const 显示境界 = cultivationSystemEnabled !== false;
     const [香闺展示模式, set香闺展示模式] = useState<Record<string, 'text' | 'image'>>({});
     const [showFullBackground, setShowFullBackground] = useState<boolean>(false);
+    const 界面文案 = 获取题材界面文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
     const 组织名称 = String(playerSect?.名称 || '').trim();
     const 当前组织为末世营地 = /末日|丧尸|营地|避难|安全点|据点|车队|搜救|后勤|巡逻|物资|燃油|口粮|弹药|尸群/u.test(JSON.stringify(playerSect || {}));
     const 当前组织为无限流 = /主神|轮回|小队|奖励点|支线剧情|基因锁|主神空间|副本/u.test(JSON.stringify(playerSect || {}));
@@ -619,7 +624,7 @@ const MobileSocial: React.FC<Props> = ({
                     <div className="mx-auto flex h-full w-full max-w-[20.4rem] items-center justify-between">
                         <div className="inline-flex items-center gap-1.5 rounded-full border border-wuxia-gold/25 bg-black/35 px-2 py-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.35)]">
                             <div className="w-2 h-2 rounded-full bg-wuxia-gold animate-pulse shadow-[0_0_10px_rgba(212,175,55,0.8)]"></div>
-                            <h3 className="text-[1rem] text-wuxia-gold font-serif font-bold tracking-[0.08em] drop-shadow-md">江湖谱</h3>
+                            <h3 className="text-[1rem] text-wuxia-gold font-serif font-bold tracking-[0.08em] drop-shadow-md">{界面文案.标题.社交}</h3>
                             <span className="rounded-full border border-wuxia-gold/20 px-1.5 py-0.5 text-[8px] text-wuxia-gold/70 font-mono tracking-[0.18em]">卷宗</span>
                         </div>
                         <button 

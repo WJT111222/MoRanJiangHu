@@ -2277,6 +2277,13 @@ const 执行ComfyUI生图 = async (
     }
     if (!enqueueResponse.ok) {
         const detail = await 读取失败详情文本(enqueueResponse, Number.POSITIVE_INFINITY);
+        if (判断ComfyUI响应像HTML(detail, enqueueResponse)) {
+            await 标记ComfyUI后端近期不可用(baseUrl);
+            throw new ComfyUI后端不可用错误(
+                构建ComfyUI非JSON响应提示(apiConfig.baseUrl || baseUrl, enqueueResponse, detail, 'prompt'),
+                baseUrl
+            );
+        }
         throw new 协议请求错误(`ComfyUI 请求失败: ${enqueueResponse.status}${detail ? ` - ${detail}` : ''}`, enqueueResponse.status, detail);
     }
     const enqueueText = await enqueueResponse.text();
@@ -2380,7 +2387,7 @@ const 是ComfyUI后端不可用错误 = (error: any): boolean => {
         return error.status === 408 || error.status === 429 || error.status >= 500;
     }
     const message = typeof error?.message === 'string' ? error.message : String(error || '');
-    return /ComfyUI\s*连接失败|ComfyUI\s*未返回\s*prompt_id|Failed to fetch|NetworkError|Load failed|timeout|超时|连接失败|跨域|CORS|服务器未启动|地址失效|工作区休眠|不是可用的\s*ComfyUI|错误页面|登录页|代理页面/i.test(message);
+    return /ComfyUI\s*连接失败|ComfyUI\s*未返回\s*prompt_id|ComfyUI\s*提交任务返回了\s*HTML|Failed to fetch|NetworkError|Load failed|timeout|超时|连接失败|跨域|CORS|服务器未启动|地址失效|工作区休眠|不是可用的\s*ComfyUI|错误页面|登录页|代理页面|<!doctype html|<html[\s>]|Cloudflare|Worker threw exception|Error\s*1101/i.test(message);
 };
 
 const 构建ComfyUI自动切换候选 = (apiConfig: 当前可用接口结构): 当前可用接口结构[] => {

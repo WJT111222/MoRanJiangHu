@@ -16,6 +16,7 @@ export {
     generateNovelDecomposition,
     解析境界体系提示词内容,
     解析世界观提示词内容,
+    generateWorldFoundationData,
     generateStoryResponse,
     generateVariableCalibrationUpdate,
     generateWorldData,
@@ -30,5 +31,6 @@ export type {
     StoryStreamOptions,
     StoryRequestOptions,
     VariableCalibrationResult,
+    WorldFoundationResult,
     WorldEvolutionResult
 } from '../storyTasks';

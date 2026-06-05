@@ -62,7 +62,8 @@ type NPC秘档部位生图工作流依赖 = {
     追加NPC生图任务: (task: NPC生图任务记录) => void;
     更新NPC生图任务: (taskId: string, updater: (task: NPC生图任务记录) => NPC生图任务记录) => void;
     写入NPC图片历史记录: (npcKey: string, record: any, options?: { 同步最近结果?: boolean }) => void;
-    更新NPC香闺秘档部位结果: (npcKey: string, part: 香闺秘档部位类型, updater: (current: any) => any) => void;
+    更新NPC香闺秘档部位结果: (npcKey: string, part: 香闺秘档部位类型, updater: (current: any) => any) => boolean;
+    写入NPC香闺秘档部位记录: (npcKey: string, part: 香闺秘档部位类型, record: any, options?: { 同步最近结果?: boolean }) => boolean;
 };
 
 const 默认额外负面提示词 = 'face, eyes, portrait, headshot, upper body, half body, full body, torso, abdomen, legs, arm, feet, hands, multiple people, extra legs, extra arms, extra breasts, extra nipples, extra fingers, three legs, three breasts, merged body parts, duplicate anatomy, mirrored anatomy, multiple genitals, extra genitals, room focus, scenery focus, environment focus, background focus, wide shot, mid shot, collage, contact sheet, reference sheet, character sheet, split screen, panel layout, comic panel, manga panel, thumbnails, bottom strip, inset image, text, typography, letters, words, caption, subtitle, watermark, signature, logo, speech bubble, dialogue box, blurry, low quality, bad anatomy';
@@ -403,9 +404,8 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
             进度文本: `${part}特写已生成，正在写回图片档案。`
         }));
 
-        deps.更新NPC香闺秘档部位结果(npcKey, part, (currentResult) => ({
-            ...currentResult,
-            id: currentResult?.id || recordId,
+        const successRecord = {
+            id: recordId,
             部位: part,
             图片URL: localizedImageResult.图片URL,
             本地路径: localizedImageResult.本地路径,
@@ -421,24 +421,11 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
             状态: 'success',
             错误信息: undefined,
             描述文本: partDescription
-        }));
-        deps.写入NPC图片历史记录(npcKey, {
-            id: recordId,
-            部位: part,
-            图片URL: localizedImageResult.图片URL,
-            本地路径: localizedImageResult.本地路径,
-            生图词组,
-            最终正向提示词: localizedImageResult.最终正向提示词 || 最终提示词.最终正向提示词,
-            最终负向提示词: localizedImageResult.最终负向提示词 || 最终提示词.最终负向提示词,
-            原始描述,
-            使用模型: modelName,
-            生成时间: Date.now(),
-            构图: '部位特写' as const,
-            画风,
-            画师串: 前置正向提示词,
-            状态: 'success' as const,
-            错误信息: undefined
-        }, { 同步最近结果: false });
+        };
+        const writeSucceeded = deps.写入NPC香闺秘档部位记录(npcKey, part, successRecord, { 同步最近结果: false });
+        if (!writeSucceeded) {
+            throw new Error(`${part}特写已生成，但没有找到要写回的 NPC 档案；已阻止任务标记为成功。`);
+        }
         deps.更新NPC生图任务(task.id, (currentTask) => ({
             ...currentTask,
             状态: 'success',

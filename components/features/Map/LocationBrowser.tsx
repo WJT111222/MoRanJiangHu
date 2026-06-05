@@ -70,6 +70,7 @@ const LocationTreeItem: React.FC<{
                 )}
                 <span className="truncate">{node.名称}</span>
                 {isPlayerLocation && <span className="text-[8px] text-emerald-400 ml-1 shrink-0">●</span>}
+                {node.控制势力 && <span className="hidden min-[420px]:inline text-[9px] text-amber-300/80 ml-1 shrink truncate max-w-[80px]">{node.控制势力}</span>}
                 <span className="text-[10px] text-gray-500 ml-auto shrink-0">{层级标签[node.层级]}</span>
             </div>
             {expanded && hasChildren && (
@@ -257,6 +258,19 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
                             <>
                                 <div className="text-[10px] tracking-widest text-gray-500 mb-1">{层级标签[selectedNode.层级]} · {selectedNode.子节点.length} 个子区域</div>
                                 <div className="text-sm font-bold text-gray-200 mb-1">{selectedNode.名称}</div>
+                                {(selectedNode.控制势力 || selectedNode.势力影响 || (selectedNode.势力标签 && selectedNode.势力标签.length > 0)) && (
+                                    <div className="mb-2 rounded border border-amber-400/20 bg-amber-400/5 px-2 py-1.5 text-[11px] text-amber-100/90">
+                                        {selectedNode.控制势力 && <div><span className="text-amber-300">主导势力：</span>{selectedNode.控制势力}</div>}
+                                        {selectedNode.势力影响 && <div className="mt-0.5"><span className="text-amber-300">势力分布：</span>{selectedNode.势力影响}</div>}
+                                        {selectedNode.势力标签 && selectedNode.势力标签.length > 0 && (
+                                            <div className="mt-1 flex flex-wrap gap-1">
+                                                {selectedNode.势力标签.map((tag) => (
+                                                    <span key={tag} className="rounded border border-amber-300/20 bg-black/30 px-1.5 py-0.5 text-[10px] text-amber-200/80">{tag}</span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 {selectedNode.描述 ? (
                                     <div className="text-xs text-gray-400 leading-relaxed">{selectedNode.描述}</div>
                                 ) : (

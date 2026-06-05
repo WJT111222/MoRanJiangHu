@@ -724,6 +724,26 @@ const 功法偏被动 = (类型: string): boolean => {
     return 被动类.includes(类型);
 };
 
+const 计算功法重数倍率 = (当前重数: number, 最高重数: number): number => {
+    const level = Math.max(1, Math.floor(当前重数));
+    const maxLevel = Math.max(level, Math.floor(最高重数));
+    const linear = 1 + (level - 1) * 0.12;
+    const milestone = level >= Math.ceil(maxLevel / 2) ? 0.12 : 0;
+    const capstone = level >= maxLevel ? 0.18 : 0;
+    return Number((linear + milestone + capstone).toFixed(2));
+};
+
+const 计算功法重数数值下限 = (base: number, 当前重数: number, 最高重数: number): number => (
+    Math.max(0, Number((base * 计算功法重数倍率(当前重数, 最高重数)).toFixed(2)))
+);
+
+const 提升数值文本参数 = (value: string, multiplier: number): string => {
+    const source = 规范化文本(value);
+    const match = source.match(/^(-?\d+(?:\.\d+)?)(.*)$/);
+    if (!match) return source;
+    const next = Number((Number(match[1]) * multiplier).toFixed(2));
+    return `${Number.isInteger(next) ? Math.round(next) : next}${match[2] || ''}`;
+};
 
 const 构建功法重数描述 = (名称: string, 品质: string, 类型: string, 最高重数: number): Array<{ 重数: number; 描述: string }> => {
     const pivots = Array.from(new Set([1, Math.max(1, Math.ceil(最高重数 / 2)), 最高重数]))
@@ -753,17 +773,21 @@ const 标准化功法列表 = (raw: any): any[] => {
             const 基础伤害下限 = passiveLike ? Math.max(0, Math.floor(budget.基础伤害 * 0.45)) : budget.基础伤害;
             const 加成系数下限 = passiveLike ? Math.max(0.1, Number((budget.加成系数 * 0.75).toFixed(2))) : budget.加成系数;
             const 内力系数下限 = passiveLike ? Math.max(0.1, Number((budget.内力系数 * 0.85).toFixed(2))) : budget.内力系数;
+            const 重数倍率 = 计算功法重数倍率(当前重数, 最高重数);
+            const 重数基础伤害下限 = 计算功法重数数值下限(基础伤害下限, 当前重数, 最高重数);
+            const 重数加成系数下限 = 计算功法重数数值下限(加成系数下限, 当前重数, 最高重数);
+            const 重数内力系数下限 = 计算功法重数数值下限(内力系数下限, 当前重数, 最高重数);
             const 被动属性 = 类型 === '轻功' || 类型 === '遁法' ? '敏捷' : (类型 === '内功' || 类型 === '被动' ? '根骨' : '攻击力');
             const rawPassive = Array.isArray(item?.被动修正) ? item.被动修正 : [];
             const 被动修正 = rawPassive
                 .filter((entry: any) => entry && typeof entry === 'object' && 规范化文本(entry?.属性名))
                 .map((entry: any) => ({
                     属性名: 规范化文本(entry?.属性名),
-                    数值: Math.max(0, 规范化数值(entry?.数值, 0)),
+                    数值: Math.max(规范化数值(entry?.数值, 0), 计算功法重数数值下限(budget.被动修正, 当前重数, 最高重数)),
                     类型: entry?.类型 === '百分比' ? '百分比' : '固定值'
                 }));
             if ((passiveLike || 品质 === '绝世' || 品质 === '传说') && 被动修正.length === 0) {
-                被动修正.push({ 属性名: 被动属性, 数值: budget.被动修正, 类型: passiveLike ? '百分比' : '固定值' });
+                被动修正.push({ 属性名: 被动属性, 数值: 计算功法重数数值下限(budget.被动修正, 当前重数, 最高重数), 类型: passiveLike ? '百分比' : '固定值' });
             }
             const rawEffects = Array.isArray(item?.附带效果) ? item.附带效果 : [];
             const 附带效果 = rawEffects
@@ -772,7 +796,7 @@ const 标准化功法列表 = (raw: any): any[] => {
                     名称: 规范化文本(entry?.名称),
                     触发概率: 规范化文本(entry?.触发概率, `${budget.效果概率}%`),
                     持续时间: 规范化文本(entry?.持续时间, '1回合'),
-                    数值参数: 规范化文本(entry?.数值参数, `${Math.max(1, budget.被动修正)}`),
+                    数值参数: 规范化文本(entry?.数值参数) || 提升数值文本参数(`${Math.max(1, budget.被动修正)}`, 重数倍率),
                     生效间隔: 规范化文本(entry?.生效间隔, '每次施展')
                 }));
             if ((品质 === '极品' || 品质 === '绝世' || 品质 === '传说') && 附带效果.length === 0) {
@@ -824,10 +848,10 @@ const 标准化功法列表 = (raw: any): any[] => {
                 消耗数值: Math.max(0, 规范化整数(item?.消耗数值, budget.消耗数值)),
                 施展耗时: 规范化文本(item?.施展耗时, '一息'),
                 冷却时间: 规范化文本(item?.冷却时间, '无'),
-                基础伤害: Math.max(基础伤害下限, 规范化数值(item?.基础伤害, 基础伤害下限)),
                 加成属性: 规范化文本(item?.加成属性, passiveLike ? 被动属性 : '攻击力'),
-                加成系数: Math.max(加成系数下限, 规范化数值(item?.加成系数, 加成系数下限)),
-                内力系数: Math.max(内力系数下限, 规范化数值(item?.内力系数, 内力系数下限)),
+                基础伤害: Math.max(重数基础伤害下限, 规范化数值(item?.基础伤害, 重数基础伤害下限)),
+                加成系数: Math.max(重数加成系数下限, 规范化数值(item?.加成系数, 重数加成系数下限)),
+                内力系数: Math.max(重数内力系数下限, 规范化数值(item?.内力系数, 重数内力系数下限)),
                 伤害类型: 规范化功法枚举(item?.伤害类型, 功法伤害类型列表, 类型 === '外功' ? '物理' : '内功'),
                 目标类型: 规范化功法枚举(item?.目标类型, 功法目标类型列表, passiveLike ? '自身' : '单体'),
                 最大目标数: Math.max(1, Math.max(规范化整数(item?.最大目标数, 1), budget.最大目标数)),

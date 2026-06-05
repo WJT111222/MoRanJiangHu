@@ -12,6 +12,7 @@ import { 规范化游戏设置 } from '../../utils/gameSettings';
 import { 获取繁体输出指令 } from '../../utils/traditionalChinese';
 import { 按功能开关过滤提示词内容 } from '../../utils/promptFeatureToggles';
 import { 构建题材默认境界体系提示词, 题材是否使用默认现代境界 } from '../../utils/topicRealmDefaults';
+import { 合并世界基底到开场状态 } from './storyState';
 
 type 世界生成选项 = {
     清空前端变量?: boolean;
@@ -255,8 +256,8 @@ export const 执行世界生成工作流 = async (
     deps.清空重Roll快照();
     deps.重置自动存档状态();
 
-    const openingBase = deps.创建开场基础状态(charData, worldConfig, openingConfig);
-    const clearedOpeningBase = options?.清空前端变量
+    let openingBase = deps.创建开场基础状态(charData, worldConfig, openingConfig);
+    let clearedOpeningBase = options?.清空前端变量
         ? deps.构建前端清空开场状态(openingBase)
         : null;
 
@@ -463,9 +464,14 @@ export const 执行世界生成工作流 = async (
             }
         }
 
-        const generatedWorldPrompt = useManualWorldPrompt
-            ? textAIService.解析世界观提示词内容(normalizedManualWorldPrompt)
-            : await 执行带超时(useWorldRefinement ? 'AI 细化世界观' : 'AI 生成世界观', 世界观阶段超时毫秒, (signal, 标记活动) => textAIService.generateWorldData(
+        const generatedWorldResult = useManualWorldPrompt
+            ? {
+                worldPrompt: textAIService.解析世界观提示词内容(normalizedManualWorldPrompt),
+                mapLayers: [],
+                factions: [],
+                rawText: normalizedManualWorldPrompt
+            }
+            : await 执行带超时(useWorldRefinement ? 'AI 细化世界观' : 'AI 生成世界观', 世界观阶段超时毫秒, (signal, 标记活动) => textAIService.generateWorldFoundationData(
                 worldGenerationContext,
                 charData,
                 currentApi,
@@ -480,7 +486,7 @@ export const 执行世界生成工作流 = async (
                                 ? `...${normalized.slice(-480)}`
                                 : normalized;
                             const preview = tail.split('\n').slice(-10).join('\n').trim();
-                            开局流式历史更新器?.更新(`【生成中】${useWorldRefinement ? 'AI 细化世界观' : 'AI 生成世界观'}（流式预览）\n${preview || '...'}\n\n已接收 ${normalized.length} 字符`);
+                            开局流式历史更新器?.更新(`【生成中】${useWorldRefinement ? 'AI 细化世界观与世界基底' : 'AI 生成世界观与世界基底'}（流式预览）\n${preview || '...'}\n\n已接收 ${normalized.length} 字符`);
                         }
                     }
                     : undefined,
@@ -495,7 +501,14 @@ export const 执行世界生成工作流 = async (
         if (worldStreamHeartbeat) clearInterval(worldStreamHeartbeat);
         开局流式历史更新器?.停止();
 
-        const worldPromptContent = generatedWorldPrompt?.trim() || worldPromptSeed;
+        const worldPromptContent = generatedWorldResult.worldPrompt?.trim() || worldPromptSeed;
+        if (generatedWorldResult.mapLayers.length > 0 || generatedWorldResult.factions.length > 0) {
+            openingBase = 合并世界基底到开场状态(openingBase, generatedWorldResult);
+            if (clearedOpeningBase) {
+                clearedOpeningBase = 合并世界基底到开场状态(clearedOpeningBase, generatedWorldResult);
+                deps.应用开场基态(clearedOpeningBase);
+            }
+        }
 
         let finalPrompts = 写入或插入提示词(
             updatedPrompts,

@@ -24,6 +24,7 @@ import { 构建默认技艺 } from '../../utils/skillDefaults';
 import { 获取题材模式配置 } from '../../utils/topicModeProfiles';
 import { 获取境界层级 } from '../../utils/realmConfig';
 import { 获取当前境界配置 } from './stateTransforms';
+import type { WorldFoundationResult } from '../../services/ai/storyTasks';
 
 export type 开场命令基态 = {
     角色: 角色数据结构;
@@ -79,6 +80,126 @@ const 门派职位贡献门槛: Record<string, number> = {
 };
 
 const 标准门派职位列表 = ['杂役弟子', '外门弟子', '内门弟子', '真传弟子', '执事', '长老', '副掌门', '掌门'];
+
+const 地图层级顺序 = ['寰宇', '大地点', '中地点', '小地点', '区地点', '子地点'] as const;
+const 地图层级集合 = new Set<string>(地图层级顺序);
+
+const 规范化地图层级名称 = (value: any): any => {
+    const text = 取文本(value);
+    if (text === '具体地点') return '区地点';
+    if (text === '室内' || text === '房间') return '子地点';
+    return 地图层级集合.has(text) ? text : '区地点';
+};
+
+const 规范化世界基底地图层级 = (rawLayers: any[]): any[] => {
+    const normalized = (Array.isArray(rawLayers) ? rawLayers : [])
+        .map((layer) => ({
+            名称: 取文本(layer?.名称 || layer?.name),
+            层级: 规范化地图层级名称(layer?.层级 || layer?.level),
+            父级ID: 取文本(layer?.父级ID || layer?.parentId || layer?.parent || layer?.上级地点),
+            描述: 取文本(layer?.描述 || layer?.description),
+            控制势力: 取文本(layer?.控制势力 || layer?.主导势力 || layer?.所属势力 || layer?.controllingFaction),
+            势力影响: 取文本(layer?.势力影响 || layer?.势力分布 || layer?.factionInfluence),
+            势力标签: 取字符串数组(layer?.势力标签 || layer?.factionTags)
+        }))
+        .filter((layer) => layer.名称);
+    if (!normalized.some((layer) => layer.层级 === '寰宇')) {
+        normalized.unshift({
+            名称: '诸天万界',
+            层级: '寰宇',
+            父级ID: '',
+            描述: '诸天万界交汇之地',
+            控制势力: '',
+            势力影响: '',
+            势力标签: []
+        });
+    }
+
+    let seq = 0;
+    const nextId = () => {
+        seq += 1;
+        return `DT-${String(seq).padStart(3, '0')}`;
+    };
+    const nameToId = new Map<string, string>();
+    normalized.forEach((layer) => {
+        if (!nameToId.has(layer.名称)) nameToId.set(layer.名称, nextId());
+    });
+
+    return normalized.map((layer) => ({
+        ID: nameToId.get(layer.名称) || nextId(),
+        名称: layer.名称,
+        层级: layer.层级,
+        父级ID: layer.父级ID ? (nameToId.get(layer.父级ID) || layer.父级ID) : '',
+        描述: layer.描述,
+        控制势力: layer.控制势力,
+        势力影响: layer.势力影响,
+        势力标签: layer.势力标签,
+        归属: { 大地点: '', 中地点: '', 小地点: '' }
+    }));
+};
+
+const 势力类型集合 = new Set(['门派', '家族', '商会', '镖局', '官府', '帮派', '散修联盟', '其他']);
+const 势力关系集合 = new Set(['友好', '中立', '敌对', '从属', '联盟']);
+
+const 规范化世界基底势力列表 = (rawFactions: any[]): any[] => {
+    const source = Array.isArray(rawFactions) ? rawFactions : [];
+    const ids = new Set<string>();
+    const fallbackId = (index: number) => `FCT-${String(index + 1).padStart(3, '0')}`;
+    return source
+        .map((faction, index) => {
+            const idRaw = 取文本(faction?.ID || faction?.id) || fallbackId(index);
+            let id = idRaw;
+            if (ids.has(id)) id = fallbackId(index);
+            ids.add(id);
+            const type = 取文本(faction?.类型 || faction?.type);
+            const relationSource = faction?.关系网 && typeof faction.关系网 === 'object' && !Array.isArray(faction.关系网)
+                ? faction.关系网
+                : {};
+            const relationEntries = Object.entries(relationSource)
+                .map(([key, value]) => [取文本(key), 势力关系集合.has(取文本(value)) ? 取文本(value) : '中立'])
+                .filter(([key]) => key);
+            return {
+                ID: id,
+                名称: 取文本(faction?.名称 || faction?.name),
+                类型: 势力类型集合.has(type) ? type : '其他',
+                实力等级: Math.max(1, Math.min(10, 取数字(faction?.实力等级 || faction?.power || faction?.level, 5))),
+                地盘归属: 取文本(faction?.地盘归属 || faction?.territory || faction?.所在地),
+                描述: 取文本(faction?.描述 || faction?.description),
+                代表性物品风格: 取文本(faction?.代表性物品风格 || faction?.itemStyle),
+                关系网: Object.fromEntries(relationEntries),
+                库藏物品池: Array.isArray(faction?.库藏物品池 || faction?.items)
+                    ? (faction?.库藏物品池 || faction?.items).map((item: any) => ({
+                        名称: 取文本(item?.名称 || item?.name),
+                        类型: 取文本(item?.类型 || item?.type),
+                        品质: 取文本(item?.品质 || item?.quality, '普通'),
+                        描述: 取文本(item?.描述 || item?.description),
+                        预置图片URL: 取文本(item?.预置图片URL)
+                    })).filter((item: any) => item.名称)
+                    : [],
+                当前状态: 取文本(faction?.当前状态 || faction?.status)
+            };
+        })
+        .filter((faction) => faction.名称);
+};
+
+export const 合并世界基底到开场状态 = <T extends { 世界?: 世界数据结构 }>(
+    openingBase: T,
+    foundation?: Pick<WorldFoundationResult, 'mapLayers' | 'factions'> | null
+): T => {
+    if (!foundation) return openingBase;
+    const mapLayers = 规范化世界基底地图层级(foundation.mapLayers || []);
+    const factions = 规范化世界基底势力列表(foundation.factions || []);
+    if (mapLayers.length <= 0 && factions.length <= 0) return openingBase;
+    const currentWorld = openingBase.世界 || 创建开场空白世界();
+    return {
+        ...openingBase,
+        世界: {
+            ...currentWorld,
+            地图层级: mapLayers.length > 0 ? mapLayers as any : currentWorld.地图层级,
+            势力列表: factions.length > 0 ? factions as any : currentWorld.势力列表
+        }
+    };
+};
 
 const 补全门派职位 = (source: any, totalContribution = 0, fallback = '无'): string => {
     const customOrganizationKind = 推导组织语义(source);
@@ -1194,39 +1315,6 @@ const 推导门派规模数据 = (source: any, displayName: string) => {
     const rawDistribution = source?.战力分布 && typeof source.战力分布 === 'object' && !Array.isArray(source.战力分布)
         ? source.战力分布
         : {};
-    const fallbackDistribution = total > 0
-        ? isApocalypse
-            ? 按人数平衡分布(total, [
-                ['后勤', total * 0.35],
-                ['巡逻', total * 0.25],
-                ['医疗维修', total * 0.18],
-                ['搜救战斗', total * 0.16],
-                ['指挥骨干', total >= 30 ? Math.max(1, total * 0.04) : 0]
-            ])
-            : isInfinite
-                ? 按人数平衡分布(total, [
-                    ['新人', total * 0.35],
-                    ['正式队员', total * 0.30],
-                    ['资深者', total * 0.20],
-                    ['特殊兑换位', total * 0.10],
-                    ['队长级', total >= 8 ? Math.max(1, total * 0.05) : 0]
-                ])
-            : isModern
-                ? 按人数平衡分布(total, [
-                    ['基础成员', total * 0.45],
-                    ['执行成员', total * 0.30],
-                    ['专业骨干', total * 0.18],
-                    ['管理协调', total * 0.06],
-                    ['核心负责人', total >= 30 ? Math.max(1, total * 0.01) : 0]
-                ])
-                : 按人数平衡分布(total, [
-                    ['凡俗', total * 0.45],
-                    ['入门', total * 0.35],
-                    ['中坚', total * 0.16],
-                    ['高手', total * 0.035],
-                    ['顶尖', total >= 80 ? Math.max(1, total * 0.005) : 0]
-                ])
-        : {};
     const stipend = source?.月俸规则 && typeof source.月俸规则 === 'object' && !Array.isArray(source.月俸规则)
         ? source.月俸规则
         : {};
@@ -1234,7 +1322,7 @@ const 推导门派规模数据 = (source: any, displayName: string) => {
         门派等级: level,
         门派规模: scale,
         弟子总数: total,
-        战力分布: Object.keys(rawDistribution).length > 0 ? rawDistribution : fallbackDistribution,
+        战力分布: rawDistribution,
         财富评级: wealth,
         月俸规则: {
             基础俸禄: 取数字(stipend?.基础俸禄, level.includes('一流') ? 900 : level.includes('二流') ? 500 : level.includes('三流') ? 260 : 120),

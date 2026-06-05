@@ -54,11 +54,11 @@ const 现代晋升梯队: RankStep[] = [
 
 const 无限流晋升梯队: RankStep[] = [
     { rank: '新人', lvl: 1, required: 0, discount: 0, perks: ['基础任务', '新人补给'] },
-    { rank: '正式成员', lvl: 2, required: 150, discount: 0.05, perks: ['支线任务权限', '主神商城九五折'] },
-    { rank: '骨干成员', lvl: 3, required: 500, discount: 0.1, perks: ['高级任务优先', '主神商城九折'] },
-    { rank: '副队长', lvl: 4, required: 1200, discount: 0.15, perks: ['小队管理权限', '主神商城八五折'] },
-    { rank: '队长', lvl: 5, required: 3000, discount: 0.2, perks: ['小队决策权', '主神商城八折'] },
-    { rank: '核心轮回者', lvl: 6, required: 6000, discount: 0.28, perks: ['独立任务权限', '主神商城七二折'] }
+    { rank: '正式成员', lvl: 2, required: 150, discount: 0.05, perks: ['支线任务权限', '团队商城九五折'] },
+    { rank: '骨干成员', lvl: 3, required: 500, discount: 0.1, perks: ['高级任务优先', '团队商城九折'] },
+    { rank: '副队长', lvl: 4, required: 1200, discount: 0.15, perks: ['小队管理权限', '团队商城八五折'] },
+    { rank: '队长', lvl: 5, required: 3000, discount: 0.2, perks: ['小队决策权', '团队商城八折'] },
+    { rank: '核心轮回者', lvl: 6, required: 6000, discount: 0.28, perks: ['独立任务权限', '团队商城七二折'] }
 ];
 
 const 获取组织显示文案 = (sectData: 详细门派结构) => {
@@ -69,7 +69,7 @@ const 获取组织显示文案 = (sectData: 详细门派结构) => {
     const isModern = !isApocalypse && !isInfinite && /现代|都市|公司|项目组|事务所|社区中心|门店|合作团队|合同|客户|技术成员|行政联系人|培训|手机|电脑/u.test(text);
     if (isInfinite) {
         return {
-            tabs: { hall: '小队', exchange: '商城', library: '技能', members: '名录' },
+            tabs: { hall: '小队', exchange: '商城', library: '能力', members: '名录' },
             organizationPower: '小队战力',
             memberCount: '轮回者',
             principle: '小队信条',
@@ -77,7 +77,14 @@ const 获取组织显示文案 = (sectData: 详细门派结构) => {
             rankPath: '轮回进阶',
             contribution: '奖励点',
             capabilitySuffix: '',
-            exchangeName: '主神商城',
+            exchangeName: '团队商城',
+            stipend: '结算补给',
+            claimStipend: '领取补给',
+            claimedStipend: '本期已领取',
+            nextStipend: '下次补给时间',
+            learnAction: '解锁',
+            learnedAction: '已解锁',
+            canLearn: '可解锁',
             rankLadder: 无限流晋升梯队,
             rankMap: {} as Record<string, string>
         };
@@ -93,6 +100,13 @@ const 获取组织显示文案 = (sectData: 详细门派结构) => {
             contribution: '组织信用',
             capabilitySuffix: '',
             exchangeName: '资源库',
+            stipend: '津贴',
+            claimStipend: '领取津贴',
+            claimedStipend: '本期已领取',
+            nextStipend: '下次津贴领取时间',
+            learnAction: '学习',
+            learnedAction: '已学习',
+            canLearn: '可学',
             rankLadder: 现代晋升梯队,
             rankMap: {} as Record<string, string>
         };
@@ -108,6 +122,13 @@ const 获取组织显示文案 = (sectData: 详细门派结构) => {
             contribution: '贡献点',
             capabilitySuffix: '',
             exchangeName: '聚宝阁',
+            stipend: '月俸',
+            claimStipend: '领取月俸',
+            claimedStipend: '本月已领取',
+            nextStipend: '下次月俸领取时间',
+            learnAction: '学习',
+            learnedAction: '已学习',
+            canLearn: '可学',
             rankLadder: 古风晋升梯队,
             rankMap: {} as Record<string, string>
         };
@@ -122,6 +143,13 @@ const 获取组织显示文案 = (sectData: 详细门派结构) => {
         contribution: '贡献点',
         capabilitySuffix: '能力值',
         exchangeName: '物资库',
+        stipend: '补给配给',
+        claimStipend: '领取配给',
+        claimedStipend: '本期已领取',
+        nextStipend: '下次配给时间',
+        learnAction: '学习',
+        learnedAction: '已学习',
+        canLearn: '可学',
         rankLadder: 末日晋升梯队,
         rankMap: 末日旧职位映射
     };
@@ -185,7 +213,6 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
         return 文案.rankLadder.find((item) => item.rank === normalizedRank)?.lvl ?? 职位等级排序[rank || ''] ?? 0;
     };
     const 职位可达 = (requiredRank?: string) => (当前职位步骤?.lvl || 0) >= 取职位等级(requiredRank || 文案.rankLadder[0]?.rank);
-    const 战力分布 = sectData.战力分布 && typeof sectData.战力分布 === 'object' ? sectData.战力分布 : {};
     const 月俸可领取 = Boolean(sectData.月俸规则) && 本月月俸可领取(sectData, env);
     const 月俸数量 = 估算月俸数量(sectData);
 
@@ -263,15 +290,10 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                                     <div className="rounded border border-white/10 bg-black/25 p-2 text-gray-200">{文案.memberCount}：{sectData.弟子总数 || 0}</div>
                                     <div className="rounded border border-wuxia-gold/20 bg-wuxia-gold/5 p-2 text-wuxia-gold">财富：{sectData.财富评级 || '待评估'}</div>
                                 </div>
-                                <div className="mt-3 flex flex-wrap gap-1.5">
-                                    {Object.entries(战力分布).map(([key, value]) => (
-                                        <span key={key} className="rounded border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-gray-300">{key} {Number(value || 0)}{文案.capabilitySuffix ? ` ${文案.capabilitySuffix}` : ''}</span>
-                                    ))}
-                                </div>
                                 {sectData.月俸规则 && (
                                     <div className="mt-3 rounded border border-emerald-400/20 bg-emerald-950/15 p-2 text-[10px] leading-5 text-emerald-100">
-                                        月俸：基础 {sectData.月俸规则.基础俸禄}，贡献系数 {sectData.月俸规则.贡献系数}，规模系数 {sectData.月俸规则.规模系数}。
-                                        <div className="mt-1 text-emerald-200">下次：{计算下次月俸领取时间(sectData, env)}</div>
+                                        {文案.stipend}：基础 {sectData.月俸规则.基础俸禄}，贡献系数 {sectData.月俸规则.贡献系数}，规模系数 {sectData.月俸规则.规模系数}。
+                                        <div className="mt-1 text-emerald-200">{文案.nextStipend}：{计算下次月俸领取时间(sectData, env)}</div>
                                         <button
                                             type="button"
                                             disabled={!月俸可领取 || !onClaimMonthlyStipend}
@@ -282,7 +304,7 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                                                     : 'cursor-not-allowed border border-gray-700 bg-black/30 text-gray-500'
                                             }`}
                                         >
-                                            {月俸可领取 ? `领取月俸 ${月俸数量}` : '本月已领取'}
+                                            {月俸可领取 ? `${文案.claimStipend} ${月俸数量}` : 文案.claimedStipend}
                                         </button>
                                     </div>
                                 )}
@@ -359,7 +381,7 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                                                 <div className="text-[10px] text-gray-500 mt-1">{book.类型} · {book.品阶}</div>
                                             </div>
                                             <span className={`text-[10px] px-2 py-0.5 rounded border ${alreadyLearned ? 'border-gray-600 text-gray-300' : canRead ? 'border-emerald-400/40 text-emerald-200' : 'border-gray-700 text-gray-400'}`}>
-                                                {alreadyLearned ? '已学习' : canRead ? '可学' : '未达标'}
+                                                {alreadyLearned ? 文案.learnedAction : canRead ? 文案.canLearn : '未达标'}
                                             </span>
                                         </div>
                                         <p className="text-[11px] text-gray-400 leading-5">{book.简介}</p>
@@ -369,7 +391,7 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                                             onClick={() => onLearnBook?.(book)}
                                             className={`w-full rounded px-3 py-2 text-[11px] font-bold ${canLearn ? 'border border-wuxia-gold bg-wuxia-gold/15 text-wuxia-gold' : 'border border-gray-700 bg-gray-900 text-gray-400'}`}
                                         >
-                                            {alreadyLearned ? '已学习' : '学习'}
+                                            {alreadyLearned ? 文案.learnedAction : 文案.learnAction}
                                         </button>
                                     </div>
                                 );

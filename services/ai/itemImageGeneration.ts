@@ -73,6 +73,7 @@ export const 构建物品视觉描述 = (item: any): string => {
         }
         return parts.join('\n');
     }
+    const 描述 = 读取文本(item?.描述);
     const parts: string[] = [];
     if (描述 && !是否游戏机制文案(描述)) parts.push(描述);
     if (Array.isArray(item?.词条列表) && item.词条列表.length > 0) {
