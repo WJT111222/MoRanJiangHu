@@ -1,14 +1,18 @@
-const CACHE_VERSION = '2026-06-06-v2';
+const CACHE_VERSION = '2026-06-06-v3';
 const CACHE_NAME = `msjh-item-preset-feedback-${CACHE_VERSION}`;
 const META_CACHE_NAME = `msjh-item-preset-feedback-meta-${CACHE_VERSION}`;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-function isPresetFeedbackAsset(request) {
+function isPresetFeedbackDataRequest(request) {
   if (request.method !== 'GET') return false;
   const url = new URL(request.url);
-  if (url.origin === self.location.origin && url.pathname === '/assets/item-preset-feedback-data.json') {
-    return true;
-  }
+  return url.origin === self.location.origin && url.pathname === '/assets/item-preset-feedback-data.json';
+}
+
+function isPresetFeedbackAsset(request) {
+  if (isPresetFeedbackDataRequest(request)) return true;
+  if (request.method !== 'GET') return false;
+  const url = new URL(request.url);
   return url.hostname === 's3.hi168.com' && url.pathname.includes('/MoRanJiangHu/preset-items/');
 }
 
@@ -52,6 +56,22 @@ async function cacheFirstForOneDay(request) {
   }
 }
 
+async function networkFirstForFeedbackData(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request);
+    if (response && response.ok) {
+      await cache.put(request, response.clone());
+      await writeCachedAt(request.url);
+    }
+    return response;
+  } catch (error) {
+    const cached = await cache.match(request, { ignoreVary: true });
+    if (cached) return cached;
+    throw error;
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
 });
@@ -69,5 +89,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (!isPresetFeedbackAsset(event.request)) return;
-  event.respondWith(cacheFirstForOneDay(event.request));
+  event.respondWith(isPresetFeedbackDataRequest(event.request)
+    ? networkFirstForFeedbackData(event.request)
+    : cacheFirstForOneDay(event.request));
 });
