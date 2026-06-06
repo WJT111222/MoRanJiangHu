@@ -30,24 +30,24 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 武器：刀 ───────────────────────────────────────────────────────
     { 名称: '柳叶刀', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E6%9F%B3%E5%8F%B6%E5%88%80.png' },
     { 名称: '鬼头大刀', 类型: '武器', 品质: '上品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%AC%BC%E5%A4%B4%E5%A4%A7%E5%88%80.png' },
-    { 名称: '雪饮狂刀', 类型: '武器', 品质: '绝世', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%9B%AA%E9%A5%AE%E7%8B%82%E5%88%80-3092f91029f6.png' },
+    { 名称: '雪饮狂刀', 类型: '武器', 品质: '绝世', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%9B%AA%E9%A5%AE%E7%8B%82%E5%88%80.png' },
 
     // ─── 武器：枪/棍 ─────────────────────────────────────────────────────
-    { 名称: '白蜡杆枪', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E7%99%BD%E8%9C%A1%E6%9D%86%E6%9E%AA-6b22592f468f.png' },
-    { 名称: '霸王枪', 类型: '武器', 品质: '极品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%9C%B8%E7%8E%8B%E6%9E%AA-8828b2dfbed2.png' },
-    { 名称: '齐眉棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%BD%90%E7%9C%89%E6%A3%8D-afd0ba793166.png' },
+    { 名称: '白蜡杆枪', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E7%99%BD%E8%9C%A1%E6%9D%86%E6%9E%AA.png' },
+    { 名称: '霸王枪', 类型: '武器', 品质: '极品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%9C%B8%E7%8E%8B%E6%9E%AA.png' },
+    { 名称: '齐眉棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%BD%90%E7%9C%89%E6%A3%8D.png' },
 
     // ─── 武器：弓/暗器 ───────────────────────────────────────────────────
-    { 名称: '铁胎弓', 类型: '武器', 品质: '上品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%93%81%E8%83%8E%E5%BC%93-a7dd81fac73d.png' },
-    { 名称: '袖箭', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E8%A2%96%E7%AE%AD-a153852bc2e7.png' },
-    { 名称: '毒针', 类型: '武器', 品质: '上品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E6%AF%92%E9%92%88-b6eb502db12a.png' },
+    { 名称: '铁胎弓', 类型: '武器', 品质: '上品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%93%81%E8%83%8E%E5%BC%93.png' },
+    { 名称: '袖箭', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E8%A2%96%E7%AE%AD.png' },
+    { 名称: '毒针', 类型: '武器', 品质: '上品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E6%AF%92%E9%92%88.png' },
 
     // ─── 防具 ───────────────────────────────────────────────────────────
-    { 名称: '玄铁护甲', 类型: '防具', 品质: '极品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E7%8E%84%E9%93%81%E6%8A%A4%E7%94%B2-3669828f96c2.png' },
-    { 名称: '锁子甲', 类型: '防具', 品质: '上品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%94%81%E5%AD%90%E7%94%B2-6e5b7ee152a3.png' },
-    { 名称: '软猬甲', 类型: '防具', 品质: '绝世', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E8%BD%AF%E7%8C%AC%E7%94%B2-a367e887f14b.png' },
-    { 名称: '布衣', 类型: '防具', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E5%B8%83%E8%A1%A3-ab2f61c962fa.png' },
-    { 名称: '青衫', 类型: '防具', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%9D%92%E8%A1%AB-d61bfa4b7c96.png' },
+    { 名称: '玄铁护甲', 类型: '防具', 品质: '极品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E7%8E%84%E9%93%81%E6%8A%A4%E7%94%B2.png' },
+    { 名称: '锁子甲', 类型: '防具', 品质: '上品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%94%81%E5%AD%90%E7%94%B2.png' },
+    { 名称: '软猬甲', 类型: '防具', 品质: '绝世', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E8%BD%AF%E7%8C%AC%E7%94%B2.png' },
+    { 名称: '布衣', 类型: '防具', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E5%B8%83%E8%A1%A3.png' },
+    { 名称: '青衫', 类型: '防具', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%9D%92%E8%A1%AB.png' },
     { 名称: '粗布青衫', 类型: '防具', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/s3_1780319225254_er7t6g.jpg' },
     { 名称: '青色练功服', 类型: '防具', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/s3_1780319274532_5aahja.png' },
     { 名称: '粗布长裤', 类型: '防具', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/s3_1780319556981_vsofrm.png' },
