@@ -127,8 +127,8 @@ const buildSignedHeaders = ({ method, url, body, contentType, includeAcl = usePu
     `cache-control:${cacheControl}\n`,
     `content-type:${contentType}\n`,
     `host:${url.host}\n`,
-    `x-amz-content-sha256:${bodyHash}\n`,
     includeAcl ? 'x-amz-acl:public-read\n' : '',
+    `x-amz-content-sha256:${bodyHash}\n`,
     `x-amz-date:${amzDate}\n`
   ].join('');
   const signedHeaders = includeAcl
