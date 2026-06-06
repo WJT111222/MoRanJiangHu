@@ -965,6 +965,48 @@ describe('responseCommandProcessor NSFW female state fallback', () => {
         );
     });
 
+    it('does not treat imagined explicit scenes as real first intimacy or sex loss', () => {
+        const state = 构建基础状态();
+        state.环境 = { 时间: '1:01:01:00:00' } as any;
+        state.社交 = 规范化社交列表([
+            {
+                id: 'npc_qin_yue',
+                姓名: '秦月',
+                性别: '女',
+                年龄: 22,
+                身份: '战术队员',
+                是否在场: true,
+                是否主要角色: true,
+                是否处女: true,
+                初夜夺取者: '',
+                初夜时间: '',
+                初夜描述: '',
+                失贞档案: { 是否失贞: false },
+                首次亲密记录: []
+            }
+        ], { 合并同名: false });
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '杨培强的目光跟随着秦月的背影，脑海中不由自主地浮现出一些暴烈而粗鄙的画面，想象自己贯穿她的小穴，但现实中他只是握紧拳头，没有真正行动。' }
+            ],
+            tavern_commands: [
+                { action: 'set', key: '社交[0].是否处女', value: false },
+                { action: 'set', key: '社交[0].初夜夺取者', value: '杨培强' },
+                { action: 'set', key: '社交[0].初夜时间', value: '1:01:01:00:00' },
+                { action: 'set', key: '社交[0].失贞档案', value: { 是否失贞: true, 第一次对象: '杨培强', 第一次时间: '1:01:01:00:00' } },
+                { action: 'set', key: '社交[0].首次亲密记录', value: [{ 类型: '阴道交', 是否已发生: true, 第一次对象: '杨培强' }] }
+            ]
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect(result.社交[0].是否处女).toBe(true);
+        expect(result.社交[0].初夜夺取者).toBe('');
+        expect(result.社交[0].初夜时间).toBe('');
+        expect(result.社交[0].失贞档案).toMatchObject({ 是否失贞: false });
+        expect(result.社交[0].首次亲密记录).toEqual([]);
+        expect(result.社交[0].子宫?.内射记录 || []).toEqual([]);
+    });
+
     it('records femboy first anal intimacy as sex loss without vaginal archive', () => {
         const state = 构建基础状态();
         state.环境 = { 时间: '四月初二 子时' } as any;

@@ -223,6 +223,14 @@ const 拆分事实句 = (text: string): string[] => (
         .filter(Boolean)
 );
 
+const 非现实亲密语境正则 = /(?:脑海中|脑中|心里|心底|想象|幻想|妄想|臆想|脑补|浮现|闪过|梦见|梦境|梦中|梦里|如果|假如|倘若|若是|想要|想把|想将|计划|打算|威胁|恐吓|比喻|形容|演示|模拟|未遂|差点|险些|几乎|并未真正|没有真正|现实中并未|实际上并未|只是(?:[^。！？\n\r]{0,12})?(?:念头|想法|幻想|梦|比喻|威胁|表演|玩笑))/u;
+
+const 是否非现实亲密语境 = (sentence: string): boolean => {
+    if (!sentence) return false;
+    if (!非现实亲密语境正则.test(sentence)) return false;
+    return /(?:初夜|破处|失身|发生关系|亲密关系|房事|云雨|交合|同房|双修|床笫|肉体关系|性事|性交|阴道交|肛交|口交|乳交|手交|足交|股交|内射|中出|小穴|阴道|蜜穴|屁穴|后庭|肉棒|阴茎|性器|插(?:进|入)|贯穿|进入|占有)/u.test(sentence);
+};
+
 const 提取对白发送者集合 = (response: GameResponse, playerName?: string): Set<string> => {
     const result = new Set<string>();
     const logs = Array.isArray(response?.logs) ? response.logs : [];
@@ -540,6 +548,7 @@ const 私密状态未经历正则 = /(未经人事|未经房事|未曾人事|未
 
 const 句子存在肯定事实 = (text: string, positive: RegExp, negative?: RegExp): boolean => (
     拆分事实句(text).some((sentence) => {
+        if (是否非现实亲密语境(sentence)) return false;
         positive.lastIndex = 0;
         if (!positive.test(sentence)) return false;
         if (!negative) return true;
@@ -574,6 +583,7 @@ const 提取亲密行为类型 = (text: string, npc: any): string[] => {
     const sentences = 拆分事实句(text);
     const types = new Set<string>();
     sentences.forEach((sentence) => {
+        if (是否非现实亲密语境(sentence)) return;
         if (初次关系否定正则.test(sentence) || 体内射精否定正则.test(sentence)) return;
         亲密行为事实规则.forEach((rule) => {
             rule.正则.lastIndex = 0;
@@ -660,7 +670,7 @@ const 构建体内射精记录描述 = (responseFactText: string, playerName?: s
 const 构建初夜描述 = (responseFactText: string, playerName?: string): string => {
     const normalized = responseFactText.replace(/\s+/g, ' ').trim();
     const detail = 拆分事实句(normalized)
-        .find((sentence) => 初次关系事实正则.test(sentence) && !初次关系否定正则.test(sentence))
+        .find((sentence) => !是否非现实亲密语境(sentence) && 初次关系事实正则.test(sentence) && !初次关系否定正则.test(sentence))
         ?.slice(0, 96)
         .trim() || '';
     const actor = playerName || '主角';
@@ -784,7 +794,7 @@ const 是否明确非阴道首次亲密事实 = (text: string): boolean => (
 const 构建首次亲密描述 = (responseFactText: string, playerName: string | undefined, type: string): string => {
     const normalized = responseFactText.replace(/\s+/g, ' ').trim();
     const sentence = 拆分事实句(normalized)
-        .find((item) => 提取亲密行为类型(item, { 性别: type === '阴道交' ? '女' : '男' }).includes(type))
+        .find((item) => !是否非现实亲密语境(item) && 提取亲密行为类型(item, { 性别: type === '阴道交' ? '女' : '男' }).includes(type))
         ?.slice(0, 96)
         .trim() || '';
     const actor = playerName || '主角';

@@ -369,16 +369,22 @@ const RegionMap: React.FC<Props> = ({ nodes, currentNodeId, currentLocationName,
         return { cells, roads, cols, rows, cellW, cellH, startX, startY };
     }, [isTown, layouts, MAP_W, MAP_H, currentNodeId]);
 
-    // 室内层：子节点优先，否则默认"大厅"
+    // 室内层：子节点优先；没有子节点时展示当前视图本身，避免最底层变成空房间。
     const roomCards = useMemo(() => {
         if (!isRoom) return [];
-        const defaults = ['大厅'];
         const source = layouts.length > 0
             ? layouts.map(l => ({ node: l.node, isCurrent: l.isCurrent }))
-            : defaults.map((name, i) => ({
-                node: { ID: `room-default-${i}`, 名称: name, 层级: '子地点' as const, 父级ID: '', 描述: viewDescription, 子节点: [] },
-                isCurrent: false,
-            }));
+            : [{
+                node: {
+                    ID: 'room-current-view',
+                    名称: viewLocationName || currentLocationName || '当前位置',
+                    层级: '子地点' as const,
+                    父级ID: '',
+                    描述: viewDescription,
+                    子节点: [],
+                },
+                isCurrent: true,
+            }];
         const cols = Math.min(source.length, 3);
         const rows = Math.ceil(source.length / cols);
         const cardW = (MAP_W - 4) / cols;
@@ -394,10 +400,10 @@ const RegionMap: React.FC<Props> = ({ nodes, currentNodeId, currentLocationName,
                 w: cardW - 1,
                 h: cardH - 1,
                 node: item.node,
-                isCurrent: item.node.ID === currentNodeId,
+                isCurrent: item.isCurrent || item.node.ID === currentNodeId,
             };
         });
-    }, [isRoom, layouts, MAP_W, MAP_H, currentNodeId, viewDescription]);
+    }, [isRoom, layouts, MAP_W, MAP_H, currentNodeId, currentLocationName, viewLocationName, viewDescription]);
 
     // NPC匹配：城镇层按子建筑分配；房间/建筑层按当前具体地点兜底。
     const npcAtLocation = useMemo(() => {
@@ -433,7 +439,7 @@ const RegionMap: React.FC<Props> = ({ nodes, currentNodeId, currentLocationName,
             if (matchedNode) {
                 if (!map.has(matchedNode.ID)) map.set(matchedNode.ID, []);
                 map.get(matchedNode.ID)!.push(npc);
-            } else if (nodes.length > 0) {
+            } else {
                 if (!map.has('_unplaced')) map.set('_unplaced', []);
                 map.get('_unplaced')!.push(npc);
             }
@@ -444,63 +450,6 @@ const RegionMap: React.FC<Props> = ({ nodes, currentNodeId, currentLocationName,
     const markerSize = isSpace ? 3.2 : isWorld ? 0 : isContinent ? 0.5 : isTown ? 0 : isRoom ? 0 : 0.6;
     const hitSize = isWorld ? 4 : isTown ? 0 : isRoom ? 3 : markerSize + 1.5;
     const fontSize = isSpace ? 1.2 : isWorld ? 0.9 : isContinent ? 0.7 : isTown ? 0.7 : isRoom ? 0.95 : (nodes.length > 0 ? Math.max(0.6, Math.min(1.1, MAP_W / (nodes.length * 4 + 8))) : 0.8);
-
-    // 房间层：纯列表卡片面板，无地图样式
-    if (isRoom) {
-        return (
-            <div className="w-full h-full min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4 space-y-3 custom-scrollbar">
-                {roomCards.map((card, index) => {
-                    const cardNpcList = npcByNode.get(card.node.ID)
-                        || (card.node.ID.startsWith('room-default-') && index === 0 ? viewNodeNpcs : [])
-                        || (!isRoom && index === 0 ? (npcByNode.get('_unplaced') || []) : []);
-                    return (
-                    <div key={card.node.ID}
-                        onClick={() => { if (!card.node.ID.startsWith('room-default-')) onSelect(card.node); }}
-                        className={`rounded-lg border px-4 py-3 transition-all ${
-                            card.isCurrent
-                                ? 'border-wuxia-gold/40 bg-wuxia-gold/5 cursor-pointer'
-                                : card.node.ID.startsWith('room-default-')
-                                ? 'border-white/5 bg-white/[0.02] cursor-default'
-                                : 'border-white/10 bg-white/[0.03] hover:border-wuxia-gold/30 cursor-pointer'
-                        }`}>
-                        {/* 房间名称行 */}
-                        <div className="flex items-center gap-2 mb-1.5">
-                            <span className="text-base shrink-0">
-                                {card.node.名称.includes('厅') ? '🏛' : card.node.名称.includes('卧') ? '🛏' : card.node.名称.includes('卫') ? '🚿' : card.node.名称.includes('厨') ? '🍳' : '🚪'}
-                            </span>
-                            <span className={`text-sm font-bold truncate ${card.isCurrent ? 'text-wuxia-gold' : 'text-gray-200'}`}>
-                                {card.node.名称}
-                            </span>
-                            {card.isCurrent && <span className="text-[10px] text-wuxia-gold/60 shrink-0 ml-auto">当前</span>}
-                        </div>
-                        {/* 房间介绍 */}
-                        <div className="text-[11px] text-gray-500 leading-relaxed mb-2">
-                            {card.node.描述 || '暂无介绍'}
-                        </div>
-                        {/* 房间内NPC */}
-                        <div className="border-t border-white/5 pt-2">
-                            <span className="text-[10px] text-gray-500 mr-2">房间内：</span>
-                            {cardNpcList.length > 0 ? (
-                                cardNpcList.map((npc: any, i: number) => {
-                                    const npcColors = ['#d49090','#90b4d4','#90d490','#d4c490','#b490d4','#90d4c4'];
-                                    const c = npcColors[Math.abs((npc?.姓名 || npc?.名称 || '').length) % npcColors.length];
-                                    return (
-                                        <span key={i} className="inline-block text-[10px] px-1.5 py-0.5 rounded font-bold mr-1 mb-1"
-                                            style={{ background: c, color: '#2a1000' }}>
-                                            {npc?.姓名 || npc?.名称 || '?'}
-                                        </span>
-                                    );
-                                })
-                            ) : (
-                                <span className="text-[11px] text-gray-600">暂无</span>
-                            )}
-                        </div>
-                    </div>
-                    );
-                })}
-            </div>
-        );
-    }
 
     return (
         <div className="relative w-full h-full min-h-[400px] overflow-hidden rounded-xl"
@@ -576,7 +525,84 @@ const RegionMap: React.FC<Props> = ({ nodes, currentNodeId, currentLocationName,
                         })}
                     </g>;
                 })}
-                {/* 室内层：纯CSS卡片面板（不在SVG内） */}
+                {/* 室内层：房间块可视化 */}
+                {isRoom && roomCards.length > 0 && <>
+                    <rect x={1.2} y={1.2} width={MAP_W - 2.4} height={MAP_H - 2.4}
+                        rx={0.5} fill="rgba(245,232,205,0.34)" stroke="rgba(125,82,36,0.24)" strokeWidth={0.12}
+                        pointerEvents="none" />
+                    {roomCards.map((card, index) => {
+                        const directNpcs = npcByNode.get(card.node.ID) || [];
+                        const fallbackNpcs = index === 0 ? [...(npcByNode.get('_unplaced') || []), ...viewNodeNpcs] : [];
+                        const seen = new Set<string>();
+                        const cardNpcList = [...directNpcs, ...fallbackNpcs].filter((npc: any) => {
+                            const name = String(npc?.姓名 || npc?.名称 || '').trim();
+                            const key = name || JSON.stringify(npc);
+                            if (!key || seen.has(key)) return false;
+                            seen.add(key);
+                            return true;
+                        });
+                        const isVirtualCurrent = card.node.ID === 'room-current-view';
+                        const isClickable = !isVirtualCurrent;
+                        const fill = card.isCurrent ? 'rgba(230,185,110,0.62)' : 'rgba(238,221,190,0.78)';
+                        const stroke = card.isCurrent ? 'rgba(148,82,20,0.84)' : 'rgba(116,78,40,0.42)';
+                        const title = card.node.名称 || '当前位置';
+                        const desc = card.node.描述 || viewDescription || '';
+                        const titleSize = Math.max(0.55, Math.min(1.05, card.w / Math.max(5, title.length * 0.72)));
+                        return (
+                            <g key={card.node.ID} className={isClickable ? 'cursor-pointer' : ''} style={{ outline: 'none' }}>
+                                <rect x={card.x} y={card.y} width={card.w} height={card.h} rx={0.28}
+                                    fill={fill} stroke={stroke} strokeWidth={0.12} pointerEvents="none" />
+                                <rect x={card.x + 0.35} y={card.y + 0.35} width={Math.max(0.1, card.w - 0.7)} height={Math.max(0.1, card.h - 0.7)}
+                                    rx={0.2} fill="none" stroke="rgba(120,82,45,0.22)" strokeWidth={0.06} pointerEvents="none" />
+                                {isClickable && (
+                                    <rect x={card.x} y={card.y} width={card.w} height={card.h} rx={0.28}
+                                        fill="transparent" style={{ cursor: 'pointer' }}
+                                        onClick={() => { onSelect(card.node); setMapZoom(1); setMapPan({ x: 0, y: 0 }); setMapFocusPoint(null); }} />
+                                )}
+                                <text x={card.x + card.w / 2} y={card.y + 1.35}
+                                    textAnchor="middle" dominantBaseline="middle" pointerEvents="none"
+                                    fill={card.isCurrent ? '#713300' : 'rgba(56,34,16,0.9)'}
+                                    fontSize={titleSize} fontFamily="serif" fontWeight="bold">
+                                    {title}
+                                </text>
+                                {card.isCurrent && (
+                                    <rect x={card.x + card.w - 1.1} y={card.y + 0.35} width={0.62} height={0.62} rx={0.12}
+                                        fill="#40c870" stroke="#208040" strokeWidth={0.06} pointerEvents="none" />
+                                )}
+                                {desc && card.h > 4.2 && (
+                                    <text x={card.x + 0.7} y={card.y + 2.65}
+                                        pointerEvents="none" fill="rgba(69,47,26,0.64)" fontSize={0.48} fontFamily="serif">
+                                        {desc.slice(0, Math.max(8, Math.floor(card.w * 1.2)))}
+                                    </text>
+                                )}
+                                {cardNpcList.length > 0 ? (
+                                    cardNpcList.slice(0, 4).map((npc: any, i: number) => {
+                                        const name = String(npc?.姓名 || npc?.名称 || '?');
+                                        const npcColors = ['#d49090', '#90b4d4', '#90d490', '#d4c490', '#b490d4', '#90d4c4'];
+                                        const c = npcColors[Math.abs(name.length + i) % npcColors.length];
+                                        const x = card.x + 0.8 + i * Math.min(2.2, Math.max(1.2, card.w / 5));
+                                        const y = card.y + card.h - 1.15;
+                                        return (
+                                            <g key={`${card.node.ID}-npc-${i}`}>
+                                                <circle cx={x} cy={y} r={0.34} fill={c} stroke="rgba(72,35,24,0.45)" strokeWidth={0.05} pointerEvents="none" />
+                                                <text x={x + 0.45} y={y + 0.02}
+                                                    dominantBaseline="middle" pointerEvents="none"
+                                                    fill="rgba(44,24,12,0.88)" fontSize={0.46} fontFamily="serif" fontWeight="bold">
+                                                    {name.slice(0, 3)}
+                                                </text>
+                                            </g>
+                                        );
+                                    })
+                                ) : (
+                                    <text x={card.x + 0.7} y={card.y + card.h - 0.75}
+                                        pointerEvents="none" fill="rgba(96,68,40,0.42)" fontSize={0.5} fontFamily="serif">
+                                        暂无在场角色
+                                    </text>
+                                )}
+                            </g>
+                        );
+                    })}
+                </>}
                 {/* 城镇层：网格街区路网 */}
                 {isTown && townGrid && <>
                     {/* 背景地面 */}

@@ -1171,8 +1171,11 @@ const App: React.FC = () => {
         ) {
             areas.add('剧情规划');
         }
+        if (!Array.isArray(state.约定列表) || state.约定列表.length === 0) {
+            areas.delete('约定列表');
+        }
         return Array.from(areas);
-    }, [latestAssistantMessage]);
+    }, [latestAssistantMessage, state.约定列表]);
     const itemImageSequence = React.useMemo(() => {
         const bagRecords = (Array.isArray(state.角色?.物品列表) ? state.角色.物品列表 : []).flatMap((item: any) => {
             const history = Array.isArray(item?.图片档案?.生图历史) ? item.图片档案.生图历史 : [];
@@ -1895,9 +1898,22 @@ const App: React.FC = () => {
             + Math.floor(Number(sect.累计贡献 || sect.玩家贡献 || 0) * Number(rule.贡献系数 || 0))
             + Math.floor(Number(sect.弟子总数 || 0) * Number(rule.规模系数 || 0))
         );
-        const nextSect = { ...sect, 上次俸禄月份: monthKey };
+        const sectText = JSON.stringify(sect);
+        const stipendAsContribution = /主神|轮回|奖励点|支线剧情|营地|补给|信用|组织|团队|队伍|额度/u.test(sectText);
+        const currentContribution = Math.max(0, Number(sect.玩家贡献 || 0));
+        const currentTotalContribution = Math.max(currentContribution, Number(sect.累计贡献 || 0));
+        const nextSect = stipendAsContribution
+            ? {
+                ...sect,
+                上次俸禄月份: monthKey,
+                玩家贡献: currentContribution + amount,
+                累计贡献: currentTotalContribution + amount
+            }
+            : { ...sect, 上次俸禄月份: monthKey };
         const currentMoney = state.角色?.金钱 || { 金元宝: 0, 银子: 0, 铜钱: 0 };
-        const nextCharacter = { ...state.角色, 金钱: { ...currentMoney, 铜钱: Math.max(0, Number(currentMoney.铜钱 || 0)) + amount } };
+        const nextCharacter = stipendAsContribution
+            ? state.角色
+            : { ...state.角色, 金钱: { ...currentMoney, 铜钱: Math.max(0, Number(currentMoney.铜钱 || 0)) + amount } };
         setters.setPlayerSect(nextSect);
         setters.setCharacter(nextCharacter);
         void actions.performAutoSave?.({ role: nextCharacter, sect: nextSect, force: true });

@@ -24,7 +24,7 @@ const 层级标签: Record<string, string> = {
     '子地点': '房间',
 };
 
-const 是否索引可见节点 = (node?: 地点树节点 | null): boolean => node?.层级 !== '子地点';
+const 是否索引可见节点 = (node?: 地点树节点 | null): boolean => Boolean(node);
 
 const 获取索引选中节点 = (
     node: 地点树节点 | null | undefined,
@@ -47,6 +47,9 @@ const LocationTreeItem: React.FC<{
     if (!是否索引可见节点(node)) return null;
     const inPlayerPath = playerAncestorIds.has(node.ID);
     const [expanded, setExpanded] = useState(depth < 2 || inPlayerPath);
+    useEffect(() => {
+        if (inPlayerPath) setExpanded(true);
+    }, [inPlayerPath]);
     const isSelected = node.ID === selectedId;
     const isPlayerLocation = node.ID === playerLocationId;
     const visibleChildren = node.子节点.filter(c => c.ID !== node.ID && 是否索引可见节点(c));
@@ -60,12 +63,21 @@ const LocationTreeItem: React.FC<{
                 `}
                 style={{ paddingLeft: `${2 + depth * 12}px` }}
                 onClick={() => {
-                    if (hasChildren) setExpanded(!expanded);
                     onSelect(node);
                 }}
             >
                 {hasChildren ? (
-                    <span className="text-[10px] text-gray-500 w-3 shrink-0">{expanded ? '▾' : '▸'}</span>
+                    <button
+                        type="button"
+                        className="text-[10px] text-gray-500 w-3 shrink-0 hover:text-gray-300"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            setExpanded(!expanded);
+                        }}
+                        title={expanded ? '收起' : '展开'}
+                    >
+                        {expanded ? '▾' : '▸'}
+                    </button>
                 ) : (
                     <span className="w-3 shrink-0" />
                 )}

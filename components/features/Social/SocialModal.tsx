@@ -249,7 +249,14 @@ const SocialModal: React.FC<Props> = ({
     };
     const 读取香闺秘档图片结果 = (npc: NPC结构, part: 香闺秘档部位类型) => {
         const source = (npc as any)?.图片档案?.香闺秘档部位档案?.[part];
-        return source && typeof source === 'object' ? source : undefined;
+        if (source && typeof source === 'object' && 获取图片展示地址(source)) return source;
+        const history = Array.isArray((npc as any)?.图片档案?.生图历史) ? (npc as any).图片档案.生图历史 : [];
+        return history.find((item: any) => (
+            item?.状态 === 'success'
+            && item?.构图 === '部位特写'
+            && item?.部位 === part
+            && 获取图片展示地址(item)
+        ));
     };
     const 读取关系网 = (npc: NPC结构): Array<{ 对象姓名: string; 关系: string; 备注?: string }> => {
         if (!Array.isArray(npc?.关系网变量)) return [];
@@ -348,7 +355,21 @@ const SocialModal: React.FC<Props> = ({
         第一次描述: 取首个非空文本(record?.第一次描述)
     })).filter((record: any) => record.类型);
     const 当前失贞档案 = currentNPC ? 读取失贞档案(currentNPC) : undefined;
-    const 当前首次亲密记录 = currentNPC ? 读取首次亲密记录(currentNPC) : [];
+    const 亲密行为类型显示顺序 = ['阴道交', '肛交', '口交', '乳交', '手交', '足交', '股交'];
+    const 当前首次亲密记录 = currentNPC ? (() => {
+        const records = 读取首次亲密记录(currentNPC);
+        const byType = new Map(records.map((record: any) => [record.类型, record]));
+        if (当前失贞档案?.是否失贞 && !byType.has('阴道交') && !当前角色是男性) {
+            byType.set('阴道交', {
+                类型: '阴道交',
+                是否已发生: true,
+                第一次对象: 当前失贞档案.第一次对象,
+                第一次时间: 当前失贞档案.第一次时间,
+                第一次描述: 当前失贞档案.第一次描述
+            });
+        }
+        return 亲密行为类型显示顺序.map((type) => byType.get(type) || { 类型: type, 是否已发生: false });
+    })() : [];
     const 切换重要角色状态 = (npc: NPC结构) => {
         if (!onToggleMajorRole) return;
         onToggleMajorRole(String(npc.id || (npc as any).ID || npc.姓名), !Boolean(npc.是否主要角色));
@@ -491,6 +512,18 @@ const SocialModal: React.FC<Props> = ({
     );
     const 首次亲密档案框: React.FC = () => {
         if (!当前失贞档案 && 当前首次亲密记录.length <= 0) return null;
+        const 详情提示 = (text?: string) => {
+            const value = typeof text === 'string' ? text.trim() : '';
+            if (!value) return null;
+            return (
+                <span className="group relative inline-flex">
+                    <span className="cursor-help rounded border border-pink-500/30 px-1.5 py-0.5 text-[9px] text-pink-200/80">详情</span>
+                    <span className="pointer-events-none absolute left-0 top-full z-30 mt-1 hidden w-72 rounded border border-pink-800/50 bg-black/95 p-2 text-[11px] leading-relaxed text-pink-100 shadow-xl group-hover:block">
+                        {value}
+                    </span>
+                </span>
+            );
+        };
         return (
             <div className="mb-5 rounded-lg border border-pink-900/35 bg-black/45 p-3">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -501,14 +534,6 @@ const SocialModal: React.FC<Props> = ({
                         </span>
                     )}
                 </div>
-                {当前失贞档案?.是否失贞 && (
-                    <div className="mb-3 rounded border border-wuxia-gold/20 bg-wuxia-gold/5 p-2 text-xs text-pink-100">
-                        <span className="text-wuxia-gold/80">{当前失贞档案.第一次时间 || '未知时间'}</span>
-                        <span className="mx-1 text-gray-500">第一次交给</span>
-                        <span className="font-bold text-wuxia-gold">{当前失贞档案.第一次对象 || '未知对象'}</span>
-                        {当前失贞档案.第一次描述 && <div className="mt-1 text-[11px] leading-relaxed text-pink-200/75">{当前失贞档案.第一次描述}</div>}
-                    </div>
-                )}
                 {当前首次亲密记录.length > 0 && (
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                         {当前首次亲密记录.map((record: any) => (
@@ -519,11 +544,12 @@ const SocialModal: React.FC<Props> = ({
                                 </div>
                                 {record.是否已发生 ? (
                                     <div className="space-y-1 text-pink-100/85">
-                                        <div><span className="text-gray-500">第一次对象：</span>{record.第一次对象 || '未知对象'}</div>
+                                        <div className="flex items-center gap-1.5"><span className="text-gray-500">第一次交给：</span><span>{record.第一次对象 || '未知对象'}</span>{详情提示(record.第一次描述)}</div>
                                         <div><span className="text-gray-500">第一次时间：</span>{record.第一次时间 || '未知时间'}</div>
-                                        {record.第一次描述 && <div className="leading-relaxed text-pink-200/75">{record.第一次描述}</div>}
                                     </div>
-                                ) : null}
+                                ) : (
+                                    <div className="text-[11px] text-gray-500">尚未发生</div>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -1267,12 +1293,10 @@ const SocialModal: React.FC<Props> = ({
                                                                         <span className="text-wuxia-gold/80 text-xs font-mono bg-wuxia-gold/10 px-1 rounded border border-wuxia-gold/20 mr-1">{currentNPC.初夜时间}</span>
                                                                         <span>交给</span>
                                                                         <span className="text-wuxia-gold font-bold text-lg drop-shadow-[0_0_5px_rgba(212,175,55,0.5)]">{currentNPC.初夜夺取者}</span>
+                                                                        {currentNPC.初夜描述 && (
+                                                                            <span title={currentNPC.初夜描述} className="cursor-help rounded border border-pink-500/30 px-1.5 py-0.5 text-[10px] text-pink-200/80">详情</span>
+                                                                        )}
                                                                     </div>
-                                                                    {currentNPC.初夜描述 && (
-                                                                        <div className="mt-3 text-[11px] text-pink-200/80 italic border-t border-pink-500/20 pt-2 leading-relaxed">
-                                                                            "{currentNPC.初夜描述}"
-                                                                        </div>
-                                                                    )}
                                                                 </div>
                                                             </div>
                                                         )}
@@ -1284,8 +1308,8 @@ const SocialModal: React.FC<Props> = ({
                                                                 const result = 读取香闺秘档图片结果(currentNPC, item.key);
                                                                 const imageUrl = 获取图片展示地址(result);
                                                                 const modeKey = 生成香闺部位键(currentNPC.id, item.key);
-                                                                const mode = 香闺展示模式[modeKey] || 'text';
                                                                 const canShowImage = Boolean(imageUrl);
+                                                                const mode = 香闺展示模式[modeKey] || (canShowImage ? 'image' : 'text');
                                                                 const handleToggleMode = () => {
                                                                     if (!canShowImage) return;
                                                                     set香闺展示模式(prev => ({ ...prev, [modeKey]: mode === 'image' ? 'text' : 'image' }));
@@ -1397,8 +1421,8 @@ const SocialModal: React.FC<Props> = ({
                                                                 const result = 读取香闺秘档图片结果(currentNPC, item.key);
                                                                 const imageUrl = 获取图片展示地址(result);
                                                                 const modeKey = 生成香闺部位键(currentNPC.id, item.key);
-                                                                const mode = 香闺展示模式[modeKey] || 'text';
                                                                 const canShowImage = Boolean(imageUrl);
+                                                                const mode = 香闺展示模式[modeKey] || (canShowImage ? 'image' : 'text');
                                                                 return (
                                                                     <div key={item.key} className="p-2 rounded-lg border bg-black/60 border-sky-800/45 flex flex-col">
                                                                         <div className="flex items-center justify-between gap-2 mb-2">

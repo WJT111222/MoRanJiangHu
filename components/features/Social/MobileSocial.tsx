@@ -308,7 +308,14 @@ const MobileSocial: React.FC<Props> = ({
     };
     const 读取香闺秘档图片结果 = (npc: NPC结构, part: 香闺秘档部位类型) => {
         const source = (npc as any)?.图片档案?.香闺秘档部位档案?.[part];
-        return source && typeof source === 'object' ? source : undefined;
+        if (source && typeof source === 'object' && 获取图片展示地址(source)) return source;
+        const history = Array.isArray((npc as any)?.图片档案?.生图历史) ? (npc as any).图片档案.生图历史 : [];
+        return history.find((item: any) => (
+            item?.状态 === 'success'
+            && item?.构图 === '部位特写'
+            && item?.部位 === part
+            && 获取图片展示地址(item)
+        ));
     };
     const 读取关系网 = (npc: NPC结构): Array<{ 对象姓名: string; 关系: string; 备注?: string }> => {
         if (!Array.isArray(npc?.关系网变量)) return [];
@@ -407,7 +414,21 @@ const MobileSocial: React.FC<Props> = ({
         第一次描述: 取首个非空文本(record?.第一次描述)
     })).filter((record: any) => record.类型);
     const 当前失贞档案 = currentNPC ? 读取失贞档案(currentNPC) : undefined;
-    const 当前首次亲密记录 = currentNPC ? 读取首次亲密记录(currentNPC) : [];
+    const 亲密行为类型显示顺序 = ['阴道交', '肛交', '口交', '乳交', '手交', '足交', '股交'];
+    const 当前首次亲密记录 = currentNPC ? (() => {
+        const records = 读取首次亲密记录(currentNPC);
+        const byType = new Map(records.map((record: any) => [record.类型, record]));
+        if (当前失贞档案?.是否失贞 && !byType.has('阴道交') && !当前角色是男性) {
+            byType.set('阴道交', {
+                类型: '阴道交',
+                是否已发生: true,
+                第一次对象: 当前失贞档案.第一次对象,
+                第一次时间: 当前失贞档案.第一次时间,
+                第一次描述: 当前失贞档案.第一次描述
+            });
+        }
+        return 亲密行为类型显示顺序.map((type) => byType.get(type) || { 类型: type, 是否已发生: false });
+    })() : [];
     const 切换重要角色状态 = (npc: NPC结构) => {
         if (!onToggleMajorRole) return;
         onToggleMajorRole(npc.id, !Boolean(npc.是否主要角色));
@@ -550,6 +571,11 @@ const MobileSocial: React.FC<Props> = ({
     );
     const 首次亲密档案框: React.FC = () => {
         if (!当前失贞档案 && 当前首次亲密记录.length <= 0) return null;
+        const 详情提示 = (text?: string) => {
+            const value = typeof text === 'string' ? text.trim() : '';
+            if (!value) return null;
+            return <span title={value} className="rounded border border-pink-500/30 px-1 py-0.5 text-[8px] text-pink-200/80">详情</span>;
+        };
         return (
             <div className="mb-4 rounded-lg border border-pink-900/35 bg-black/45 p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-1.5">
@@ -560,14 +586,6 @@ const MobileSocial: React.FC<Props> = ({
                         </span>
                     )}
                 </div>
-                {当前失贞档案?.是否失贞 && (
-                    <div className="mb-2 rounded border border-wuxia-gold/20 bg-wuxia-gold/5 p-2 text-[10px] text-pink-100">
-                        <span className="text-wuxia-gold/80">{当前失贞档案.第一次时间 || '未知时间'}</span>
-                        <span className="mx-1 text-gray-500">第一次交给</span>
-                        <span className="font-bold text-wuxia-gold">{当前失贞档案.第一次对象 || '未知对象'}</span>
-                        {当前失贞档案.第一次描述 && <div className="mt-1 leading-relaxed text-pink-200/75">{当前失贞档案.第一次描述}</div>}
-                    </div>
-                )}
                 <div className="space-y-1.5">
                     {当前首次亲密记录.map((record: any) => (
                         <div key={record.类型} className="rounded border border-pink-900/25 bg-black/35 p-2 text-[10px]">
@@ -575,12 +593,13 @@ const MobileSocial: React.FC<Props> = ({
                                 <span className="font-bold text-pink-300">{record.类型}</span>
                                 <span className={`rounded px-1.5 py-0.5 text-[8px] ${record.是否已发生 ? 'bg-pink-500/15 text-pink-200' : 'bg-gray-800 text-gray-500'}`}>{record.是否已发生 ? '已发生' : '未发生'}</span>
                             </div>
-                            {record.是否已发生 && (
+                            {record.是否已发生 ? (
                                 <div className="space-y-0.5 text-pink-100/85">
-                                    <div><span className="text-gray-500">对象：</span>{record.第一次对象 || '未知对象'}</div>
+                                    <div className="flex items-center gap-1"><span className="text-gray-500">第一次交给：</span><span>{record.第一次对象 || '未知对象'}</span>{详情提示(record.第一次描述)}</div>
                                     <div><span className="text-gray-500">时间：</span>{record.第一次时间 || '未知时间'}</div>
-                                    {record.第一次描述 && <div className="leading-relaxed text-pink-200/75">{record.第一次描述}</div>}
                                 </div>
+                            ) : (
+                                <div className="text-[9px] text-gray-500">尚未发生</div>
                             )}
                         </div>
                     ))}
@@ -1490,12 +1509,10 @@ const MobileSocial: React.FC<Props> = ({
                                                             <span className="text-wuxia-gold/80 text-[10px] font-mono bg-wuxia-gold/10 px-1 rounded border border-wuxia-gold/20 mr-1">{currentNPC.初夜时间}</span>
                                                             <span>交给</span>
                                                             <span className="text-wuxia-gold font-bold text-base drop-shadow-[0_0_5px_rgba(212,175,55,0.5)]">{currentNPC.初夜夺取者}</span>
+                                                            {currentNPC.初夜描述 && (
+                                                                <span title={currentNPC.初夜描述} className="rounded border border-pink-500/30 px-1 py-0.5 text-[8px] text-pink-200/80">详情</span>
+                                                            )}
                                                         </div>
-                                                        {currentNPC.初夜描述 && (
-                                                            <div className="mt-2 text-[10px] text-pink-200/80 italic border-t border-pink-500/20 pt-2 leading-relaxed">
-                                                                "{currentNPC.初夜描述}"
-                                                            </div>
-                                                        )}
                                                     </div>
                                                  </div>
                                              )}
@@ -1507,8 +1524,8 @@ const MobileSocial: React.FC<Props> = ({
                                                     const result = 读取香闺秘档图片结果(currentNPC, item.key);
                                                     const imageUrl = 获取图片展示地址(result);
                                                     const modeKey = 生成香闺部位键(currentNPC.id, item.key);
-                                                    const mode = 香闺展示模式[modeKey] || 'text';
                                                     const canShowImage = Boolean(imageUrl);
+                                                    const mode = 香闺展示模式[modeKey] || (canShowImage ? 'image' : 'text');
                                                     const handleToggleMode = () => {
                                                         if (!canShowImage) return;
                                                         set香闺展示模式(prev => ({ ...prev, [modeKey]: mode === 'image' ? 'text' : 'image' }));
@@ -1619,8 +1636,8 @@ const MobileSocial: React.FC<Props> = ({
                                                         const result = 读取香闺秘档图片结果(currentNPC, item.key);
                                                         const imageUrl = 获取图片展示地址(result);
                                                         const modeKey = 生成香闺部位键(currentNPC.id, item.key);
-                                                        const mode = 香闺展示模式[modeKey] || 'text';
                                                         const canShowImage = Boolean(imageUrl);
+                                                        const mode = 香闺展示模式[modeKey] || (canShowImage ? 'image' : 'text');
                                                         return (
                                                             <div key={item.key} className="p-2.5 rounded-lg border bg-black/60 border-sky-800/45 flex gap-3">
                                                                 <div className="flex flex-col items-center gap-1.5 shrink-0 justify-center min-w-[3.5rem] border-r border-sky-800/45 pr-3 mr-1">
