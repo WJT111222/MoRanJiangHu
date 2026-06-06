@@ -596,7 +596,7 @@ function render() {
   stat.textContent = `${activeCategory}：显示 ${shown} / 共 ${scopedItems.length}；已标问题 ${problemCount}；远程图 ${remoteCount}`;
 }
 async function loadData() {
-  const response = await fetch('./assets/item-preset-feedback-data.json', { cache: 'no-store' });
+  const response = await fetch('./assets/item-preset-feedback-data.json', { cache: 'force-cache' });
   if (!response.ok) throw new Error('反馈数据载入失败');
   items = await response.json();
   const availableCategories = new Set(items.map(item => item.category || '武侠'));

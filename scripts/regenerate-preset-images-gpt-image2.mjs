@@ -22,7 +22,7 @@ const s3AccessKey = process.env.MORAN_OSS_ACCESS_KEY || '';
 const s3SecretKey = process.env.MORAN_OSS_SECRET_KEY || '';
 const s3Region = process.env.MORAN_OSS_REGION || 'auto';
 const s3Prefix = (process.env.MORAN_OSS_PRESET_PREFIX || 'MoRanJiangHu/preset-items').replace(/^\/+|\/+$/g, '');
-const s3CacheControl = process.env.MORAN_OSS_PRESET_CACHE_CONTROL || 'public, max-age=300, stale-while-revalidate=86400';
+const s3CacheControl = process.env.MORAN_OSS_PRESET_CACHE_CONTROL || 'public, max-age=86400, stale-while-revalidate=604800';
 
 const args = process.argv.slice(2);
 const apply = args.includes('--apply');
