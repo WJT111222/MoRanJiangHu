@@ -1,4 +1,4 @@
-const CACHE_VERSION = '2026-06-06-v3';
+const CACHE_VERSION = '2026-06-07-v4';
 const CACHE_NAME = `msjh-item-preset-feedback-${CACHE_VERSION}`;
 const META_CACHE_NAME = `msjh-item-preset-feedback-meta-${CACHE_VERSION}`;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -11,9 +11,7 @@ function isPresetFeedbackDataRequest(request) {
 
 function isPresetFeedbackAsset(request) {
   if (isPresetFeedbackDataRequest(request)) return true;
-  if (request.method !== 'GET') return false;
-  const url = new URL(request.url);
-  return url.hostname === 's3.hi168.com' && url.pathname.includes('/MoRanJiangHu/preset-items/');
+  return false;
 }
 
 function metaRequestFor(url) {
