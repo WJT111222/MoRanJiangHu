@@ -28,6 +28,9 @@ const args = process.argv.slice(2);
 const apply = args.includes('--apply');
 const reverse = args.includes('--reverse');
 const allEntries = args.includes('--all-entries');
+const onlyOldRootS3 = args.includes('--only-old-root-s3');
+const onlyHostArg = args.find(arg => arg.startsWith('--only-host='));
+const onlyHost = (onlyHostArg?.slice('--only-host='.length) || '').trim().toLowerCase();
 const reportArg = args.find(arg => arg.startsWith('--report='));
 const reportFileName = (reportArg?.slice('--report='.length) || 'regenerate-report.json').replace(/[\\/]/g, '-');
 const reportPath = path.join(outputDir, reportFileName);
@@ -57,7 +60,7 @@ const uploadHost = (hostArg?.slice('--host='.length) || 'nodeimage').trim().toLo
 const providerArg = args.find(arg => arg.startsWith('--provider='));
 const generationProvider = (providerArg?.slice('--provider='.length) || (openaiImageBaseUrl ? 'openai' : 'deepark')).trim().toLowerCase();
 const concurrencyArg = args.find(arg => arg.startsWith('--concurrency='));
-const concurrency = Math.max(1, Math.min(2, Number(concurrencyArg?.split('=')[1] || 2) || 2));
+const concurrency = Math.max(1, Math.min(8, Number(concurrencyArg?.split('=')[1] || 2) || 2));
 
 if (generationProvider === 'deepark' && !deeparkCookie && !existingUrl) {
   throw new Error('Missing DEEPARK_COOKIE environment variable.');
@@ -171,6 +174,18 @@ const collectPresetEntries = async () => {
   }
   const startIndex = startName ? Math.max(0, entries.findIndex(entry => entry.名称 === startName)) : 0;
   let filtered = entries.slice(startIndex).filter(entry => !skipNames.has(entry.名称));
+  if (onlyOldRootS3) {
+    filtered = filtered.filter(entry => /^https:\/\/s3\.hi168\.com\/hi168-19275-07130td3\/s3_/i.test(entry.图片URL));
+  }
+  if (onlyHost) {
+    filtered = filtered.filter(entry => {
+      try {
+        return new URL(entry.图片URL).host.toLowerCase() === onlyHost;
+      } catch {
+        return false;
+      }
+    });
+  }
   if (onlyNames.size > 0) {
     filtered = filtered.filter(entry => onlyNames.has(entry.名称));
   }
