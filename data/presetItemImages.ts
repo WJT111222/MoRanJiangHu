@@ -87,8 +87,8 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     { 名称: '夜明珠', 类型: '饰品', 品质: '极品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/s3_1780319262094_r33148.png' },
 
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E6%9C%A8%E5%89%91-2b9d274cc084.png' },
-    { 名称: '铁剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%93%81%E5%89%91-c1d736061229.png' },
+    { 名称: '木剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E6%9C%A8%E5%89%91.png' },
+    { 名称: '铁剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%93%81%E5%89%91.png' },
     { 名称: '钢剑', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%92%A2%E5%89%91-9cb91fafd8b7.png' },
     { 名称: '钢盔甲', 类型: '防具', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%92%A2%E7%9B%94%E7%94%B2-80b99469bff6.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
