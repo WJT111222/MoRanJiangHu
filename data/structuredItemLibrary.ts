@@ -1,6 +1,6 @@
 import type { 物品品质, 物品类型 } from '../models/item';
 import type { 题材模式类型 } from '../models/system';
-import { 规范化题材模式 } from './workshopThemes/topicModeThemeData';
+import { 规范化题材模式 } from './workshopThemes/topicModeThemeData.ts';
 
 export interface 结构化物品条目 {
     名称: string;
