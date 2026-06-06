@@ -104,6 +104,33 @@ describe('dialogueLogNormalizer story readability cleanup', () => {
         ]);
     });
 
+    it('splits explicit bracket speaker dialogue embedded inside a narration paragraph', () => {
+        const logs = 规范化可渲染对白日志([{
+            sender: '旁白',
+            text: '亨特没有抬眼，只把杯子推到桌边。【亨特】“说真的，这地方的品味简直糟透了。”他只是缓缓伸出右手，把冰冷的杯壁贴近嘴唇。'
+        }] as any);
+
+        expect(logs).toEqual([
+            { sender: '旁白', text: '亨特没有抬眼，只把杯子推到桌边。' },
+            { sender: '亨特', text: '说真的，这地方的品味简直糟透了。' },
+            { sender: '旁白', text: '他只是缓缓伸出右手，把冰冷的杯壁贴近嘴唇。' }
+        ]);
+    });
+
+    it('keeps narration around multiple embedded bracket speaker turns', () => {
+        const logs = 规范化可渲染对白日志([{
+            sender: '旁白',
+            text: '夜店里的灯光晃了一下。【亨特】“不过，我们今天不是来查税的。”【陈小刀】“他现在就在二楼。”人群又把声音吞了回去。'
+        }] as any);
+
+        expect(logs).toEqual([
+            { sender: '旁白', text: '夜店里的灯光晃了一下。' },
+            { sender: '亨特', text: '不过，我们今天不是来查税的。' },
+            { sender: '陈小刀', text: '他现在就在二楼。' },
+            { sender: '旁白', text: '人群又把声音吞了回去。' }
+        ]);
+    });
+
     it('keeps bare colon speaker lines from old narration as narration', () => {
         const logs = 规范化可渲染对白日志([{
             sender: '旁白',
