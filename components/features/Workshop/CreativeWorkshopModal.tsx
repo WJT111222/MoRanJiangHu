@@ -27,7 +27,7 @@ type 来源筛选 = 'all' | 'builtin' | 'cloud' | 'local';
 const 可展示工坊类型: 创意工坊模块类型[] = ['topic', 'comfy_workflow'];
 const 可展示工坊类型集合 = new Set<创意工坊模块类型>(可展示工坊类型);
 const 可展示工坊分区 = 创意工坊模块分区.filter((section) => 可展示工坊类型集合.has(section.id));
-type 运行时配置字段类型 = 'text' | 'textarea' | 'list' | 'record' | 'bool' | 'boolGroup' | 'baseMode' | 'currencyMode' | 'realmConfig';
+type 运行时配置字段类型 = 'text' | 'textarea' | 'list' | 'record' | 'bool' | 'boolGroup' | 'baseMode' | 'currencyMode' | 'timeFormatMode' | 'realmConfig';
 type 运行时配置字段 = { label: string; path: string[]; type?: 运行时配置字段类型; placeholder?: string; boolGroup?: { label: string; key: string }[] };
 type 运行时配置分区 = { title: string; fields: 运行时配置字段[] };
 
@@ -56,6 +56,18 @@ const 运行时配置分区列表: 运行时配置分区[] = [
             { label: '市场动词', path: ['economy', 'marketVerb'] },
             { label: '允许物品类型', path: ['economy', 'allowedItemTypes'], type: 'list' },
             { label: '禁用关键词', path: ['economy', 'bannedKeywords'], type: 'list' }
+        ]
+    },
+    {
+        title: '时间系统',
+        fields: [
+            { label: '显示/叙事基调', path: ['time', 'displayFormat'], type: 'timeFormatMode' },
+            { label: '历法名称', path: ['time', 'calendarName'] },
+            { label: '正文时间口径', path: ['time', 'narrativeStyle'], type: 'textarea' },
+            { label: '昼夜时段词', path: ['time', 'dayPeriodNames'], type: 'list' },
+            { label: '允许时间词', path: ['time', 'allowedTimeTerms'], type: 'list' },
+            { label: '禁用时间词', path: ['time', 'bannedTimeTerms'], type: 'list' },
+            { label: '时间推进说明', path: ['time', 'progressionPrompt'], type: 'textarea' }
         ]
     },
     {
@@ -330,6 +342,8 @@ const 提取模块模式元数据 = (entry: 创意工坊模块条目): Record<st
         auctionName: metadata.auctionName || runtimeProfile?.economy.marketName || '',
         marketVerb: metadata.marketVerb || runtimeProfile?.economy.marketVerb || '',
         mapPrompt: metadata.mapPrompt || runtimeProfile?.map.mapPrompt || '',
+        timeDisplayFormat: metadata.timeDisplayFormat || runtimeProfile?.time.displayFormat || '',
+        timeNarrativeStyle: metadata.timeNarrativeStyle || runtimeProfile?.time.narrativeStyle || '',
         skillNames: metadata.skillNames || runtimeProfile?.ability.skillPool || [],
         presetItemKeywords: metadata.presetItemKeywords || runtimeProfile?.items.initialItemPool || [],
         backgroundSuggestions: metadata.backgroundSuggestions || runtimeProfile?.opening.defaultBackgrounds || [],
@@ -367,6 +381,7 @@ const 渲染模式元数据世界书内容 = (draft: 贡献草稿): string => {
         `市场名称：${metadata.auctionName}`,
         `市场行为口径：${metadata.marketVerb}`,
         `地图口径：${metadata.mapPrompt}`,
+        `时间口径：${draft.modeRuntimeProfile.time.narrativeStyle}`,
         `技能建议：${metadata.skillNames.join('、')}`,
         `预设物品关键词：${metadata.presetItemKeywords.join('、')}`,
         `背景建议：${metadata.backgroundSuggestions.join('、')}`,
@@ -628,6 +643,7 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string): 创意
             `模式世界书：${modeWorldbooks[0]?.条目.length || 0} 条`,
             `适用题材：${modeRuntimeProfile.identity.baseMode}`,
             `市场名称：${modeMetadata.auctionName || '未填写'}`,
+            `时间口径：${modeRuntimeProfile.time.displayFormat} / ${modeRuntimeProfile.time.narrativeStyle.slice(0, 80)}`,
             `地图口径：${modeMetadata.mapPrompt.slice(0, 120) || '未填写'}`,
             `题材口径：${draft.topicBody.trim().slice(0, 160)}`,
             `世界规则：${draft.worldRulesBody.trim().slice(0, 160)}`,
@@ -942,6 +958,21 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                 </label>
             );
         }
+        if (fieldType === 'timeFormatMode') {
+            return (
+                <label key={key} className="block text-xs text-gray-300">
+                    {field.label}
+                    <select value={String(rawValue || profile.time.displayFormat)} disabled className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-sm text-gray-100 opacity-100 outline-none">
+                        <option value="traditional">传统古法</option>
+                        <option value="numeric">数字钟点</option>
+                        <option value="western">西方奇幻</option>
+                        <option value="modern">现代现实</option>
+                        <option value="apocalypse">末日生存</option>
+                        <option value="infinite">无限流任务</option>
+                    </select>
+                </label>
+            );
+        }
         if (fieldType === 'boolGroup') {
             const toggles = (typeof rawValue === 'object' && !Array.isArray(rawValue) ? rawValue : {}) as Record<string, boolean>;
             return (
@@ -993,6 +1024,8 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
             ['市场名称', String(modeMetadata.auctionName || '')],
             ['市场行为口径', String(modeMetadata.marketVerb || '')],
             ['地图口径', String(modeMetadata.mapPrompt || '')],
+            ['时间显示基调', String(modeMetadata.timeDisplayFormat || '')],
+            ['时间叙事口径', String(modeMetadata.timeNarrativeStyle || '')],
             ['技能建议', 格式化只读列表(modeMetadata.skillNames)],
             ['预设物品关键词', 格式化只读列表(modeMetadata.presetItemKeywords)],
             ['背景建议', 格式化只读列表(modeMetadata.backgroundSuggestions)],
@@ -1369,6 +1402,25 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                                                                 <option value="modern">现代现实</option>
                                                                                 <option value="apocalypse">末世物资</option>
                                                                                 <option value="infinite">主神奖励</option>
+                                                                            </select>
+                                                                        </label>
+                                                                    );
+                                                                }
+                                                                if (fieldType === 'timeFormatMode') {
+                                                                    return (
+                                                                        <label key={key} className="block text-xs text-gray-300">
+                                                                            {field.label}
+                                                                            <select
+                                                                                value={String(rawValue || contributionDraft.modeRuntimeProfile.time.displayFormat)}
+                                                                                onChange={(event) => 更新运行时配置字段(field, event.target.value)}
+                                                                                className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-sm text-gray-100 outline-none focus:border-wuxia-gold/45"
+                                                                            >
+                                                                                <option value="traditional">传统古法</option>
+                                                                                <option value="numeric">数字钟点</option>
+                                                                                <option value="western">西方奇幻</option>
+                                                                                <option value="modern">现代现实</option>
+                                                                                <option value="apocalypse">末日生存</option>
+                                                                                <option value="infinite">无限流任务</option>
                                                                             </select>
                                                                         </label>
                                                                     );

@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { 可用视觉区域, 区域文字样式结构, 字体资源结构, 视觉设置结构, 可用UI文字令牌, UI文字样式结构 } from '../../../types';
+import { 可用视觉区域, 区域文字样式结构, 字体资源结构, 视觉设置结构, 可用UI文字令牌, UI文字样式结构, 顶部时间显示格式 } from '../../../types';
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
 import GameButton from '../../ui/GameButton';
 import InlineSelect from '../../ui/InlineSelect';
@@ -274,7 +274,7 @@ const VisualSettings: React.FC<Props> = ({ settings, onSave }) => {
         handleSave({ ...normalizedSettings, UI文字样式: nextUiStyles });
     };
 
-    const toggleTimeFormat = (format: '传统' | '数字') => handleSave({ ...normalizedSettings, 时间显示格式: format });
+    const toggleTimeFormat = (format: 顶部时间显示格式) => handleSave({ ...normalizedSettings, 时间显示格式: format });
     const handleBackgroundUrlChange = (value: string) => handleSave({ ...normalizedSettings, 背景图片: value });
 
     const handleBackgroundFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -636,7 +636,16 @@ const VisualSettings: React.FC<Props> = ({ settings, onSave }) => {
                         </SectionCard>
 
                         <SectionCard title="顶部时间显示格式" description={`当前: ${normalizedSettings.时间显示格式}`}>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleTimeFormat('跟随题材')}
+                                    className={`relative overflow-hidden border p-4 text-left transition-all duration-300 ${normalizedSettings.时间显示格式 === '跟随题材' ? 'border-wuxia-gold bg-wuxia-gold/10' : 'border-gray-700 bg-black/40 hover:border-gray-500'}`}
+                                >
+                                    <div className="mb-1 text-xl font-serif text-wuxia-gold">题材</div>
+                                    <div className="text-xs text-gray-400">由模式包决定</div>
+                                    {normalizedSettings.时间显示格式 === '跟随题材' && <div className="absolute right-0 top-0 h-3 w-3 bg-wuxia-gold" />}
+                                </button>
                                 <button
                                     type="button"
                                     onClick={() => toggleTimeFormat('传统')}

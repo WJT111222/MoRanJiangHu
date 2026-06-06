@@ -197,7 +197,7 @@ export const useGameState = () => {
     // Config State
     const [apiConfig, setApiConfig] = useState<接口设置结构>(() => 读取接口设置本地镜像() || 创建空接口设置());
     const [visualConfig, setVisualConfig] = useState<视觉设置结构>(() => 规范化视觉设置({
-        时间显示格式: '传统',
+        时间显示格式: '跟随题材',
         渲染层数: 10,
         字体大小: 16,
         段落间距: 1.6,

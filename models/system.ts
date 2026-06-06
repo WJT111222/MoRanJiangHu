@@ -445,8 +445,10 @@ export interface 图片管理设置结构 {
     场景图历史上限: number;
 }
 
+export type 顶部时间显示格式 = '跟随题材' | '传统' | '数字';
+
 export interface 视觉设置结构 {
-    时间显示格式: '传统' | '数字';
+    时间显示格式: 顶部时间显示格式;
     背景图片?: string; // URL 或 Base64
     常驻壁纸?: string; // URL 或 Base64
     渲染层数: number; // New: Default 30
@@ -564,6 +566,15 @@ export interface ModeRuntimeProfile {
         marketVerb: string;
         allowedItemTypes: string[];
         bannedKeywords: string[];
+    };
+    time: {
+        displayFormat: 'traditional' | 'numeric' | 'western' | 'modern' | 'apocalypse' | 'infinite';
+        calendarName: string;
+        narrativeStyle: string;
+        dayPeriodNames: string[];
+        allowedTimeTerms: string[];
+        bannedTimeTerms: string[];
+        progressionPrompt: string;
     };
     organization: {
         organizationName: string;

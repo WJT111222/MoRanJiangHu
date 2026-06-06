@@ -32,6 +32,7 @@ import { RELEASE_INFO } from './data/releaseInfo';
 import { 读取拍卖行状态, 保存拍卖行状态, 清理并补货, 投放事件拍卖品, 构建拍卖行存储作用域, 上架背包物品, 创建交易记录, 结算玩家寄售, 从势力互动投放拍卖品, type 拍卖行状态 } from './services/auctionHouse';
 import { 获取货币显示模式 } from './utils/currencyDisplay';
 import { 获取题材界面文案 } from './utils/resourceLabels';
+import { 获取题材顶部时间显示格式 } from './utils/modeRuntimeProfile';
 import { 整理世界状态客户可见大事 } from './hooks/useGame/worldEvolutionUtils';
 import { 分配角色属性点, type 可分配六维属性键 } from './utils/characterAttributePoints';
 import { getDiagnosticLogs, recordDiagnosticLog, subscribeDiagnosticLogs } from './services/diagnosticLog';
@@ -1093,6 +1094,11 @@ const App: React.FC = () => {
             ['UI文字样式']: undefined
         } as typeof state.visualConfig;
     }, [isMobile, state.visualConfig]);
+    const effectiveTopBarTimeFormat = React.useMemo<'传统' | '数字'>(() => {
+        const configured = effectiveVisualConfig?.时间显示格式;
+        if (configured === '传统' || configured === '数字') return configured;
+        return 获取题材顶部时间显示格式(state.开局配置?.modeRuntimeProfile, state.开局配置?.题材模式);
+    }, [effectiveVisualConfig?.时间显示格式, state.开局配置?.modeRuntimeProfile, state.开局配置?.题材模式]);
     use图片资源回源预取(state.角色, effectiveVisualConfig?.背景图片);
     const 当前背景图片地址 = React.useMemo(() => 获取图片资源文本地址(effectiveVisualConfig?.背景图片), [effectiveVisualConfig?.背景图片]);
     const 玩家头像地址 = React.useMemo(() => {
@@ -2886,7 +2892,7 @@ const App: React.FC = () => {
                         <TopBar 
                             环境={state.环境} 
                             游戏初始时间={state.游戏初始时间}
-                            timeFormat={effectiveVisualConfig.时间显示格式}
+                            timeFormat={effectiveTopBarTimeFormat}
                             festivals={state.festivals}
                             visualConfig={effectiveVisualConfig}
                         />

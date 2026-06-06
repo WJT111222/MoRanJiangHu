@@ -94,7 +94,7 @@ export const MusicProvider: React.FC<{
 
     const 保存音乐视觉设置 = (patch: Partial<视觉设置结构>) => {
         const nextConfig = {
-            时间显示格式: visualConfig?.时间显示格式 || '传统',
+            时间显示格式: visualConfig?.时间显示格式 || '跟随题材',
             渲染层数: visualConfig?.渲染层数 ?? 30,
             ...visualConfig,
             ...localMusicConfig,

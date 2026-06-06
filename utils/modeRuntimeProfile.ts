@@ -60,6 +60,76 @@ const 取记账单位 = (currencyDisplayMode: ModeRuntimeProfile['economy']['cur
     return '信用点/铜钱';
 };
 
+const 东方古法时间词 = ['时辰', '子时', '丑时', '寅时', '卯时', '辰时', '巳时', '午时', '未时', '申时', '酉时', '戌时', '亥时', '一炷香', '半炷香', '一盏茶', '半盏茶', '刻钟', '三刻'];
+
+const 时间默认值 = (mode: 题材模式类型): ModeRuntimeProfile['time'] => {
+    const profile = 获取题材模式配置(mode);
+    if (profile.group === 'western_fantasy') {
+        return {
+            displayFormat: 'western',
+            calendarName: '王国历',
+            narrativeStyle: '正文使用西方奇幻口吻表达时间：清晨、正午、黄昏、深夜、钟声、第几小时、王国历/月日等；可以写“教堂钟声敲过八下”，不得使用东方时辰、炷香、盏茶等古法词。',
+            dayPeriodNames: ['黎明', '清晨', '上午', '正午', '午后', '黄昏', '入夜', '深夜'],
+            allowedTimeTerms: ['黎明', '清晨', '上午', '正午', '午后', '黄昏', '入夜', '深夜', '钟声', '第几小时', '王国历', '月日'],
+            bannedTimeTerms: 东方古法时间词,
+            progressionPrompt: '时间推进以小时、分钟、昼夜段、钟声或王国历日期表达；环境.时间仍按 YYYY:MM:DD:HH:MM 写入。'
+        };
+    }
+    if (profile.group === 'modern') {
+        return {
+            displayFormat: 'modern',
+            calendarName: '公历',
+            narrativeStyle: '正文使用现代时间表达：数字钟点、上午、下午、晚上、工作日/周末、日期；不得写时辰、炷香、盏茶等古法词。',
+            dayPeriodNames: ['凌晨', '清晨', '上午', '中午', '下午', '傍晚', '晚上', '深夜'],
+            allowedTimeTerms: ['凌晨', '清晨', '上午', '中午', '下午', '傍晚', '晚上', '深夜', '分钟', '小时', '点', '公历', '周末', '工作日'],
+            bannedTimeTerms: 东方古法时间词,
+            progressionPrompt: '时间推进以分钟、小时、数字钟点、日程或日期表达；环境.时间仍按 YYYY:MM:DD:HH:MM 写入。'
+        };
+    }
+    if (profile.group === 'apocalypse') {
+        return {
+            displayFormat: 'apocalypse',
+            calendarName: '灾变纪年',
+            narrativeStyle: '正文使用末日生存时间表达：数字钟点、天亮前、黄昏后、倒计时、值守班次、灾变第几天；不得写时辰、炷香、盏茶等古法词。',
+            dayPeriodNames: ['凌晨', '天亮前', '上午', '正午', '午后', '黄昏后', '夜间', '深夜'],
+            allowedTimeTerms: ['凌晨', '天亮前', '上午', '正午', '午后', '黄昏后', '夜间', '深夜', '分钟', '小时', '倒计时', '值守班次', '灾变第几天'],
+            bannedTimeTerms: 东方古法时间词,
+            progressionPrompt: '时间推进以分钟、小时、数字钟点、倒计时、班次或灾变天数表达；环境.时间仍按 YYYY:MM:DD:HH:MM 写入。'
+        };
+    }
+    if (profile.group === 'infinite') {
+        return {
+            displayFormat: 'infinite',
+            calendarName: '任务计时',
+            narrativeStyle: '正文使用无限流/任务世界时间表达：数字钟点、任务倒计时、回归倒计时、电影世界时间线；不得写时辰、炷香、盏茶等古法词。',
+            dayPeriodNames: ['凌晨', '清晨', '上午', '正午', '下午', '黄昏', '夜间', '深夜'],
+            allowedTimeTerms: ['凌晨', '清晨', '上午', '正午', '下午', '黄昏', '夜间', '深夜', '分钟', '小时', '倒计时', '任务时限', '回归倒计时', '电影时间线'],
+            bannedTimeTerms: 东方古法时间词,
+            progressionPrompt: '时间推进以分钟、小时、数字钟点、任务倒计时或剧情世界时间线表达；环境.时间仍按 YYYY:MM:DD:HH:MM 写入。'
+        };
+    }
+    if (profile.group === 'urban_xianxia') {
+        return {
+            displayFormat: 'modern',
+            calendarName: '公历/灵气复苏纪年',
+            narrativeStyle: '正文以现代钟点为主，可少量保留修行语境；都市场景不得默认写时辰、炷香、盏茶，除非当前场景明确是古法宗门或秘境仪式。',
+            dayPeriodNames: ['凌晨', '清晨', '上午', '中午', '下午', '傍晚', '晚上', '深夜'],
+            allowedTimeTerms: ['凌晨', '清晨', '上午', '中午', '下午', '傍晚', '晚上', '深夜', '分钟', '小时', '点', '公历', '纪年'],
+            bannedTimeTerms: ['子时', '丑时', '寅时', '卯时', '辰时', '巳时', '午时', '未时', '申时', '酉时', '戌时', '亥时', '一炷香', '一盏茶'],
+            progressionPrompt: '时间推进以现代分钟/小时和数字钟点为主；只有明确古法场景才可把古法词作为氛围补充，环境.时间仍按 YYYY:MM:DD:HH:MM 写入。'
+        };
+    }
+    return {
+        displayFormat: 'traditional',
+        calendarName: profile.group === 'xianxia' ? '仙历' : '江湖历',
+        narrativeStyle: '正文可使用清晨、午后、黄昏、夜半、时辰、刻、盏茶、炷香等传统时间表达；变量仍必须落到标准时间真值。',
+        dayPeriodNames: ['黎明', '清晨', '上午', '正午', '午后', '黄昏', '入夜', '深夜'],
+        allowedTimeTerms: ['黎明', '清晨', '上午', '正午', '午后', '黄昏', '入夜', '深夜', '时辰', '刻', '盏茶', '炷香'],
+        bannedTimeTerms: [],
+        progressionPrompt: '时间推进可用古法词辅助叙事，但最终必须换算为 YYYY:MM:DD:HH:MM 写入环境.时间。'
+    };
+};
+
 const 组织默认值 = (mode: 题材模式类型) => {
     const profile = 获取题材模式配置(mode);
     if (profile.group === 'apocalypse') {
@@ -288,6 +358,7 @@ export const 构建官方模式运行时配置 = (
     const organization = 组织默认值(baseMode);
     const ability = 能力默认值(baseMode);
     const items = 物品默认值(baseMode);
+    const time = 时间默认值(baseMode);
     const isModern = 判断现代(baseMode);
     const isApocalypse = profile.group === 'apocalypse';
     const isInfinite = profile.group === 'infinite';
@@ -312,6 +383,7 @@ export const 构建官方模式运行时配置 = (
             allowedItemTypes: items.exclusiveItemTypes,
             bannedKeywords: items.bannedItemKeywords
         },
+        time,
         organization,
         ability: {
             ...ability,
@@ -428,6 +500,17 @@ export const 规范化模式运行时配置 = (raw?: any, fallbackMode?: unknown
             allowedItemTypes: 拆分模式配置短语(raw?.economy?.allowedItemTypes).length ? 拆分模式配置短语(raw.economy.allowedItemTypes) : official.economy.allowedItemTypes,
             bannedKeywords: 拆分模式配置短语(raw?.economy?.bannedKeywords).length ? 拆分模式配置短语(raw.economy.bannedKeywords) : official.economy.bannedKeywords
         },
+        time: {
+            displayFormat: ['traditional', 'numeric', 'western', 'modern', 'apocalypse', 'infinite'].includes(raw?.time?.displayFormat)
+                ? raw.time.displayFormat
+                : official.time.displayFormat,
+            calendarName: 文本(raw?.time?.calendarName, official.time.calendarName),
+            narrativeStyle: 文本(raw?.time?.narrativeStyle, official.time.narrativeStyle),
+            dayPeriodNames: 拆分模式配置短语(raw?.time?.dayPeriodNames).length ? 拆分模式配置短语(raw.time.dayPeriodNames) : official.time.dayPeriodNames,
+            allowedTimeTerms: 拆分模式配置短语(raw?.time?.allowedTimeTerms).length ? 拆分模式配置短语(raw.time.allowedTimeTerms) : official.time.allowedTimeTerms,
+            bannedTimeTerms: 拆分模式配置短语(raw?.time?.bannedTimeTerms).length ? 拆分模式配置短语(raw.time.bannedTimeTerms) : official.time.bannedTimeTerms,
+            progressionPrompt: 文本(raw?.time?.progressionPrompt, official.time.progressionPrompt)
+        },
         organization: {
             organizationName: 文本(raw?.organization?.organizationName, official.organization.organizationName),
             memberName: 文本(raw?.organization?.memberName, official.organization.memberName),
@@ -516,6 +599,7 @@ const 构建官方模式运行时配置基础 = (mode?: unknown): ModeRuntimePro
     const organization = 组织默认值(baseMode);
     const ability = 能力默认值(baseMode);
     const items = 物品默认值(baseMode);
+    const time = 时间默认值(baseMode);
     const isModern = 判断现代(baseMode);
     const isApocalypse = profile.group === 'apocalypse';
     const isInfinite = profile.group === 'infinite';
@@ -540,6 +624,7 @@ const 构建官方模式运行时配置基础 = (mode?: unknown): ModeRuntimePro
             allowedItemTypes: items.exclusiveItemTypes,
             bannedKeywords: items.bannedItemKeywords
         },
+        time,
         organization,
         ability: { ...ability, skillPool: profile.skillNames },
         items,
@@ -620,6 +705,7 @@ const 构建官方模式运行时配置基础 = (mode?: unknown): ModeRuntimePro
 export const 渲染模式运行时配置世界书内容 = (profile: ModeRuntimeProfile): string => ([
     `题材身份：${profile.identity.displayName}（继承 ${profile.identity.baseMode}；现代=${profile.identity.isModern ? '是' : '否'}；修炼=${profile.identity.usesCultivation ? '是' : '否'}；生存=${profile.identity.isSurvival ? '是' : '否'}；同人/IP=${profile.identity.isFandomIp ? '是' : '否'}）`,
     `经济系统：市场=${profile.economy.marketName}；行为=${profile.economy.marketVerb}；货币=${profile.economy.primaryCurrency}；换算=${profile.economy.exchangeRules}`,
+    `时间系统：显示=${profile.time.displayFormat}；历法=${profile.time.calendarName}；叙事=${profile.time.narrativeStyle}；时段=${profile.time.dayPeriodNames.join('、')}；允许=${profile.time.allowedTimeTerms.join('、') || '无'}；禁用=${profile.time.bannedTimeTerms.join('、') || '无'}；推进=${profile.time.progressionPrompt}`,
     `组织系统：组织=${profile.organization.organizationName}；成员=${profile.organization.memberName}；贡献=${profile.organization.contributionName}；等级=${profile.organization.rankNames.join('、')}`,
     `能力系统：主轴=${profile.ability.primaryAxis}；阶段=${profile.ability.progressionNames.join('、')}；技艺=${profile.ability.skillPool.join('、')}；结算=${profile.ability.combatResolution}`,
     `物品系统：初始池=${profile.items.initialItemPool.join('、')}；奖励池=${profile.items.rewardItemPool.join('、')}；禁用=${profile.items.bannedItemKeywords.join('、')}；资源计数器=${profile.items.activeResources.join('、') || '无'}`,
@@ -630,3 +716,11 @@ export const 渲染模式运行时配置世界书内容 = (profile: ModeRuntimeP
     `开局系统：背景=${profile.opening.defaultBackgrounds.join('、')}；天赋=${profile.opening.defaultTalents.join('、')}；切入=${profile.opening.cutInTemplates.join('、')}；初始任务=${profile.opening.initialQuestTemplates.join('、')}`,
     `校验系统：禁词=${profile.validation.bannedWords.join('、')}；冲突检测=${profile.validation.conflictChecks.join('、')}；迁移清理=${profile.validation.migrationCleanupRules.join('、')}`
 ]).join('\n');
+
+export const 获取题材顶部时间显示格式 = (
+    runtimeProfile?: ModeRuntimeProfile | null,
+    fallbackMode?: unknown
+): '传统' | '数字' => {
+    const profile = 规范化模式运行时配置(runtimeProfile, fallbackMode);
+    return profile.time.displayFormat === 'traditional' ? '传统' : '数字';
+};

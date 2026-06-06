@@ -363,8 +363,19 @@ const imageObserver = 'IntersectionObserver' in window
 function imageUrlForAttempt(url, attempt) {
   return url;
 }
-function cardImageSrc(item) {
-  return item.thumbSrc || item.src;
+function cardImageCandidates(item) {
+  const values = [item.thumbSrc, item.src]
+    .map(value => String(value || '').trim())
+    .filter(Boolean);
+  return [...new Set(values)];
+}
+function cardImageSrc(item, attempt = 0) {
+  const candidates = cardImageCandidates(item);
+  if (candidates.length <= 1) return candidates[0] || '';
+  return attempt >= 2 ? candidates[1] : candidates[0];
+}
+function loadedCardImageSrc(item) {
+  return cardImageCandidates(item).find(url => loadedImageUrls.has(url)) || '';
 }
 function setImageStatus(imgbox, className, text) {
   if (!imgbox) return;
@@ -373,9 +384,9 @@ function setImageStatus(imgbox, className, text) {
 }
 function enqueueImageLoad(img, imgbox, item, attempt = 0) {
   if (!img || !imgbox || !item || img.dataset.loaded === '1') return;
-  const src = cardImageSrc(item);
-  if (loadedImageUrls.has(src)) {
-    img.src = src;
+  const loadedSrc = loadedCardImageSrc(item);
+  if (loadedSrc) {
+    img.src = loadedSrc;
     img.dataset.loaded = '1';
     setImageStatus(imgbox, '', '');
     return;
@@ -450,7 +461,7 @@ function pumpImageLoadQueue() {
       activeImageLoads = Math.max(0, activeImageLoads - 1);
       if (img.isConnected) {
         img.dataset.loaded = '1';
-        loadedImageUrls.add(cardImageSrc(item));
+        loadedImageUrls.add(img.currentSrc || img.getAttribute('src') || cardImageSrc(item, attempt));
         setImageStatus(imgbox, '', '');
       }
       pumpImageLoadQueue();
@@ -466,7 +477,7 @@ function pumpImageLoadQueue() {
       }
       pumpImageLoadQueue();
     };
-    const src = cardImageSrc(item);
+    const src = cardImageSrc(item, attempt);
     if (img.getAttribute('src') !== src) {
       img.src = src;
     } else if (img.complete && img.naturalWidth > 0) {
@@ -596,7 +607,7 @@ function getPresetCard(item, key, mark) {
   cached.button.textContent = mark.problem ? '已标问题' : '标为有问题';
   if (cached.img.getAttribute('src') && cached.img.complete && cached.img.naturalWidth > 0) {
     cached.img.dataset.loaded = '1';
-    loadedImageUrls.add(cardImageSrc(item));
+    loadedImageUrls.add(cached.img.currentSrc || cached.img.getAttribute('src') || cardImageSrc(item));
     setImageStatus(cached.imgbox, '', '');
   }
   return cached.card;

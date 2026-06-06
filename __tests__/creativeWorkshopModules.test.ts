@@ -28,6 +28,7 @@ describe('creativeWorkshopModules', () => {
             expect(entry.modeWorldbooks?.[0]?.条目.some((item) => item.标题 === '运行时模式配置'), mode).toBe(true);
             expect(entry.payload?.modeWorldbooks).toEqual(entry.modeWorldbooks);
             expect(entry.modeRuntimeProfile?.identity.baseMode, mode).toBe(mode);
+            expect(entry.modeRuntimeProfile?.time?.narrativeStyle, mode).toBeTruthy();
             expect(entry.payload?.modeRuntimeProfile).toEqual(entry.modeRuntimeProfile);
             expect(entry.preset?.openingConfig?.modeRuntimeProfile?.identity.baseMode, mode).toBe(mode);
             expect(entry.preset?.worldConfig?.modeRuntimeProfile?.identity.baseMode, mode).toBe(mode);

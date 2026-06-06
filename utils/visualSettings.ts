@@ -114,7 +114,9 @@ export const 规范化视觉设置 = (raw?: Partial<视觉设置结构> | null):
     }, {} as Record<可用UI文字令牌, UI文字样式结构>);
 
     return {
-        时间显示格式: raw?.时间显示格式 === '数字' ? '数字' : '传统',
+        时间显示格式: raw?.时间显示格式 === '数字' || raw?.时间显示格式 === '传统'
+            ? raw.时间显示格式
+            : '跟随题材',
         背景图片: typeof raw?.背景图片 === 'string' ? raw.背景图片 : '',
         常驻壁纸: typeof raw?.常驻壁纸 === 'string' ? raw.常驻壁纸 : '',
         渲染层数: Math.max(1, Number(raw?.渲染层数) || 10),
