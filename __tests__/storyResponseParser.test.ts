@@ -87,22 +87,14 @@ describe('storyResponseParser', () => {
         ]);
     });
 
-    it('splits quoted dialogue embedded in narrator lines into character logs', () => {
-        const parsed = parseStoryRawText([
+    it('rejects quoted dialogue embedded in narrator lines during strict parsing', () => {
+        expect(() => parseStoryRawText([
             '<正文>',
             '【旁白】晨风卷过演武场，杨镇远负手站在石阶前，沉声道：“剑势散了，脚下也浮。再走一遍。”',
             '【旁白】杨培强收剑回身，说道：“侄儿明白。”杨镇远点了点头，目光仍落在剑尖上。',
             '</正文>',
             '<短期记忆>杨镇远在演武场考校杨培强剑法。</短期记忆>'
-        ].join('\n'));
-
-        expect(parsed.logs).toEqual([
-            { sender: '旁白', text: '晨风卷过演武场，杨镇远负手站在石阶前' },
-            { sender: '杨镇远', text: '剑势散了，脚下也浮。再走一遍。' },
-            { sender: '旁白', text: '杨培强收剑回身' },
-            { sender: '杨培强', text: '侄儿明白。' },
-            { sender: '旁白', text: '杨镇远点了点头，目光仍落在剑尖上。' }
-        ]);
+        ].join('\n'), { validateDialogueFormat: true })).toThrow(/对白嵌在旁白引号中|写在【旁白】行内/);
     });
 
     it('does not flag narrative phrase prefixes as unlabeled dialogue speakers', () => {
@@ -151,33 +143,24 @@ describe('storyResponseParser', () => {
         ]);
     });
 
-    it('parses bare colon speaker lines as dialogue turns', () => {
-        const parsed = parseStoryRawText([
+    it('rejects bare colon speaker lines during strict parsing', () => {
+        expect(() => parseStoryRawText([
             '<正文>',
             '林婉儿：我也看到这个bug了，有些角色说话的时候对话框就没了。',
             '</正文>',
             '<短期记忆>林婉儿反馈部分角色对白缺少气泡。</短期记忆>'
-        ].join('\n'), { validateDialogueFormat: true });
-
-        expect(parsed.logs).toEqual([
-            { sender: '林婉儿', text: '我也看到这个bug了，有些角色说话的时候对话框就没了。' }
-        ]);
+        ].join('\n'), { validateDialogueFormat: true })).toThrow(/冒号格式/);
     });
 
-    it('parses colon speaker lines with action hints without promoting protocol labels', () => {
-        const parsed = parseStoryRawText([
+    it('rejects colon speaker lines with action hints without promoting protocol labels', () => {
+        expect(() => parseStoryRawText([
             '<正文>',
             '地点：杨家堡后院',
             '任务：检查对话框',
             '林婉儿（皱眉）：真正的对白才需要头像。',
             '</正文>',
             '<短期记忆>林婉儿说明对白气泡问题。</短期记忆>'
-        ].join('\n'), { validateDialogueFormat: true });
-
-        expect(parsed.logs).toEqual([
-            { sender: '旁白', text: '地点：杨家堡后院\n任务：检查对话框' },
-            { sender: '林婉儿', text: '真正的对白才需要头像。' }
-        ]);
+        ].join('\n'), { validateDialogueFormat: true })).toThrow(/林婉儿.*冒号格式/);
     });
 
     it('still rejects likely unlabeled oral dialogue during strict parsing', () => {
@@ -190,7 +173,33 @@ describe('storyResponseParser', () => {
         ].join('\n'), { validateDialogueFormat: true })).toThrow(/疑似角色「俞月荷」/);
     });
 
-    it('keeps only fully quoted single-speaker text as character bubbles for rendering', () => {
+    it('rejects quote text split across body lines during strict parsing', () => {
+        expect(() => parseStoryRawText([
+            '<正文>',
+            '【旁白】雨声忽然压低。',
+            '【沈砚】“师父曾说：‘若你踏入这座城，',
+            '就不要再回头，因为城门之后等着你的，不只是仇人，',
+            '还有你自己最不愿承认的心魔。’我一直记得。”',
+            '【旁白】油灯在风里晃了一下。',
+            '</正文>',
+            '<短期记忆>沈砚复述师父告诫。</短期记忆>'
+        ].join('\n'), { validateDialogueFormat: true })).toThrow(/引号内容跨行|引号内文字/);
+    });
+
+    it('reports likely truncation when tag repair is disabled and a required tag is left open', () => {
+        expect(() => parseStoryRawText([
+            '<正文>',
+            '【旁白】晨雾压在院墙上。',
+            '</正文>',
+            '<短期记忆>',
+            '主角在清晨醒来，准备出门'
+        ].join('\n'), {
+            validateTagCompleteness: true,
+            enableTagRepair: false
+        })).toThrow(/疑似输出在 <短期记忆> 内被截断|提高最大输出Token/);
+    });
+
+    it('keeps only explicit tagged single-speaker text as character bubbles for rendering', () => {
         const rendered = 规范化可渲染对白日志([
             { sender: '杨培强', text: '“弟子，领命。”\n\n风，渐渐停了。\n\n铅灰色的云层开始散去。' },
             { sender: '众人齐声', text: '“遵命！”' },

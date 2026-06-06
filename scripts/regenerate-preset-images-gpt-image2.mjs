@@ -1,6 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
+import crypto from 'node:crypto';
+import http from 'node:http';
+import https from 'node:https';
 
 const rootDir = path.resolve(import.meta.dirname, '..');
 const registryPath = path.join(rootDir, 'data', 'presetItemImages.ts');
@@ -13,10 +16,18 @@ const openaiImageBaseUrl = process.env.MORAN_GPT_IMAGE2_BASE_URL || '';
 const openaiImageApiKey = process.env.MORAN_GPT_IMAGE2_API_KEY || '';
 const nodeimageApiKey = process.env.NODEIMAGE_API_KEY || process.env.NODE_IMAGE_API_KEY || '';
 const alt111666AuthToken = process.env.MORAN_111666_AUTH_TOKEN || '';
+const s3Endpoint = (process.env.MORAN_OSS_ENDPOINT || 'https://s3.hi168.com').replace(/\/+$/, '');
+const s3Bucket = process.env.MORAN_OSS_BUCKET || '';
+const s3AccessKey = process.env.MORAN_OSS_ACCESS_KEY || '';
+const s3SecretKey = process.env.MORAN_OSS_SECRET_KEY || '';
+const s3Region = process.env.MORAN_OSS_REGION || 'auto';
+const s3Prefix = (process.env.MORAN_OSS_PRESET_PREFIX || 'MoRanJiangHu/preset-items').replace(/^\/+|\/+$/g, '');
+const s3CacheControl = process.env.MORAN_OSS_PRESET_CACHE_CONTROL || 'public, max-age=300, stale-while-revalidate=86400';
 
 const args = process.argv.slice(2);
 const apply = args.includes('--apply');
 const reverse = args.includes('--reverse');
+const allEntries = args.includes('--all-entries');
 const reportArg = args.find(arg => arg.startsWith('--report='));
 const reportFileName = (reportArg?.slice('--report='.length) || 'regenerate-report.json').replace(/[\\/]/g, '-');
 const reportPath = path.join(outputDir, reportFileName);
@@ -27,6 +38,10 @@ const startName = (startNameArg?.slice('--start-name='.length) || '').trim();
 const skipNames = new Set(args
   .filter(arg => arg.startsWith('--skip-name='))
   .map(arg => arg.slice('--skip-name='.length).trim())
+  .filter(Boolean));
+const onlyNames = new Set(args
+  .filter(arg => arg.startsWith('--only-name='))
+  .map(arg => arg.slice('--only-name='.length).trim())
   .filter(Boolean));
 const existingUrlArg = args.find(arg => arg.startsWith('--existing-url='));
 const existingUrl = (existingUrlArg?.slice('--existing-url='.length) || '').trim();
@@ -55,6 +70,9 @@ if (uploadHost === 'nodeimage' && !nodeimageApiKey) {
 }
 if (uploadHost === '111666' && !alt111666AuthToken) {
   throw new Error('Missing MORAN_111666_AUTH_TOKEN environment variable.');
+}
+if (uploadHost === 'hi168' && (!s3Bucket || !s3AccessKey || !s3SecretKey)) {
+  throw new Error('Missing MORAN_OSS_BUCKET, MORAN_OSS_ACCESS_KEY, or MORAN_OSS_SECRET_KEY environment variable.');
 }
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -142,7 +160,7 @@ const collectPresetEntries = async () => {
   const entries = [];
   let match = null;
   while ((match = entryPattern.exec(source))) {
-    if (markerIndex >= 0 && match.index < markerIndex) continue;
+    if (!allEntries && markerIndex >= 0 && match.index < markerIndex) continue;
     entries.push({
       名称: match[1],
       类型: match[2],
@@ -153,6 +171,9 @@ const collectPresetEntries = async () => {
   }
   const startIndex = startName ? Math.max(0, entries.findIndex(entry => entry.名称 === startName)) : 0;
   let filtered = entries.slice(startIndex).filter(entry => !skipNames.has(entry.名称));
+  if (onlyNames.size > 0) {
+    filtered = filtered.filter(entry => onlyNames.has(entry.名称));
+  }
   if (targetCategories.length > 0) {
     const names = await collectCategoryNames(targetCategories);
     filtered = filtered.filter(entry => names.has(entry.名称));
@@ -185,7 +206,7 @@ const collectAllPresetEntries = async () => {
   const entries = [];
   let match = null;
   while ((match = entryPattern.exec(source))) {
-    if (markerIndex >= 0 && match.index < markerIndex) continue;
+    if (!allEntries && markerIndex >= 0 && match.index < markerIndex) continue;
     entries.push({
       名称: match[1],
       类型: match[2],
@@ -265,7 +286,7 @@ const itemPrompt = (item) => {
   return [
     `Crisp 1024 square RPG inventory icon: ${englishName}.`,
     materialHint ? `${materialHint} material.` : '',
-    'Single object centered, full object visible, sharp realistic detail, neutral light background, soft shadow.',
+    'Single object centered, full object visible, high-resolution realistic product detail, deep charcoal dark studio background, cinematic rim light, crisp edges, subtle grounded shadow.',
     'No text, no label, no person, no UI frame.'
   ].filter(Boolean).join(' ');
 };
@@ -489,11 +510,105 @@ const uploadTo111666 = async (item, image) => withTimeout(async (signal) => {
   };
 }, 90000, 'upload 111666');
 
+
+const normalizeS3Key = (key) => key.replace(/^\/+/, '').replace(/\/+/g, '/');
+const encodeS3Key = (key) => normalizeS3Key(key).split('/').map(part => encodeURIComponent(part)).join('/');
+const hmac = (key, value) => crypto.createHmac('sha256', key).update(value).digest();
+const hmacHex = (key, value) => crypto.createHmac('sha256', key).update(value).digest('hex');
+const sha256Hex = (body) => crypto.createHash('sha256').update(body).digest('hex');
+const formatAmzDate = (date) => {
+  const iso = date.toISOString().replace(/[:-]|\.\d{3}/g, '');
+  return { amzDate: iso, dateStamp: iso.slice(0, 8) };
+};
+const s3SigningKey = (dateStamp) => {
+  const kDate = hmac(Buffer.from(`AWS4${s3SecretKey}`, 'utf8'), dateStamp);
+  const kRegion = hmac(kDate, s3Region);
+  const kService = hmac(kRegion, 's3');
+  return hmac(kService, 'aws4_request');
+};
+const s3ObjectUrl = (key) => new URL(`${s3Endpoint}/${encodeURIComponent(s3Bucket)}/${encodeS3Key(key)}`);
+const buildS3SignedHeaders = ({ method, url, body, contentType }) => {
+  const { amzDate, dateStamp } = formatAmzDate(new Date());
+  const bodyHash = sha256Hex(body);
+  const canonicalHeaders = [
+    `cache-control:${s3CacheControl}\n`,
+    `content-type:${contentType}\n`,
+    `host:${url.host}\n`,
+    'x-amz-acl:public-read\n',
+    `x-amz-content-sha256:${bodyHash}\n`,
+    `x-amz-date:${amzDate}\n`
+  ].join('');
+  const signedHeaders = 'cache-control;content-type;host;x-amz-acl;x-amz-content-sha256;x-amz-date';
+  const canonicalRequest = [
+    method,
+    url.pathname,
+    '',
+    canonicalHeaders,
+    signedHeaders,
+    bodyHash
+  ].join('\n');
+  const credentialScope = `${dateStamp}/${s3Region}/s3/aws4_request`;
+  const stringToSign = [
+    'AWS4-HMAC-SHA256',
+    amzDate,
+    credentialScope,
+    sha256Hex(canonicalRequest)
+  ].join('\n');
+  const signature = hmacHex(s3SigningKey(dateStamp), stringToSign);
+  return {
+    'Cache-Control': s3CacheControl,
+    'Content-Type': contentType,
+    'x-amz-acl': 'public-read',
+    'X-Amz-Content-Sha256': bodyHash,
+    'X-Amz-Date': amzDate,
+    Authorization: `AWS4-HMAC-SHA256 Credential=${s3AccessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
+  };
+};
+const putS3Object = ({ url, headers, body, signal }) => new Promise((resolve, reject) => {
+  const transport = url.protocol === 'http:' ? http : https;
+  const request = transport.request(url, {
+    method: 'PUT',
+    headers: { ...headers, 'Content-Length': body.byteLength },
+    timeout: 90000
+  }, (response) => {
+    const chunks = [];
+    response.on('data', chunk => chunks.push(chunk));
+    response.on('end', () => {
+      const text = Buffer.concat(chunks).toString('utf8');
+      if ((response.statusCode || 0) < 200 || (response.statusCode || 0) >= 300) {
+        reject(new Error(`hi168 PUT failed (${response.statusCode}): ${text.slice(0, 240)}`));
+      } else {
+        resolve({ text, status: response.statusCode || 0 });
+      }
+    });
+  });
+  request.on('timeout', () => request.destroy(new Error('hi168 PUT timed out')));
+  request.on('error', reject);
+  signal.addEventListener('abort', () => request.destroy(signal.reason || new Error('upload aborted')), { once: true });
+  request.end(body);
+});
+const uploadToHi168 = async (item, image) => withTimeout(async (signal) => {
+  const itemName = String(Object.values(item || {})[0] || 'item');
+  const safeName = itemName.replace(/[\\/:*?"<>|]+/g, '-').trim() || 'item';
+  const key = normalizeS3Key(`${s3Prefix}/${safeName}.${image.ext}`);
+  const url = s3ObjectUrl(key);
+  const body = Buffer.from(image.bytes);
+  await putS3Object({
+    url,
+    body,
+    signal,
+    headers: buildS3SignedHeaders({ method: 'PUT', url, body, contentType: image.contentType })
+  });
+  return { nodeimageUrl: url.toString(), payload: { key } };
+}, 90000, 'upload hi168');
+
 const uploadHostedImage = async (item, image) => (
   retryAsync(`upload ${item.名称}`, () => (
     uploadHost === '111666'
       ? uploadTo111666(item, image)
-      : uploadToNodeimage(item, image)
+      : uploadHost === 'hi168'
+        ? uploadToHi168(item, image)
+        : uploadToNodeimage(item, image)
   ), 4)
 );
 
@@ -523,7 +638,7 @@ const entries = Array.isArray(previousReport.entries) ? [...previousReport.entri
 const completedNames = new Set(entries.filter(entry => entry?.nodeimageUrl).map(entry => entry.name));
 const presetEntries = await collectPresetEntries();
 const allPresetEntries = existingName ? await collectAllPresetEntries() : presetEntries;
-const selected = presetEntries
+const selected = existingUrl && existingName ? [] : presetEntries
   .filter(entry => !completedNames.has(entry.名称))
   .slice(0, limit);
 

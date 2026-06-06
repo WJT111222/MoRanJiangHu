@@ -75,6 +75,7 @@ const 开局规划分析请求超时毫秒 = 90000;
 const 开场剧情慢首包提示毫秒 = 30000;
 const 开场剧情首次流式响应超时毫秒 = 240000;
 const 开场剧情流式空闲超时毫秒 = 90000;
+const 开场剧情默认最大输出Token = 32768;
 
 type 开场命令基态 = {
     角色: 角色数据结构;
@@ -90,6 +91,42 @@ type 开场命令基态 = {
     女主剧情规划?: 女主剧情规划结构;
     同人剧情规划?: 同人剧情规划结构;
     同人女主剧情规划?: 同人女主剧情规划结构;
+};
+
+const 补全开场剧情默认输出预算 = (apiConfig: 当前可用接口结构): 当前可用接口结构 => {
+    const configured = Number(apiConfig?.maxTokens);
+    if (Number.isFinite(configured) && configured > 0) return apiConfig;
+    return {
+        ...apiConfig,
+        maxTokens: 开场剧情默认最大输出Token
+    };
+};
+
+const 构建开局自动重试格式提示 = (attempt: number, lastError?: any): string => {
+    if (attempt <= 1) return '';
+    const reason = String(lastError?.parseDetail || lastError?.message || '上一版开局响应标签不完整').trim();
+    return [
+        '【开局自动重试格式修正】',
+        `上一版被拒绝原因：${reason}`,
+        '请完整重新生成第0回合，不要只输出补丁。',
+        '硬性要求：顶层标签必须按顺序完整闭合：<thinking>...</thinking>、<正文>...</正文>、<短期记忆>...</短期记忆>、<变量规划>...</变量规划>；如启用行动选项，再输出完整 <行动选项>...</行动选项>。',
+        '如果接近输出预算，优先结束当前段落并闭合所有已打开标签；不要继续扩写 Step、变量规划或说明导致尾部截断。',
+        '正文仍必须遵守：每行只能是【旁白】、【角色名】或【判定】正文单位，角色台词必须用【角色名】。'
+    ].join('\n');
+};
+
+const 追加开局自动重试消息 = (
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; prefix?: boolean }>,
+    retryPrompt: string
+): Array<{ role: 'system' | 'user' | 'assistant'; content: string; prefix?: boolean }> => {
+    const prompt = retryPrompt.trim();
+    if (!prompt) return messages;
+    const retryMessage = { role: 'user' as const, content: prompt };
+    const tail = messages[messages.length - 1];
+    if (tail?.prefix === true) {
+        return [...messages.slice(0, -1), retryMessage, tail];
+    }
+    return [...messages, retryMessage];
 };
 
 type 自动存档快照结构 = {
@@ -957,7 +994,8 @@ export const 执行开场剧情生成工作流 = async (
         }
 
         const openingAutoRetryEnabled = deps.游戏设置启用自动重试(openingGameConfig);
-        openingInputTokens = deps.估算消息Token(openingOrderedMessages, apiForOpening?.model);
+        const apiForOpeningRequest = 补全开场剧情默认输出预算(apiForOpening);
+        openingInputTokens = deps.估算消息Token(openingOrderedMessages, apiForOpeningRequest?.model);
         const aiResult = await deps.执行带自动重试的生成请求({
             enabled: openingAutoRetryEnabled,
             onRetry: (attempt, maxAttempts, reason) => {
@@ -965,10 +1003,12 @@ export const 执行开场剧情生成工作流 = async (
                     deps.设置历史记录(prev => deps.更新流式草稿为自动重试提示(prev, attempt, maxAttempts, reason));
                 }
             },
-            action: async () => {
+            action: async (attempt, lastError) => {
                 if (useStreaming && !openingAnyDeltaReceived) {
                     openingDeltaReceived = false;
                 }
+                const openingRetryFormatPrompt = 构建开局自动重试格式提示(attempt, lastError);
+                const openingMessagesForAttempt = 追加开局自动重试消息(openingOrderedMessages, openingRetryFormatPrompt);
                 const requestOpeningStory = (
                     signal: AbortSignal,
                     markStreamActivity?: () => void
@@ -976,7 +1016,7 @@ export const 执行开场剧情生成工作流 = async (
                         '',
                         '',
                         '',
-                        apiForOpening,
+                        apiForOpeningRequest,
                         signal,
                         useStreaming
                             ? {
@@ -1004,7 +1044,7 @@ export const 执行开场剧情生成工作流 = async (
                             : undefined,
                         openingTavernPresetModeEnabled ? '' : openingCombinedExtraPrompt,
                         {
-                            orderedMessages: openingOrderedMessages,
+                            orderedMessages: openingMessagesForAttempt,
                             enableCotInjection: openingCotPseudoEnabled,
                             leadingSystemPrompt: openingContext.contextPieces.AI角色声明,
                             styleAssistantPrompt: [openingPerspectivePrompt, openingStyleAssistantPrompt, openingRealWorldModePrompt].filter(Boolean).join('\n\n'),
@@ -1099,7 +1139,7 @@ export const 执行开场剧情生成工作流 = async (
                         gameTime: 环境时间转标准串(simulatedOpeningState.环境) || item.gameTime || '未知时间',
                         inputTokens: openingInputTokens,
                         responseDurationSec: deps.计算回复耗时秒(openingRequestStartedAt, draftTimestamp),
-                        outputTokens: deps.估算AI输出Token(deps.获取原始AI消息(aiResult.rawText), apiForOpening?.model)
+                        outputTokens: deps.估算AI输出Token(deps.获取原始AI消息(aiResult.rawText), apiForOpeningRequest?.model)
                     };
                 }
                 return item;

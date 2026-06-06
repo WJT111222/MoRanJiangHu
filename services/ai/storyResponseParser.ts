@@ -526,6 +526,28 @@ const 检测标签完整性问题 = (text: string, _options: Required<StoryParse
             }
         }
     }
+    const openStack: string[] = [];
+    const tagRegex = /<\s*(\/?)\s*([A-Za-z0-9_\-\u3400-\u9fff]+)\s*>/g;
+    let match: RegExpExecArray | null = null;
+    while ((match = tagRegex.exec(textForValidation)) !== null) {
+        const isClosing = (match[1] || '') === '/';
+        const tag = 归一化协议标签名(match[2] || '');
+        if (!tag || !协议标签集合.has(tag)) continue;
+        if (!isClosing) {
+            openStack.push(tag);
+            continue;
+        }
+        const lastIndex = openStack.lastIndexOf(tag);
+        if (lastIndex >= 0) {
+            openStack.splice(lastIndex);
+        }
+    }
+    const tail = textForValidation.trimEnd();
+    if (openStack.length > 0 && tail.length > 0) {
+        const lastOpenTag = openStack[openStack.length - 1];
+        const tailSnippet = tail.slice(Math.max(0, tail.length - 80)).replace(/\s+/g, ' ').trim();
+        issues.push(`疑似输出在 <${lastOpenTag}> 内被截断或未完成闭合；请提高最大输出Token，或让模型优先闭合标签。末尾片段：${tailSnippet}`);
+    }
     return issues;
 };
 
@@ -663,7 +685,7 @@ const 正文冒号说话人排除集合 = new Set([
     '基础', '环境', '状态', '幸运', '装备', '结果', '奖励', '获得', '失去'
 ]);
 
-const 解析无括号正文发送者行 = (line: string): { sender: string; text: string } | null => {
+const 识别无括号正文发送者行 = (line: string): { sender: string; text: string } | null => {
     const match = (line || '').trim().match(/^([A-Za-z][A-Za-z0-9_· -]{1,23}|[\u4e00-\u9fff]{2,4})(?:[（(][^）)\n]{1,16}[）)])?\s*[:：]\s*(.+)$/u);
     if (!match) return null;
     const sender = 规范化日志发送者(match[1] || '');
@@ -674,6 +696,11 @@ const 解析无括号正文发送者行 = (line: string): { sender: string; text
         sender,
         text: (match[2] || '').trim()
     };
+};
+
+const 解析无括号正文发送者行 = (_line: string): { sender: string; text: string } | null => {
+    // 正式正文协议只允许【角色名】标记对白；冒号格式仅用于检测并交给局部修复器。
+    return null;
 };
 
 const 解析判定日志行 = (line: string): { sender: string; text: string; trailingBody?: string } | null => {
@@ -862,6 +889,17 @@ const 无标签口语起始正则 = /^(?:我|我们|咱|咱们|你|你们|这事
 const 无标签叙事动作特征正则 = /(?:走到|来到|回到|站在|坐在|望向|看向|拿起|放下|推开|打开|穿过|掠过|落在|映在|吹过|响起|传来|升起|落下|归鞘|倒了|喝了|吃了|伸手|抬手|皱眉|点头|摇头|叹息|沉默|停下|转身)/;
 const 无标签非人名短语正则 = /^(?:随着|伴随|当他|当她|当你|当我|如果|若是|只是|这是|那是|这个|那个|这种|那种|此时|这时|随后|然后|接着|同时|终于|突然|忽然|仍然|已经|开始|继续|所有|全场|一切|空气|雨声|风声|灯光|夜色|晨光|脚步|声音)/;
 const 无标签口语证据正则 = /[我你咱]|[？?！!]|(?:吧|吗|呢|啊|呀|嘛|呗|啦|喂|哼|嗯|唔|哦|行|好|滚|停|走|快|慢着|且慢)[。！？!?…~～]*$/;
+const 显式标签行正则 = /^【\s*([^】]+?)\s*】\s*(.*)$/;
+const 方括号疑似说话人行正则 = /^\[\s*([A-Za-z0-9_\u4e00-\u9fff·]{1,16})\s*\]\s*(.{1,800})$/u;
+const 显式说话引号正则 = /([A-Za-z0-9_\u4e00-\u9fff·]{1,14})[^。！？!?；;\n]{0,40}(?:说|说道|道|问|问道|喊|喊道|喝|喝道|答|答道|回|回道|唤|唤道|骂|骂道|笑|笑道|叹|叹道|吩咐|提醒|解释|应|应道|接|接道|开口|继续|补充|又道)\s*[：:，,]?\s*[“"「『][^”"」』\n]{1,500}[”"」』]/u;
+const 裸引号整行正则 = /^[“"「『][^”"」』\n]{1,500}[”"」』][。！？!?…~～]*$/u;
+const 正文引号闭合表: Record<string, string> = {
+    '“': '”',
+    '「': '」',
+    '『': '』',
+    '‘': '’',
+    '"': '"'
+};
 
 const 提取无标签动作行人物名 = (line: string): string => {
     const text = (line || '').trim();
@@ -885,20 +923,117 @@ const 是否像无标签口语行 = (line: string): boolean => {
     return 无标签口语起始正则.test(text) || /[？?！!]$/.test(text) || /(?:吧|吗|呢|啊|罢|了)$/.test(text);
 };
 
+const 提取显式说话引号人物名 = (line: string): string => {
+    const source = (line || '').trim();
+    const quoteIndex = source.search(/[“"「『]/);
+    const prefix = quoteIndex >= 0 ? source.slice(0, quoteIndex) : source;
+    const recent = (prefix.split(/[。！？!?；;\n]/).pop() || prefix).trim();
+    const actionNameRegex = /([\u4e00-\u9fff]{2,4})(?=[^，,。！？!?；;\n]{0,36}(?:正(?:在)?|已|也|还|仍|负手|收剑|抬|回|点|看|盯|望|站|坐|走|停|俯|侧|拱|抱|伸|皱|沉|笑|低|上前|退|转|放|握|按|举|落|扬|垂|敛|挑|拔|收|推|扶|拂|掠|倚|跪|躬|作|朝|向|对|把|将|眼神|声音|语气|声)[^。！？!?；;\n]{0,48}(?:说|说道|道|问|问道|喊|喊道|喝|喝道|答|答道|回|回道|唤|唤道|骂|骂道|笑|笑道|叹|叹道|吩咐|提醒|解释|应|应道|接|接道|开口|继续|补充|又道)\s*[：:，,]?\s*$)/gu;
+    let actionMatch: RegExpExecArray | null = null;
+    let actionSpeaker = '';
+    while ((actionMatch = actionNameRegex.exec(recent)) !== null) {
+        actionSpeaker = actionMatch[1] || actionSpeaker;
+    }
+    if (actionSpeaker) {
+        const sender = 规范化日志发送者(actionSpeaker.replace(/[负收抬回点看盯望站坐走停俯侧拱抱伸皱沉笑低转放握按举落扬垂敛挑拔推扶拂掠倚跪躬作朝向对把将声]$/u, ''));
+        if (是否可信正文标签发送者(sender, { allowUnknownName: true })) return sender;
+    }
+
+    const match = source.match(显式说话引号正则);
+    if (!match) return '';
+    const rawSpeaker = (match[1] || '')
+        .split(/[，,、\s]/)
+        .filter(Boolean)
+        .pop() || '';
+    const sender = 规范化日志发送者(rawSpeaker);
+    if (!是否可信正文标签发送者(sender, { allowUnknownName: true })) return '';
+    return sender;
+};
+
+const 检测正文引号内换行问题 = (body: string): string | null => {
+    const lines = (body || '').replace(/\r\n/g, '\n').split('\n');
+    const stack: Array<{ close: string; lineNumber: number; lineText: string }> = [];
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+        const rawLine = lines[lineIndex] || '';
+        const lineNumber = lineIndex + 1;
+        if (stack.length > 0 && rawLine.trim()) {
+            const opener = stack[stack.length - 1];
+            return `正文第${opener.lineNumber}行的引号内容跨行到了第${lineNumber}行；引号内文字必须保持在同一正文行内`;
+        }
+        for (let charIndex = 0; charIndex < rawLine.length; charIndex += 1) {
+            const char = rawLine[charIndex];
+            const expectedClose = stack[stack.length - 1]?.close;
+            if (expectedClose && char === expectedClose) {
+                stack.pop();
+                continue;
+            }
+            if (char === '"' && rawLine[charIndex - 1] === '\\') continue;
+            const close = 正文引号闭合表[char];
+            if (!close) continue;
+            if (char === '"' && expectedClose === '"') {
+                stack.pop();
+            } else {
+                stack.push({ close, lineNumber, lineText: rawLine.trim() });
+            }
+        }
+        if (stack.length > 0 && lineIndex < lines.length - 1) {
+            const nextNonEmptyIndex = lines.findIndex((item, index) => index > lineIndex && item.trim().length > 0);
+            if (nextNonEmptyIndex >= 0) {
+                const opener = stack[stack.length - 1];
+                return `正文第${opener.lineNumber}行的引号内容跨行到了第${nextNonEmptyIndex + 1}行；引号内文字必须保持在同一正文行内`;
+            }
+        }
+    }
+    return null;
+};
+
 const 检测正文对白格式问题 = (body: string): string | null => {
+    const quoteIssue = 检测正文引号内换行问题(body);
+    if (quoteIssue) return quoteIssue;
+
     const lines = (body || '')
         .replace(/\r\n/g, '\n')
         .split('\n')
         .map(line => line.trim())
         .filter(Boolean)
         .filter(line => !是否判定日志文本(line));
-    if (lines.length < 2) return null;
-    if (lines.some(line => /^【\s*[^】]+?\s*】/.test(line))) return null;
+    if (lines.length < 1) return null;
 
-    for (let index = 0; index < lines.length - 1; index += 1) {
-        const speaker = 提取无标签动作行人物名(lines[index]);
-        if (speaker && 是否像无标签口语行(lines[index + 1])) {
-            return `疑似角色「${speaker}」的对白没有使用【角色名】标签`;
+    for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        const tagMatch = line.match(显式标签行正则);
+        if (tagMatch) {
+            const sender = 规范化日志发送者(tagMatch[1] || '');
+            const text = (tagMatch[2] || '').trim();
+            if (sender === '旁白') {
+                const quotedSpeaker = 提取显式说话引号人物名(text);
+                if (quotedSpeaker) return `疑似角色「${quotedSpeaker}」的对白写在【旁白】行内`;
+            }
+            continue;
+        }
+
+        const squareSpeaker = line.match(方括号疑似说话人行正则);
+        if (squareSpeaker) {
+            const sender = 规范化日志发送者(squareSpeaker[1] || '');
+            if (是否可信正文标签发送者(sender, { allowUnknownName: true }) && !正文冒号说话人排除集合.has(sender)) {
+                return `疑似角色「${sender}」的对白使用了[]标签，必须改为【${sender}】`;
+            }
+        }
+
+        const colonLine = 识别无括号正文发送者行(line);
+        if (colonLine) {
+            return `疑似角色「${colonLine.sender}」的对白使用了冒号格式，必须改为【${colonLine.sender}】开头`;
+        }
+
+        const quotedSpeaker = 提取显式说话引号人物名(line);
+        if (quotedSpeaker) {
+            return `疑似角色「${quotedSpeaker}」的对白嵌在旁白引号中，没有使用【角色名】标签`;
+        }
+
+        const actionSpeaker = 提取无标签动作行人物名(line);
+        const nextLine = lines[index + 1] || '';
+        if (actionSpeaker && (是否像无标签口语行(nextLine) || 裸引号整行正则.test(nextLine))) {
+            return `疑似角色「${actionSpeaker}」的对白没有使用【角色名】标签`;
         }
     }
     return null;

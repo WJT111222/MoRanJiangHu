@@ -1899,6 +1899,11 @@ const 解析故事响应 = (
     rawText
 });
 
+const 是否正文对白格式错误 = (error: any): boolean => {
+    const text = `${error?.parseDetail || ''}\n${error?.message || ''}`;
+    return /疑似角色|对白.*(?:标签|格式)|冒号格式|旁白.*说|无标签|引号.*跨行|引号内.*换行/.test(text);
+};
+
 const 构建正文协议修复消息 = (rawText: string, reason: string): 通用消息[] => 规范化文本补全消息链([
     {
         role: 'system',
@@ -1927,6 +1932,75 @@ const 构建正文协议修复消息 = (rawText: string, reason: string): 通用
         ].join('\n')
     }
 ], { 保留System: true, 合并同角色: false });
+
+const 构建正文对白格式修复消息 = (bodyText: string, reason: string): 通用消息[] => 规范化文本补全消息链([
+    {
+        role: 'system',
+        content: [
+            '你是《墨色江湖》的正文对白格式修复器。',
+            '任务不是重新创作剧情，而是在不改变事实、不新增事件、不改写判定结果的前提下，只修复正文里的对白标签格式。',
+            '你只处理用户给出的 <正文> 内容，不要输出命令、记忆、行动选项、解释或代码块。'
+        ].join('\n')
+    },
+    {
+        role: 'user',
+        content: [
+            '【修复原因】',
+            reason || '正文对白格式不合规。',
+            '',
+            '【硬性规则】',
+            '1. 所有角色说出口的台词必须单独成行，并以【角色名】开头。',
+            '2. 【角色名】行只能放该角色说出口的台词，不要放动作、心理、旁白说明或括号补描写。',
+            '3. 旁白、动作、环境、心理、第三人称叙述必须使用【旁白】开头，或保持为无角色标签的旁白行。',
+            '4. 遇到“角色名：台词”“角色说道：‘台词’”“动作行后紧跟明显口语台词”等格式，要改成【角色名】台词。',
+            '5. 不能凭空改名；说话人不确定时保留为【旁白】，不要强行猜。',
+            '6. 保留原正文事实、顺序、判定结果、地点、物品、人物关系和台词含义。',
+            '7. 正文一句话一行；每一行必须是完整的【旁白】、【角色名】或【判定】正文单位。',
+            '8. 引号内文字绝对不能换行；如果原文把“……”、「……」、『……』或“‘……’”拆成多行，必须合并回同一行。',
+            '9. 只输出一个 <正文>...</正文> 块，不要输出其他内容。',
+            '',
+            '【待修复正文】',
+            '<正文>',
+            bodyText || '',
+            '</正文>'
+        ].join('\n')
+    }
+], { 保留System: true, 合并同角色: false });
+
+const 替换首个正文块 = (rawText: string, bodyText: string): string => {
+    const source = rawText || '';
+    const body = (bodyText || '').trim();
+    const replacement = `<正文>\n${body}\n</正文>`;
+    if (/<\s*正文\s*>[\s\S]*?<\s*\/\s*正文\s*>/i.test(source)) {
+        return source.replace(/<\s*正文\s*>[\s\S]*?<\s*\/\s*正文\s*>/i, replacement);
+    }
+    return `${replacement}\n${source}`.trim();
+};
+
+const 修复故事响应正文对白格式 = async (
+    rawText: string,
+    reason: string,
+    apiConfig: 当前可用接口结构,
+    signal?: AbortSignal,
+    requestOptions?: StoryRequestOptions
+): Promise<StoryResponseResult> => {
+    const sourceBody = 提取首个标签内容(rawText, '正文', { 兼容错误闭合: true }) || rawText;
+    const repairedText = await 请求模型文本(apiConfig, 构建正文对白格式修复消息(sourceBody, reason), {
+        temperature: 0.2,
+        signal,
+        errorDetailLimit: requestOptions?.errorDetailLimit,
+        includeReasoning: requestOptions?.includeReasoning,
+        disableThinking: requestOptions?.disableThinking,
+        stripReasoning: requestOptions?.stripReasoning,
+        prefixMode: requestOptions?.prefixMode
+    });
+    const repairedBody = 清理润色正文输出(repairedText);
+    if (!repairedBody.trim()) {
+        throw new Error('正文对白格式局部修复未返回有效正文');
+    }
+    const repairedRawText = 替换首个正文块(rawText, repairedBody);
+    return 解析故事响应(repairedRawText, requestOptions);
+};
 
 const 修复故事响应协议 = async (
     rawText: string,
@@ -2021,6 +2095,13 @@ export const generateStoryResponse = async (
             return 解析故事响应(rawText, requestOptions);
         } catch (error: any) {
             if (requestOptions?.validateDialogueFormat === true && error?.name === 'StoryResponseParseError') {
+                if (是否正文对白格式错误(error)) {
+                    try {
+                        return await 修复故事响应正文对白格式(rawText, error?.parseDetail || error?.message || '正文对白格式不合规', apiConfig, signal, requestOptions);
+                    } catch {
+                        return 修复故事响应协议(rawText, error?.parseDetail || error?.message || '正文对白格式不合规', apiConfig, signal, requestOptions);
+                    }
+                }
                 return 修复故事响应协议(rawText, error?.parseDetail || error?.message || '正文对白格式不合规', apiConfig, signal, requestOptions);
             }
             throw error;
@@ -2109,6 +2190,13 @@ export const generateStoryResponse = async (
         return 解析故事响应(rawText, requestOptions);
     } catch (error: any) {
         if (requestOptions?.validateDialogueFormat === true && error?.name === 'StoryResponseParseError') {
+            if (是否正文对白格式错误(error)) {
+                try {
+                    return await 修复故事响应正文对白格式(rawText, error?.parseDetail || error?.message || '正文对白格式不合规', apiConfig, signal, requestOptions);
+                } catch {
+                    return 修复故事响应协议(rawText, error?.parseDetail || error?.message || '正文对白格式不合规', apiConfig, signal, requestOptions);
+                }
+            }
             return 修复故事响应协议(rawText, error?.parseDetail || error?.message || '正文对白格式不合规', apiConfig, signal, requestOptions);
         }
         throw error;
