@@ -2598,6 +2598,18 @@ export const useGame = () => {
             简介: typeof member?.简介 === 'string' && member.简介.trim()
                 ? formatRelation(member.简介.trim())
                 : `${玩家门派?.名称 || orgLabel}名录中的${memberLabel}。`,
+            头像图片URL: typeof member?.头像图片URL === 'string' ? member.头像图片URL : undefined,
+            图片档案: member?.图片档案 && typeof member.图片档案 === 'object' ? member.图片档案 : undefined,
+            天赋列表: Array.isArray(member?.天赋列表) ? member.天赋列表 : [],
+            出身背景: member?.出身背景 && typeof member.出身背景 === 'object' ? member.出身背景 : undefined,
+            力量: Number.isFinite(Number(member?.力量)) ? Number(member.力量) : undefined,
+            敏捷: Number.isFinite(Number(member?.敏捷)) ? Number(member.敏捷) : undefined,
+            体质: Number.isFinite(Number(member?.体质)) ? Number(member.体质) : undefined,
+            根骨: Number.isFinite(Number(member?.根骨)) ? Number(member.根骨) : undefined,
+            悟性: Number.isFinite(Number(member?.悟性)) ? Number(member.悟性) : undefined,
+            福源: Number.isFinite(Number(member?.福源)) ? Number(member.福源) : undefined,
+            境界层级: Number.isFinite(Number(member?.境界层级)) ? Number(member.境界层级) : undefined,
+            保留开局伙伴设定属性: member?.保留开局伙伴设定属性 === true,
             记忆: Array.isArray(member?.记忆) ? member.记忆 : [],
             来源: '玩家门派.重要成员'
         };

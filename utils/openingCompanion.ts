@@ -25,6 +25,11 @@ const 取数字 = (value: unknown, fallback = 0): number => {
     return Number.isFinite(next) ? next : fallback;
 };
 
+const 取伙伴属性 = (attrs: any, key: '力量' | '敏捷' | '体质' | '根骨' | '悟性' | '福源'): number => {
+    const value = Number(attrs?.[key]);
+    return Number.isFinite(value) ? value : 5;
+};
+
 const 稳定哈希文本 = (text: string): string => {
     let hash = 2166136261;
     for (let i = 0; i < text.length; i += 1) {
@@ -58,10 +63,17 @@ export const 构建初始伙伴NPC = (
     const relation = 取文本(partner.关系, '开局伙伴');
     const birthday = `${取数字(partner.出生月, 1)}月${取数字(partner.出生日, 1)}日`;
     const attrs = partner.属性 || {};
-    const maxHp = Math.max(60, 取数字(attrs.体质, 10) * 10);
-    const maxEnergy = Math.max(60, 取数字(attrs.体质, 10) * 8);
-    const maxInternal = Math.max(20, (取数字(attrs.根骨, 10) + 取数字(attrs.悟性, 10)) * 4);
+    const 力量 = 取伙伴属性(attrs, '力量');
+    const 敏捷 = 取伙伴属性(attrs, '敏捷');
+    const 体质 = 取伙伴属性(attrs, '体质');
+    const 根骨 = 取伙伴属性(attrs, '根骨');
+    const 悟性 = 取伙伴属性(attrs, '悟性');
+    const 福源 = 取伙伴属性(attrs, '福源');
+    const maxHp = Math.max(30, 体质 * 10);
+    const maxEnergy = Math.max(30, 体质 * 8);
+    const maxInternal = Math.max(20, (根骨 + 悟性) * 4);
     const location = 取文本((player as any)?.当前位置 || (player as any)?.当前地点 || (player as any)?.具体地点, '主角身边');
+    const isInfinite = openingConfig?.题材模式 === '无限流';
     const introParts = [
         `${name}是主角的${relation}。`,
         句子化('外貌：', partner.外貌),
@@ -72,11 +84,14 @@ export const 构建初始伙伴NPC = (
     return {
         id: 生成开局伙伴ID(openingConfig, 取文本(player?.姓名)),
         姓名: name,
+        来源: '开局伙伴',
+        保留开局伙伴设定属性: true,
         曾用名: [],
         性别: partner.性别 === '男' ? '男' : '女',
         年龄: 取数字(partner.年龄, 18),
         生日: birthday,
-        境界: '未知境界',
+        境界: isInfinite ? '新人轮回者' : '初始同伴',
+        境界层级: 1,
         身份: relation,
         当前位置: location,
         当前地点: location,
@@ -102,14 +117,14 @@ export const 构建初始伙伴NPC = (
             描述: 取文本(partner.背景描述, '由玩家在开局伙伴页设定。'),
             效果: 取文本(partner.背景效果, '影响开局关系与能力倾向。')
         },
-        力量: 取数字(attrs.力量, 10),
-        敏捷: 取数字(attrs.敏捷, 10),
-        体质: 取数字(attrs.体质, 10),
-        根骨: 取数字(attrs.根骨, 10),
-        悟性: 取数字(attrs.悟性, 10),
-        福源: 取数字(attrs.福源, 10),
-        攻击力: Math.max(1, 取数字(attrs.力量, 10) * 2),
-        防御力: Math.max(1, 取数字(attrs.体质, 10)),
+        力量,
+        敏捷,
+        体质,
+        根骨,
+        悟性,
+        福源,
+        攻击力: Math.max(1, 力量 * 2),
+        防御力: Math.max(1, 体质),
         当前血量: maxHp,
         最大血量: maxHp,
         当前精力: maxEnergy,
@@ -206,6 +221,18 @@ export const 修复开局伙伴社交列表 = (
                 性别: seed.性别,
                 年龄: seed.年龄,
                 生日: seed.生日,
+                天赋列表: seed.天赋列表,
+                出身背景: seed.出身背景,
+                来源: seed.来源,
+                保留开局伙伴设定属性: true,
+                境界: 取文本(npc?.境界).replace(/未知境界|未明境界|不详/g, '').trim() || seed.境界,
+                境界层级: seed.境界层级,
+                力量: seed.力量,
+                敏捷: seed.敏捷,
+                体质: seed.体质,
+                根骨: seed.根骨,
+                悟性: seed.悟性,
+                福源: seed.福源,
                 是否队友: true,
                 是否主要角色: true,
                 关系状态: 取文本(npc?.关系状态, seed.关系状态) || seed.关系状态

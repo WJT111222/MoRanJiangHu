@@ -100,6 +100,45 @@ const MODERN_CONSUMABLES: AutoConsumableTemplate[] = [
     }
 ];
 
+const INFINITE_CONSUMABLES: AutoConsumableTemplate[] = [
+    {
+        id: 'auto_infinite_water_tablet',
+        name: '净水片',
+        description: '主神空间基础生存补给，可在任务世界临时处理饮水问题。',
+        visual: 'small sealed water purification tablets in a plain sci-fi survival blister pack, no readable text',
+        value: 60,
+        count: 3,
+        effects: [{ 目标属性: '当前水分', 数值: 55 }]
+    },
+    {
+        id: 'auto_infinite_compressed_ration',
+        name: '压缩口粮',
+        description: '轮回者常备应急口粮，适合在任务世界短时间维持体力。',
+        visual: 'compact emergency ration bar in unlabeled matte wrapper, survival prop, no readable text',
+        value: 70,
+        count: 3,
+        effects: [{ 目标属性: '当前饱腹', 数值: 50 }]
+    },
+    {
+        id: 'auto_infinite_hemostatic_spray',
+        name: '止血喷雾',
+        description: '主神商城基础医疗补给，用于处理轻中度外伤和疲劳。',
+        visual: 'small unlabeled medical spray canister, clean sci-fi survival item, no text',
+        value: 120,
+        count: 2,
+        effects: [{ 目标属性: '当前精力', 数值: 45 }]
+    },
+    {
+        id: 'auto_infinite_mental_stabilizer',
+        name: '精神稳定剂',
+        description: '新人轮回者常用的精神负荷缓冲补给，适合恐怖片任务后短暂稳定状态。',
+        visual: 'small blue mental stabilizer vial and adhesive patch kit, sci-fi medical prop, no readable text',
+        value: 180,
+        count: 1,
+        effects: [{ 目标属性: '当前内力', 数值: 55 }]
+    }
+];
+
 const FANTASY_CONSUMABLES: AutoConsumableTemplate[] = [
     {
         id: 'auto_fantasy_ration',
@@ -149,6 +188,12 @@ const 获取自动消耗品模板 = (options?: 自动丹药预设选项): AutoCo
         return templates;
     }
     if (profile.group === 'modern') return MODERN_CONSUMABLES;
+    if (profile.group === 'infinite') {
+        if (options?.启用饱腹口渴系统 === false) {
+            return INFINITE_CONSUMABLES.filter((template) => !template.effects.some((effect) => effect.目标属性 === '当前饱腹' || effect.目标属性 === '当前水分'));
+        }
+        return INFINITE_CONSUMABLES;
+    }
     if (profile.group === 'western_fantasy') {
         if (options?.启用饱腹口渴系统 === false) {
             return FANTASY_CONSUMABLES.filter((template) => !template.effects.some((effect) => effect.目标属性 === '当前饱腹' || effect.目标属性 === '当前水分'));
@@ -213,6 +258,7 @@ export const 自动预设丹药ID集合 = new Set([
     ...AUTO_CONSUMABLES,
     ...APOCALYPSE_CONSUMABLES,
     ...MODERN_CONSUMABLES,
+    ...INFINITE_CONSUMABLES,
     ...FANTASY_CONSUMABLES
 ].map((template) => template.id));
 export const 自动预设丹药名称集合 = new Set(AUTO_CONSUMABLES.map((template) => template.name));
@@ -220,10 +266,11 @@ export const 全部自动预设消耗品名称集合 = new Set([
     ...AUTO_CONSUMABLES,
     ...APOCALYPSE_CONSUMABLES,
     ...MODERN_CONSUMABLES,
+    ...INFINITE_CONSUMABLES,
     ...FANTASY_CONSUMABLES
 ].map((template) => template.name));
 export const 古风丹药预设名称集合 = 自动预设丹药名称集合;
-export const 生存补给预设名称集合 = new Set(['辟谷丹', '饮水瓶', '压缩饼干']);
+export const 生存补给预设名称集合 = new Set(['辟谷丹', '饮水瓶', '压缩饼干', '净水片', '压缩口粮']);
 
 const 匹配效果 = (item: any, target: string): number => {
     const effects = Array.isArray(item?.使用效果) ? item.使用效果 : [];

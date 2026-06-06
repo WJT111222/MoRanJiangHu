@@ -25,6 +25,7 @@ interface Props {
     onSellAllMisc?: () => { ok: boolean; message: string } | void;
     onDiscardAllMisc?: () => { ok: boolean; message: string } | void;
     onRegenerateItemImage?: (item: any, extraPrompt?: string) => Promise<void> | void;
+    initialSelectedItemRef?: string;
 }
 
 type ItemCategory = '全部' | '装备' | '任务道具' | '消耗品' | '材料' | '秘籍' | '杂物';
@@ -114,7 +115,7 @@ const MobileDetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ 
     </div>
 );
 
-const MobileInventoryModal: React.FC<Props> = ({ character, openingConfig, onClose, onCharacterChange, onSellItem, onDiscardItem, onSellAllMisc, onDiscardAllMisc, onRegenerateItemImage }) => {
+const MobileInventoryModal: React.FC<Props> = ({ character, openingConfig, onClose, onCharacterChange, onSellItem, onDiscardItem, onSellAllMisc, onDiscardAllMisc, onRegenerateItemImage, initialSelectedItemRef = '' }) => {
     const [activeCategory, setActiveCategory] = useState<ItemCategory>('全部');
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [actionMessage, setActionMessage] = useState('');
@@ -154,6 +155,24 @@ const MobileInventoryModal: React.FC<Props> = ({ character, openingConfig, onClo
         const freshItem = items.find((item: any) => item?.ID === itemRef || item?.名称 === itemRef);
         if (freshItem && freshItem !== selectedItem) setSelectedItem(freshItem);
     }, [items, selectedItem]);
+    React.useEffect(() => {
+        const targetRef = getSafeText(initialSelectedItemRef);
+        if (!targetRef) return;
+        const normalizedTarget = targetRef.replace(/[《》【】\[\]「」『』“”"']/g, '').replace(/\s+/g, '');
+        const matched = items.find((item: any) => {
+            const id = getSafeText(item?.ID).replace(/\s+/g, '');
+            const name = getSafeText(item?.名称).replace(/\s+/g, '');
+            return id === targetRef || name === targetRef || id === normalizedTarget || name === normalizedTarget;
+        });
+        if (matched) {
+            setSelectedItem(matched);
+            const type = getSafeText(matched?.类型);
+            if (['武器', '防具', '饰品'].includes(type)) setActiveCategory('装备');
+            else if (type === '任务道具' || type === '消耗品' || type === '材料' || type === '秘籍') setActiveCategory(type as ItemCategory);
+            else if (是否杂物类物品(matched)) setActiveCategory('杂物');
+            else setActiveCategory('全部');
+        }
+    }, [initialSelectedItemRef, items]);
     const selectedEquipSlots = selectedItem ? 获取物品可装备槽位(selectedItem) : [];
     const selectedCanEquip = selectedItem ? 是否可装备物品(selectedItem) : false;
     const currencyMode = 获取货币显示模式(openingConfig, character);

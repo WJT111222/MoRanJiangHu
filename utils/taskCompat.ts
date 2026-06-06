@@ -21,11 +21,66 @@ const 合并任务文本 = (task: any): string => [
     task?.描述,
     task?.发布人,
     task?.发布地点,
+    task?.任务世界,
+    task?.所在世界,
+    task?.任务副本,
+    task?.世界标签,
     task?.推荐境界,
     task?.剧情暗线,
     Array.isArray(task?.目标列表) ? task.目标列表.map((item: any) => item?.描述).join(' ') : '',
     Array.isArray(task?.奖励描述) ? task.奖励描述.join(' ') : ''
 ].filter(Boolean).join(' ');
+
+const 取文本 = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
+const 具体地点或团队名正则 = /小队|团队|同盟|队伍|队长|成员|主神空间|主神广场|房间|偏厅|大厅|卧室|厨房|走廊|门口|村|古宅|安全屋|据点|营地|办公室|资料室/u;
+
+export const 提取任务世界 = (task: any): string => {
+    const direct = [task?.任务世界, task?.所在世界, task?.任务副本, task?.世界标签]
+        .map(取文本)
+        .find(Boolean);
+    if (direct && !具体地点或团队名正则.test(direct)) return direct;
+    const text = 合并任务文本(task);
+    const bracketWorld = text.match(/任务世界[<《](.*?)[>》]/u)?.[1]?.trim();
+    if (bracketWorld) return `任务世界<${bracketWorld}>`;
+    const namedWorld = text.match(/([\u4e00-\u9fa5A-Za-z0-9·：:《》<>-]{2,24}(?:任务世界|世界|副本|恐怖片))/u)?.[1]?.trim();
+    if (namedWorld && !具体地点或团队名正则.test(namedWorld)) return namedWorld;
+    if (/主神|轮回|奖励点|支线剧情|恐怖片|任务世界/u.test(text)) return '当前任务世界';
+    return direct || '';
+};
+
+const 归一化任务去重文本 = (value: unknown): string => 取文本(value)
+    .replace(/任务世界[<《].*?[>》]/gu, '任务世界')
+    .replace(/[“”"'\s，。！？；：、,.!?;:【】《》<>]/gu, '')
+    .replace(/二十四小时|24小时|第一夜|至天亮|活到天亮|存活到天亮/gu, '存活至天亮')
+    .replace(/封门古宅|荒废古宅|古宅偏厅|东偏厅/gu, '当前任务地点')
+    .toLowerCase();
+
+const 是无限流任务 = (task: any): boolean => /主神|轮回|奖励点|支线剧情|任务世界|恐怖片|小队|团队/u.test(合并任务文本(task));
+
+const 是主神主线生存任务 = (task: any): boolean => (
+    取文本(task?.类型) === '主线'
+    && /主神|任务世界|倒计时|存活|天亮|24小时|二十四小时/u.test(合并任务文本(task))
+);
+
+const 是团队重复生存任务 = (task: any): boolean => (
+    取文本(task?.类型) !== '主线'
+    && /团队|小队|同盟|队长|资深者|轮回者/u.test(合并任务文本(task))
+    && /存活|天亮|24小时|二十四小时|主线任务/u.test(合并任务文本(task))
+);
+
+const 任务去重指纹 = (task: any): string => {
+    const objectives = Array.isArray(task?.目标列表) ? task.目标列表.map((item: any) => item?.描述).join('|') : '';
+    const base = [
+        取文本(task?.类型),
+        取文本(task?.发布人),
+        提取任务世界(task),
+        task?.标题,
+        task?.描述,
+        objectives
+    ].join('|');
+    return 归一化任务去重文本(base);
+};
 
 export const 归一化任务类型 = (task: any): 任务类型 => {
     const rawType = typeof task?.类型 === 'string' ? task.类型.trim() : '';
@@ -58,14 +113,26 @@ export const 规范化任务自动结算 = (task: 任务结构 | any): 任务结
         ? task.当前状态
         : '进行中';
     const shouldAutoComplete = allObjectivesDone && currentStatus !== '已完成' && currentStatus !== '已失败';
+    const taskWorld = 提取任务世界(task);
     return {
         ...task,
         类型: 归一化任务类型(task),
+        ...(taskWorld ? { 任务世界: taskWorld } : {}),
         当前状态: shouldAutoComplete ? '已完成' : currentStatus,
         目标列表: objectives,
     };
 };
 
 export const 规范化任务列表自动结算 = (tasks: any[]): any[] => (
-    Array.isArray(tasks) ? tasks.map(规范化任务自动结算) : []
+    Array.isArray(tasks)
+        ? tasks
+            .map(规范化任务自动结算)
+            .filter((task, index, list) => {
+                if (!是无限流任务(task)) return true;
+                if (是团队重复生存任务(task) && list.some(是主神主线生存任务)) return false;
+                const key = 任务去重指纹(task);
+                if (!key) return true;
+                return list.findIndex((item) => 任务去重指纹(item) === key) === index;
+            })
+        : []
 );

@@ -272,7 +272,7 @@ export const generateMemoryRecall = async (
     });
 };
 
-const 清理润色正文输出 = (rawText: string): string => {
+export const 清理润色正文输出 = (rawText: string): string => {
     let text = (rawText || '').trim();
     if (!text) return '';
 
@@ -296,9 +296,13 @@ const 清理润色正文输出 = (rawText: string): string => {
     if (!lastBodyOpenMatch || typeof lastBodyOpenMatch.index !== 'number') {
         return '';
     }
-    const payload = textWithoutThinking
-        .slice(lastBodyOpenMatch.index + lastBodyOpenMatch[0].length)
-        .replace(/<\s*\/\s*正文\s*>\s*$/i, '')
+    const bodyStart = lastBodyOpenMatch.index + lastBodyOpenMatch[0].length;
+    const afterBodyOpen = textWithoutThinking.slice(bodyStart);
+    const bodyCloseMatch = afterBodyOpen.match(/<\s*\/\s*正文\s*>/i);
+    const bodyPayload = bodyCloseMatch && typeof bodyCloseMatch.index === 'number'
+        ? afterBodyOpen.slice(0, bodyCloseMatch.index)
+        : afterBodyOpen;
+    const payload = bodyPayload
         .replace(/^[\t ]+|[\t ]+$/gm, '')
         .trim();
     return payload;

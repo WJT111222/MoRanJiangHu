@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { OpeningConfig, 角色数据结构, NPC结构 } from '../../../types';
 import { 获取题材界面文案, 获取题材资源文案 } from '../../../utils/resourceLabels';
+import { 获取图片展示地址, 获取图片资源文本地址 } from '../../../utils/imageAssets';
 import { IconHeart, IconSwords, IconUsers, IconYinYang } from '../../ui/Icons';
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 const TeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClose }) => {
+    const [imageViewer, setImageViewer] = useState<{ src: string; title: string } | null>(null);
     const activeTeammates = React.useMemo(() => {
         const playerName = String(character?.姓名 || '').trim();
         const seen = new Set<string>();
@@ -42,6 +44,51 @@ const TeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClo
     const 读取数值 = (value: unknown, fallback = 0) => {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? Math.ceil(parsed) : fallback;
+    };
+    const 部位列表 = ['头部', '胸部', '腹部', '左手', '右手', '左腿', '右腿'];
+    const 聚合部位血量 = (source: any) => {
+        const current = 部位列表.reduce((sum, part) => sum + Math.max(0, 读取数值(source?.[`${part}当前血量`])), 0);
+        const max = 部位列表.reduce((sum, part) => sum + Math.max(0, 读取数值(source?.[`${part}最大血量`])), 0);
+        return max > 0 ? { current: Math.min(current, max), max } : null;
+    };
+    const 读取资源展示 = (source: any, currentKeys: string[], maxKeys: string[], options?: { allowBodyParts?: boolean }) => {
+        const rawCurrent = currentKeys.map(key => source?.[key]).find(value => Number.isFinite(Number(value)));
+        const rawMax = maxKeys.map(key => source?.[key]).find(value => Number.isFinite(Number(value)));
+        const normalized = 规范化资源展示(rawCurrent, rawMax);
+        if (options?.allowBodyParts && (!Number.isFinite(Number(rawMax)) || Number(rawMax) <= 1)) {
+            return 聚合部位血量(source) || normalized;
+        }
+        return normalized;
+    };
+    const 提取图片历史 = (person: any): any[] => {
+        const archive = person?.图片档案 && typeof person.图片档案 === 'object' ? person.图片档案 : {};
+        const history = Array.isArray(archive?.生图历史) ? archive.生图历史 : [];
+        const recent = archive?.最近生图结果 || person?.最近生图结果;
+        return [...history, recent].filter(Boolean);
+    };
+    const 提取人物头像 = (person: any): string => {
+        const archive = person?.图片档案 && typeof person.图片档案 === 'object' ? person.图片档案 : {};
+        const history = 提取图片历史(person);
+        const selectedAvatarId = typeof archive?.已选头像图片ID === 'string' ? archive.已选头像图片ID.trim() : '';
+        const selected = selectedAvatarId ? history.find((item) => item?.id === selectedAvatarId) : null;
+        const avatarRecord = selected || history.find((item) => item?.构图 === '头像' && item?.状态 === 'success' && 获取图片展示地址(item));
+        const portraitRecord = history.find((item) => item?.构图 === '立绘' && item?.状态 === 'success' && 获取图片展示地址(item));
+        return 获取图片展示地址(avatarRecord) || 获取图片展示地址(portraitRecord) || 获取图片资源文本地址(person?.头像图片URL);
+    };
+    const AvatarBox: React.FC<{ person: any; title: string; className?: string; fallbackClassName?: string }> = ({ person, title, className = 'h-20 w-20 rounded-2xl', fallbackClassName = 'text-3xl' }) => {
+        const imageSrc = 提取人物头像(person);
+        const firstChar = String(person?.姓名 || title || '人').trim().slice(0, 1) || '人';
+        return (
+            <button
+                type="button"
+                disabled={!imageSrc}
+                onClick={() => imageSrc && setImageViewer({ src: imageSrc, title })}
+                className={`${className} flex shrink-0 items-center justify-center overflow-hidden border-2 border-wuxia-gold/40 bg-wuxia-gold/10 font-bold text-wuxia-gold shadow-[0_0_20px_rgba(0,0,0,0.5)] transition hover:border-wuxia-gold/70 disabled:cursor-default disabled:hover:border-wuxia-gold/40`}
+                title={imageSrc ? '查看头像' : '头像占位'}
+            >
+                {imageSrc ? <img src={imageSrc} alt="头像" className="h-full w-full object-cover object-top" /> : <span className={fallbackClassName}>{firstChar}</span>}
+            </button>
+        );
     };
 
     const pad2 = (n: number) => `${Math.trunc(n)}`.padStart(2, '0');
@@ -97,18 +144,9 @@ const TeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClo
     );
 
     const renderPlayerDetail = () => {
-        const hp = 规范化资源展示(
-            资源文案.气血当前字段.map(key => (character as any)?.[key]).find(value => Number.isFinite(Number(value))),
-            资源文案.气血最大字段.map(key => (character as any)?.[key]).find(value => Number.isFinite(Number(value)))
-        );
-        const sp = 规范化资源展示(
-            资源文案.精力当前字段.map(key => (character as any)?.[key]).find(value => Number.isFinite(Number(value))),
-            资源文案.精力最大字段.map(key => (character as any)?.[key]).find(value => Number.isFinite(Number(value)))
-        );
-        const qi = 规范化资源展示(
-            资源文案.能量当前字段.map(key => (character as any)?.[key]).find(value => Number.isFinite(Number(value))),
-            资源文案.能量最大字段.map(key => (character as any)?.[key]).find(value => Number.isFinite(Number(value)))
-        );
+        const hp = 读取资源展示(character, 资源文案.气血当前字段, 资源文案.气血最大字段, { allowBodyParts: true });
+        const sp = 读取资源展示(character, 资源文案.精力当前字段, 资源文案.精力最大字段);
+        const qi = 读取资源展示(character, 资源文案.能量当前字段, 资源文案.能量最大字段);
         const 基础属性 = [
             ['力', 读取数值((character as any).力量)],
             ['敏', 读取数值((character as any).敏捷)],
@@ -128,9 +166,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClo
             <div className="flex h-full flex-col animate-fadeIn relative z-10">
                 <div className="mb-6 flex items-start justify-between border-b border-wuxia-gold/10 pb-6">
                     <div className="flex items-center gap-5">
-                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-wuxia-gold/40 bg-wuxia-gold/10 text-3xl font-bold text-wuxia-gold shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-                            {(character.姓名 || '主')[0]}
-                        </div>
+                        <AvatarBox person={character} title={`${character.姓名 || '主角'}头像`} />
                         <div>
                             <div className="mb-2 flex items-center gap-3">
                                 <span className="text-3xl font-bold tracking-wider text-gray-100 drop-shadow-md">{character.姓名 || '主角'}</span>
@@ -219,18 +255,9 @@ const TeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClo
     };
 
     const renderTeammateDetail = (npc: NPC结构) => {
-        const hp = 规范化资源展示(
-            资源文案.气血当前字段.map(key => (npc as any)?.[key]).find(value => Number.isFinite(Number(value))),
-            资源文案.气血最大字段.map(key => (npc as any)?.[key]).find(value => Number.isFinite(Number(value)))
-        );
-        const sp = 规范化资源展示(
-            资源文案.精力当前字段.map(key => (npc as any)?.[key]).find(value => Number.isFinite(Number(value))),
-            资源文案.精力最大字段.map(key => (npc as any)?.[key]).find(value => Number.isFinite(Number(value)))
-        );
-        const qi = 规范化资源展示(
-            资源文案.能量当前字段.map(key => (npc as any)?.[key]).find(value => Number.isFinite(Number(value))),
-            资源文案.能量最大字段.map(key => (npc as any)?.[key]).find(value => Number.isFinite(Number(value)))
-        );
+        const hp = 读取资源展示(npc, 资源文案.气血当前字段, 资源文案.气血最大字段, { allowBodyParts: true });
+        const sp = 读取资源展示(npc, 资源文案.精力当前字段, 资源文案.精力最大字段);
+        const qi = 读取资源展示(npc, 资源文案.能量当前字段, 资源文案.能量最大字段);
         const safeHpMax = hp.max;
         const safeHpCur = hp.current;
         const safeSpMax = sp.max;
@@ -263,9 +290,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClo
                 {/* 头部信息 */}
                 <div className="flex items-start justify-between border-b border-wuxia-gold/10 pb-6 mb-6">
                     <div className="flex items-center gap-5">
-                        <div className={`w-20 h-20 rounded-2xl border-2 flex items-center justify-center text-3xl font-serif font-bold shadow-[0_0_20px_rgba(0,0,0,0.5)] ${themeBorder} ${themeBg} ${themeText}`}>
-                            {npc.姓名[0]}
-                        </div>
+                        <AvatarBox person={npc} title={`${npc.姓名}头像`} className={`h-20 w-20 rounded-2xl ${themeBorder} ${themeBg} ${themeText}`} />
                         <div>
                             <div className="flex items-center gap-3 mb-2">
                                 <span className="text-3xl text-gray-100 font-serif font-bold tracking-wider drop-shadow-md">{npc.姓名}</span>
@@ -446,9 +471,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClo
                                 }`}
                             >
                                 {selectedTab === playerTabId && <div className="absolute left-0 top-0 bottom-0 w-1 bg-wuxia-gold shadow-[0_0_10px_rgba(212,175,55,0.8)]"></div>}
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-wuxia-gold/50 bg-black/60 text-sm font-bold text-wuxia-gold">
-                                    {(character.姓名 || '主')[0]}
-                                </div>
+                                <AvatarBox person={character} title={`${character.姓名 || '主角'}头像`} className="h-10 w-10 rounded-full" fallbackClassName="text-sm" />
                                 <div className="min-w-0 flex-1 text-left">
                                     <div className={`truncate font-bold ${selectedTab === playerTabId ? 'text-wuxia-gold' : 'text-gray-200'}`}>{character.姓名 || '主角'}</div>
                                     <div className="mt-0.5 truncate text-[10px] tracking-widest text-gray-500">队长 · {character.境界 || '境界不明'}</div>
@@ -467,9 +490,7 @@ const TeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClo
                                     }`}
                                 >
                                     {selectedTab === npc.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-wuxia-gold shadow-[0_0_10px_rgba(212,175,55,0.8)]"></div>}
-                                    <div className={`w-10 h-10 rounded-full border flex items-center justify-center text-sm font-serif font-bold bg-black/60 ${npc.性别 === '女' ? 'border-pink-900/50 text-pink-400' : 'border-blue-900/50 text-blue-400'}`}>
-                                        {npc.姓名[0]}
-                                    </div>
+                                    <AvatarBox person={npc} title={`${npc.姓名}头像`} className={`h-10 w-10 rounded-full ${npc.性别 === '女' ? 'border-pink-900/50 text-pink-400' : 'border-blue-900/50 text-blue-400'}`} fallbackClassName="text-sm" />
                                     <div className="text-left flex-1 min-w-0">
                                         <div className={`font-serif font-bold truncate ${selectedTab === npc.id ? 'text-wuxia-gold' : 'text-gray-200'}`}>{npc.姓名}</div>
                                         <div className="text-[10px] text-gray-500 mt-0.5 truncate tracking-widest">{npc.身份 || '追随者'}</div>
@@ -509,6 +530,21 @@ const TeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClo
 
                 </div>
             </div>
+            {imageViewer && (
+                <div className="fixed inset-0 z-[260] flex items-center justify-end bg-black/85 pr-8 backdrop-blur-sm" onClick={() => setImageViewer(null)}>
+                    <div className="relative max-h-[88vh] max-w-[85vw]" onClick={(event) => event.stopPropagation()}>
+                        <button
+                            type="button"
+                            onClick={() => setImageViewer(null)}
+                            className="absolute right-2 top-2 z-10 flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-red-600 text-xl font-black text-white shadow-[0_0_18px_rgba(220,38,38,0.75)] transition hover:scale-110 hover:bg-red-500"
+                            title="关闭"
+                        >
+                            ×
+                        </button>
+                        <img src={imageViewer.src} alt={imageViewer.title} className="max-h-[88vh] max-w-[85vw] object-contain shadow-2xl" />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -551,10 +551,18 @@ const SocialModal: React.FC<Props> = ({
         ['敏捷', 读取数值(currentNPC, ['敏捷'])],
         ['体质', 读取数值(currentNPC, ['体质'])],
         ['根骨', 读取数值(currentNPC, ['根骨'])],
+        ['悟性', 读取数值(currentNPC, ['悟性'])],
+        ['福源', 读取数值(currentNPC, ['福源'])],
         [资源文案.气血, `${读取数值(currentNPC, 资源文案.气血当前字段)}/${读取数值(currentNPC, 资源文案.气血最大字段)}`],
         [资源文案.精力, `${读取数值(currentNPC, 资源文案.精力当前字段)}/${读取数值(currentNPC, 资源文案.精力最大字段)}`],
         [资源文案.能量, `${读取数值(currentNPC, 资源文案.能量当前字段)}/${读取数值(currentNPC, 资源文案.能量最大字段)}`],
     ] : [];
+    const NPC天赋列表 = Array.isArray((currentNPC as any)?.天赋列表)
+        ? (currentNPC as any).天赋列表.filter((item: any) => item?.名称)
+        : [];
+    const NPC出身背景 = (currentNPC as any)?.出身背景 && typeof (currentNPC as any).出身背景 === 'object'
+        ? (currentNPC as any).出身背景
+        : null;
     const 在场切换文案 = currentNPC
         ? (当前角色已死亡 ? '已故不可调度' : currentNPC.是否在场 ? '设为离场' : '设为在场')
         : '开关在场';
@@ -948,6 +956,27 @@ const SocialModal: React.FC<Props> = ({
                                                         <div className="mt-1 font-mono text-sm text-gray-100">{value}</div>
                                                     </div>
                                                 ))}
+                                            </div>
+                                            <div className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                                                <div className="rounded-lg border border-amber-500/20 bg-amber-950/10 p-3">
+                                                    <div className="mb-2 text-[10px] tracking-[0.2em] text-amber-300/80">出身背景</div>
+                                                    <div className="text-sm font-serif text-amber-100">{NPC出身背景?.名称 || '暂无记录'}</div>
+                                                    <div className="mt-1 text-xs leading-5 text-gray-300">{NPC出身背景?.描述 || '尚未记录背景描述。'}</div>
+                                                    {NPC出身背景?.效果 && <div className="mt-2 rounded border border-amber-500/20 bg-black/25 px-2 py-1 text-[11px] leading-5 text-amber-100/85">{NPC出身背景.效果}</div>}
+                                                </div>
+                                                <div className="rounded-lg border border-violet-500/20 bg-violet-950/10 p-3">
+                                                    <div className="mb-2 text-[10px] tracking-[0.2em] text-violet-300/80">天赋背景</div>
+                                                    {NPC天赋列表.length > 0 ? (
+                                                        <div className="space-y-2">
+                                                            {NPC天赋列表.map((talent: any, idx: number) => (
+                                                                <div key={`${talent.名称}-${idx}`} className="rounded border border-white/10 bg-black/25 px-2 py-1.5">
+                                                                    <div className="text-xs font-bold text-violet-100">{talent.名称}</div>
+                                                                    <div className="mt-1 text-[11px] leading-5 text-gray-300">{talent.效果 || talent.描述 || '待记录'}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : <span className="text-xs text-gray-600">暂无天赋记录</span>}
+                                                </div>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 <div className="rounded-lg border border-white/10 bg-black/30 p-3">

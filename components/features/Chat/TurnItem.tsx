@@ -23,6 +23,8 @@ interface Props {
     socialList?: NPC结构[];
     playerProfile?: { 姓名?: string; 头像图片URL?: string };
     onOpenNpcDetail?: (npcId: string) => void;
+    inventoryItems?: any[];
+    onOpenInventoryItem?: (itemRef: string) => void;
     turnAnchorRef?: React.Ref<HTMLDivElement>;
     variableGenerationPending?: boolean;
 }
@@ -44,6 +46,8 @@ const TurnItem: React.FC<Props> = ({
     socialList,
     playerProfile,
     onOpenNpcDetail,
+    inventoryItems,
+    onOpenInventoryItem,
     turnAnchorRef,
     variableGenerationPending = false
 }) => {
@@ -543,13 +547,13 @@ const TurnItem: React.FC<Props> = ({
                     const senderJudgmentPrefix = 提取判定日志前缀(rawSender);
                     const textStartsWithJudgment = Boolean(textJudgmentPrefix);
                     if (是否奖励日志(rawSender, rawText)) return <RewardRenderer key={idx} text={rawText} visualConfig={visualConfig} />;
-                    if (rawSender === '旁白' && !textStartsWithJudgment) return <NarratorRenderer key={idx} text={rawText} visualConfig={visualConfig} />;
+                    if (rawSender === '旁白' && !textStartsWithJudgment) return <NarratorRenderer key={idx} text={rawText} visualConfig={visualConfig} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} socialList={socialList} onOpenNpcDetail={onOpenNpcDetail} />;
                     if (senderJudgmentPrefix || textStartsWithJudgment) {
                         const prefix = senderJudgmentPrefix || textJudgmentPrefix || rawSender;
                         const isNsfw = prefix.includes('NSFW');
                         return <JudgmentRenderer key={idx} text={rawText} thoughtBlock={matchedJudgeBlock} isNsfw={isNsfw} visualConfig={visualConfig} prefix={prefix} />;
                     }
-                    return <CharacterRenderer key={idx} sender={rawSender} text={rawText} visualConfig={visualConfig} socialList={socialList} playerProfile={playerProfile} onOpenNpcDetail={onOpenNpcDetail} />;
+                    return <CharacterRenderer key={idx} sender={rawSender} text={rawText} visualConfig={visualConfig} socialList={socialList} playerProfile={playerProfile} onOpenNpcDetail={onOpenNpcDetail} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} />;
                 })}
             </div>
 

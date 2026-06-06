@@ -517,6 +517,7 @@ const App: React.FC = () => {
     const [legacySaveLineageMigrationStatus, setLegacySaveLineageMigrationStatus] = React.useState(() => 读取旧存档谱系迁移状态());
     const [legacySaveLineageMigrationNoticeClosed, setLegacySaveLineageMigrationNoticeClosed] = React.useState(false);
     const [selectedSocialNpcId, setSelectedSocialNpcId] = React.useState<string | null>(null);
+    const [inventoryInitialItemRef, setInventoryInitialItemRef] = React.useState('');
     const [desktopDetailFullscreen, setDesktopDetailFullscreen] = React.useState(false);
     const [desktopDetailWidths, setDesktopDetailWidths] = React.useState<Record<string, number>>(() => readDesktopDetailWidths());
     const [viewportWidth, setViewportWidth] = React.useState<number>(() => {
@@ -1724,7 +1725,15 @@ const App: React.FC = () => {
         setters.setShowSettings(true);
     }, [closeAllPanels, setters]);
     const openInventory = React.useCallback(() => {
+        setInventoryInitialItemRef('');
         closeAllPanels();
+        setters.setShowInventory(true);
+    }, [closeAllPanels, setters]);
+    const openInventoryItemFromChat = React.useCallback((itemRef: string) => {
+        const normalizedRef = typeof itemRef === 'string' ? itemRef.trim() : '';
+        if (!normalizedRef) return;
+        closeAllPanels();
+        setInventoryInitialItemRef(normalizedRef);
         setters.setShowInventory(true);
     }, [closeAllPanels, setters]);
     const openEquipment = React.useCallback(() => {
@@ -2980,6 +2989,8 @@ const App: React.FC = () => {
                                     socialList={state.社交}
                                     playerProfile={playerProfile}
                                     onOpenNpcDetail={openNpcDetailFromChat}
+                                    inventoryItems={Array.isArray(state.角色?.物品列表) ? state.角色.物品列表 : []}
+                                    onOpenInventoryItem={openInventoryItemFromChat}
                                     renderCount={effectiveVisualConfig.渲染层数}
                                     suppressAutoScrollToken={meta.chatScrollSuppressToken}
                                     forceScrollToken={meta.chatForceScrollToken}
@@ -3714,6 +3725,7 @@ const App: React.FC = () => {
                                 <MobileInventoryModal 
                                     character={state.角色} 
                                     openingConfig={state.开局配置}
+                                    initialSelectedItemRef={inventoryInitialItemRef}
                                     onCharacterChange={(nextCharacter: any) => {
                                         setters.setCharacter(nextCharacter);
                                         void actions.performAutoSave?.({ role: nextCharacter, force: true });
@@ -3729,6 +3741,7 @@ const App: React.FC = () => {
                                 <InventoryModal 
                                     character={state.角色} 
                                     openingConfig={state.开局配置}
+                                    initialSelectedItemRef={inventoryInitialItemRef}
                                     onCharacterChange={(nextCharacter: any) => {
                                         setters.setCharacter(nextCharacter);
                                         void actions.performAutoSave?.({ role: nextCharacter, force: true });

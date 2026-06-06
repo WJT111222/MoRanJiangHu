@@ -246,11 +246,6 @@ const KungfuModal: React.FC<Props> = ({ skills, onClose, topicMode }) => {
 
                     {/* 右侧：典籍详情 */}
                     <div className="flex-1 p-8 overflow-y-auto relative" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                        {/* 书卷背景印花 */}
-                        <div className="absolute right-0 top-0 text-[400px] text-wuxia-gold opacity-[0.02] font-serif select-none pointer-events-none leading-none -mt-20 -mr-20">
-                            {currentSkill?.名称?.[0] || '武'}
-                        </div>
-
                         {currentSkill ? (
                             <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn relative z-10">
                                 

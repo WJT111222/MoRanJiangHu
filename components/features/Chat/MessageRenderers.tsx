@@ -5,6 +5,8 @@ import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetc
 import { 构建区域文字样式 } from '../../../utils/visualSettings';
 import { 获取图片展示地址, 获取图片资源文本地址 } from '../../../utils/imageAssets';
 import { 根据差额校正判定结果 } from '../../../utils/judgmentFormat';
+import { 获取物品已选图标地址 } from '../../../utils/itemImage';
+import { getRarityNameClass, getRarityStyles } from '../../ui/rarityStyles';
 import { IconHeart, IconEye, IconBattery, IconShield, IconCompass, IconExplosion, IconDice, IconCoins } from '../../ui/Icons';
 
 type JudgmentModifier = {
@@ -342,12 +344,199 @@ const 格式化旁白断行 = (value: string): string => {
         .join('\n');
 };
 
-export const NarratorRenderer: React.FC<{ text: string; visualConfig?: 视觉设置结构 }> = ({ text, visualConfig }) => {
+const 规范化物品引用文本 = (value: unknown): string => (
+    typeof value === 'string'
+        ? value.trim().replace(/[《》【】\[\]「」『』“”"']/g, '').replace(/\s+/g, '')
+        : ''
+);
+
+const 查找正文引用物品 = (name: string, inventoryItems?: any[]): any | null => {
+    const target = 规范化物品引用文本(name);
+    if (!target) return null;
+    const items = Array.isArray(inventoryItems) ? inventoryItems : [];
+    return items.find((item) => {
+        const itemName = 规范化物品引用文本(item?.名称);
+        const itemId = 规范化物品引用文本(item?.ID);
+        return itemName === target || itemId === target;
+    }) || null;
+};
+
+type 档案引用目标 =
+    | { kind: 'item'; item: any }
+    | { kind: 'character_trait'; npc: NPC结构; entry: any; entryKind: 'talent' | 'background' };
+
+const 取NPC稳定ID = (npc: any): string => (
+    String(npc?.id || npc?.ID || npc?.姓名 || '').trim()
+);
+
+const 查找正文引用角色特质 = (
+    name: string,
+    socialList?: NPC结构[]
+): Extract<档案引用目标, { kind: 'character_trait' }> | null => {
+    const target = 规范化物品引用文本(name);
+    if (!target) return null;
+    const list = Array.isArray(socialList) ? socialList : [];
+    for (const npc of list) {
+        const talents = Array.isArray((npc as any)?.天赋列表) ? (npc as any).天赋列表 : [];
+        const talent = talents.find((item: any) => 规范化物品引用文本(item?.名称) === target);
+        if (talent) return { kind: 'character_trait', npc, entry: talent, entryKind: 'talent' };
+        const background = (npc as any)?.出身背景 && typeof (npc as any).出身背景 === 'object' ? (npc as any).出身背景 : null;
+        if (background && 规范化物品引用文本(background?.名称) === target) {
+            return { kind: 'character_trait', npc, entry: background, entryKind: 'background' };
+        }
+    }
+    return null;
+};
+
+const ItemReferenceButton: React.FC<{
+    name: string;
+    item: any;
+    onOpenInventoryItem?: (itemRef: string) => void;
+}> = ({ name, item, onOpenInventoryItem }) => {
+    const itemName = typeof item?.名称 === 'string' && item.名称.trim() ? item.名称.trim() : name;
+    const itemRef = (typeof item?.ID === 'string' && item.ID.trim()) || itemName;
+    const iconUrl = 获取物品已选图标地址(item);
+    const quality = typeof item?.品质 === 'string' ? item.品质.trim() : '';
+    const type = typeof item?.类型 === 'string' ? item.类型.trim() : '';
+    const count = Number(item?.堆叠数量);
+    const styles = getRarityStyles(quality);
+    const handleClick = () => {
+        onOpenInventoryItem?.(itemRef);
+    };
+
+    return (
+        <span className="group/item-ref relative inline-flex align-baseline">
+            <button
+                type="button"
+                onClick={handleClick}
+                className={`inline-flex max-w-full items-center gap-1 rounded border px-1.5 py-0.5 align-baseline text-[0.95em] font-bold leading-none shadow-sm transition ${styles.border} ${styles.bg} ${getRarityNameClass(quality)} hover:-translate-y-px hover:shadow-[0_0_12px_rgba(212,175,55,0.24)]`}
+                title={`打开背包查看 ${itemName}`}
+            >
+                <span className="opacity-75">《</span>
+                <span className="truncate">{itemName}</span>
+                <span className="opacity-75">》</span>
+            </button>
+            <span className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-50 hidden w-64 max-w-[72vw] -translate-x-1/2 rounded-lg border border-wuxia-gold/35 bg-[#11100d]/95 p-3 text-left text-xs leading-5 text-amber-50 shadow-2xl backdrop-blur group-hover/item-ref:block group-focus-within/item-ref:block">
+                <span className="mb-2 flex items-center gap-3">
+                    <span className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border ${styles.border} ${styles.bg}`}>
+                        {iconUrl ? (
+                            <img src={iconUrl} alt={itemName} className="h-full w-full object-cover" loading="lazy" />
+                        ) : (
+                            <span className={`text-lg font-black ${styles.text}`}>{itemName.slice(0, 1) || '物'}</span>
+                        )}
+                    </span>
+                    <span className="min-w-0">
+                        <span className={`block truncate text-sm font-black ${getRarityNameClass(quality)}`}>{itemName}</span>
+                        <span className="mt-1 block text-[11px] text-gray-300">
+                            {[type || '未知类型', quality || '未知品质', Number.isFinite(count) && count > 1 ? `x${count}` : ''].filter(Boolean).join(' · ')}
+                        </span>
+                    </span>
+                </span>
+                <span className="line-clamp-3 text-gray-200">{typeof item?.描述 === 'string' && item.描述.trim() ? item.描述.trim() : '暂无描述。'}</span>
+            </span>
+        </span>
+    );
+};
+
+const CharacterTraitReferenceButton: React.FC<{
+    name: string;
+    npc: NPC结构;
+    entry: any;
+    entryKind: 'talent' | 'background';
+    onOpenNpcDetail?: (npcId: string) => void;
+}> = ({ name, npc, entry, entryKind, onOpenNpcDetail }) => {
+    const entryName = typeof entry?.名称 === 'string' && entry.名称.trim() ? entry.名称.trim() : name;
+    const npcName = typeof npc?.姓名 === 'string' && npc.姓名.trim() ? npc.姓名.trim() : '未知角色';
+    const npcRef = 取NPC稳定ID(npc) || npcName;
+    const label = entryKind === 'talent' ? '天赋' : '出身';
+    const handleClick = () => {
+        onOpenNpcDetail?.(npcRef);
+    };
+
+    return (
+        <span className="group/trait-ref relative inline-flex align-baseline">
+            <button
+                type="button"
+                onClick={handleClick}
+                className="inline-flex max-w-full items-center gap-1 rounded border border-violet-400/35 bg-violet-500/10 px-1.5 py-0.5 align-baseline text-[0.95em] font-bold leading-none text-violet-100 shadow-sm transition hover:-translate-y-px hover:border-violet-300/70 hover:bg-violet-500/18 hover:shadow-[0_0_12px_rgba(167,139,250,0.24)]"
+                title={`打开 ${npcName} 的${label}档案`}
+            >
+                <span className="opacity-75">《</span>
+                <span className="truncate">{entryName}</span>
+                <span className="opacity-75">》</span>
+            </button>
+            <span className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-50 hidden w-64 max-w-[72vw] -translate-x-1/2 rounded-lg border border-violet-400/35 bg-[#111020]/95 p-3 text-left text-xs leading-5 text-violet-50 shadow-2xl backdrop-blur group-hover/trait-ref:block group-focus-within/trait-ref:block">
+                <span className="mb-2 block">
+                    <span className="block truncate text-sm font-black text-violet-100">{entryName}</span>
+                    <span className="mt-1 block text-[11px] text-gray-300">{npcName} · {label}</span>
+                </span>
+                <span className="block text-gray-200">{typeof entry?.效果 === 'string' && entry.效果.trim() ? entry.效果.trim() : (typeof entry?.描述 === 'string' && entry.描述.trim() ? entry.描述.trim() : '暂无效果描述。')}</span>
+            </span>
+        </span>
+    );
+};
+
+const 渲染含档案引用文本 = (
+    text: string,
+    inventoryItems?: any[],
+    onOpenInventoryItem?: (itemRef: string) => void,
+    socialList?: NPC结构[],
+    onOpenNpcDetail?: (npcId: string) => void
+): React.ReactNode[] => {
+    const source = String(text || '');
+    const parts: React.ReactNode[] = [];
+    const regex = /([《【])([^《》【】\n]{1,32})([》】])/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null = null;
+    while ((match = regex.exec(source)) !== null) {
+        const [full, open, rawName, close] = match;
+        const isPaired = (open === '《' && close === '》') || (open === '【' && close === '】');
+        const item = isPaired ? 查找正文引用物品(rawName, inventoryItems) : null;
+        const trait = item ? null : (isPaired ? 查找正文引用角色特质(rawName, socialList) : null);
+        if (!item && !trait) continue;
+        if (match.index > lastIndex) parts.push(source.slice(lastIndex, match.index));
+        if (item) {
+            parts.push(
+                <ItemReferenceButton
+                    key={`item-ref-${match.index}-${rawName}`}
+                    name={rawName}
+                    item={item}
+                    onOpenInventoryItem={onOpenInventoryItem}
+                />
+            );
+        } else if (trait) {
+            parts.push(
+                <CharacterTraitReferenceButton
+                    key={`trait-ref-${match.index}-${rawName}`}
+                    name={rawName}
+                    npc={trait.npc}
+                    entry={trait.entry}
+                    entryKind={trait.entryKind}
+                    onOpenNpcDetail={onOpenNpcDetail}
+                />
+            );
+        }
+        lastIndex = match.index + full.length;
+    }
+    if (lastIndex < source.length) parts.push(source.slice(lastIndex));
+    return parts.length > 0 ? parts : [source];
+};
+
+export const NarratorRenderer: React.FC<{
+    text: string;
+    visualConfig?: 视觉设置结构;
+    inventoryItems?: any[];
+    onOpenInventoryItem?: (itemRef: string) => void;
+    socialList?: NPC结构[];
+    onOpenNpcDetail?: (npcId: string) => void;
+}> = ({ text, visualConfig, inventoryItems, onOpenInventoryItem, socialList, onOpenNpcDetail }) => {
     const style = 构建区域文字样式(visualConfig, '旁白');
     const displayText = useMemo(() => 格式化旁白断行(text).replace(/\n([”」』》）】])/g, '$1'), [text]);
     return (
         <div className="narrator-renderer w-full my-1 px-8 py-2 bg-white/5 backdrop-blur-sm border-x-4 border-wuxia-gold/55 leading-relaxed relative overflow-hidden rounded-md shadow-lg transition-all duration-300" style={style}>
-            <p className="relative z-10 whitespace-pre-wrap break-normal [word-break:normal] [overflow-wrap:break-word] [line-break:strict] tracking-wide" style={{ fontSize: 'inherit', lineHeight: 'inherit' }}>{displayText}</p>
+            <p className="relative z-10 whitespace-pre-wrap break-normal [word-break:normal] [overflow-wrap:break-word] [line-break:strict] tracking-wide" style={{ fontSize: 'inherit', lineHeight: 'inherit' }}>
+                {渲染含档案引用文本(displayText, inventoryItems, onOpenInventoryItem, socialList, onOpenNpcDetail)}
+            </p>
         </div>
     );
 };
@@ -521,7 +710,9 @@ export const CharacterRenderer: React.FC<{
     socialList?: NPC结构[];
     playerProfile?: 玩家资料;
     onOpenNpcDetail?: (npcId: string) => void;
-}> = ({ sender, text, visualConfig, socialList, playerProfile, onOpenNpcDetail }) => {
+    inventoryItems?: any[];
+    onOpenInventoryItem?: (itemRef: string) => void;
+}> = ({ sender, text, visualConfig, socialList, playerProfile, onOpenNpcDetail, inventoryItems, onOpenInventoryItem }) => {
     use图片资源回源预取(playerProfile?.头像图片URL, socialList);
     const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
     const displayText = (text || '').replace(/\s*\n+\s*/g, ' ').replace(/[ \t]{2,}/g, ' ').trim();
@@ -576,7 +767,9 @@ export const CharacterRenderer: React.FC<{
             <div className="relative flex-1 mt-0.5 sm:mt-1 min-w-0">
                 <div className="mobile-chat-dialogue-bubble relative bg-[#fcfaf7] px-3.5 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.15)] border border-black/10 z-10 min-h-[52px] sm:min-h-[64px] flex items-center group-hover:border-wuxia-gold/40 transition-colors duration-500" data-mobile-chat-bubble="true">
                     <div className="absolute top-3.5 sm:top-4 -left-1.5 w-3 h-3 sm:w-4 sm:h-4 bg-[#fcfaf7] rotate-45 border-l border-b border-black/10 -z-10"></div>
-                    <p className="font-medium relative z-10 tracking-wide whitespace-normal break-words leading-relaxed text-[#1a1a1a]" style={style}>{displayText}</p>
+                    <p className="font-medium relative z-10 tracking-wide whitespace-normal break-words leading-relaxed text-[#1a1a1a]" style={style}>
+                        {渲染含档案引用文本(displayText, inventoryItems, onOpenInventoryItem, socialList, onOpenNpcDetail)}
+                    </p>
                 </div>
             </div>
             {avatarUrl && avatarPreviewOpen && typeof document !== 'undefined' && createPortal(
@@ -758,11 +951,11 @@ export const JudgmentRenderer: React.FC<{ text: string; thoughtBlock?: JudgmentT
     );
 
     return (
-        <div className="judgment-renderer w-full my-4 sm:my-6 px-1.5 sm:px-4 relative group transition-all duration-500 transform hover:scale-[1.01] flex justify-center" data-judgment-card="true" style={style}>
+        <div className="judgment-renderer mx-auto w-full max-w-4xl my-4 sm:my-6 px-1.5 sm:px-3 relative group transition-all duration-500 transform hover:scale-[1.01] flex justify-center" data-judgment-card="true" style={style}>
             {/* 动态背景发光 */}
-            <div className={`absolute inset-0 w-full sm:w-11/12 md:w-5/6 lg:w-3/4 mx-auto rounded-xl ${theme.glow} opacity-40 blur-xl -z-10 transition-opacity group-hover:opacity-70`}></div>
+            <div className={`absolute inset-0 w-full mx-auto rounded-xl ${theme.glow} opacity-40 blur-xl -z-10 transition-opacity group-hover:opacity-70`}></div>
             
-            <div className={`relative z-10 w-full sm:w-11/12 md:w-5/6 lg:w-3/4 border-2 ${theme.border} rounded-xl shadow-2xl overflow-hidden ${theme.bg} backdrop-blur-md`} style={{ isolation: 'isolate', backgroundColor: 'rgba(5,5,5,0.96)' }}>
+            <div className={`relative z-10 w-full border-2 ${theme.border} rounded-xl shadow-2xl overflow-hidden ${theme.bg} backdrop-blur-md`} style={{ isolation: 'isolate', backgroundColor: 'rgba(5,5,5,0.96)' }}>
                 {/* 顶部标题栏 */}
                 <button
                     type="button"

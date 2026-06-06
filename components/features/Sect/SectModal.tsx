@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { 详细门派结构, 职位等级排序 } from '../../../models/sect';
 import type { 环境信息结构 } from '../../../models/environment';
+import { 提取人物头像地址 } from '../../../utils/personAvatar';
 
 interface Props {
     sectData: 详细门派结构;
@@ -182,6 +183,16 @@ const 获取组织显示文案 = (sectData: 详细门派结构) => {
         rankMap: 末日旧职位映射,
         isInfinite: false
     };
+};
+
+const MemberAvatar: React.FC<{ member: any }> = ({ member }) => {
+    const src = 提取人物头像地址(member);
+    const first = String(member?.姓名 || '人').slice(0, 1) || '人';
+    return (
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg border shrink-0 overflow-hidden ${member?.性别 === '女' ? 'border-pink-900 bg-pink-900/10 text-pink-500' : 'border-blue-900 bg-blue-900/10 text-blue-500'}`}>
+            {src ? <img src={src} alt={`${member?.姓名 || '成员'}头像`} className="h-full w-full object-cover object-top" /> : first}
+        </div>
+    );
 };
 
 const 计算下次月俸领取时间 = (sectData: 详细门派结构, env?: 环境信息结构): string => {
@@ -594,9 +605,7 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                                         className="w-full text-left bg-black/40 border border-gray-700 p-4 rounded-lg flex flex-col gap-3 relative overflow-hidden group hover:bg-black/60 hover:border-wuxia-gold/40 transition-colors"
                                     >
                                         <div className="flex items-start gap-4 z-10">
-                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg border shrink-0 ${mem.性别 === '女' ? 'border-pink-900 bg-pink-900/10 text-pink-500' : 'border-blue-900 bg-blue-900/10 text-blue-500'}`}>
-                                                {mem.姓名[0]}
-                                            </div>
+                                            <MemberAvatar member={mem} />
                                             <div className="flex-1">
                                                 <div className="flex justify-between items-center mb-1">
                                                     <span className="text-gray-200 font-bold text-lg">{mem.姓名}</span>

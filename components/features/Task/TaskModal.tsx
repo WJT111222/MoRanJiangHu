@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 任务分类列表, 任务结构, 任务类型 } from '../../../models/task';
 import { IconBackpack, IconTarget, IconCoins, IconScroll } from '../../ui/Icons';
-import { 规范化任务列表自动结算 } from '../../../utils/taskCompat';
+import { 提取任务世界, 规范化任务列表自动结算 } from '../../../utils/taskCompat';
 import type { 题材界面文案 } from '../../../utils/resourceLabels';
 
 interface Props {
@@ -56,6 +56,10 @@ const TaskModal: React.FC<Props> = ({ tasks, onDeleteTask, onClose, playerSect, 
     const currentTaskOriginalIndex = currentTaskEntry?.originalIndex ?? -1;
     const currentObjectives = Array.isArray(currentTask?.目标列表) ? currentTask.目标列表 : [];
     const currentRewards = Array.isArray(currentTask?.奖励描述) ? currentTask.奖励描述 : [];
+    const getLocationDisplay = (task: any) => {
+        if (isInfiniteSect && 文案?.任务地点字段 === '任务世界') return 提取任务世界(task) || '当前任务世界';
+        return task?.发布地点 || '';
+    };
 
     const getStatusTheme = (status: string) => {
         switch(status) {
@@ -176,7 +180,7 @@ const TaskModal: React.FC<Props> = ({ tasks, onDeleteTask, onClose, playerSect, 
                                                 })}
                                             </div>
                                             <div className="text-xs text-gray-500 truncate font-serif">
-                                                <span className="text-gray-400">{task.发布人}</span> <span className="opacity-50 mx-1">·</span> {task.发布地点}
+                                                <span className="text-gray-400">{task.发布人}</span> <span className="opacity-50 mx-1">·</span> {getLocationDisplay(task)}
                                             </div>
                                         </div>
                                         
@@ -228,7 +232,7 @@ const TaskModal: React.FC<Props> = ({ tasks, onDeleteTask, onClose, playerSect, 
                                         </div>
                                         <div className="flex bg-black/40 border border-gray-800 rounded shadow-inner overflow-hidden">
                                             <div className="bg-gray-900/50 px-3 py-1.5 border-r border-gray-800 text-gray-500">{文案?.任务地点字段 || '事发之地'}</div>
-                                            <div className="px-3 py-1.5 text-gray-200">{currentTask.发布地点}</div>
+                                            <div className="px-3 py-1.5 text-gray-200">{getLocationDisplay(currentTask)}</div>
                                         </div>
                                         <div className="flex bg-black/40 border border-gray-800 rounded shadow-inner overflow-hidden">
                                             <div className="bg-gray-900/50 px-3 py-1.5 border-r border-gray-800 text-gray-500">{文案?.任务推荐字段 || '建议修为'}</div>

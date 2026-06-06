@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { 校验主剧情正文最低字数, 获取主剧情正文不足信息, 统计正文字符数 } from '../hooks/useGame/sendWorkflow';
-import { 净化角色对白行, 评估润色长度结果 } from '../hooks/useGame/bodyPolish';
+import { 净化角色对白行, 评估润色长度结果, 解析正文日志文本 } from '../hooks/useGame/bodyPolish';
+import { 清理润色正文输出 } from '../services/ai/storyTasks';
 import { 构建主剧情请求参数, type 主剧情系统上下文 } from '../hooks/useGame/mainStoryRequest';
 import { 构建字数要求提示词 } from '../prompts/runtime/protocolDirectives';
 import { 默认游戏设置 } from '../utils/gameSettings';
@@ -114,6 +115,38 @@ describe('主剧情正文字数校验', () => {
                 text: '她说完往驾座那一处靠了靠，两条穿着黑色短袜的腿晃了两下。\n吴杰涛朝她那一处望了一眼，又把目光收回到前方那条黄土官道上。'
             }
         ]);
+    });
+
+    it('文章优化只提取正文块，不把正文后的记忆规划块混入正文', () => {
+        const cleaned = 清理润色正文输出([
+            '<thinking>检查协议。</thinking>',
+            '<正文>',
+            '【旁白】他的手指在口袋里摸到了两个坚硬的物体。',
+            '</正文>',
+            '<短期记忆>杨培强找到了手机。</短期记忆>',
+            '<行动选项]',
+            '【选项一】查看手机。',
+            '</行动选项]'
+        ].join('\n'));
+
+        expect(cleaned).toBe('【旁白】他的手指在口袋里摸到了两个坚硬的物体。');
+    });
+
+    it('文章优化正文解析会合并被模型硬拆开的物品名续行', () => {
+        const logs = 解析正文日志文本([
+            '【旁白】他的手指在口袋里摸到了两个坚硬的物体。',
+            '一把是他平日里习惯随身携带的',
+            '【随身短刃】',
+            '，刀柄的防滑纹路让他感到一阵安心；',
+            '另一件则是他的',
+            '【智能手机】',
+            '他掏出手机按下电源键，屏幕亮起。'
+        ].join('\n'));
+
+        expect(logs).toEqual([{
+            sender: '旁白',
+            text: '他的手指在口袋里摸到了两个坚硬的物体。\n一把是他平日里习惯随身携带的【随身短刃】，刀柄的防滑纹路让他感到一阵安心；\n另一件则是他的【智能手机】他掏出手机按下电源键，屏幕亮起。'
+        }]);
     });
 
     it('主剧情有序消息会把动态最低字数要求放到最终任务前', () => {

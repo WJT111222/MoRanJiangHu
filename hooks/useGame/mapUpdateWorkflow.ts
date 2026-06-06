@@ -273,7 +273,7 @@ export const 解析地图重生成节点 = (rawText: string): any[] => {
 
 export const 构建地图层级替换结果 = (
     rawNodes: any[],
-    _currentWorld?: any
+    currentWorld?: any
 ): any[] => {
     const normalizedNodes = (Array.isArray(rawNodes) ? rawNodes : [])
         .map((node) => ({
@@ -290,16 +290,34 @@ export const 构建地图层级替换结果 = (
         normalizedNodes.unshift({ 名称: '诸天万界', 层级: '寰宇', 父级ID: '', 描述: '诸天万界交汇之地', 控制势力: '', 势力影响: '', 势力标签: [] });
     }
 
-    let seq = 0;
+    const existingLayers = Array.isArray(currentWorld?.地图层级) ? currentWorld.地图层级 : [];
+    const oldNameToId = new Map<string, string>();
+    const usedIds = new Set<string>();
+    existingLayers.forEach((layer: any) => {
+        const name = 取文本(layer?.名称);
+        const id = 取文本(layer?.ID);
+        if (name && id) oldNameToId.set(name, id);
+        if (id) usedIds.add(id);
+    });
+    let seq = existingLayers
+        .map((layer: any) => {
+            const match = 取文本(layer?.ID).match(/^DT-(\d+)$/i);
+            return match ? Number(match[1]) : 0;
+        })
+        .reduce((max, value) => Math.max(max, value), 0);
     const nextId = (): string => {
-        seq += 1;
-        return `DT-${String(seq).padStart(3, '0')}`;
+        let id = '';
+        do {
+            seq += 1;
+            id = `DT-${String(seq).padStart(3, '0')}`;
+        } while (usedIds.has(id));
+        usedIds.add(id);
+        return id;
     };
     const nameToId = new Map<string, string>();
     normalizedNodes.forEach((node) => {
-        if (!nameToId.has(node.名称)) nameToId.set(node.名称, nextId());
+        if (!nameToId.has(node.名称)) nameToId.set(node.名称, oldNameToId.get(node.名称) || nextId());
     });
-    const oldNameToId = new Map<string, string>();
 
     return normalizedNodes.map((node) => ({
         ID: nameToId.get(node.名称) || nextId(),
@@ -375,6 +393,21 @@ export const 解析地图自动更新命令 = (rawText: string, currentWorld?: a
         }
         result.push({ action, key, value } as TavernCommand);
     });
+    if (result.length === 0) {
+        try {
+            const rawNodes = 解析地图重生成节点(rawText);
+            const newLayers = 构建地图层级替换结果(rawNodes, currentWorld);
+            if (newLayers.length > 0) {
+                return [{
+                    action: 'set',
+                    key: '世界.地图层级',
+                    value: newLayers
+                }];
+            }
+        } catch {
+            // 非 JSON 地点树时保持命令解析结果为空。
+        }
+    }
     return result;
 };
 
@@ -442,11 +475,21 @@ export const 生成地图更新 = async (
     }
 
     const commands = 解析地图自动更新命令(rawText, world);
+    const fullTreeSyncCount = commands.length === 1
+        && commands[0]?.action === 'set'
+        && commands[0]?.key === '世界.地图层级'
+        && Array.isArray(commands[0]?.value)
+        ? commands[0].value.length
+        : 0;
     return {
         ok: true,
         phase: commands.length > 0 ? 'done' : 'skipped',
         commands,
         rawText,
-        statusText: commands.length > 0 ? `地图更新完成：新增 ${commands.length} 条地图命令` : '地图更新检查完成：本回合无需更新'
+        statusText: commands.length > 0
+            ? (fullTreeSyncCount > 0
+                ? `地图更新完成：已同步 ${fullTreeSyncCount} 个地点节点`
+                : `地图更新完成：新增 ${commands.length} 条地图命令`)
+            : '地图更新检查完成：本回合无需更新'
     };
 };

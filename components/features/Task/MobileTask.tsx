@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 任务分类列表, 任务结构, 任务类型 } from '../../../models/task';
-import { 规范化任务列表自动结算 } from '../../../utils/taskCompat';
+import { 提取任务世界, 规范化任务列表自动结算 } from '../../../utils/taskCompat';
 import type { 题材界面文案 } from '../../../utils/resourceLabels';
 
 interface Props {
@@ -50,6 +50,10 @@ const MobileTask: React.FC<Props> = ({ tasks, onDeleteTask, onClose, playerSect,
     const currentTask = currentTaskEntry?.task;
     const currentTaskOriginalIndex = currentTaskEntry?.originalIndex ?? -1;
     const currentObjectives = Array.isArray(currentTask?.目标列表) ? currentTask.目标列表 : [];
+    const getLocationDisplay = (task: any) => {
+        if (isInfiniteSect && 文案?.任务地点字段 === '任务世界') return 提取任务世界(task) || '当前任务世界';
+        return task?.发布地点 || '';
+    };
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -112,7 +116,7 @@ const MobileTask: React.FC<Props> = ({ tasks, onDeleteTask, onClose, playerSect,
                             <div className="flex items-start justify-between gap-3">
                                 <div>
                                     <div className="text-lg text-wuxia-gold font-serif font-bold">{currentTask.标题}</div>
-                                    <div className="text-[10px] text-gray-500 mt-1">{文案?.任务发布字段 || '发布人'} {currentTask.发布人} · {currentTask.发布地点}</div>
+                                    <div className="text-[10px] text-gray-500 mt-1">{文案?.任务发布字段 || '发布人'} {currentTask.发布人} · {getLocationDisplay(currentTask)}</div>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     {onDeleteTask && currentTaskOriginalIndex >= 0 && (
@@ -200,7 +204,7 @@ const MobileTask: React.FC<Props> = ({ tasks, onDeleteTask, onClose, playerSect,
                                             </span>
                                         ))}
                                         <span className="text-[10px] text-gray-500 truncate">
-                                            {task.发布人} · {task.发布地点}
+                                            {task.发布人} · {getLocationDisplay(task)}
                                         </span>
                                     </div>
                                 </button>

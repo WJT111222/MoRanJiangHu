@@ -89,8 +89,11 @@ const MobileSocial: React.FC<Props> = ({
             return socialList.indexOf(a) - socialList.indexOf(b);
         })
     ), [socialList]);
+    const 获取NPC稳定ID = React.useCallback((npc: any, index = 0): string => (
+        String(npc?.id || npc?.ID || npc?.姓名 || `npc-${index}`).trim()
+    ), []);
     const [selectedId, setSelectedId] = useState<string | null>(
-        sortedSocialList.length > 0 ? sortedSocialList[0].id : null
+        sortedSocialList.length > 0 ? 获取NPC稳定ID(sortedSocialList[0], 0) : null
     );
     const searchInputRef = React.useRef<HTMLInputElement | null>(null);
     const [searchKeyword, setSearchKeyword] = useState('');
@@ -178,16 +181,17 @@ const MobileSocial: React.FC<Props> = ({
             setSelectedId(null);
             return;
         }
-        if (!selectedId || !filteredSocialList.some(item => item.id === selectedId)) {
-            setSelectedId(filteredSocialList[0].id);
+        if (!selectedId || !filteredSocialList.some((item, index) => 获取NPC稳定ID(item, index) === selectedId)) {
+            setSelectedId(获取NPC稳定ID(filteredSocialList[0], 0));
         }
-    }, [filteredSocialList, selectedId]);
+    }, [filteredSocialList, selectedId, 获取NPC稳定ID]);
 
     useEffect(() => {
         if (!selectedNpcId) return;
-        if (!sortedSocialList.some(item => item.id === selectedNpcId)) return;
-        setSelectedId(selectedNpcId);
-    }, [selectedNpcId, sortedSocialList]);
+        const matched = sortedSocialList.find((item, index) => 获取NPC稳定ID(item, index) === selectedNpcId || item?.姓名 === selectedNpcId);
+        if (!matched) return;
+        setSelectedId(获取NPC稳定ID(matched, sortedSocialList.indexOf(matched)));
+    }, [selectedNpcId, sortedSocialList, 获取NPC稳定ID]);
 
     useEffect(() => {
         // 关闭或切换角色时折叠背景
@@ -196,7 +200,7 @@ const MobileSocial: React.FC<Props> = ({
         setImageViewerZoom(1);
     }, [selectedId]);
 
-    const currentNPC = sortedSocialList.find(n => n.id === selectedId);
+    const currentNPC = sortedSocialList.find((n, index) => 获取NPC稳定ID(n, index) === selectedId || n.姓名 === selectedId);
     const adjacentNPCs = React.useMemo(() => {
         if (!currentNPC) return [] as NPC结构[];
         const currentIndex = sortedSocialList.findIndex((npc) => npc.id === currentNPC.id);
@@ -598,6 +602,24 @@ const MobileSocial: React.FC<Props> = ({
         : '暂无记录';
     const 当前称呼文案 = currentNPC ? (读取对主角称呼(currentNPC) || '暂无记录') : '暂无记录';
     const 当前生日文案 = currentNPC ? (读取生日(currentNPC) || '暂无记录') : '暂无记录';
+    const 读取数值 = (source: any, key: string, fallback = 0): number => {
+        const parsed = Number(source?.[key]);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    };
+    const NPC六维属性 = currentNPC ? [
+        ['力', '力量', 读取数值(currentNPC, '力量')],
+        ['敏', '敏捷', 读取数值(currentNPC, '敏捷')],
+        ['体', '体质', 读取数值(currentNPC, '体质')],
+        ['根', '根骨', 读取数值(currentNPC, '根骨')],
+        ['悟', '悟性', 读取数值(currentNPC, '悟性')],
+        ['福', '福源', 读取数值(currentNPC, '福源')]
+    ] : [];
+    const NPC天赋列表 = Array.isArray((currentNPC as any)?.天赋列表)
+        ? (currentNPC as any).天赋列表.filter((item: any) => item?.名称)
+        : [];
+    const NPC出身背景 = (currentNPC as any)?.出身背景 && typeof (currentNPC as any).出身背景 === 'object'
+        ? (currentNPC as any).出身背景
+        : null;
     const 当前主题 = typeof document !== 'undefined' ? document.documentElement.dataset.theme || '' : '';
     const 当前是白天主题 = 当前主题 === 'day';
     const 右侧信息卡样式: React.CSSProperties = {
@@ -695,7 +717,8 @@ const MobileSocial: React.FC<Props> = ({
                                 </div>
                             </div>
                             <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory">
-                                {filteredSocialList.map(npc => {
+                                {filteredSocialList.map((npc, rosterIndex) => {
+                                    const npcStableId = 获取NPC稳定ID(npc, rosterIndex);
                                     const npcDead = NPC是否死亡(npc);
                                     const rosterMainImage = 提取头像图片地址(npc) || 提取立绘图片地址(npc);
                                     return (
@@ -705,18 +728,18 @@ const MobileSocial: React.FC<Props> = ({
                                        rounded-[1.45rem] 控整卡圆角
                                        px-1.5 py-1.5 控整卡内边距 */
                                     <button
-                                        key={npc.id}
+                                        key={npcStableId}
                                         onClick={() => {
-                                            setSelectedId(npc.id);
-                                            onSelectedNpcIdChange?.(npc.id);
+                                            setSelectedId(npcStableId);
+                                            onSelectedNpcIdChange?.(npcStableId);
                                         }}
                                         className={`w-[15rem] h-[7rem] shrink-0 snap-start rounded-[1.45rem] border px-1.5 py-1.5 transition-all relative group overflow-hidden text-left ${
-                                            selectedId === npc.id 
+                                            selectedId === npcStableId
                                             ? 'border-wuxia-gold/40 bg-[linear-gradient(135deg,rgba(212,175,55,0.16),rgba(0,0,0,0.22)_45%,rgba(255,255,255,0.02))] shadow-[0_0_18px_rgba(212,175,55,0.12)]'
                                             : 'border-white/10 bg-white/[0.03] active:bg-white/[0.05]'
                                         }`}
                                     >
-                                        {selectedId === npc.id && (
+                                        {selectedId === npcStableId && (
                                             <div className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-wuxia-gold shadow-[0_0_10px_rgba(212,175,55,0.8)] z-10"></div>
                                         )}
                                         <div className="flex h-full items-stretch gap-2">
@@ -1196,6 +1219,42 @@ const MobileSocial: React.FC<Props> = ({
                                     <p className="text-gray-300 font-serif leading-relaxed text-xs relative z-10">
                                         {currentNPC.简介 || "暂无详细生平记录。"}
                                     </p>
+                                </div>
+
+                                <div className="bg-black/40 border border-sky-900/30 rounded-xl p-3.5 shadow-lg">
+                                    <h4 className="text-sky-300/90 font-serif font-bold mb-3 uppercase tracking-[0.18em] text-xs flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rotate-45 bg-sky-400/70"></span>
+                                        基础六维与天赋
+                                    </h4>
+                                    <div className="mb-3 grid grid-cols-3 gap-1.5">
+                                        {NPC六维属性.map(([shortLabel, label, value]) => (
+                                            <div key={label} className="rounded-lg border border-white/10 bg-black/25 px-2 py-1.5">
+                                                <div className="text-[9px] tracking-[0.14em] text-gray-500">{shortLabel}</div>
+                                                <div className="mt-0.5 flex items-baseline justify-between gap-1">
+                                                    <span className="text-[9px] text-gray-400">{label}</span>
+                                                    <span className="font-mono text-xs text-gray-100">{value}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mb-3 rounded border border-amber-500/20 bg-amber-950/10 p-2">
+                                        <div className="mb-1 text-[9px] tracking-[0.18em] text-amber-300/80">出身背景</div>
+                                        <div className="text-xs font-serif text-amber-100">{NPC出身背景?.名称 || '暂无记录'}</div>
+                                        <div className="mt-1 text-[10px] leading-5 text-gray-300">{NPC出身背景?.效果 || NPC出身背景?.描述 || '尚未记录背景效果。'}</div>
+                                    </div>
+                                    <div className="mb-3 rounded border border-violet-500/20 bg-violet-950/10 p-2">
+                                        <div className="mb-1 text-[9px] tracking-[0.18em] text-violet-300/80">天赋背景</div>
+                                        {NPC天赋列表.length > 0 ? (
+                                            <div className="space-y-1.5">
+                                                {NPC天赋列表.map((talent: any, idx: number) => (
+                                                    <div key={`${talent.名称}-${idx}`} className="rounded border border-white/10 bg-black/25 px-2 py-1">
+                                                        <div className="text-[10px] font-bold text-violet-100">{talent.名称}</div>
+                                                        <div className="mt-0.5 text-[9px] leading-4 text-gray-300">{talent.效果 || talent.描述 || '待记录'}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : <span className="text-[10px] text-gray-600">暂无天赋记录</span>}
+                                    </div>
                                 </div>
 
                                 <div className="bg-black/40 border border-sky-900/30 rounded-xl p-3.5 shadow-lg">

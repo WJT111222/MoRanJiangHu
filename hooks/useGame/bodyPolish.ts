@@ -117,7 +117,28 @@ const 解析判定正文行 = (line: string): { sender: string; text: string; tr
     };
 };
 
-const 解析正文日志文本 = (bodyText: string): 正文日志结构 => {
+const 是否应合并硬换行片段 = (previousText: string, nextLine: string): boolean => {
+    const previous = (previousText || '').trim();
+    const next = (nextLine || '').trim();
+    if (!previous || !next) return false;
+    if (/^[，,。！？!?；;：:、）)\]】]/.test(next)) return true;
+    if (/【[^】\n]{1,24}】[，,。！？!?；;：:]?$/.test(next)) return true;
+    if (/(?:摸到了两个坚硬的物体|平日里习惯随身携带的|另一件则是他的|另一件是他的|一把是他|一件是他|则是他的)$/.test(previous)) return true;
+    if (!/[。！？!?；;”"」』）)]$/.test(previous) && /^[\u4e00-\u9fa5A-Za-z0-9【《“"「『]/.test(next) && next.length <= 18) return true;
+    return false;
+};
+
+const 合并正文续行 = (previousText: string, nextLine: string): string => {
+    const previous = (previousText || '').trim();
+    const next = (nextLine || '').trim();
+    if (!previous) return next;
+    if (!next) return previous;
+    return 是否应合并硬换行片段(previous, next)
+        ? `${previous}${next}`.trim()
+        : `${previous}\n${next}`.trim();
+};
+
+export const 解析正文日志文本 = (bodyText: string): 正文日志结构 => {
     const source = (bodyText || '').trim();
     if (!source) return [];
     const lines = source.replace(/\r\n/g, '\n').split('\n');
@@ -127,7 +148,7 @@ const 解析正文日志文本 = (bodyText: string): 正文日志结构 => {
         const text = (value || '').trim();
         if (!text) return;
         if (current?.sender === '旁白') {
-            current.text = `${current.text}\n${text}`.trim();
+            current.text = 合并正文续行(current.text, text);
             return;
         }
         current = { sender: '旁白', text };
@@ -164,7 +185,7 @@ const 解析正文日志文本 = (bodyText: string): 正文日志结构 => {
             continue;
         }
         if (current) {
-            current.text = `${current.text}\n${line}`.trim();
+            current.text = 合并正文续行(current.text, line);
             continue;
         }
         写入旁白行(line);
@@ -335,7 +356,9 @@ export const 执行正文润色 = async (
         '4) 系统只会提取 <正文> 内容用于最终渲染。',
         '5) 角色对白必须是口语台词，使用【角色名】独占一行；旁白、动作、心理、第三人称叙述、设定说明绝不能写进【角色名】行。',
         '6) “随着她/随着他/如果/此时/这时/然后/接着”等叙事短语不是人物名，禁止作为【角色名】标签。',
-        '7) 原文已有的【角色名】对白条数不得减少；缺标签对白要补正确角色名，不得把角色对白合并成【旁白】。'
+        '7) 原文已有的【角色名】对白条数不得减少；缺标签对白要补正确角色名，不得把角色对白合并成【旁白】。',
+        '8) 物品、角色天赋、出身背景等可查看档案引用统一使用《名称》，例如《随身短刃》《智能手机》《安全屋直觉》；禁止写成【名称】，因为【...】只用于旁白、角色名和判定标签。',
+        '9) 《名称》必须保留在同一句内，不得把书名号或名称单独拆成新行。'
     ].join('\n');
     const polishSceneContext = (() => {
         const currentEnv = 规范化环境信息(deps.环境);
@@ -494,7 +517,8 @@ export const 执行正文润色 = async (
             polishedResult = dialogueRetryResult;
             polishedLogs = dialogueRetryLogs;
         } else {
-            return { response: baseResponse, applied: false, error: '文章优化丢失了角色对白标签，已保留原文。', rawText: polishedResult.rawText };
+            polishedResult = dialogueRetryResult.rawText ? dialogueRetryResult : polishedResult;
+            return { response: baseResponse, applied: false, error: '文章优化重试后仍丢失角色对白标签，已保留原文。', rawText: polishedResult.rawText };
         }
     }
     const sourceLength = 统计润色正文字符数(sourceLogs);

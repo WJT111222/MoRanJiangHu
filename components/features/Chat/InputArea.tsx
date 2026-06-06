@@ -490,6 +490,22 @@ const InputArea: React.FC<Props> = ({
         }
     };
 
+    const 复制队列文本 = async (text: string, label: string) => {
+        const content = (text || '').trim();
+        if (!content) return;
+        try {
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(content);
+                return;
+            }
+        } catch {
+            // 回退到 prompt，兼容不允许剪贴板写入的 WebView。
+        }
+        if (typeof window !== 'undefined') {
+            window.prompt(`请手动复制${label}：`, content);
+        }
+    };
+
     const handleApplyParseRepair = async (mode: 'auto' | 'manual') => {
         if (!onRecoverParseErrorRaw) {
             setParseRepairModal(prev => ({ ...prev, error: '当前版本未接入解析失败恢复能力。' }));
@@ -803,7 +819,8 @@ const InputArea: React.FC<Props> = ({
                                 <div className="grid grid-cols-1 gap-2">
                                     {pipelineStages.map((stage, index) => {
                                         const phase = stage.progress?.phase;
-                                        const rawText = 截断队列展示文本(stage.progress?.rawText, QUEUE_RAW_RENDER_LIMIT, `${stage.label}原始回复`);
+                                        const fullRawText = stage.progress?.rawText || '';
+                                        const rawText = 截断队列展示文本(fullRawText, QUEUE_RAW_RENDER_LIMIT, `${stage.label}原始回复`);
                                         const progressText = 截断队列展示文本(stage.progress?.text, QUEUE_TEXT_RENDER_LIMIT, `${stage.label}状态文本`);
                                         const originalCommandTexts = Array.isArray((stage.progress as { commandTexts?: string[] } | null)?.commandTexts)
                                             ? ((stage.progress as { commandTexts?: string[] }).commandTexts || [])
@@ -854,6 +871,15 @@ const InputArea: React.FC<Props> = ({
                                                                 className="text-xs px-2 py-1 border border-gray-700 text-gray-300 rounded hover:border-wuxia-gold/40 hover:text-white"
                                                             >
                                                                 {commandExpanded ? '收起命令' : '查看命令'}
+                                                            </button>
+                                                        )}
+                                                        {rawText && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => { void 复制队列文本(fullRawText, `${stage.label}原始回复`); }}
+                                                                className="text-xs px-2 py-1 border border-emerald-700/70 text-emerald-200 rounded hover:border-emerald-400/70 hover:text-white"
+                                                            >
+                                                                复制原始回复
                                                             </button>
                                                         )}
                                                         {rawText && (
