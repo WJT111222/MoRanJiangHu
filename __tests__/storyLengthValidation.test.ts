@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { 校验主剧情正文最低字数, 获取主剧情正文不足信息, 统计正文字符数 } from '../hooks/useGame/sendWorkflow';
-import { 净化角色对白行, 评估润色长度结果, 解析正文日志文本 } from '../hooks/useGame/bodyPolish';
+import { 净化角色对白行, 评估润色长度结果, 检测文章优化协议确认污染, 解析正文日志文本 } from '../hooks/useGame/bodyPolish';
 import { 清理润色正文输出 } from '../services/ai/storyTasks';
 import { 构建主剧情请求参数, type 主剧情系统上下文 } from '../hooks/useGame/mainStoryRequest';
 import { 构建字数要求提示词 } from '../prompts/runtime/protocolDirectives';
@@ -147,6 +147,32 @@ describe('主剧情正文字数校验', () => {
             sender: '旁白',
             text: '他的手指在口袋里摸到了两个坚硬的物体。\n一把是他平日里习惯随身携带的【随身短刃】，刀柄的防滑纹路让他感到一阵安心；\n另一件则是他的【智能手机】他掏出手机按下电源键，屏幕亮起。'
         }]);
+    });
+
+    it('文章优化会识别协议确认句复读污染', () => {
+        const polluted = [
+            '好的，将以<正文></正文>包裹正文，并且本次会在<短期记忆>、<变量规划>、<剧情规划>等回合标签之后输出<行动选项></行动选项>，<正文>前以<thinking>作为开头进行思考并以</thinking>闭合：',
+            '好的，将以<正文></正文>包裹正文，并且本次会在<短期记忆>、<变量规划>、<剧情规划>等回合标签之后输出<行动选项></行动选项>，<正文>前以<thinking>作为开头进行思考并以</thinking>闭合：'
+        ].join('\n');
+
+        expect(检测文章优化协议确认污染(polluted)).toMatchObject({
+            polluted: true,
+            repeats: 2
+        });
+    });
+
+    it('文章优化不会把正常正文里的协议标签误判为复读污染', () => {
+        const normal = [
+            '<thinking>检查原文事实与对白。</thinking>',
+            '<正文>',
+            '【旁白】主神光球在头顶亮起，冷白色的光压住了房间里浮动的尘埃。',
+            '【林岚】先别兑换，确认任务世界和限制条件。',
+            '</正文>'
+        ].join('\n');
+
+        expect(检测文章优化协议确认污染(normal)).toMatchObject({
+            polluted: false
+        });
     });
 
     it('主剧情有序消息会把动态最低字数要求放到最终任务前', () => {

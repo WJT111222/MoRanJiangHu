@@ -9,7 +9,7 @@ import { 提取剧情回忆标签 } from './memoryRecall';
 import { 执行剧情回忆检索 } from './recallWorkflow';
 import { 构建主剧情请求参数, type 主剧情系统上下文 } from './mainStoryRequest';
 import { 环境时间转标准串 } from './timeUtils';
-import { 构建COT伪装提示词 } from './promptRuntime';
+import { 检测文章优化协议确认污染 } from './bodyPolish';
 import { 分析世界到期触发 } from './worldEvolutionUtils';
 import { 按世界演变分流净化响应 } from './storyResponseGuards';
 import type { 响应命令处理状态 } from './responseCommandProcessor';
@@ -1224,8 +1224,16 @@ export const 执行主剧情发送工作流 = async (
                 activeApi,
                 controller.signal,
                 '',
-                runtimeGameConfig.启用COT伪装注入 !== false ? 构建COT伪装提示词(runtimeGameConfig) : ''
+                ''
             );
+            const expandedPollution = 检测文章优化协议确认污染(expanded.rawText || expanded.bodyText || '');
+            if (expandedPollution.polluted) {
+                throw new textAIService.StoryResponseParseError(
+                    `${expandedPollution.reason}已打断本次正文补足，请重试。`,
+                    expanded.rawText || rawAiText,
+                    expandedPollution.reason
+                );
+            }
             const expandedResponse = textAIService.parseStoryRawText(
                 `<正文>\n${expanded.bodyText}\n</正文>\n<短期记忆>无</短期记忆>`,
                 { validateDialogueFormat: true, enableTagRepair: true }

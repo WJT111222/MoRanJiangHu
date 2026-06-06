@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { 标准化功法列表, 规范化社交列表 } from '../hooks/useGame/stateTransforms';
 import { 执行正文润色 } from '../hooks/useGame/bodyPolish';
 import * as textAIService from '../services/ai/text';
@@ -111,6 +111,10 @@ describe('NPC 指令字段保留', () => {
 });
 
 describe('正文优化重试', () => {
+    beforeEach(() => {
+        vi.mocked(textAIService.generatePolishedBody).mockReset();
+    });
+
     it('在第一次扩写仍偏短时会自动再试一次并接受达标结果', async () => {
         vi.mocked(textAIService.generatePolishedBody)
             .mockResolvedValueOnce({
@@ -150,6 +154,54 @@ describe('正文优化重试', () => {
         expect(vi.mocked(textAIService.generatePolishedBody)).toHaveBeenCalledTimes(2);
         expect(result.applied).toBe(true);
         expect(result.response.body_optimized).toBe(true);
+        expect(result.rawText).toBe('second');
+    });
+
+    it('发现协议确认句复读污染时会打断并自动重试一次', async () => {
+        const pollutedRaw = [
+            '好的，将以<正文></正文>包裹正文，并且本次会在<短期记忆>、<变量规划>、<剧情规划>等回合标签之后输出<行动选项></行动选项>，<正文>前以<thinking>作为开头进行思考并以</thinking>闭合：',
+            '好的，将以<正文></正文>包裹正文，并且本次会在<短期记忆>、<变量规划>、<剧情规划>等回合标签之后输出<行动选项></行动选项>，<正文>前以<thinking>作为开头进行思考并以</thinking>闭合：'
+        ].join('\n');
+
+        vi.mocked(textAIService.generatePolishedBody)
+            .mockResolvedValueOnce({
+                bodyText: '',
+                rawText: pollutedRaw
+            } as any)
+            .mockResolvedValueOnce({
+                bodyText: '这是一段修复后的正文。'.repeat(12),
+                rawText: 'second'
+            } as any);
+
+        const result = await 执行正文润色(
+            { logs: [{ sender: '旁白', text: '原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文' }] } as any,
+            '<正文>原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文</正文>',
+            {
+                apiConfig: {
+                    功能模型占位: {
+                        文章优化独立模型开关: true,
+                        文章优化使用模型: 'test-model',
+                        文章优化API地址: 'https://example.com',
+                        文章优化API密钥: 'test-key'
+                    }
+                },
+                prompts: [],
+                gameConfig: {},
+                环境: {} as any,
+                剧情: {} as any,
+                社交: [],
+                战斗: {} as any,
+                角色: {} as any,
+                文章优化已开启: true,
+                深拷贝: (value: any) => JSON.parse(JSON.stringify(value))
+            } as any,
+            { minLength: 80 }
+        );
+
+        expect(vi.mocked(textAIService.generatePolishedBody)).toHaveBeenCalledTimes(2);
+        expect(vi.mocked(textAIService.generatePolishedBody).mock.calls[0][5]).toBe('');
+        expect(result.applied).toBe(true);
+        expect(result.response.logs?.[0]?.text).toContain('修复后的正文');
         expect(result.rawText).toBe('second');
     });
 });

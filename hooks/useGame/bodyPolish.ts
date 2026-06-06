@@ -14,7 +14,6 @@ import { 计算正文字数容错字数, 正文字数差距在容错内 } from '
 import { 获取繁体输出指令 } from '../../utils/traditionalChinese';
 import { 默认文章优化提示词 } from '../../prompts/runtime/defaults';
 import { 核心_文章优化思维链 } from '../../prompts/core/cotPolish';
-import { 构建COT伪装提示词 } from './promptRuntime';
 import { 环境时间转标准串 } from './timeUtils';
 import { 规范化环境信息, 构建完整地点文本 } from './stateTransforms';
 import { 规范化对白日志 } from '../../utils/dialogueLogNormalizer';
@@ -71,6 +70,64 @@ export const 评估润色长度结果 = (params: {
         };
     }
     return { ok: true };
+};
+
+const 文章优化协议确认句正则 = /好的[，,]?\s*将以\s*<\s*正文\s*>\s*<\s*\/\s*正文\s*>\s*包裹正文/gi;
+const 文章优化协议标签说明正则 = /<\s*(?:短期记忆|变量规划|剧情规划|行动选项|thinking|think|正文)\s*>|<\s*\/\s*(?:短期记忆|变量规划|剧情规划|行动选项|thinking|think|正文)\s*>/gi;
+
+const 规范化污染检测文本 = (text: string): string => (
+    (typeof text === 'string' ? text : '')
+        .replace(/\s+/g, '')
+        .trim()
+);
+
+export const 检测文章优化协议确认污染 = (text: string): { polluted: boolean; reason: string; repeats: number } => {
+    const source = typeof text === 'string' ? text : '';
+    const compact = 规范化污染检测文本(source);
+    if (!compact) return { polluted: false, reason: '', repeats: 0 };
+
+    const repeats = (compact.match(文章优化协议确认句正则) || []).length;
+    const hasBodyOpen = /<\s*正文\s*>/i.test(source);
+    const hasBodyClose = /<\s*\/\s*正文\s*>/i.test(source);
+    const visibleBody = 提取正文标签内容(source);
+    const visibleBodyLength = visibleBody.replace(/\s+/g, '').length;
+    const protocolTagMentions = (source.match(文章优化协议标签说明正则) || []).length;
+
+    if (repeats >= 2) {
+        return {
+            polluted: true,
+            reason: `文章优化模型反复输出协议确认句 ${repeats} 次，疑似陷入复读循环。`,
+            repeats
+        };
+    }
+
+    if (repeats >= 1 && (!hasBodyOpen || !hasBodyClose || visibleBodyLength < 20) && protocolTagMentions >= 3) {
+        return {
+            polluted: true,
+            reason: '文章优化模型输出了协议确认说明，但没有给出可用正文。',
+            repeats
+        };
+    }
+
+    return { polluted: false, reason: '', repeats };
+};
+
+const 构建文章优化流式守卫 = (
+    onDelta?: (delta: string, accumulated: string) => void
+): ((delta: string, accumulated: string) => void) | undefined => {
+    if (typeof onDelta !== 'function') return undefined;
+    return (delta: string, accumulated: string) => {
+        onDelta(delta, accumulated);
+        const pollution = 检测文章优化协议确认污染(accumulated);
+        if (pollution.polluted) {
+            throw new Error(`${pollution.reason} 已中断本次正文优化并准备重试。`);
+        }
+    };
+};
+
+const 是否文章优化协议污染错误 = (error: any): boolean => {
+    const message = String(error?.message || error || '');
+    return /协议确认|复读循环|确认说明|禁止协议确认复读/.test(message);
 };
 
 const 剥离首尾思考区段 = (text: string): string => {
@@ -463,9 +520,8 @@ export const 执行正文润色 = async (
     const polishExtraPrompt = typeof runtimeGameConfig.额外提示词 === 'string'
         ? runtimeGameConfig.额外提示词.trim()
         : '';
-    const polishCotPseudoPrompt = runtimeGameConfig.启用COT伪装注入 !== false
-        ? 构建COT伪装提示词(runtimeGameConfig)
-        : '';
+    const polishCotPseudoPrompt = '';
+    const guardedOnDelta = 构建文章优化流式守卫(deps.onDelta);
 
     const sourceLogs = Array.isArray(baseResponse.body_original_logs) && baseResponse.body_original_logs.length > 0
         ? baseResponse.body_original_logs
@@ -476,15 +532,35 @@ export const 执行正文润色 = async (
         return { response: baseResponse, applied: false, error: '正文为空，无法优化。' };
     }
 
-    let polishedResult = await textAIService.generatePolishedBody(
-        sourceBody,
-        effectivePolishPrompt,
-        polishApi,
-        options?.signal,
-        polishExtraPrompt,
-        polishCotPseudoPrompt,
-        deps.onDelta ? { stream: true, onDelta: deps.onDelta } : undefined
-    );
+    const 执行一次文章优化 = async (prompt: string, retryHint = '') => {
+        const result = await textAIService.generatePolishedBody(
+            sourceBody,
+            retryHint ? `${prompt}\n\n${retryHint}` : prompt,
+            polishApi,
+            options?.signal,
+            polishExtraPrompt,
+            polishCotPseudoPrompt,
+            guardedOnDelta ? { stream: true, onDelta: guardedOnDelta } : undefined
+        );
+        const pollution = 检测文章优化协议确认污染(result.rawText || result.bodyText || '');
+        if (pollution.polluted) {
+            throw new Error(pollution.reason);
+        }
+        return result;
+    };
+
+    let polishedResult;
+    try {
+        polishedResult = await 执行一次文章优化(effectivePolishPrompt);
+    } catch (error) {
+        if (options?.signal?.aborted || !是否文章优化协议污染错误(error)) throw error;
+        polishedResult = await 执行一次文章优化(effectivePolishPrompt, [
+            '【自动重试：禁止协议确认复读】',
+            '上一版输出陷入“好的，将以 <正文> 标签输出”的确认句复读，没有给出可用正文。',
+            '这次禁止输出“好的，将以……”等确认、解释或协议说明；直接输出 <thinking>...</thinking><正文>...</正文>。',
+            '如果你准备确认格式，不要写确认文字，直接把润色后的正文写入 <正文>。'
+        ].join('\n'));
+    }
     let polishedLogs = 净化角色对白行(规范化对白日志(限制润色结果判定数量(
         sourceLogs,
         解析正文日志文本(polishedResult.bodyText)
@@ -500,15 +576,10 @@ export const 执行正文润色 = async (
             `原文包含 ${sourceDialogueCount} 条角色对白（格式为 "【角色名】：内容" 或 "「角色名」：内容"），优化后必须完整保留所有对白标签，不能丢失、合并或改写任何一条。`,
             '对白标签是独立变量系统识别角色互动的关键锚点，丢失会导致角色关系和情绪状态无法同步。'
         ].join('\n\n');
-        const dialogueRetryResult = await textAIService.generatePolishedBody(
-            sourceBody,
-            dialogueRetryPrompt,
-            polishApi,
-            options?.signal,
-            polishExtraPrompt,
-            polishCotPseudoPrompt,
-            deps.onDelta ? { stream: true, onDelta: deps.onDelta } : undefined
-        );
+        const dialogueRetryResult = await 执行一次文章优化(dialogueRetryPrompt, [
+            '【自动重试：禁止协议确认复读】',
+            '不得输出“好的，将以……”等确认句；必须直接给出完整 <正文> 内容。'
+        ].join('\n'));
         const dialogueRetryLogs = 净化角色对白行(规范化对白日志(限制润色结果判定数量(
             sourceLogs,
             解析正文日志文本(dialogueRetryResult.bodyText)
@@ -539,15 +610,10 @@ export const 执行正文润色 = async (
             `这次 <正文> 内可见正文尽量不少于 ${requiredEnough} 字；若只差 ${tolerance} 字以内可以接受，但不要只说明“已扩写”，必须把扩写后的正文实际写入 <正文> 标签。`,
             '只能沿用原始正文已经成立的事实补足动作过程、感官反馈、环境承接、NPC反应和结果余波；不得新增判定、改写结果或跳到新事件。'
         ].join('\n\n');
-        const retryResult = await textAIService.generatePolishedBody(
-            sourceBody,
-            retryPrompt,
-            polishApi,
-            options?.signal,
-            polishExtraPrompt,
-            polishCotPseudoPrompt,
-            deps.onDelta ? { stream: true, onDelta: deps.onDelta } : undefined
-        );
+        const retryResult = await 执行一次文章优化(retryPrompt, [
+            '【自动重试：禁止协议确认复读】',
+            '不得输出“好的，将以……”等确认句；必须把扩写后的小说正文实际写入 <正文> 标签。'
+        ].join('\n'));
         const retryLogs = 净化角色对白行(规范化对白日志(限制润色结果判定数量(
             sourceLogs,
             解析正文日志文本(retryResult.bodyText)
