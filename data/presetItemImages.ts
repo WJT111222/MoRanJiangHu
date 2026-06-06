@@ -20,16 +20,16 @@ export interface 预置物品图片条目 {
  */
 export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 武器：剑 ───────────────────────────────────────────────────────
-    { 名称: '青钢剑', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%9D%92%E9%92%A2%E5%89%91-ba37f2e8e7f1.png' },
-    { 名称: '精钢长剑', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E7%B2%BE%E9%92%A2%E9%95%BF%E5%89%91-c57f054032fd.png' },
-    { 名称: '玄铁重剑', 类型: '武器', 品质: '极品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E7%8E%84%E9%93%81%E9%87%8D%E5%89%91-597440bb7f86.png' },
-    { 名称: '碧水长剑', 类型: '武器', 品质: '上品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E7%A2%A7%E6%B0%B4%E9%95%BF%E5%89%91-58000e6aa45f.png' },
-    { 名称: '断水剑', 类型: '武器', 品质: '绝世', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E6%96%AD%E6%B0%B4%E5%89%91-7f3a4b38e70e.png' },
-    { 名称: '锈铁剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%94%88%E9%93%81%E5%89%91-c3e8ed3242cc.png' },
+    { 名称: '青钢剑', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%9D%92%E9%92%A2%E5%89%91.png' },
+    { 名称: '精钢长剑', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E7%B2%BE%E9%92%A2%E9%95%BF%E5%89%91.png' },
+    { 名称: '玄铁重剑', 类型: '武器', 品质: '极品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E7%8E%84%E9%93%81%E9%87%8D%E5%89%91.png' },
+    { 名称: '碧水长剑', 类型: '武器', 品质: '上品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E7%A2%A7%E6%B0%B4%E9%95%BF%E5%89%91.png' },
+    { 名称: '断水剑', 类型: '武器', 品质: '绝世', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E6%96%AD%E6%B0%B4%E5%89%91.png' },
+    { 名称: '锈铁剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%94%88%E9%93%81%E5%89%91.png' },
 
     // ─── 武器：刀 ───────────────────────────────────────────────────────
-    { 名称: '柳叶刀', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E6%9F%B3%E5%8F%B6%E5%88%80-820e291431ff.png' },
-    { 名称: '鬼头大刀', 类型: '武器', 品质: '上品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%AC%BC%E5%A4%B4%E5%A4%A7%E5%88%80-22440408617e.png' },
+    { 名称: '柳叶刀', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E6%9F%B3%E5%8F%B6%E5%88%80.png' },
+    { 名称: '鬼头大刀', 类型: '武器', 品质: '上品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%AC%BC%E5%A4%B4%E5%A4%A7%E5%88%80.png' },
     { 名称: '雪饮狂刀', 类型: '武器', 品质: '绝世', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%9B%AA%E9%A5%AE%E7%8B%82%E5%88%80-3092f91029f6.png' },
 
     // ─── 武器：枪/棍 ─────────────────────────────────────────────────────
@@ -89,10 +89,10 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     { 名称: '木剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E6%9C%A8%E5%89%91.png' },
     { 名称: '铁剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%93%81%E5%89%91.png' },
-    { 名称: '钢剑', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%92%A2%E5%89%91-9cb91fafd8b7.png' },
-    { 名称: '钢盔甲', 类型: '防具', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E9%92%A2%E7%9B%94%E7%94%B2-80b99469bff6.png' },
+    { 名称: '钢剑', 类型: '武器', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%92%A2%E5%89%91.png' },
+    { 名称: '钢盔甲', 类型: '防具', 品质: '良品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E9%92%A2%E7%9B%94%E7%94%B2.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木长剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/preset-%E6%9C%A8%E9%95%BF%E5%89%91-23cd4dd9b755.png' },
+    { 名称: '木长剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/%E6%9C%A8%E9%95%BF%E5%89%91.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     { 名称: '木短剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://s3.hi168.com/hi168-19275-07130td3/s3_1780319273720_3xk3rl.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
