@@ -187,6 +187,7 @@ const 格式化在线人数日期标签 = (hour: string) => {
 const 在线人数折线图: React.FC<{ data: 在线人数小时点[]; current?: OnlinePresencePublicStats | null }> = ({ data, current }) => {
     const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
     const chartScrollRef = React.useRef<HTMLDivElement | null>(null);
+    const tooltipHoldTimerRef = React.useRef<number | null>(null);
     const points = data.length > 0
         ? data
         : [{ hour: 'empty', label: '--:--', count: current?.onlineCount ?? 0 }];
@@ -238,6 +239,31 @@ const 在线人数折线图: React.FC<{ data: 在线人数小时点[]; current?:
         scrollContainer.scrollLeft = scrollContainer.scrollWidth - scrollContainer.clientWidth;
     }, [points.length, width]);
 
+    React.useEffect(() => () => {
+        if (tooltipHoldTimerRef.current !== null) {
+            window.clearTimeout(tooltipHoldTimerRef.current);
+        }
+    }, []);
+
+    const 显示在线人数提示 = React.useCallback((index: number, hold = false) => {
+        if (tooltipHoldTimerRef.current !== null) {
+            window.clearTimeout(tooltipHoldTimerRef.current);
+            tooltipHoldTimerRef.current = null;
+        }
+        setHoveredIndex(index);
+        if (hold) {
+            tooltipHoldTimerRef.current = window.setTimeout(() => {
+                setHoveredIndex(null);
+                tooltipHoldTimerRef.current = null;
+            }, 2600);
+        }
+    }, []);
+
+    const 隐藏在线人数提示 = React.useCallback(() => {
+        if (tooltipHoldTimerRef.current !== null) return;
+        setHoveredIndex(null);
+    }, []);
+
     return (
         <div className="landing-presence-panel relative z-10 flex h-full w-full flex-col items-center border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-center shadow-[0_12px_28px_rgba(0,0,0,0.3)]">
             <div className="landing-presence-metrics grid w-full max-w-[430px] grid-cols-3 items-start gap-3">
@@ -257,7 +283,7 @@ const 在线人数折线图: React.FC<{ data: 在线人数小时点[]; current?:
             <div
                 ref={chartScrollRef}
                 className="landing-presence-chart-scroll mt-1 w-full max-w-[430px] flex-1 overflow-x-auto overflow-y-hidden"
-                onPointerLeave={() => setHoveredIndex(null)}
+                onPointerLeave={隐藏在线人数提示}
             >
                 <div className="landing-presence-chart-frame relative shrink-0" style={{ width, height }}>
                     <svg
@@ -307,17 +333,21 @@ const 在线人数折线图: React.FC<{ data: 在线人数小时点[]; current?:
                                 <circle
                                     cx={x}
                                     cy={y}
-                                    r="12"
-                                    fill="transparent"
-                                    onMouseEnter={() => setHoveredIndex(index)}
-                                    onPointerEnter={() => setHoveredIndex(index)}
-                                    onPointerMove={() => setHoveredIndex(index)}
-                                    onFocus={() => setHoveredIndex(index)}
-                                    onBlur={() => setHoveredIndex(null)}
+                                    r="15"
+                                    fill="rgba(255,255,255,0.001)"
+                                    onMouseEnter={() => 显示在线人数提示(index)}
+                                    onMouseMove={() => 显示在线人数提示(index)}
+                                    onPointerEnter={() => 显示在线人数提示(index)}
+                                    onPointerMove={() => 显示在线人数提示(index)}
+                                    onPointerDown={() => 显示在线人数提示(index, true)}
+                                    onClick={() => 显示在线人数提示(index, true)}
+                                    onTouchStart={() => 显示在线人数提示(index, true)}
+                                    onFocus={() => 显示在线人数提示(index)}
+                                    onBlur={隐藏在线人数提示}
                                     tabIndex={0}
                                     role="img"
                                     aria-label={`在线人数 ${item.count}`}
-                                    className="cursor-pointer"
+                                    className="landing-presence-hit-dot cursor-pointer"
                                 />
                                 {active ? (
                                     <g className="pointer-events-none">
@@ -391,10 +421,13 @@ const 在线人数折线图: React.FC<{ data: 在线人数小时点[]; current?:
                                 role="img"
                                 aria-label={`在线人数 ${item.count}`}
                                 tabIndex={0}
-                                onPointerEnter={() => setHoveredIndex(index)}
-                                onPointerMove={() => setHoveredIndex(index)}
-                                onFocus={() => setHoveredIndex(index)}
-                                onBlur={() => setHoveredIndex(null)}
+                                onPointerEnter={() => 显示在线人数提示(index)}
+                                onPointerMove={() => 显示在线人数提示(index)}
+                                onPointerDown={() => 显示在线人数提示(index, true)}
+                                onClick={() => 显示在线人数提示(index, true)}
+                                onTouchStart={() => 显示在线人数提示(index, true)}
+                                onFocus={() => 显示在线人数提示(index)}
+                                onBlur={隐藏在线人数提示}
                             />
                         );
                     })}
@@ -413,12 +446,15 @@ const 在线人数折线图: React.FC<{ data: 在线人数小时点[]; current?:
                                 role="img"
                                 aria-label={`在线人数 ${item.count}`}
                                 tabIndex={0}
-                                onMouseEnter={() => setHoveredIndex(index)}
-                                onMouseMove={() => setHoveredIndex(index)}
-                                onPointerEnter={() => setHoveredIndex(index)}
-                                onPointerMove={() => setHoveredIndex(index)}
-                                onFocus={() => setHoveredIndex(index)}
-                                onBlur={() => setHoveredIndex(null)}
+                                onMouseEnter={() => 显示在线人数提示(index)}
+                                onMouseMove={() => 显示在线人数提示(index)}
+                                onPointerEnter={() => 显示在线人数提示(index)}
+                                onPointerMove={() => 显示在线人数提示(index)}
+                                onPointerDown={() => 显示在线人数提示(index, true)}
+                                onClick={() => 显示在线人数提示(index, true)}
+                                onTouchStart={() => 显示在线人数提示(index, true)}
+                                onFocus={() => 显示在线人数提示(index)}
+                                onBlur={隐藏在线人数提示}
                             />
                         );
                     })}
@@ -541,7 +577,7 @@ const LandingPage: React.FC<Props> = ({
     };
 
     return (
-        <div className="landing-page relative z-40 flex h-full w-full max-w-full min-w-0 flex-col items-center overflow-x-hidden overflow-y-auto rounded-xl bg-black px-4 pt-[max(var(--app-safe-top,env(safe-area-inset-top,0px)),12px)] pb-[calc(var(--app-safe-bottom,env(safe-area-inset-bottom,0px))+16px)]">
+        <div className="landing-page relative z-40 flex min-h-full w-full max-w-full min-w-0 flex-col items-center rounded-xl bg-black px-4 pt-[max(var(--app-safe-top,env(safe-area-inset-top,0px)),12px)] pb-[calc(var(--app-safe-bottom,env(safe-area-inset-bottom,0px))+16px)]">
             <div className="landing-bg absolute inset-0" aria-hidden="true">
                 <div
                     className="landing-bg-art absolute inset-0"
@@ -683,7 +719,7 @@ const LandingPage: React.FC<Props> = ({
                     </div>
                 </section>
 
-                <div className="landing-dashboard-row relative z-10 grid w-full max-w-full min-w-0 grid-cols-1 items-stretch gap-4 overflow-hidden animate-fadeIn lg:absolute lg:bottom-16 lg:left-1/2 lg:h-[224px] lg:max-h-[224px] lg:max-w-[1020px] lg:-translate-x-1/2 lg:grid-cols-[minmax(300px,400px)_minmax(420px,1fr)]">
+                <div className="landing-dashboard-row relative z-10 grid w-full max-w-full min-w-0 grid-cols-1 items-stretch gap-4 overflow-visible animate-fadeIn lg:absolute lg:bottom-16 lg:left-1/2 lg:h-[224px] lg:max-h-[224px] lg:max-w-[1020px] lg:-translate-x-1/2 lg:grid-cols-[minmax(300px,400px)_minmax(420px,1fr)] lg:overflow-hidden">
                     <aside className="landing-card landing-release-card flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-wuxia-gold/15 bg-black/45 px-4 py-3 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-sm">
                         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-wuxia-gold/10 pb-2">
                             <div>

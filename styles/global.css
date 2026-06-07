@@ -899,7 +899,8 @@ html[data-theme="day"] .sect-modal-body {
   box-sizing: border-box;
   isolation: isolate;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
   overscroll-behavior-x: none;
   touch-action: pan-y;
 }
@@ -1311,6 +1312,15 @@ html[data-theme="day"] .landing-presence-chart-scroll::-webkit-scrollbar-thumb {
   .landing-hero-section {
     width: 100%;
     max-width: 100%;
+    flex: 0 0 auto !important;
+  }
+
+  .landing-stage {
+    padding-bottom: 0.5rem !important;
+  }
+
+  .landing-hero-section {
+    justify-content: flex-start !important;
   }
 
   .landing-title {
@@ -1338,6 +1348,30 @@ html[data-theme="day"] .landing-presence-chart-scroll::-webkit-scrollbar-thumb {
 
   .landing-action-group {
     width: min(16rem, calc(100vw - 1.5rem)) !important;
+  }
+
+  .landing-dashboard-row {
+    flex: 0 0 auto !important;
+  }
+
+  .landing-release-card {
+    min-height: 178px;
+  }
+
+  .landing-release-actions {
+    overflow: visible !important;
+  }
+
+  .landing-dashboard-row > * {
+    min-height: 218px;
+  }
+
+  .landing-presence-panel {
+    min-height: 218px;
+  }
+
+  .landing-friend-links {
+    flex: 0 0 auto !important;
   }
 }
 
