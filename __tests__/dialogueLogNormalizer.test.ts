@@ -218,6 +218,47 @@ describe('dialogueLogNormalizer story readability cleanup', () => {
         }]);
     });
 
+    it('downgrades body-part labels such as 双手 to narration', () => {
+        const logs = 规范化可渲染对白日志([
+            { sender: '双手', text: '慢慢合拢，指尖扣住杯沿。' },
+            { sender: '指尖', text: '在杯壁上停了一瞬。' }
+        ] as any);
+
+        expect(logs).toEqual([{
+            sender: '旁白',
+            text: '慢慢合拢，指尖扣住杯沿。\n在杯壁上停了一瞬。'
+        }]);
+    });
+
+    it('keeps raw debug source when body-part labels are downgraded', () => {
+        const logs = 规范化可渲染对白日志([
+            {
+                sender: '双手',
+                text: '慢慢合拢，指尖扣住杯沿。',
+                rawText: '{\"sender\":\"双手\",\"text\":\"慢慢合拢，指尖扣住杯沿。\"}'
+            }
+        ] as any);
+
+        expect(logs).toHaveLength(1);
+        expect(logs[0]).toMatchObject({
+            sender: '旁白',
+            text: '慢慢合拢，指尖扣住杯沿。'
+        });
+        expect(logs[0].rawText).toContain('\"sender\":\"双手\"');
+    });
+
+    it('does not split body-part bracket tags into character bubbles', () => {
+        const logs = 规范化可渲染对白日志([{
+            sender: '旁白',
+            text: '她垂下眼。【双手】“慢慢合拢，像是把那点犹豫压回掌心。”烛火轻轻晃了一下。'
+        }] as any);
+
+        expect(logs).toEqual([{
+            sender: '旁白',
+            text: '她垂下眼。【双手】“慢慢合拢，像是把那点犹豫压回掌心。”烛火轻轻晃了一下。'
+        }]);
+    });
+
     it('keeps adjacent valid named turns as dialogue instead of narration', () => {
         const logs = 规范化可渲染对白日志([
             { sender: '楚有常', text: '玄铁精石不是凡火能炼的东西。' },

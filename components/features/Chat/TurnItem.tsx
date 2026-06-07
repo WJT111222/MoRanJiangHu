@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { GameResponse, NPC结构, 视觉设置结构 } from '../../../types';
+import { GameLog, GameResponse, NPC结构, 视觉设置结构 } from '../../../types';
 import { NarratorRenderer, CharacterRenderer, JudgmentRenderer, RewardRenderer } from './MessageRenderers';
 import GameButton from '../../ui/GameButton';
 import { 构建区域文字样式 } from '../../../utils/visualSettings';
@@ -28,6 +28,63 @@ interface Props {
     turnAnchorRef?: React.Ref<HTMLDivElement>;
     variableGenerationPending?: boolean;
 }
+
+const 格式化日志原始片段 = (log?: Partial<GameLog> | null): string => {
+    const raw = typeof log?.rawText === 'string' ? log.rawText.trim() : '';
+    if (raw) return raw;
+    const sender = (log?.sender || '旁白').trim() || '旁白';
+    const text = typeof log?.text === 'string' ? log.text.trim() : String(log?.text ?? '').trim();
+    if (!text) return '（该段没有可显示的原始片段）';
+    return sender === '旁白' ? `【旁白】${text}` : `【${sender}】${text}`;
+};
+
+const 提取正文标签内容 = (raw?: string): string => {
+    const source = typeof raw === 'string' ? raw.replace(/\r\n/g, '\n') : '';
+    if (!source.trim()) return '';
+    const match = source.match(/<\s*正文\s*>\s*([\s\S]*?)(?:<\s*\/\s*正文\s*>|$)/i);
+    return (match?.[1] || '').trim();
+};
+
+const 提取原始回复正文片段 = (raw?: string): string[] => {
+    const source = typeof raw === 'string' ? raw.trim() : '';
+    if (!source) return [];
+    try {
+        const parsed = JSON.parse(source);
+        if (Array.isArray(parsed?.logs)) {
+            return parsed.logs
+                .map((item: any) => {
+                    if (typeof item === 'string') return item.trim();
+                    if (item && typeof item === 'object') {
+                        try {
+                            return JSON.stringify(item, null, 2);
+                        } catch {
+                            return `${item.sender || '旁白'}：${item.text || ''}`.trim();
+                        }
+                    }
+                    return '';
+                })
+                .filter(Boolean);
+        }
+    } catch {
+        // 标签协议原文会走下面的正文块拆分。
+    }
+
+    const body = 提取正文标签内容(source);
+    if (!body) return [];
+    const snippets: string[] = [];
+    for (const rawLine of body.split('\n')) {
+        const line = rawLine.trimEnd();
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        if (/^<\s*\/?\s*judge\s*>/i.test(trimmed)) continue;
+        if (/^(?:【\s*[^】]+?\s*】|\[\s*[^\]]+?\s*\])/.test(trimmed) || snippets.length === 0) {
+            snippets.push(trimmed);
+        } else {
+            snippets[snippets.length - 1] = `${snippets[snippets.length - 1]}\n${trimmed}`;
+        }
+    }
+    return snippets;
+};
 
 const TurnItem: React.FC<Props> = ({
     response,
@@ -61,6 +118,7 @@ const TurnItem: React.FC<Props> = ({
     const [isPolishing, setIsPolishing] = useState(false);
     const [polishError, setPolishError] = useState<string | null>(null);
     const [showOriginalBody, setShowOriginalBody] = useState(false);
+    const [rawLogPreview, setRawLogPreview] = useState<{ title: string; text: string } | null>(null);
     const chatStyle = 构建区域文字样式(visualConfig, '聊天');
     const 紧凑字号 = 'var(--ui-compact-font-size, 14px)';
     const 微字号 = 'var(--ui-micro-font-size, 12px)';
@@ -147,7 +205,19 @@ const TurnItem: React.FC<Props> = ({
     }, [可切换原文优化视图, showOriginalBody]);
 
     const 当前正文日志 = showOriginalBody && 可切换原文优化视图 ? 原始正文日志 : (Array.isArray(response.logs) ? response.logs : []);
-    const displayLogs = 规范化可渲染对白日志(当前正文日志
+    const 使用整回合原始片段映射 = !已优化正文 || (showOriginalBody && 可切换原文优化视图);
+    const 原始回复正文片段 = useMemo(
+        () => (使用整回合原始片段映射 ? 提取原始回复正文片段(rawJson) : []),
+        [rawJson, 使用整回合原始片段映射]
+    );
+    const 当前正文日志带原始片段 = 当前正文日志.map((log, index) => ({
+        ...log,
+        rawText: 格式化日志原始片段({
+            ...log,
+            rawText: (log as any)?.rawText || 原始回复正文片段[index]
+        })
+    }));
+    const displayLogs = 规范化可渲染对白日志(当前正文日志带原始片段
         .filter(log => !isDisclaimerLog(log))
         .map((log) => ({
             ...log,
@@ -158,9 +228,10 @@ const TurnItem: React.FC<Props> = ({
         .flatMap((log) => {
             const split = 拆分判定日志与后续正文(log.text);
             if (!split) return [log];
+            const rawText = 格式化日志原始片段(log);
             return [
-                { ...log, text: split.judgmentText },
-                { sender: '旁白', text: split.trailingBody }
+                { ...log, text: split.judgmentText, rawText },
+                { sender: '旁白', text: split.trailingBody, rawText }
             ];
         })
         .filter(log => log.text.trim().length > 0));
@@ -272,6 +343,13 @@ const TurnItem: React.FC<Props> = ({
     const handleToggleBodyView = () => {
         if (!可切换原文优化视图) return;
         setShowOriginalBody(prev => !prev);
+    };
+
+    const openRawLogPreview = (log: GameLog, index: number) => {
+        setRawLogPreview({
+            title: `第 ${index + 1} 段原始回复片段`,
+            text: 格式化日志原始片段(log)
+        });
     };
 
     if (isEditing) {
@@ -546,14 +624,15 @@ const TurnItem: React.FC<Props> = ({
                     const textJudgmentPrefix = 提取判定日志前缀(rawText);
                     const senderJudgmentPrefix = 提取判定日志前缀(rawSender);
                     const textStartsWithJudgment = Boolean(textJudgmentPrefix);
-                    if (是否奖励日志(rawSender, rawText)) return <RewardRenderer key={idx} text={rawText} visualConfig={visualConfig} />;
-                    if (rawSender === '旁白' && !textStartsWithJudgment) return <NarratorRenderer key={idx} text={rawText} visualConfig={visualConfig} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} socialList={socialList} onOpenNpcDetail={onOpenNpcDetail} />;
+                    const openThisRawLog = () => openRawLogPreview(log, idx);
+                    if (是否奖励日志(rawSender, rawText)) return <RewardRenderer key={idx} text={rawText} visualConfig={visualConfig} onOpenRawResponse={openThisRawLog} />;
+                    if (rawSender === '旁白' && !textStartsWithJudgment) return <NarratorRenderer key={idx} text={rawText} visualConfig={visualConfig} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} socialList={socialList} onOpenNpcDetail={onOpenNpcDetail} onOpenRawResponse={openThisRawLog} />;
                     if (senderJudgmentPrefix || textStartsWithJudgment) {
                         const prefix = senderJudgmentPrefix || textJudgmentPrefix || rawSender;
                         const isNsfw = prefix.includes('NSFW');
-                        return <JudgmentRenderer key={idx} text={rawText} thoughtBlock={matchedJudgeBlock} isNsfw={isNsfw} visualConfig={visualConfig} prefix={prefix} />;
+                        return <JudgmentRenderer key={idx} text={rawText} thoughtBlock={matchedJudgeBlock} isNsfw={isNsfw} visualConfig={visualConfig} prefix={prefix} onOpenRawResponse={openThisRawLog} />;
                     }
-                    return <CharacterRenderer key={idx} sender={rawSender} text={rawText} visualConfig={visualConfig} socialList={socialList} playerProfile={playerProfile} onOpenNpcDetail={onOpenNpcDetail} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} />;
+                    return <CharacterRenderer key={idx} sender={rawSender} text={rawText} visualConfig={visualConfig} socialList={socialList} playerProfile={playerProfile} onOpenNpcDetail={onOpenNpcDetail} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} onOpenRawResponse={openThisRawLog} />;
                 })}
             </div>
 
@@ -568,6 +647,35 @@ const TurnItem: React.FC<Props> = ({
                 <span className="text-[11px] text-gray-600">中文计数: {中文计数}字</span>
                 {response.shortTerm && <span className="text-[11px] text-gray-600 max-w-[200px] truncate" title={response.shortTerm}>记忆: {response.shortTerm}</span>}
             </div>
+            {rawLogPreview && (
+                <div
+                    className="fixed inset-0 z-[1005] flex items-center justify-center bg-black/50 p-3 sm:p-6 backdrop-blur-sm"
+                    data-raw-response-panel="true"
+                    onClick={() => setRawLogPreview(null)}
+                >
+                    <div
+                        className="w-full max-w-3xl overflow-hidden rounded-lg border border-amber-600/45 bg-[#fffaf0] text-[#20160a] shadow-2xl"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between gap-3 border-b border-amber-700/20 bg-[#f5e6c8] px-4 py-3">
+                            <div className="min-w-0">
+                                <div className="truncate text-sm font-black tracking-[0.12em] text-stone-950">{rawLogPreview.title}</div>
+                                <div className="mt-0.5 text-[11px] font-semibold text-stone-600">只显示当前气泡进入解析/渲染前的来源片段</div>
+                            </div>
+                            <button
+                                type="button"
+                                className="shrink-0 rounded border border-stone-500/40 bg-white/80 px-3 py-1.5 text-xs font-bold text-stone-800 transition hover:bg-white"
+                                onClick={() => setRawLogPreview(null)}
+                            >
+                                关闭
+                            </button>
+                        </div>
+                        <pre className="max-h-[65vh] overflow-auto whitespace-pre-wrap break-words bg-white/90 p-4 font-mono text-[12px] leading-5 text-stone-950" data-raw-response-text="true">
+                            {rawLogPreview.text}
+                        </pre>
+                    </div>
+                </div>
+            )}
             <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-16 h-px bg-gray-800"></div>
         </div>
     );

@@ -25,6 +25,23 @@ const 指节泛白套话正则 = /(?:[左右双两]?(?:手|手指|指尖|手背|
 
 const 转义正则文本 = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const 读取日志原始片段 = (log?: Partial<GameLog> | null): string => (
+    typeof log?.rawText === 'string' ? log.rawText.trim() : ''
+);
+
+const 附加原始片段 = (log: GameLog, rawText?: string): GameLog => {
+    const source = (rawText || '').trim();
+    return source ? { ...log, rawText: source } : log;
+};
+
+const 合并原始片段 = (left?: string, right?: string): string => {
+    const parts = [left, right]
+        .map(item => (item || '').trim())
+        .filter(Boolean);
+    if (parts.length === 0) return '';
+    return Array.from(new Set(parts)).join('\n');
+};
+
 const 清理说话人 = (value: string): string => {
     let text = (value || '')
         .replace(/[（(][^）)]{1,16}[）)]/g, '')
@@ -183,13 +200,16 @@ const 合并相邻同发送者 = (logs: GameLog[]): GameLog[] => {
     logs.forEach((item) => {
         const sender = (item?.sender || '旁白').trim() || '旁白';
         const text = 拆分过长旁白段落(sender, item?.text || '');
+        const rawText = 读取日志原始片段(item);
         if (!text) return;
         const previous = merged[merged.length - 1];
         if (previous && previous.sender === sender) {
             previous.text = `${previous.text}\n${text}`.trim();
+            const mergedRaw = 合并原始片段(previous.rawText, rawText);
+            if (mergedRaw) previous.rawText = mergedRaw;
             return;
         }
-        merged.push({ sender, text });
+        merged.push(附加原始片段({ sender, text }, rawText));
     });
     return merged;
 };
@@ -339,6 +359,7 @@ const 是否可抽取方括号对白 = (speakerName: string, body: string): { sp
 const 拆分旁白中的显式方括号对白 = (log: GameLog): GameLog[] => {
     const source = typeof log?.text === 'string' ? log.text.replace(/\r\n/g, '\n') : '';
     if (!source || !/【\s*[A-Za-z0-9_\u4e00-\u9fff·]{1,16}\s*】/.test(source)) return [log];
+    const rawSource = 读取日志原始片段(log);
 
     const result: GameLog[] = [];
     let cursor = 0;
@@ -358,9 +379,9 @@ const 拆分旁白中的显式方括号对白 = (log: GameLog): GameLog[] => {
         if (!extracted) continue;
 
         const before = source.slice(cursor, match.index).trim();
-        if (before) result.push({ sender: '旁白', text: before });
-        result.push({ sender: extracted.speaker, text: extracted.speech });
-        if (extracted.rest) result.push({ sender: '旁白', text: extracted.rest });
+        if (before) result.push(附加原始片段({ sender: '旁白', text: before }, rawSource));
+        result.push(附加原始片段({ sender: extracted.speaker, text: extracted.speech }, rawSource));
+        if (extracted.rest) result.push(附加原始片段({ sender: '旁白', text: extracted.rest }, rawSource));
         cursor = bodyEnd;
         方括号说话人片段正则.lastIndex = bodyEnd;
         matched = true;
@@ -368,7 +389,7 @@ const 拆分旁白中的显式方括号对白 = (log: GameLog): GameLog[] => {
 
     if (!matched) return [log];
     const after = source.slice(cursor).trim();
-    if (after) result.push({ sender: '旁白', text: after });
+    if (after) result.push(附加原始片段({ sender: '旁白', text: after }, rawSource));
     return 合并相邻同发送者(result);
 };
 
@@ -460,12 +481,15 @@ const 保护引号换行日志 = (logs: GameLog[] | undefined): GameLog[] => {
     sourceLogs.forEach((item) => {
         const rawSender = (item?.sender || '旁白').trim() || '旁白';
         const rawText = typeof item?.text === 'string' ? item.text : String(item?.text ?? '');
+        const rawSource = 读取日志原始片段(item);
         const text = 压平引号内换行(rawText);
         if (!text.trim()) return;
 
         if (pending) {
             const joiner = pending.text && text ? '' : '';
             pending.text = 压平引号内换行(`${pending.text}${joiner}${text}`);
+            const mergedRaw = 合并原始片段(pending.rawText, rawSource);
+            if (mergedRaw) pending.rawText = mergedRaw;
             if (!引号未闭合(pending.text)) {
                 result.push(pending);
                 pending = null;
@@ -474,11 +498,11 @@ const 保护引号换行日志 = (logs: GameLog[] | undefined): GameLog[] => {
         }
 
         if (引号未闭合(text)) {
-            pending = { sender: rawSender, text };
+            pending = 附加原始片段({ sender: rawSender, text }, rawSource);
             return;
         }
 
-        result.push({ sender: rawSender, text });
+        result.push(附加原始片段({ sender: rawSender, text }, rawSource));
     });
 
     if (pending) result.push(pending);
@@ -488,6 +512,7 @@ const 保护引号换行日志 = (logs: GameLog[] | undefined): GameLog[] => {
 const 拆分旁白夹杂无标签对白 = (log: GameLog): GameLog[] => {
     const source = typeof log?.text === 'string' ? log.text.replace(/\r\n/g, '\n') : '';
     if (!source || !source.includes('\n')) return [log];
+    const rawSource = 读取日志原始片段(log);
 
     const result: GameLog[] = [];
     for (const rawLine of source.split('\n')) {
@@ -508,12 +533,12 @@ const 拆分旁白夹杂无标签对白 = (log: GameLog): GameLog[] => {
                 && !泛称说话人正则.test(bracketSpeakerName)
                 && !拟声词正则.test(speech)
             ) {
-                result.push({ sender: bracketSpeakerName, text: speech });
+                result.push(附加原始片段({ sender: bracketSpeakerName, text: speech }, rawSource));
                 continue;
             }
         }
 
-        result.push({ sender: '旁白', text: line });
+        result.push(附加原始片段({ sender: '旁白', text: line }, rawSource));
     }
 
     return result.length > 1 ? 合并相邻同发送者(result) : [log];
@@ -539,6 +564,7 @@ const 是否可渲染XML对白标签 = (rawName: string, speech: string): string
 const 拆分XML标签对白 = (log: GameLog): GameLog[] => {
     const source = typeof log?.text === 'string' ? log.text : '';
     if (!source || !/(?:<|&lt;)\s*[A-Za-z0-9_\u4e00-\u9fff·]{1,16}\s*(?:>|&gt;)/.test(source)) return [log];
+    const rawSource = 读取日志原始片段(log);
 
     const parts: GameLog[] = [];
     let cursor = 0;
@@ -553,15 +579,15 @@ const 拆分XML标签对白 = (log: GameLog): GameLog[] => {
         if (!speaker) continue;
 
         const before = source.slice(cursor, match.index).trim();
-        if (before) parts.push({ sender: '旁白', text: 解码轻量HTML实体(before) });
-        parts.push({ sender: speaker, text: 解码轻量HTML实体(rawSpeech).trim() });
+        if (before) parts.push(附加原始片段({ sender: '旁白', text: 解码轻量HTML实体(before) }, rawSource));
+        parts.push(附加原始片段({ sender: speaker, text: 解码轻量HTML实体(rawSpeech).trim() }, rawSource));
         cursor = XML对白标签正则.lastIndex;
         matched = true;
     }
 
     if (!matched) return [log];
     const after = source.slice(cursor).trim();
-    if (after) parts.push({ sender: '旁白', text: 解码轻量HTML实体(after) });
+    if (after) parts.push(附加原始片段({ sender: '旁白', text: 解码轻量HTML实体(after) }, rawSource));
     return 合并相邻同发送者(parts);
 };
 
@@ -569,25 +595,28 @@ export const 规范化可渲染对白日志 = (logs: GameLog[] | undefined): Gam
     const normalized = 保护引号换行日志(logs).flatMap((item) => {
         const rawSender = (item?.sender || '旁白').trim() || '旁白';
         const rawText = typeof item?.text === 'string' ? item.text.trim() : String(item?.text ?? '').trim();
+        const rawSource = 读取日志原始片段(item);
         const text = 拆分过长旁白段落(rawSender === '旁白' ? '旁白' : 清理说话人(rawSender) || '旁白', rawText);
         if (是否Judge残留文本(text)) return [];
         if (是否判定日志文本(rawSender) || 是否判定日志文本(text)) {
             if (是否判定日志文本(rawSender) && !完整判定文本特征正则.test(text)) return [];
-            return [{ sender: rawSender, text }];
+            return [附加原始片段({ sender: rawSender, text }, rawSource)];
         }
         const sender = 清理说话人(rawSender) || '旁白';
         if (!text) return [];
         if (sender === '旁白') {
-            return 拆分旁白中的显式方括号对白({ sender, text })
+            return 拆分旁白中的显式方括号对白(附加原始片段({ sender, text }, rawSource))
                 .flatMap(item => item.sender === '旁白' ? 拆分旁白夹杂无标签对白(item) : [item])
                 .flatMap(item => item.sender === '旁白' ? 拆分旁白夹杂对白(item, []) : [item]);
         }
-        if (sender === '奖励') return [{ sender, text }];
+        if (sender === '奖励') return [附加原始片段({ sender, text }, rawSource)];
         if (/^(【)?(?:判定|NSFW判定|先机|瞄准|接战|对撞|对抗|防御|化解|伤害|态势|反击|反馈|消耗|洞察|衰退)(】)?$/.test(sender)) {
-            return [{ sender, text }];
+            return [附加原始片段({ sender, text }, rawSource)];
         }
         if (是完整引号对白(text)) {
-            return 是否无效角色对白(sender, text) ? [{ sender: '旁白', text }] : [{ sender, text }];
+            return 是否无效角色对白(sender, text)
+                ? [附加原始片段({ sender: '旁白', text }, rawSource)]
+                : [附加原始片段({ sender, text }, rawSource)];
         }
 
         const closingIndex = 开头引号正则.test(text) ? 查找首段闭合引号位置(text) : -1;
@@ -595,21 +624,21 @@ export const 规范化可渲染对白日志 = (logs: GameLog[] | undefined): Gam
             const quoted = text.slice(0, closingIndex + 1).trim();
             const rest = text.slice(closingIndex + 1).trim();
             const parts: GameLog[] = [];
-            if (quoted && !是否无效角色对白(sender, quoted)) parts.push({ sender, text: quoted });
-            else if (quoted) parts.push({ sender: '旁白', text: quoted });
-            if (rest) parts.push({ sender: '旁白', text: rest });
+            if (quoted && !是否无效角色对白(sender, quoted)) parts.push(附加原始片段({ sender, text: quoted }, rawSource));
+            else if (quoted) parts.push(附加原始片段({ sender: '旁白', text: quoted }, rawSource));
+            if (rest) parts.push(附加原始片段({ sender: '旁白', text: rest }, rawSource));
             return parts;
         }
 
         if (是否有效角色说话人(sender) && 含有引号对白(text)) {
-            return [{ sender, text }];
+            return [附加原始片段({ sender, text }, rawSource)];
         }
 
         if (是否有效角色说话人(sender)) {
-            return [{ sender, text }];
+            return [附加原始片段({ sender, text }, rawSource)];
         }
 
-        return [{ sender: '旁白', text }];
+        return [附加原始片段({ sender: '旁白', text }, rawSource)];
     });
     return 合并相邻同发送者(normalized);
 };
@@ -617,6 +646,7 @@ export const 规范化可渲染对白日志 = (logs: GameLog[] | undefined): Gam
 const 拆分旁白夹杂对白 = (log: GameLog, knownSpeakers: string[]): GameLog[] => {
     const source = typeof log?.text === 'string' ? log.text : '';
     if (!source || !/[“"「『]/.test(source)) return [log];
+    const rawSource = 读取日志原始片段(log);
 
     const parts: GameLog[] = [];
     let cursor = 0;
@@ -645,15 +675,15 @@ const 拆分旁白夹杂对白 = (log: GameLog, knownSpeakers: string[]): GameLo
         if (!inferredFromSuffix && speaker !== lastSpeaker && !hasLeadingCue) continue;
 
         const before = 移除尾部说话引导(source.slice(cursor, quoteStart), speaker);
-        if (before.trim()) parts.push({ sender: '旁白', text: before.trim() });
-        parts.push({ sender: speaker, text: speech });
+        if (before.trim()) parts.push(附加原始片段({ sender: '旁白', text: before.trim() }, rawSource));
+        parts.push(附加原始片段({ sender: speaker, text: speech }, rawSource));
         lastSpeaker = speaker;
         cursor = quoteEnd;
     }
 
     if (parts.length === 0) return [log];
     const after = source.slice(cursor).trim();
-    if (after) parts.push({ sender: '旁白', text: after });
+    if (after) parts.push(附加原始片段({ sender: '旁白', text: after }, rawSource));
     return 合并相邻同发送者(parts);
 };
 
@@ -665,11 +695,12 @@ export const 规范化对白日志 = (
     const normalized = 保护引号换行日志(logs)
         .flatMap((item) => {
             const rawSender = (item?.sender || '旁白').trim() || '旁白';
+            const rawSource = 读取日志原始片段(item);
             const text = 拆分过长旁白段落(rawSender, typeof item?.text === 'string' ? item.text : String(item?.text ?? ''));
-            if (是否判定日志文本(rawSender) || 是否判定日志文本(text)) return [{ sender: rawSender, text }];
-            if (rawSender === '奖励') return [{ sender: rawSender, text }];
+            if (是否判定日志文本(rawSender) || 是否判定日志文本(text)) return [附加原始片段({ sender: rawSender, text }, rawSource)];
+            if (rawSender === '奖励') return [附加原始片段({ sender: rawSender, text }, rawSource)];
             const sender = rawSender === '旁白' ? '旁白' : (清理说话人(rawSender) || '旁白');
-            const log = { sender, text };
+            const log = 附加原始片段({ sender, text }, rawSource);
             if (sender !== '旁白') return [log];
             return 拆分旁白中的显式方括号对白(log)
                 .flatMap(item => item.sender === '旁白' ? 拆分旁白夹杂无标签对白(item) : [item]);

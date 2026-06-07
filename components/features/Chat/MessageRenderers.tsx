@@ -522,6 +522,35 @@ const 渲染含档案引用文本 = (
     return parts.length > 0 ? parts : [source];
 };
 
+const RawResponseDebugButton: React.FC<{
+    onOpen?: () => void;
+    className?: string;
+}> = ({ onOpen, className = '' }) => {
+    if (!onOpen) return null;
+    return (
+        <button
+            type="button"
+            onClick={(event) => {
+                event.stopPropagation();
+                onOpen();
+            }}
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border shadow-[0_5px_14px_rgba(0,0,0,0.28)] transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-wuxia-gold/55 ${className}`}
+            style={{
+                color: '#f5d782',
+                backgroundColor: 'rgba(20, 16, 10, 0.88)',
+                borderColor: 'rgba(230, 200, 110, 0.62)'
+            }}
+            title="查看本段 AI 原始回复"
+            aria-label="查看本段 AI 原始回复"
+            data-raw-response-button="true"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" className="h-3.5 w-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+            </svg>
+        </button>
+    );
+};
+
 export const NarratorRenderer: React.FC<{
     text: string;
     visualConfig?: 视觉设置结构;
@@ -529,11 +558,13 @@ export const NarratorRenderer: React.FC<{
     onOpenInventoryItem?: (itemRef: string) => void;
     socialList?: NPC结构[];
     onOpenNpcDetail?: (npcId: string) => void;
-}> = ({ text, visualConfig, inventoryItems, onOpenInventoryItem, socialList, onOpenNpcDetail }) => {
+    onOpenRawResponse?: () => void;
+}> = ({ text, visualConfig, inventoryItems, onOpenInventoryItem, socialList, onOpenNpcDetail, onOpenRawResponse }) => {
     const style = 构建区域文字样式(visualConfig, '旁白');
     const displayText = useMemo(() => 格式化旁白断行(text).replace(/\n([”」』》）】])/g, '$1'), [text]);
     return (
-        <div className="narrator-renderer w-full my-1 px-8 py-2 bg-white/5 backdrop-blur-sm border-x-4 border-wuxia-gold/55 leading-relaxed relative overflow-hidden rounded-md shadow-lg transition-all duration-300" style={style}>
+        <div className="narrator-renderer w-full my-1 px-8 py-2 pr-12 bg-white/5 backdrop-blur-sm border-x-4 border-wuxia-gold/55 leading-relaxed relative overflow-hidden rounded-md shadow-lg transition-all duration-300" style={style}>
+            <RawResponseDebugButton onOpen={onOpenRawResponse} className="absolute right-2 top-2 z-20" />
             <p className="relative z-10 whitespace-pre-wrap break-normal [word-break:normal] [overflow-wrap:break-word] [line-break:strict] tracking-wide" style={{ fontSize: 'inherit', lineHeight: 'inherit' }}>
                 {渲染含档案引用文本(displayText, inventoryItems, onOpenInventoryItem, socialList, onOpenNpcDetail)}
             </p>
@@ -585,14 +616,15 @@ const 奖励标签样式 = (reward: string): string => {
     return 'border-stone-400/45 bg-stone-200/65 text-stone-950';
 };
 
-export const RewardRenderer: React.FC<{ text: string; visualConfig?: 视觉设置结构 }> = ({ text, visualConfig }) => {
+export const RewardRenderer: React.FC<{ text: string; visualConfig?: 视觉设置结构; onOpenRawResponse?: () => void }> = ({ text, visualConfig, onOpenRawResponse }) => {
     const style = 构建区域文字样式(visualConfig, '旁白');
     const parsed = 解析奖励正文(text);
     return (
         <div className="reward-renderer w-full my-4 sm:my-5 px-1.5 sm:px-4 flex justify-center" data-reward-card="true" style={style}>
             <div className="relative w-full sm:w-11/12 md:w-5/6 lg:w-3/4 overflow-hidden rounded-xl border-2 border-amber-500/45 bg-[#fff8e6] text-[#24170a] shadow-[0_18px_45px_rgba(0,0,0,0.22)]">
+                <RawResponseDebugButton onOpen={onOpenRawResponse} className="absolute right-2 top-2 z-20" />
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-emerald-500 to-sky-500" />
-                <div className="flex flex-col gap-3 px-4 py-4 sm:px-5 sm:py-5">
+                <div className="flex flex-col gap-3 px-4 py-4 pr-12 sm:px-5 sm:py-5 sm:pr-14">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
                             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-600/35 bg-amber-500/18 text-amber-800 shadow-sm">
@@ -712,7 +744,8 @@ export const CharacterRenderer: React.FC<{
     onOpenNpcDetail?: (npcId: string) => void;
     inventoryItems?: any[];
     onOpenInventoryItem?: (itemRef: string) => void;
-}> = ({ sender, text, visualConfig, socialList, playerProfile, onOpenNpcDetail, inventoryItems, onOpenInventoryItem }) => {
+    onOpenRawResponse?: () => void;
+}> = ({ sender, text, visualConfig, socialList, playerProfile, onOpenNpcDetail, inventoryItems, onOpenInventoryItem, onOpenRawResponse }) => {
     use图片资源回源预取(playerProfile?.头像图片URL, socialList);
     const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
     const displayText = (text || '').replace(/\s*\n+\s*/g, ' ').replace(/[ \t]{2,}/g, ' ').trim();
@@ -765,7 +798,8 @@ export const CharacterRenderer: React.FC<{
                 </div>
             </div>
             <div className="relative flex-1 mt-0.5 sm:mt-1 min-w-0">
-                <div className="mobile-chat-dialogue-bubble relative bg-[#fcfaf7] px-3.5 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.15)] border border-black/10 z-10 min-h-[52px] sm:min-h-[64px] flex items-center group-hover:border-wuxia-gold/40 transition-colors duration-500" data-mobile-chat-bubble="true">
+                <div className="mobile-chat-dialogue-bubble relative bg-[#fcfaf7] px-3.5 sm:px-6 py-3 pr-12 sm:py-4 sm:pr-14 rounded-xl sm:rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.15)] border border-black/10 z-10 min-h-[52px] sm:min-h-[64px] flex items-center group-hover:border-wuxia-gold/40 transition-colors duration-500" data-mobile-chat-bubble="true">
+                    <RawResponseDebugButton onOpen={onOpenRawResponse} className="absolute right-2 top-2 z-20" />
                     <div className="absolute top-3.5 sm:top-4 -left-1.5 w-3 h-3 sm:w-4 sm:h-4 bg-[#fcfaf7] rotate-45 border-l border-b border-black/10 -z-10"></div>
                     <p className="font-medium relative z-10 tracking-wide whitespace-normal break-words leading-relaxed text-[#1a1a1a]" style={style}>
                         {渲染含档案引用文本(displayText, inventoryItems, onOpenInventoryItem, socialList, onOpenNpcDetail)}
@@ -801,7 +835,7 @@ export const CharacterRenderer: React.FC<{
     );
 };
 
-export const JudgmentRenderer: React.FC<{ text: string; thoughtBlock?: JudgmentThoughtBlock; isNsfw?: boolean; visualConfig?: 视觉设置结构; prefix?: string }> = ({ text, thoughtBlock, isNsfw, visualConfig, prefix }) => {
+export const JudgmentRenderer: React.FC<{ text: string; thoughtBlock?: JudgmentThoughtBlock; isNsfw?: boolean; visualConfig?: 视觉设置结构; prefix?: string; onOpenRawResponse?: () => void }> = ({ text, thoughtBlock, isNsfw, visualConfig, prefix, onOpenRawResponse }) => {
     const parsed = parseJudgmentText(text);
     const [isExpanded, setIsExpanded] = useState(true);
     const [showThought, setShowThought] = useState(true);
@@ -956,10 +990,11 @@ export const JudgmentRenderer: React.FC<{ text: string; thoughtBlock?: JudgmentT
             <div className={`absolute inset-0 w-full mx-auto rounded-xl ${theme.glow} opacity-40 blur-xl -z-10 transition-opacity group-hover:opacity-70`}></div>
             
             <div className={`relative z-10 w-full border-2 ${theme.border} rounded-xl shadow-2xl overflow-hidden ${theme.bg} backdrop-blur-md`} style={{ isolation: 'isolate', backgroundColor: 'rgba(5,5,5,0.96)' }}>
+                <RawResponseDebugButton onOpen={onOpenRawResponse} className="absolute right-2 top-2 z-30" />
                 {/* 顶部标题栏 */}
                 <button
                     type="button"
-                    className="relative w-full flex items-center justify-between gap-1 sm:gap-4 px-2 sm:px-4 py-2 sm:py-3 border-b border-white/10 bg-black/40 text-left transition-colors duration-300 hover:bg-black/50"
+                    className="relative w-full flex items-center justify-between gap-1 sm:gap-4 px-2 pr-12 sm:px-4 sm:pr-14 py-2 sm:py-3 border-b border-white/10 bg-black/40 text-left transition-colors duration-300 hover:bg-black/50"
                     onClick={() => setIsExpanded(prev => !prev)}
                 >
                     <div className="flex items-center gap-1 sm:gap-2 min-w-0 pr-1 sm:pr-4 flex-1">

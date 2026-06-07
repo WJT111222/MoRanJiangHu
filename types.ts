@@ -28,6 +28,7 @@ export interface TavernCommand {
 export interface GameLog {
     sender: string;
     text: string;
+    rawText?: string; // Optional debug source for the rendered bubble only.
 }
 
 export interface JudgmentThoughtBlock {
