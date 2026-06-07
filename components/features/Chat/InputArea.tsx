@@ -610,10 +610,13 @@ const InputArea: React.FC<Props> = ({
         }
         return '';
     };
+    const isProtocolTagOption = (value: string): boolean => (
+        /^<\s*\/?\s*(?:thinking|think|正文|短期记忆|变量规划|剧情规划|行动选项|命令|动态世界|judge)\s*[\]>]\s*$/i.test(value.trim())
+    );
 
     const normalizedOptions = options
         .map(normalizeOptionText)
-        .filter(item => item.length > 0);
+        .filter(item => item.length > 0 && !isProtocolTagOption(item));
 
     const busy = loading || isPreparing || variableGenerationRunning || postStoryQueueRunning;
     const recallRunning = isPreparing && !loading;

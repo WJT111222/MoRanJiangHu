@@ -1396,12 +1396,14 @@ export const 解析命令块 = (commandBlock: string): Array<{ action: 'add' | '
 const 解析行动选项块 = (optionsBlock: string): string[] => {
     const text = (optionsBlock || '').trim();
     if (!text) return [];
+    const 协议标签行正则 = /^<\s*\/?\s*(?:thinking|think|正文|短期记忆|变量规划|剧情规划|行动选项|命令|动态世界|judge)\s*[\]>]\s*$/i;
     return text
         .replace(/\r\n/g, '\n')
         .split('\n')
         .map(line => line.trim())
         .filter(Boolean)
         .map(line => line.replace(/^[-*]\s*/, '').replace(/^\d+\.\s*/, '').trim())
+        .filter(line => !协议标签行正则.test(line))
         .filter(Boolean);
 };
 

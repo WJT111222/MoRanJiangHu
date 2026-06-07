@@ -547,7 +547,10 @@ const RegionMap: React.FC<Props> = ({ nodes, currentNodeId, currentLocationName,
                         const stroke = card.isCurrent ? 'rgba(148,82,20,0.84)' : 'rgba(116,78,40,0.42)';
                         const title = card.node.名称 || '当前位置';
                         const desc = card.node.描述 || viewDescription || '';
-                        const titleSize = Math.max(0.55, Math.min(1.05, card.w / Math.max(5, title.length * 0.72)));
+                        const titleSize = Math.max(1.05, Math.min(1.7, card.w / Math.max(4.5, title.length * 0.48)));
+                        const descSize = Math.max(0.72, Math.min(0.9, card.w / 18));
+                        const markerRadius = Math.max(0.54, Math.min(0.72, card.w / 18));
+                        const labelSize = Math.max(0.68, Math.min(0.86, card.w / 16));
                         return (
                             <g key={card.node.ID} className={isClickable ? 'cursor-pointer' : ''} style={{ outline: 'none' }}>
                                 <rect x={card.x} y={card.y} width={card.w} height={card.h} rx={0.28}
@@ -570,9 +573,9 @@ const RegionMap: React.FC<Props> = ({ nodes, currentNodeId, currentLocationName,
                                         fill="#40c870" stroke="#208040" strokeWidth={0.06} pointerEvents="none" />
                                 )}
                                 {desc && card.h > 4.2 && (
-                                    <text x={card.x + 0.7} y={card.y + 2.65}
-                                        pointerEvents="none" fill="rgba(69,47,26,0.64)" fontSize={0.48} fontFamily="serif">
-                                        {desc.slice(0, Math.max(8, Math.floor(card.w * 1.2)))}
+                                    <text x={card.x + card.w / 2} y={card.y + 2.8}
+                                        textAnchor="middle" pointerEvents="none" fill="rgba(69,47,26,0.72)" fontSize={descSize} fontFamily="serif">
+                                        {desc.slice(0, Math.max(12, Math.floor(card.w * 1.7)))}
                                     </text>
                                 )}
                                 {cardNpcList.length > 0 ? (
@@ -580,14 +583,17 @@ const RegionMap: React.FC<Props> = ({ nodes, currentNodeId, currentLocationName,
                                         const name = String(npc?.姓名 || npc?.名称 || '?');
                                         const npcColors = ['#d49090', '#90b4d4', '#90d490', '#d4c490', '#b490d4', '#90d4c4'];
                                         const c = npcColors[Math.abs(name.length + i) % npcColors.length];
-                                        const x = card.x + 0.8 + i * Math.min(2.2, Math.max(1.2, card.w / 5));
-                                        const y = card.y + card.h - 1.15;
+                                        const count = Math.min(4, cardNpcList.length);
+                                        const spacing = Math.min(3.2, Math.max(2.2, card.w / 4.8));
+                                        const totalWidth = (count - 1) * spacing;
+                                        const x = card.x + card.w / 2 - totalWidth / 2 + i * spacing;
+                                        const y = card.y + Math.max(4.15, card.h * 0.62);
                                         return (
                                             <g key={`${card.node.ID}-npc-${i}`}>
-                                                <circle cx={x} cy={y} r={0.34} fill={c} stroke="rgba(72,35,24,0.45)" strokeWidth={0.05} pointerEvents="none" />
-                                                <text x={x + 0.45} y={y + 0.02}
-                                                    dominantBaseline="middle" pointerEvents="none"
-                                                    fill="rgba(44,24,12,0.88)" fontSize={0.46} fontFamily="serif" fontWeight="bold">
+                                                <circle cx={x} cy={y} r={markerRadius} fill={c} stroke="rgba(72,35,24,0.52)" strokeWidth={0.08} pointerEvents="none" />
+                                                <text x={x} y={y + markerRadius + 0.62}
+                                                    textAnchor="middle" dominantBaseline="middle" pointerEvents="none"
+                                                    fill="rgba(44,24,12,0.92)" fontSize={labelSize} fontFamily="serif" fontWeight="bold">
                                                     {name.slice(0, 3)}
                                                 </text>
                                             </g>

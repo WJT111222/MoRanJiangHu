@@ -42,19 +42,26 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
         const hi168ApkUrl = versionedFileName
             ? `${baseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=hi168`
             : `${baseUrl}/api/apk/latest.apk?provider=hi168`;
+        const latest = payload?.latest || {};
+        const manifestApkUrls = Array.isArray(latest.apkUrls)
+            ? latest.apkUrls.map((url: unknown) => String(url || '')).filter(Boolean)
+            : [];
+        const allowsR2Provider = String(latest.preferredApkProvider || '').trim() === 'r2'
+            || manifestApkUrls.some((url: string) => /[?&]provider=r2(?:&|$)/i.test(url))
+            || Boolean(String(latest.r2ApkUrl || '').trim());
+        const providerUrls = allowsR2Provider ? [r2ApkUrl, hi168ApkUrl] : [hi168ApkUrl];
         const nextPayload = {
             ...payload,
             latest: {
-                ...(payload?.latest || {}),
+                ...latest,
                 apkUrl: stableApkUrl,
                 directApkUrl: latestApkUrl,
                 apkUrls: [
                     latestApkUrl,
                     stableApkUrl,
-                    r2ApkUrl,
-                    hi168ApkUrl
+                    ...providerUrls
                 ].filter(Boolean),
-                r2ApkUrl,
+                r2ApkUrl: allowsR2Provider ? r2ApkUrl : '',
                 hi168ApkUrl,
                 latestApkUrl,
                 manifestUrl: stableManifestUrl

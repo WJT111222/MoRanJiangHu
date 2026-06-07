@@ -161,7 +161,7 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
     const selectedNodePeople = useMemo(() => {
         const people = [...selectedNodeNpcs];
         const safePlayerName = playerName.trim();
-        if (!safePlayerName || !selectedNode) return people;
+        if (!selectedNode) return people;
         const currentName = tree.当前节点?.名称 || '';
         const selectedNames = new Set<string>([
             selectedNode.名称,
@@ -173,10 +173,34 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
             || envNames.some((name) => selectedNames.has(name))
             || breadcrumb.some((node) => node.ID === tree.当前节点?.ID)
             || selectedNode.ID === tree.当前节点?.父级ID;
-        if (!locationMatches) return people;
-        if (people.some((person: any) => String(person?.姓名 || person?.名称 || '').trim() === safePlayerName)) return people;
-        return [{ 姓名: safePlayerName, 名称: safePlayerName, 是否玩家本人: true }, ...people];
-    }, [selectedNodeNpcs, playerName, selectedNode, tree.当前节点, breadcrumb, env]);
+        const isLeafNode = selectedNode.子节点.length === 0;
+        if (!locationMatches && !isLeafNode) return people;
+
+        const appendUnique = (person: any) => {
+            const name = String(person?.姓名 || person?.名称 || '').trim();
+            if (!name) return;
+            if (people.some((existing: any) => String(existing?.姓名 || existing?.名称 || '').trim() === name)) return;
+            people.push(person);
+        };
+
+        if (safePlayerName) {
+            const hasPlayer = people.some((existing: any) => String(existing?.姓名 || existing?.名称 || '').trim() === safePlayerName);
+            if (!hasPlayer) people.unshift({ 姓名: safePlayerName, 名称: safePlayerName, 是否玩家本人: true });
+        }
+        if (isLeafNode) {
+            const heroine = socialList.find((npc: any) => {
+                const name = String(npc?.姓名 || npc?.名称 || '').trim();
+                if (!name || name === safePlayerName) return false;
+                return npc?.是否主要角色 === true && npc?.是否队友 === true && String(npc?.性别 || '').includes('女');
+            }) || socialList.find((npc: any) => {
+                const name = String(npc?.姓名 || npc?.名称 || '').trim();
+                if (!name || name === safePlayerName) return false;
+                return npc?.是否主要角色 === true && npc?.是否队友 === true;
+            });
+            if (heroine) appendUnique(heroine);
+        }
+        return people;
+    }, [selectedNodeNpcs, playerName, selectedNode, tree.当前节点, breadcrumb, env, socialList]);
 
     const rightPanelWidth = compact ? 'min-h-0' : 'w-[320px]';
 

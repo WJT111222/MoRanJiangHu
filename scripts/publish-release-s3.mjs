@@ -60,9 +60,10 @@ const providerApkUrls = {
   r2: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=r2` : `${r2PublicBaseUrl}/${encodeURIComponent(versionedFileName)}`,
   hi168: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=hi168` : publicUrl(versionedKey)
 };
-const orderedProviderUrls = preferredApkProvider === 'r2'
+const enabledProviderUrls = skipApkUpload ? { hi168: providerApkUrls.hi168 } : providerApkUrls;
+const orderedProviderUrls = preferredApkProvider === 'r2' && enabledProviderUrls.r2
   ? [providerApkUrls.r2, providerApkUrls.hi168]
-  : [providerApkUrls.hi168, providerApkUrls.r2];
+  : [providerApkUrls.hi168, enabledProviderUrls.r2].filter(Boolean);
 const apkBuffer = fs.readFileSync(apkPath);
 const apkSha256 = crypto.createHash('sha256').update(apkBuffer).digest('hex');
 const apkSize = apkBuffer.byteLength;
@@ -81,15 +82,15 @@ const manifest = {
     latestApkUrl: `${websiteBaseUrl}/api/apk/latest.apk`,
     directApkUrl: `${websiteBaseUrl}/api/apk/latest.apk`,
     preferredApkProvider,
-    r2ApkUrl: providerApkUrls.r2,
+    r2ApkUrl: enabledProviderUrls.r2 || '',
     hi168ApkUrl: providerApkUrls.hi168,
-    r2DirectApkUrl: `${r2PublicBaseUrl}/${encodeURIComponent(versionedFileName)}`,
+    r2DirectApkUrl: enabledProviderUrls.r2 ? `${r2PublicBaseUrl}/${encodeURIComponent(versionedFileName)}` : '',
     hi168DirectApkUrl: providerApkUrls.hi168,
     apkUrls: [
       `${websiteBaseUrl}/api/apk/latest.apk`,
       `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}`,
       ...orderedProviderUrls
-    ],
+    ].filter(Boolean),
     manifestUrl: publicUrl(manifestKey),
     publishedAt: releaseInfo.releasePublishedAt || new Date().toISOString(),
     changes: Array.isArray(releaseInfo.releaseNotes) ? releaseInfo.releaseNotes : []

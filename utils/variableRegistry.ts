@@ -239,15 +239,16 @@ export const 构建变量路径登记表 = (
 ): string[] => {
     const maxDepth = Math.max(1, options?.maxDepth ?? 4);
     const maxLines = Math.max(20, options?.maxLines ?? 220);
-    const result: string[] = [];
+    const roots = 变量登记根路径.filter((root) => root in (stateLike || {}));
+    const details: string[] = [];
 
-    for (const root of 变量登记根路径) {
-        if (!(root in (stateLike || {}))) continue;
-        收集变量路径((stateLike as any)[root], root, result, maxDepth);
-        if (result.length >= maxLines) break;
+    for (const root of roots) {
+        收集变量路径((stateLike as any)[root], root, details, maxDepth);
+        if (details.length >= maxLines * 2) break;
     }
 
-    return Array.from(new Set(result)).slice(0, maxLines);
+    const uniqueDetails = Array.from(new Set(details)).filter((path) => !roots.includes(path as any));
+    return Array.from(new Set([...roots, ...uniqueDetails])).slice(0, maxLines);
 };
 
 export const 构建变量路径登记提示 = (stateLike: Record<string, any>): string => {

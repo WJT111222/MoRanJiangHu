@@ -3,6 +3,28 @@ import { parseStoryRawText } from '../services/ai/storyResponseParser';
 import { 规范化可渲染对白日志 } from '../utils/dialogueLogNormalizer';
 
 describe('storyResponseParser', () => {
+    it('does not expose malformed closing action tag as a quick action', () => {
+        const parsed = parseStoryRawText([
+            '<正文>',
+            '【旁白】倒计时仍在墙上跳动。',
+            '</正文>',
+            '<短期记忆>主角与俞月荷在主神空间等待试炼。</短期记忆>',
+            '<行动选项>',
+            '尝试通过意识沟通半空中的主神光球',
+            '推开金属门，前往外面的主神广场查看',
+            '与俞月荷详细商讨接下来的防卫分工',
+            '仔细搜查个人房间的金属墙壁与角落',
+            '</行动选项]'
+        ].join('\n'));
+
+        expect(parsed.action_options).toEqual([
+            '尝试通过意识沟通半空中的主神光球',
+            '推开金属门，前往外面的主神广场查看',
+            '与俞月荷详细商讨接下来的防卫分工',
+            '仔细搜查个人房间的金属墙壁与角落'
+        ]);
+    });
+
     it('does not fold variable plan or short memory into body fallback', () => {
         const parsed = parseStoryRawText([
             '<变量规划>',

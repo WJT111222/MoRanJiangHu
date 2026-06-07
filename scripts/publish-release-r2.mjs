@@ -71,9 +71,10 @@ const providerApkUrls = {
   r2: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedApkFileName)}?provider=r2` : r2VersionedApkUrl,
   hi168: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedApkFileName)}?provider=hi168` : hi168VersionedApkUrl
 };
-const orderedProviderUrls = preferredApkProvider === 'r2'
+const enabledProviderUrls = skipApkUpload ? { hi168: providerApkUrls.hi168 } : providerApkUrls;
+const orderedProviderUrls = preferredApkProvider === 'r2' && enabledProviderUrls.r2
   ? [providerApkUrls.r2, providerApkUrls.hi168]
-  : [providerApkUrls.hi168, providerApkUrls.r2];
+  : [providerApkUrls.hi168, enabledProviderUrls.r2].filter(Boolean);
 
 const manifest = {
   latest: {
@@ -89,9 +90,9 @@ const manifest = {
     latestApkUrl: legacyLatestApkUrl,
     directApkUrl: legacyLatestApkUrl,
     preferredApkProvider,
-    r2ApkUrl: providerApkUrls.r2,
+    r2ApkUrl: enabledProviderUrls.r2 || '',
     hi168ApkUrl: providerApkUrls.hi168,
-    r2DirectApkUrl: r2VersionedApkUrl,
+    r2DirectApkUrl: enabledProviderUrls.r2 ? r2VersionedApkUrl : '',
     hi168DirectApkUrl: providerApkUrls.hi168,
     apkUrls: [
       legacyLatestApkUrl,

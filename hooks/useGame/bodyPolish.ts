@@ -201,6 +201,7 @@ export const 解析正文日志文本 = (bodyText: string): 正文日志结构 =
     const lines = source.replace(/\r\n/g, '\n').split('\n');
     const logs: 正文日志结构 = [];
     let current: { sender: string; text: string } | null = null;
+    let pendingDialogueSender = '';
     const 写入旁白行 = (value: string) => {
         const text = (value || '').trim();
         if (!text) return;
@@ -217,6 +218,7 @@ export const 解析正文日志文本 = (bodyText: string): 正文日志结构 =
         if (!line) continue;
         const judgmentLine = 解析判定正文行(line);
         if (judgmentLine) {
+            pendingDialogueSender = '';
             current = { sender: judgmentLine.sender, text: judgmentLine.text };
             logs.push(current);
             if (judgmentLine.trailingBody) {
@@ -230,13 +232,21 @@ export const 解析正文日志文本 = (bodyText: string): 正文日志结构 =
             const sender = 规范化正文发送者(match[1]);
             const text = (match[2] || '').trim();
             if (!是否可信正文标签发送者(sender)) {
+                pendingDialogueSender = '';
                 写入旁白行(line);
                 continue;
             }
+            pendingDialogueSender = text ? '' : sender;
             current = { sender, text };
             logs.push(current);
             continue;
         }
+        if (pendingDialogueSender && current?.sender === pendingDialogueSender && !current.text.trim()) {
+            current.text = line;
+            pendingDialogueSender = '';
+            continue;
+        }
+        pendingDialogueSender = '';
         if (current && (是否判定正文发送者(current.sender) || 是否判定日志文本(current.text))) {
             写入旁白行(line);
             continue;

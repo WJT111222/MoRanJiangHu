@@ -315,6 +315,20 @@ describe('门派状态规范化', () => {
         expect(JSON.stringify(normalized.兑换列表)).not.toMatch(/辟谷丹|丹药/);
     });
 
+    it('轮回小队会替换模型误写的丹药兑换为主神商城商品', () => {
+        const normalized = 规范化门派状态({
+            ID: 'team_001',
+            名称: '第七轮回小队',
+            组织语义: '轮回小队',
+            玩家职位: '新人',
+            兑换列表: [{ id: 'old_good', 物品名称: '辟谷丹', 类型: '丹药', 兑换价格: 30, 库存: 1, 要求职位: '杂役弟子' }]
+        } as any);
+
+        expect(normalized.兑换列表.map((item: any) => item.物品名称)).toContain('止血喷雾');
+        expect(JSON.stringify(normalized.兑换列表)).toMatch(/基因锁稳定剂|恐怖片情报片段/);
+        expect(JSON.stringify(normalized.兑换列表)).not.toMatch(/辟谷丹|丹药|杂役弟子/);
+    });
+
     it('营地面板按累计贡献显示职位，1500 累计贡献不再停留在营地成员', () => {
         const sectData: any = {
             ID: 'camp_001',
