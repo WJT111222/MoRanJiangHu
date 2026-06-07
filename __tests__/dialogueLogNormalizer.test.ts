@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { 规范化对白日志, 规范化可渲染对白日志 } from '../utils/dialogueLogNormalizer';
 
 describe('dialogueLogNormalizer story readability cleanup', () => {
-    it('removes repeated knuckle-whitening phrasing and duplicate punctuation', () => {
+    it('does not rewrite knuckle-whitening phrasing locally', () => {
         const logs = 规范化对白日志([
             {
                 sender: '旁白',
@@ -11,8 +11,8 @@ describe('dialogueLogNormalizer story readability cleanup', () => {
         ] as any);
 
         expect(logs).toHaveLength(1);
-        expect(logs[0].text).toContain('手指收紧');
-        expect(logs[0].text).not.toContain('指节处泛起了一丝不正常的苍白');
+        expect(logs[0].text).toContain('指节处泛起了一丝不正常的苍白');
+        expect(logs[0].text).not.toContain('手指收紧');
         expect(logs[0].text).not.toContain('。。');
     });
 

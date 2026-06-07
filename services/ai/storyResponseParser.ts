@@ -893,6 +893,8 @@ const 显式标签行正则 = /^【\s*([^】]+?)\s*】\s*(.*)$/;
 const 方括号疑似说话人行正则 = /^\[\s*([A-Za-z0-9_\u4e00-\u9fff·]{1,16})\s*\]\s*(.{1,800})$/u;
 const 显式说话引号正则 = /([A-Za-z0-9_\u4e00-\u9fff·]{1,14})[^。！？!?；;\n]{0,40}(?:说|说道|道|问|问道|喊|喊道|喝|喝道|答|答道|回|回道|唤|唤道|骂|骂道|笑|笑道|叹|叹道|吩咐|提醒|解释|应|应道|接|接道|开口|继续|补充|又道)\s*[：:，,]?\s*[“"「『][^”"」』\n]{1,500}[”"」』]/u;
 const 裸引号整行正则 = /^[“"「『][^”"」』\n]{1,500}[”"」』][。！？!?…~～]*$/u;
+const 孤立标点行正则 = /^[。！？!?；;，,.、…]+$/u;
+const 指节泛白套话正则 = /(?:指节|指关节|指尖|手指|拳头)[^。！？!?；;\n]{0,32}(?:发白|泛白|泛起白|泛起苍白|泛起青白|苍白|惨白|青白|失血色|没有血色)|(?:发白|泛白|苍白|惨白|青白|失血色|没有血色)[^。！？!?；;\n]{0,16}(?:指节|指关节|指尖|手指|拳头)/u;
 const 正文引号闭合表: Record<string, string> = {
     '“': '”',
     '「': '」',
@@ -1005,11 +1007,26 @@ const 检测正文对白格式问题 = (body: string): string | null => {
         if (tagMatch) {
             const sender = 规范化日志发送者(tagMatch[1] || '');
             const text = (tagMatch[2] || '').trim();
+            if (孤立标点行正则.test(text)) {
+                return `正文第${index + 1}行只有孤立标点「${text}」，必须局部重写相邻正文，不能让标点单独成行`;
+            }
+            const stalePhrase = text.match(指节泛白套话正则)?.[0]?.trim();
+            if (stalePhrase) {
+                return `正文第${index + 1}行包含高频套话「${stalePhrase}」，必须局部重写该句，避免“指节/指关节/手指/拳头泛白”类描写`;
+            }
             if (sender === '旁白') {
                 const quotedSpeaker = 提取显式说话引号人物名(text);
                 if (quotedSpeaker) return `疑似角色「${quotedSpeaker}」的对白写在【旁白】行内`;
             }
             continue;
+        }
+
+        if (孤立标点行正则.test(line)) {
+            return `正文第${index + 1}行只有孤立标点「${line}」，必须局部重写相邻正文，不能让标点单独成行`;
+        }
+        const stalePhrase = line.match(指节泛白套话正则)?.[0]?.trim();
+        if (stalePhrase) {
+            return `正文第${index + 1}行包含高频套话「${stalePhrase}」，必须局部重写该句，避免“指节/指关节/手指/拳头泛白”类描写`;
         }
 
         const squareSpeaker = line.match(方括号疑似说话人行正则);
@@ -1439,7 +1456,7 @@ const 解析标签协议响应 = (content: string, options?: Required<StoryParse
         : null;
     if (dialogueFormatIssue) {
         throw new StoryResponseParseError(
-            `${dialogueFormatIssue}。请重新生成本回合，并确保每句角色对白单独使用【角色名】开头，旁白只写动作与环境。`,
+            `${dialogueFormatIssue}。请局部修复本回合正文：角色对白必须单独使用【角色名】开头，旁白只写动作、环境与心理；正文行不能只剩孤立标点，也不能保留被指出的高频套话。`,
             content,
             dialogueFormatIssue
         );

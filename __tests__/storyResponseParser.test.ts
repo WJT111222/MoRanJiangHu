@@ -199,6 +199,27 @@ describe('storyResponseParser', () => {
         })).toThrow(/疑似输出在 <短期记忆> 内被截断|提高最大输出Token/);
     });
 
+    it('rejects isolated punctuation lines during strict parsing', () => {
+        expect(() => parseStoryRawText([
+            '<正文>',
+            '【旁白】倒计时冰冷地跳动着，昭示着平静的时光正在飞速流逝。',
+            '。',
+            '【旁白】她握紧手中的手摇电筒，等待杨培强的决定。',
+            '</正文>',
+            '<短期记忆>主神空间倒计时继续推进。</短期记忆>'
+        ].join('\n'), { validateDialogueFormat: true })).toThrow(/孤立标点|标点单独成行/);
+    });
+
+    it('rejects knuckle-whitening stock phrasing during strict parsing', () => {
+        expect(() => parseStoryRawText([
+            '<正文>',
+            '她看着杨培强，虽然脸上还挂着那副有些别扭的傲娇神情，但眼神中的探询与不安却极其明显。',
+            '她握紧了手中的手摇电筒，指关节因为用力而微微泛白，等待着杨培强的决定。',
+            '</正文>',
+            '<短期记忆>未知空间内，她等待杨培强做决定。</短期记忆>'
+        ].join('\n'), { validateDialogueFormat: true })).toThrow(/高频套话|指关节|泛白/);
+    });
+
     it('keeps only explicit tagged single-speaker text as character bubbles for rendering', () => {
         const rendered = 规范化可渲染对白日志([
             { sender: '杨培强', text: '“弟子，领命。”\n\n风，渐渐停了。\n\n铅灰色的云层开始散去。' },
