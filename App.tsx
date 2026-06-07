@@ -1270,7 +1270,7 @@ const App: React.FC = () => {
             const shouldRoll = activeCount < 4 || Math.random() < 0.55;
             if (!shouldRoll) return prev;
             const next = 清理并补货(prev, {
-                允许系统补货: true,
+                允许系统补货: false,
                 最大系统补货数量: activeCount < 4 ? 2 : 1,
                 目标在售数量: 12,
                 题材模式: state.开局配置?.题材模式

@@ -214,12 +214,12 @@ describe('门派状态规范化', () => {
         expect(JSON.stringify(openingBase.玩家门派.藏经阁列表)).toMatch(/感染|搜救|枪械|训练|防护/);
         expect(JSON.stringify(openingBase.玩家门派.藏经阁列表)).not.toMatch(/剑法|心法|身法|藏经阁|聚宝阁|弟子|宗门|门派|吐纳|丹田/);
         expect(openingBase.角色.功法列表).toEqual([]);
-        expect(openingBase.玩家门派.兑换列表.map((item: any) => item.物品名称)).toContain('净水包');
-        expect(JSON.stringify(openingBase.玩家门派.兑换列表)).not.toMatch(/辟谷丹|回气丹|凝元丹|破境丹/);
+        expect(openingBase.玩家门派.兑换列表).toEqual([]);
         expect(openingBase.玩家门派.重要成员.some((member: any) => /营地|物资|巡逻|医护|维修|哨兵|搜救|同行者/.test(member.身份))).toBe(true);
         expect(openingBase.任务列表.some((task: any) => task.类型 === '主线')).toBe(true);
         expect(openingBase.任务列表[0].标题).toBe('守住第一夜');
-        expect(JSON.stringify(openingBase.任务列表)).toMatch(/组织信用|净水包|急救熟练度|可分配属性点/);
+        expect(JSON.stringify(openingBase.任务列表)).toMatch(/组织信用|急救熟练度|可分配属性点/);
+        expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/净水包/);
         expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/门派任务|同门|弟子|藏经阁|山门|辟谷丹|回气丹|凝元丹|破境丹/);
     });
 
@@ -247,7 +247,7 @@ describe('门派状态规范化', () => {
         expect(JSON.stringify(openingBase.玩家门派.藏经阁列表)).toMatch(/培训|协调|设备|外勤|应急|资料/);
         expect(JSON.stringify(openingBase.玩家门派.藏经阁列表)).not.toMatch(/剑法|心法|身法|藏经阁|聚宝阁|弟子|宗门|门派|吐纳|丹田/);
         expect(openingBase.角色.功法列表).toEqual([]);
-        expect(openingBase.玩家门派.兑换列表.map((item: any) => item.物品名称)).toContain('备用手机');
+        expect(openingBase.玩家门派.兑换列表).toEqual([]);
         expect(openingBase.玩家门派.重要成员.some((member: any) => /负责人|同事|行政|技术|外勤|合作伙伴|社区|实习/.test(member.身份))).toBe(true);
         expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/门派任务|同门|弟子|藏经阁|山门/);
     });
@@ -299,7 +299,7 @@ describe('门派状态规范化', () => {
         expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/门派任务|同门|弟子|山门/);
     });
 
-    it('末日组织会替换历史存档里的古风资料和丹药兑换', () => {
+    it('末日组织会替换历史存档里的古风资料，但不再替换或生成兑换物品', () => {
         const normalized = 规范化门派状态({
             ID: 'camp_001',
             名称: '铁栅安全点',
@@ -311,11 +311,10 @@ describe('门派状态规范化', () => {
 
         expect(JSON.stringify(normalized.藏经阁列表)).toMatch(/感染|搜救|枪械|训练|防护/);
         expect(JSON.stringify(normalized.藏经阁列表)).not.toMatch(/剑法|藏经阁|杂役弟子/);
-        expect(normalized.兑换列表.map((item: any) => item.物品名称)).toContain('净水包');
-        expect(JSON.stringify(normalized.兑换列表)).not.toMatch(/辟谷丹|丹药/);
+        expect(normalized.兑换列表).toEqual([{ id: 'old_good', 物品名称: '辟谷丹', 类型: '丹药', 兑换价格: 30, 库存: 1, 要求职位: '杂役弟子' }]);
     });
 
-    it('轮回小队会替换模型误写的丹药兑换为主神商城商品', () => {
+    it('轮回小队不再把模型写入的兑换物品替换为本地主神商城商品', () => {
         const normalized = 规范化门派状态({
             ID: 'team_001',
             名称: '第七轮回小队',
@@ -324,9 +323,7 @@ describe('门派状态规范化', () => {
             兑换列表: [{ id: 'old_good', 物品名称: '辟谷丹', 类型: '丹药', 兑换价格: 30, 库存: 1, 要求职位: '杂役弟子' }]
         } as any);
 
-        expect(normalized.兑换列表.map((item: any) => item.物品名称)).toContain('止血喷雾');
-        expect(JSON.stringify(normalized.兑换列表)).toMatch(/基因锁稳定剂|恐怖片情报片段/);
-        expect(JSON.stringify(normalized.兑换列表)).not.toMatch(/辟谷丹|丹药|杂役弟子/);
+        expect(normalized.兑换列表).toEqual([{ id: 'old_good', 物品名称: '辟谷丹', 类型: '丹药', 兑换价格: 30, 库存: 1, 要求职位: '杂役弟子' }]);
     });
 
     it('营地面板按累计贡献显示职位，1500 累计贡献不再停留在营地成员', () => {

@@ -1110,6 +1110,13 @@ html[data-theme="day"] .sect-modal-body {
   display: block;
 }
 
+.landing-presence-tooltip {
+  background: var(--landing-presence-tooltip-bg);
+  border-color: color-mix(in srgb, var(--landing-presence-tooltip-text) 28%, transparent);
+  color: var(--landing-presence-tooltip-text);
+  line-height: 1.2;
+}
+
 .landing-presence-axis-label {
   fill: rgba(236, 253, 245, 0.62);
 }

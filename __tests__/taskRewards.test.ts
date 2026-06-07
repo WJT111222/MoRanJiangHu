@@ -37,7 +37,7 @@ const 创建奖励状态 = () => ({
 });
 
 describe('任务完成奖励结算', () => {
-    it('把贡献、物品、技艺和属性点落实到状态，并追加正文可见奖励日志', () => {
+    it('把非物品奖励落实到状态；物品奖励只记录到账，不由本地生成背包物品', () => {
         const response: any = { logs: [{ sender: '旁白', text: '值班组长点头确认你完成了清点。' }], tavern_commands: [] };
         const result = 结算已完成任务奖励({
             response,
@@ -50,11 +50,13 @@ describe('任务完成奖励结算', () => {
         expect(result.state.角色.门派贡献).toBe(200);
         expect(result.state.角色.可分配属性点).toBe(1);
         expect(result.state.角色.技艺.find((item: any) => item.名称 === '急救')?.熟练度).toBe(8);
-        expect(result.state.角色.物品列表.some((item: any) => item.名称 === '净水包' && item.堆叠数量 === 1)).toBe(true);
+        expect(result.state.角色.物品列表).toEqual([]);
         expect(result.state.任务列表[0].奖励已发放).toBe(true);
         expect(result.state.任务列表[0].奖励发放人).toBe('值班组长');
+        expect(result.state.任务列表[0].奖励到账记录).toContain('净水包 x1');
         expect(response.logs.some((log: any) => log.sender === '奖励' && log.text.includes('【任务完成】'))).toBe(true);
         expect(response.logs.some((log: any) => log.sender === '奖励' && log.text.includes('【奖励到账】') && log.text.includes('净水包 x1'))).toBe(true);
+        expect(response.logs.some((log: any) => log.sender === '奖励' && log.text.includes('背包物品必须由AI变量命令写入'))).toBe(true);
     });
 
     it('已经发放过奖励的任务不会重复发放', () => {

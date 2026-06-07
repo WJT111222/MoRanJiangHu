@@ -24,15 +24,6 @@ const 取数字 = (value: unknown, fallback = 0): number => {
 
 const 深拷贝 = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
-const 稳定哈希文本 = (text: string): string => {
-    let hash = 2166136261;
-    for (let i = 0; i < text.length; i += 1) {
-        hash ^= text.charCodeAt(i);
-        hash = Math.imul(hash, 16777619);
-    }
-    return (hash >>> 0).toString(36);
-};
-
 const 技艺等级由熟练度 = (value: number): string => {
     if (value <= 0) return '未入门';
     if (value < 25) return '入门';
@@ -48,35 +39,6 @@ const 解析奖励片段 = (raw: string): string[] => (
         .map((item) => item.trim())
         .filter(Boolean)
 );
-
-const 创建任务奖励物品 = (name: string, count: number, taskKey: string, index: number) => {
-    const itemName = name.replace(/[【】\[\]]/g, '').trim();
-    const itemType = /秘籍|手册|教程|功法|谱$|诀$/.test(itemName)
-        ? '秘籍'
-        : /钥匙|令牌|通行|凭证|徽章|证件/.test(itemName)
-            ? '任务道具'
-            : /绷带|药|药品|净水|饮水|食物|压缩饼干|口粮|急救包|补给/.test(itemName)
-                ? '消耗品'
-                : '材料';
-    return {
-        ID: `task_reward_${稳定哈希文本(`${taskKey}|${itemName}`)}_${index}`,
-        名称: itemName,
-        描述: '任务奖励获得。',
-        类型: itemType,
-        品质: '凡品',
-        重量: 0.1,
-        堆叠数量: Math.max(1, Math.trunc(count)),
-        是否可堆叠: true,
-        最大堆叠: 99,
-        价值: 0,
-        当前耐久: 0,
-        最大耐久: 0,
-        词条列表: [],
-        物品来源类型: '任务奖励',
-        来源描述: '任务奖励',
-        视觉唯一性: '普通'
-    };
-};
 
 const 奖励日志已存在 = (response: GameResponse, taskTitle: string): boolean => {
     const logs = Array.isArray(response.logs) ? response.logs : [];
@@ -117,7 +79,6 @@ export const 结算已完成任务奖励 = (
         if (task.当前状态 !== '已完成' || task.奖励已发放 === true) return task;
 
         const taskTitle = 取文本(task.标题, `任务${taskIndex + 1}`);
-        const taskKey = `${取文本(task.类型)}|${taskTitle}|${取文本(task.发布人)}|${taskIndex}`;
         const issuer = 取文本(task.奖励发放人)
             || 取文本(task.发布人)
             || 取文本(sect.名称)
@@ -126,9 +87,8 @@ export const 结算已完成任务奖励 = (
             ? task.奖励描述.map((item: any) => 取文本(item)).filter(Boolean)
             : [];
         const rewardRecords: string[] = [];
-        const itemRewards: any[] = [];
 
-        rewardDescriptions.flatMap(解析奖励片段).forEach((part, rewardIndex) => {
+        rewardDescriptions.flatMap(解析奖励片段).forEach((part) => {
             const contributionMatch = part.match(/(?:门派贡献|营地贡献|组织信用|队伍信用|贡献点|资源额度|信用额度)\s*[+＋]\s*(\d+)/u);
             if (contributionMatch) {
                 const amount = Math.max(0, Math.trunc(Number(contributionMatch[1])));
@@ -203,21 +163,15 @@ export const 结算已完成任务奖励 = (
                 const itemName = itemMatch[1].trim();
                 const count = Math.max(1, Math.trunc(Number(itemMatch[2])));
                 if (itemName) {
-                    itemRewards.push(创建任务奖励物品(itemName, count, taskKey, rewardIndex));
                     rewardRecords.push(`${itemName} x${count}`);
-                    changed = true;
                 }
             }
         });
 
-        if (itemRewards.length > 0) {
-            role.物品列表.push(...itemRewards);
-        }
-
         const finalRecords = rewardRecords.length > 0 ? rewardRecords : ['奖励说明已确认'];
         if (!奖励日志已存在(response, taskTitle)) {
             const completionText = `【任务完成】「${taskTitle}」已由${issuer}确认完成。`;
-            const rewardText = `【奖励到账】「${taskTitle}」由${issuer}发放：${finalRecords.join('、')}。背包、贡献、技艺和属性点已同步更新。`;
+            const rewardText = `【奖励到账】「${taskTitle}」由${issuer}发放：${finalRecords.join('、')}。贡献、货币、技艺和属性点已同步更新；物品奖励仅记录到账，背包物品必须由AI变量命令写入。`;
             response.logs.push({ sender: '奖励', text: completionText });
             response.logs.push({ sender: '奖励', text: rewardText });
             visibleRewardLogs.push(completionText, rewardText);

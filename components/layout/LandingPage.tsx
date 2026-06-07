@@ -218,6 +218,9 @@ const 在线人数折线图: React.FC<{ data: 在线人数小时点[]; current?:
     }).join(' ');
     const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
     const hoveredPosition = hoveredPoint ? pointPosition(hoveredPoint, hoveredIndex ?? 0) : null;
+    const hoverColumnWidth = points.length <= 1
+        ? Math.max(52, width - padX * 2)
+        : Math.max(28, Math.min(46, (width - padX * 2) / Math.max(1, points.length - 1)));
     const dateGroups = points.reduce<Array<{ key: string; start: number; end: number; label: string }>>((groups, item, index) => {
         const key = pointDayKey(item);
         const last = groups[groups.length - 1];
@@ -251,15 +254,20 @@ const 在线人数折线图: React.FC<{ data: 在线人数小时点[]; current?:
                     <div className="landing-presence-recent mt-1 font-mono text-2xl font-bold text-sky-100">{current ? current.totalRecentCount : '--'}</div>
                 </div>
             </div>
-            <div ref={chartScrollRef} className="landing-presence-chart-scroll mt-1 w-full max-w-[430px] flex-1 overflow-x-auto overflow-y-hidden">
-                <svg
-                    viewBox={`0 0 ${width} ${height}`}
-                    width={width}
-                    height={height}
-                    className="landing-presence-chart min-h-0 shrink-0 overflow-visible"
-                    role="img"
-                    aria-label="每小时在线人数折线图"
-                >
+            <div
+                ref={chartScrollRef}
+                className="landing-presence-chart-scroll mt-1 w-full max-w-[430px] flex-1 overflow-x-auto overflow-y-hidden"
+                onPointerLeave={() => setHoveredIndex(null)}
+            >
+                <div className="landing-presence-chart-frame relative shrink-0" style={{ width, height }}>
+                    <svg
+                        viewBox={`0 0 ${width} ${height}`}
+                        width={width}
+                        height={height}
+                        className="landing-presence-chart min-h-0 shrink-0 overflow-visible"
+                        role="img"
+                        aria-label="每小时在线人数折线图"
+                    >
                     <defs>
                         <linearGradient id="onlineLineGradient" x1="0" y1="0" x2="1" y2="0">
                             <stop offset="0%" stopColor="var(--landing-presence-line-start, #34d399)" />
@@ -289,22 +297,6 @@ const 在线人数折线图: React.FC<{ data: 在线人数小时点[]; current?:
                                 strokeWidth="1.2"
                                 strokeDasharray="3 3"
                             />
-                            <rect
-                                x={Math.max(8, Math.min(width - 54, hoveredPosition.x - 23))}
-                                y={Math.max(2, hoveredPosition.y - 28)}
-                                width="46"
-                                height="18"
-                                rx="4"
-                                className="landing-presence-tooltip-bg"
-                            />
-                            <text
-                                x={Math.max(31, Math.min(width - 31, hoveredPosition.x))}
-                                y={Math.max(14, hoveredPosition.y - 15)}
-                                textAnchor="middle"
-                                className="landing-presence-tooltip-text font-mono text-[9px]"
-                            >
-                                {hoveredPoint.count}人
-                            </text>
                         </g>
                     )}
                     {points.map((item, index) => {
@@ -318,7 +310,8 @@ const 在线人数折线图: React.FC<{ data: 在线人数小时点[]; current?:
                                     r="12"
                                     fill="transparent"
                                     onMouseEnter={() => setHoveredIndex(index)}
-                                    onMouseLeave={() => setHoveredIndex(null)}
+                                    onPointerEnter={() => setHoveredIndex(index)}
+                                    onPointerMove={() => setHoveredIndex(index)}
                                     onFocus={() => setHoveredIndex(index)}
                                     onBlur={() => setHoveredIndex(null)}
                                     tabIndex={0}
@@ -383,7 +376,41 @@ const 在线人数折线图: React.FC<{ data: 在线人数小时点[]; current?:
                             </g>
                         );
                     })}
-                </svg>
+                    </svg>
+                    {points.map((item, index) => {
+                        const { x } = pointPosition(item, index);
+                        return (
+                            <div
+                                key={`presence-hover-column-${item.hour}-${index}`}
+                                className="landing-presence-hover-column absolute top-0 cursor-pointer bg-transparent"
+                                style={{
+                                    left: Math.max(0, x - hoverColumnWidth / 2),
+                                    width: hoverColumnWidth,
+                                    height: hourLabelY + 10
+                                }}
+                                role="img"
+                                aria-label={`在线人数 ${item.count}`}
+                                tabIndex={0}
+                                onPointerEnter={() => setHoveredIndex(index)}
+                                onPointerMove={() => setHoveredIndex(index)}
+                                onFocus={() => setHoveredIndex(index)}
+                                onBlur={() => setHoveredIndex(null)}
+                            />
+                        );
+                    })}
+                    {hoveredPoint && hoveredPosition && (
+                        <div
+                            className="landing-presence-tooltip pointer-events-none absolute z-20 whitespace-nowrap rounded border px-2 py-0.5 font-mono text-[11px] font-bold shadow-lg"
+                            style={{
+                                left: Math.max(26, Math.min(width - 26, hoveredPosition.x)),
+                                top: Math.max(4, hoveredPosition.y - 30),
+                                transform: 'translateX(-50%)'
+                            }}
+                        >
+                            {hoveredPoint.count} 人
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
