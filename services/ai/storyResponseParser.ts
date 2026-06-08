@@ -15,12 +15,14 @@ export interface StoryParseOptions {
 export class StoryResponseParseError extends Error {
     rawText: string;
     parseDetail?: string;
+    protocolIssues?: string[];
 
-    constructor(message: string, rawText: string, parseDetail?: string) {
+    constructor(message: string, rawText: string, parseDetail?: string, protocolIssues?: string[]) {
         super(message);
         this.name = 'StoryResponseParseError';
         this.rawText = rawText;
         this.parseDetail = parseDetail;
+        this.protocolIssues = Array.isArray(protocolIssues) ? protocolIssues : undefined;
     }
 }
 
@@ -549,6 +551,56 @@ const 检测标签完整性问题 = (text: string, _options: Required<StoryParse
         issues.push(`疑似输出在 <${lastOpenTag}> 内被截断或未完成闭合；请提高最大输出Token，或让模型优先闭合标签。末尾片段：${tailSnippet}`);
     }
     return issues;
+};
+
+const 构建标签协议错误详情 = (issues: string[]): string => {
+    const normalized = issues
+        .map(item => String(item || '').trim())
+        .filter(Boolean);
+    if (normalized.length <= 0) {
+        return '返回内容不符合标签协议（未匹配到完整标签结构）';
+    }
+    return `返回内容不符合标签协议：\n- ${normalized.join('\n- ')}`;
+};
+
+const 分析标签协议缺失问题 = (text: string, options: Required<StoryParseOptions>): string[] => {
+    const normalizedText = 归一化标签括号符号(text || '');
+    const issues: string[] = [];
+    const requiredTags = new Set<string>(协议固定必填标签);
+    if (options.requireActionOptionsTag) requiredTags.add('行动选项');
+    if (options.requireDynamicWorldTag) requiredTags.add('动态世界');
+
+    for (const tag of requiredTags) {
+        const openRegex = new RegExp(`<\\s*${转义正则片段(tag)}\\s*>`, 'i');
+        const closeRegex = new RegExp(`<\\s*/\\s*${转义正则片段(tag)}\\s*>`, 'i');
+        const hasOpen = openRegex.test(normalizedText);
+        const hasClose = closeRegex.test(normalizedText);
+        if (!hasOpen && !hasClose) {
+            issues.push(`缺少 <${tag}>...</${tag}> 标签`);
+            continue;
+        }
+        if (!hasOpen) issues.push(`缺少 <${tag}> 起始标签`);
+        if (!hasClose) issues.push(`缺少 </${tag}> 结束标签`);
+    }
+
+    if (!/<\s*正文\s*>/i.test(normalizedText) && /^(?:【[^】]+】|[^\n]{0,20}[：:]).+/m.test(normalizedText)) {
+        issues.push('检测到疑似正文内容，但没有用 <正文>...</正文> 包裹');
+    }
+
+    if (/(?:标签协议|输出格式|请按标签|完整闭合|只输出标签)/.test(normalizedText) && !/<\s*正文\s*>/i.test(normalizedText)) {
+        issues.push('输出里混入了协议说明文字，没有直接给出正式正文');
+    }
+
+    const openTags = Array.from(normalizedText.matchAll(/<\s*([^/\s>]+)\s*>/g))
+        .map(match => 归一化协议标签名(match[1]))
+        .filter((tag): tag is 协议标签 => Boolean(tag) && tag !== 'judge');
+    const bodyIndex = openTags.indexOf('正文');
+    const shortTermIndex = openTags.indexOf('短期记忆');
+    if (bodyIndex >= 0 && shortTermIndex >= 0 && shortTermIndex < bodyIndex) {
+        issues.push('顶层标签顺序错误：<短期记忆> 出现在 <正文> 之前');
+    }
+
+    return Array.from(new Set(issues));
 };
 
 const 修复标签协议文本 = (content: string): string => {
@@ -1623,8 +1675,9 @@ export const parseStoryRawText = (content: string, options?: StoryParseOptions):
     if (parseOptions.validateTagCompleteness) {
         const issues = 检测标签完整性问题(normalizedText, parseOptions);
         if (issues.length > 0) {
-            const detail = `标签完整性校验失败：\n- ${issues.join('\n- ')}`;
-            throw new StoryResponseParseError(detail, rawText, detail);
+            const normalizedIssues = issues.map(item => `标签完整性校验失败：${item}`);
+            const detail = 构建标签协议错误详情(normalizedIssues);
+            throw new StoryResponseParseError(detail, rawText, detail, normalizedIssues);
         }
     }
 
@@ -1649,12 +1702,14 @@ export const parseStoryRawText = (content: string, options?: StoryParseOptions):
         const detail = hasThinking
             ? '缺少 <正文> 有效内容（疑似响应截断）'
             : '返回内容结构不完整（缺少 <正文> 或 logs）';
-        throw new StoryResponseParseError(detail, rawText, detail);
+        throw new StoryResponseParseError(detail, rawText, detail, [detail]);
     }
     const parsedError = typeof parsed.error === 'string' ? parsed.error.trim() : '';
     const normalizedParsedError = /json\s*解析失败/i.test(parsedError) ? '' : parsedError;
-    const detail = normalizedParsedError
-        ? `返回内容不符合标签协议：${normalizedParsedError}`
-        : '返回内容不符合标签协议（未匹配到完整标签结构）';
-    throw new StoryResponseParseError(detail, rawText, detail);
+    const protocolIssues = 分析标签协议缺失问题(normalizedText, parseOptions);
+    if (normalizedParsedError) {
+        protocolIssues.push(normalizedParsedError);
+    }
+    const detail = 构建标签协议错误详情(protocolIssues);
+    throw new StoryResponseParseError(detail, rawText, detail, protocolIssues);
 };

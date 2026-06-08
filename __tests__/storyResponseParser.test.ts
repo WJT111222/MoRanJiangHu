@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseStoryRawText } from '../services/ai/storyResponseParser';
+import { parseStoryRawText, StoryResponseParseError } from '../services/ai/storyResponseParser';
 import { 规范化可渲染对白日志 } from '../utils/dialogueLogNormalizer';
 
 describe('storyResponseParser', () => {
@@ -219,6 +219,22 @@ describe('storyResponseParser', () => {
             validateTagCompleteness: true,
             enableTagRepair: false
         })).toThrow(/疑似输出在 <短期记忆> 内被截断|提高最大输出Token/);
+    });
+
+    it('reports concrete missing protocol tags instead of a generic parse failure', () => {
+        try {
+            parseStoryRawText([
+                '<thinking>检查标签。</thinking>',
+                '<短期记忆>主角听见院外脚步。</短期记忆>',
+                '<命令>set 环境.天气 = "晴"</命令>'
+            ].join('\n'));
+            throw new Error('expected parser to throw');
+        } catch (error) {
+            expect(error).toBeInstanceOf(StoryResponseParseError);
+            const parseError = error as StoryResponseParseError;
+            expect(parseError.parseDetail || '').toMatch(/顶层标签顺序错误|正文/);
+            expect(parseError.protocolIssues || []).toContain('顶层标签顺序错误：<短期记忆> 出现在 <正文> 之前');
+        }
     });
 
     it('rejects isolated punctuation lines during strict parsing', () => {

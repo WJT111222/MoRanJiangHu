@@ -241,6 +241,17 @@ const 创建主剧情流式超时错误 = (stage: string, timeoutMs: number): Er
     return error;
 };
 
+const 构建标签协议失败自动回炉提示 = (reason: string, requireActionOptionsTag: boolean): string => [
+    '【标签协议失败自动回炉】',
+    `上一版被拒绝原因：${reason || '返回内容不符合标签协议'}`,
+    '请不要解释原因，不要输出协议说明，不要输出补丁，只能完整重写本回合。',
+    '硬性要求：顶层标签必须完整闭合，至少包含 <正文>...</正文>、<短期记忆>...</短期记忆>、<命令>...</命令>。',
+    requireActionOptionsTag
+        ? '当前已开启行动选项，必须额外补全 <行动选项>...</行动选项>。'
+        : '若未开启行动选项，不要额外编造无关顶层标签。',
+    '如果接近输出上限，优先收束正文并闭合所有已打开标签。'
+].join('\n');
+
 const 执行主剧情流式请求带空闲超时 = async <T,>(
     parentSignal: AbortSignal,
     task: (signal: AbortSignal, markStreamActivity: () => void) => Promise<T>
@@ -1096,6 +1107,16 @@ export const 执行主剧情发送工作流 = async (
                 }
             },
             action: async (attempt, lastError) => {
+                const protocolRetryPrompt = (
+                    attempt > 1
+                    && runtimeGameConfig.启用标签协议失败自动回炉 !== false
+                    && (lastError instanceof textAIService.StoryResponseParseError || lastError?.name === 'StoryResponseParseError')
+                )
+                    ? 构建标签协议失败自动回炉提示(
+                        String(lastError?.parseDetail || lastError?.message || '返回内容不符合标签协议').trim(),
+                        runtimeGameConfig.启用行动选项 !== false
+                    )
+                    : '';
                 const retryFormatPrompt = attempt > 1
                     ? [
                         '【自动重试格式修正】',
@@ -1141,7 +1162,7 @@ export const 执行主剧情发送工作流 = async (
                             styleAssistantPrompt: [styleAssistantPrompt, realWorldModePrompt].filter(Boolean).join('\n\n'),
                             outputProtocolPrompt,
                             cotPseudoHistoryPrompt: cotPseudoPrompt,
-                            lengthRequirementPrompt: [lengthRequirementPrompt, retryFormatPrompt].filter(Boolean).join('\n\n'),
+                            lengthRequirementPrompt: [lengthRequirementPrompt, retryFormatPrompt, protocolRetryPrompt].filter(Boolean).join('\n\n'),
                             disclaimerRequirementPrompt,
                             validateTagCompleteness: runtimeGameConfig.启用标签检测完整性 === true,
                             enableTagRepair: runtimeGameConfig.启用标签修复 !== false,
@@ -2243,7 +2264,9 @@ export const 执行主剧情发送工作流 = async (
                 cancelled: true,
                 needRerollConfirm: true,
                 parseErrorMessage: parseErrorRaw,
-                parseErrorDetail: parseErrorRaw,
+                parseErrorDetail: parseFailureGameConfig.启用标签协议失败自动回炉 === false
+                    ? `${parseErrorRaw}\n\n当前已关闭“标签协议失败自动回炉”。最佳选择是直接重ROLL；若想保留这版内容，可点“查看/编辑原文”后修复缺失标签再重解析。`
+                    : parseErrorRaw,
                 parseErrorRawText
             };
         }

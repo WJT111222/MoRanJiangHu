@@ -512,6 +512,20 @@ const GameSettings: React.FC<Props> = ({ settings, onSave }) => {
             <div className="space-y-3 rounded-md border border-wuxia-gold/20 bg-black/30 p-4">
                 <div className="flex items-center justify-between gap-4">
                     <div>
+                        <div className="text-sm text-wuxia-cyan font-bold">标签协议失败自动回炉</div>
+                        <div className="text-xs text-gray-400 mt-1">默认开启。遇到标签结构不完整时，会把缺失标签或顺序问题直接发回给 AI 再重写一次；如果你手动关闭，失败时会明确提示优先重ROLL。</div>
+                    </div>
+                    <ToggleSwitch
+                        checked={form.启用标签协议失败自动回炉 !== false}
+                        onChange={(next) => 实时应用更新({ 启用标签协议失败自动回炉: next })}
+                        ariaLabel="切换标签协议失败自动回炉"
+                    />
+                </div>
+            </div>
+
+            <div className="space-y-3 rounded-md border border-wuxia-gold/20 bg-black/30 p-4">
+                <div className="flex items-center justify-between gap-4">
+                    <div>
                         <div className="text-sm text-wuxia-cyan font-bold">每回合结束自动存档</div>
                         <div className="text-xs text-gray-400 mt-1">默认开启。正文落地和后台队列收尾时都会写入最近自动存档，减少刷新或更新页面后丢失新进度、图片绑定和角色状态的情况。</div>
                     </div>
