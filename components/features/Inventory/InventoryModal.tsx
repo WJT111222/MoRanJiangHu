@@ -527,6 +527,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                         const count = getSafeNumber(item?.堆叠数量, 1);
                                         const styles = getRarityStyles(getSafeText(item?.品质));
                                         const name = getSafeText(item?.名称, '未命名物品');
+                                        const description = getSafeText(item?.描述);
                                         const isEquipped = Boolean(item?.当前装备部位);
                                         const isSelected = selectedItem?.ID === item?.ID;
                                         const key = String(item?.ID ?? `${name}-${index}`);
@@ -537,6 +538,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                                 key={key}
                                                 type="button"
                                                 onClick={() => setSelectedItem(item)}
+                                                title={description || name}
                                                 className={`group relative aspect-square cursor-pointer rounded-lg text-left transition-all active:scale-95 ${
                                                     isSelected
                                                         ? 'scale-[1.02] ring-2 ring-wuxia-gold/60 shadow-[0_0_15px_rgba(212,175,55,0.3)]'
@@ -572,11 +574,22 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                                     </div>
                                                 </div>
 
+                                                {description ? (
+                                                    <div className="pointer-events-none absolute inset-x-1.5 top-1.5 z-10 rounded-md border border-white/10 bg-black/75 px-2 py-1 text-[10px] leading-4 text-gray-100 opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
+                                                        <div className="line-clamp-3 break-words">{description}</div>
+                                                    </div>
+                                                ) : null}
+
                                                 <div className="absolute bottom-2 left-0 right-0 px-1.5 text-center">
                                                     <div className={`line-clamp-2 break-words text-[13px] font-bold leading-[1.1] tracking-wide drop-shadow-sm ${getRarityNameClass(getSafeText(item?.品质))}`}>
                                                         {name}
                                                     </div>
                                                     <div className="mt-0.5 font-mono text-xs text-gray-200">x{count}</div>
+                                                    {description ? (
+                                                        <div className="mt-0.5 line-clamp-1 text-[10px] leading-4 text-gray-400">
+                                                            {description}
+                                                        </div>
+                                                    ) : null}
                                                 </div>
                                             </button>
                                         );

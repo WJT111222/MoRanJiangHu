@@ -1565,9 +1565,7 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                 .map((item: any) => {
                     if (typeof item === 'string') return item;
                     const name = item?.名称?.trim();
-                    if (!name) return null;
-                    const desc = item?.描述?.trim();
-                    return desc ? `${name}（${desc}）` : name;
+                    return name || null;
                 })
                 .filter(Boolean);
             effectiveOpeningConfig.modeRuntimeProfile = {
