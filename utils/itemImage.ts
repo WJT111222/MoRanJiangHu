@@ -28,6 +28,31 @@ const 获取物品预置图地址 = (item?: 游戏物品 | null): string => {
     return '';
 };
 
+const 规范化物品图标复用字段 = (value: unknown): string => (
+    typeof value === 'string' ? value.trim().replace(/[\s\u3000]+/g, '') : ''
+);
+
+export const 获取物品图标复用Key = (item?: 游戏物品 | null): string => {
+    if (!item || typeof item !== 'object') return 'unknown';
+    const name = [
+        (item as any).规范物品名称,
+        (item as any).预设物品名称,
+        (item as any).标准物品名称,
+        (item as any).基础物品名称,
+        (item as any).图片匹配名称,
+        (item as any).名称
+    ].map(规范化物品图标复用字段).find(Boolean) || '';
+    const type = 规范化物品图标复用字段((item as any).类型);
+    const quality = 规范化物品图标复用字段((item as any).品质);
+    const visualDescription = 规范化物品图标复用字段((item as any).生图描述);
+    const visualTags = Array.isArray((item as any).视觉标签)
+        ? (item as any).视觉标签.map(规范化物品图标复用字段).filter(Boolean).join(',')
+        : 规范化物品图标复用字段((item as any).视觉标签);
+    const visualKey = [name, type, quality, visualDescription, visualTags].filter(Boolean).join('|');
+    if (visualKey) return visualKey;
+    return 规范化物品图标复用字段((item as any).ID) || 'unknown';
+};
+
 const 物品图床字段 = [
     '图片URL',
     '图标URL',
