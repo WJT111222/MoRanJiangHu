@@ -199,6 +199,12 @@ const getHourlyHistoryKey = (env: any): string => `${getPrefix(env)}/${HOURLY_HI
 
 const getSessionTtlMs = (env: any): number => Math.max(30, toPositiveInt(env?.ONLINE_SESSION_TTL_SECONDS, SESSION_TTL_MS / 1000)) * 1000;
 
+const isSessionExpired = (lastSeenAt: string | undefined, nowMs: number, ttlMs: number): boolean => {
+    const lastSeenMs = Date.parse(lastSeenAt || '');
+    if (!Number.isFinite(lastSeenMs)) return true;
+    return nowMs - lastSeenMs > ttlMs;
+};
+
 const getAdminPassword = (env: any): string => readString(env?.ONLINE_ADMIN_PASSWORD);
 
 const readBearerToken = (request: Request): string => {
@@ -534,12 +540,14 @@ const upsertSessionHeartbeat = async (request: Request, env: any, body: any): Pr
     const now = new Date();
     const nowMs = now.getTime();
     const nowIso = now.toISOString();
+    const ttlMs = getSessionTtlMs(env);
     const sessionId = sanitizeSessionId(body?.sessionId) || buildSessionId();
     const registry = await readRegistry(env);
     const sessions = cleanupSessions(registry.sessions, nowMs);
     const existingIndex = sessions.findIndex((item) => item.id === sessionId);
     const existing = existingIndex >= 0 ? sessions[existingIndex] : null;
     const existingLastSeenMs = existing ? Date.parse(existing.lastSeenAt || '') : 0;
+    const expiredExistingSession = existing ? isSessionExpired(existing.lastSeenAt, nowMs, ttlMs) : false;
     const isWebSocketHeartbeat = readString(body?.transport) === 'websocket' || readString(body?.type) === 'hello' || readString(body?.type) === 'ping';
 
     if (!isWebSocketHeartbeat && existing && Number.isFinite(existingLastSeenMs) && nowMs - existingLastSeenMs < HEARTBEAT_MIN_INTERVAL_MS) {
@@ -554,7 +562,7 @@ const upsertSessionHeartbeat = async (request: Request, env: any, body: any): Pr
     const cf = (request as any).cf || {};
     const nextRecord: OnlineSessionRecord = {
         id: sessionId,
-        firstSeenAt: existing?.firstSeenAt || nowIso,
+        firstSeenAt: !expiredExistingSession && existing?.firstSeenAt ? existing.firstSeenAt : nowIso,
         lastSeenAt: nowIso,
         userId: sanitizeUserField(body?.userId) || existing?.userId || '',
         username: sanitizeUserField(body?.username) || existing?.username || '',
@@ -571,7 +579,7 @@ const upsertSessionHeartbeat = async (request: Request, env: any, body: any): Pr
         versionCode: toPositiveInt(body?.versionCode, existing?.versionCode || 0) || undefined,
         platform: readString(body?.platform).slice(0, 80),
         imageStats: sanitizeImageStats(body?.imageStats, existing?.imageStats),
-        heartbeatCount: (existing?.heartbeatCount || 0) + 1
+        heartbeatCount: expiredExistingSession ? 1 : (existing?.heartbeatCount || 0) + 1
     };
 
     if (existingIndex >= 0) {
@@ -847,3 +855,8 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
         }, 500);
     }
 }
+
+export const __onlineTestUtils = {
+    aggregateLoggedInPlayers24h,
+    isSessionExpired
+};

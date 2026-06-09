@@ -4,10 +4,13 @@ import { 获取本地图片图床迁移状态 } from './dbService';
 import { 读取云端游玩会话 } from './cloudPlayService';
 
 const ONLINE_SESSION_ID_KEY = 'moranjianghu.onlineSessionId';
+const ONLINE_SESSION_LAST_SEEN_AT_KEY = 'moranjianghu.onlineSessionLastSeenAt';
 const HEARTBEAT_PATH = '/api/admin/online';
 const HEARTBEAT_INTERVAL_MS = 30 * 1000;
 const WS_HEARTBEAT_INTERVAL_MS = 25 * 1000;
 const WS_RECONNECT_MS = 10 * 1000;
+const SESSION_TTL_MS = 2 * 60 * 1000;
+const SESSION_RENEW_GRACE_MS = 15 * 1000;
 
 const getOnlineApiBaseUrl = (): string => {
     if (!isNativeCapacitorEnvironment()) return '';
@@ -17,18 +20,43 @@ const getOnlineApiBaseUrl = (): string => {
 
 const buildOnlineHttpUrl = (): string => `${getOnlineApiBaseUrl()}${HEARTBEAT_PATH}`;
 
+const buildSessionId = (): string => {
+    const bytes = new Uint8Array(12);
+    window.crypto?.getRandomValues?.(bytes);
+    const random = Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join('') || Math.random().toString(36).slice(2);
+    return `web_${Date.now().toString(36)}_${random}`;
+};
+
+const readSessionLastSeenAt = (): number => {
+    try {
+        const raw = window.localStorage.getItem(ONLINE_SESSION_LAST_SEEN_AT_KEY);
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    } catch {
+        return 0;
+    }
+};
+
+const markSessionAlive = (): void => {
+    try {
+        window.localStorage.setItem(ONLINE_SESSION_LAST_SEEN_AT_KEY, String(Date.now()));
+    } catch {
+        // ignore storage failures
+    }
+};
+
 const readSessionId = (): string => {
     try {
         const existing = window.localStorage.getItem(ONLINE_SESSION_ID_KEY);
-        if (existing && /^[a-zA-Z0-9._:-]{8,96}$/.test(existing)) return existing;
-        const bytes = new Uint8Array(12);
-        window.crypto?.getRandomValues?.(bytes);
-        const random = Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join('') || Math.random().toString(36).slice(2);
-        const next = `web_${Date.now().toString(36)}_${random}`;
+        const lastSeenAt = readSessionLastSeenAt();
+        const sessionExpired = !lastSeenAt || Date.now() - lastSeenAt > SESSION_TTL_MS + SESSION_RENEW_GRACE_MS;
+        if (existing && /^[a-zA-Z0-9._:-]{8,96}$/.test(existing) && !sessionExpired) return existing;
+        const next = buildSessionId();
         window.localStorage.setItem(ONLINE_SESSION_ID_KEY, next);
+        markSessionAlive();
         return next;
     } catch {
-        return `web_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+        return buildSessionId();
     }
 };
 
@@ -58,6 +86,8 @@ const sendHeartbeat = async (sessionId: string): Promise<void> => {
         body: JSON.stringify(buildHeartbeatPayload(sessionId)),
         keepalive: true,
         cache: 'no-store'
+    }).then(() => {
+        markSessionAlive();
     }).catch(() => undefined);
 };
 
@@ -126,11 +156,15 @@ export const startOnlinePresenceHeartbeat = (): (() => void) => {
         try {
             socket = new WebSocket(buildOnlineWebSocketUrl());
             socket.addEventListener('open', () => {
+                markSessionAlive();
                 void sendSocketPayload('hello');
                 clearWsTimer();
                 wsTimer = window.setInterval(() => {
                     void sendSocketPayload('ping');
                 }, WS_HEARTBEAT_INTERVAL_MS);
+            });
+            socket.addEventListener('message', () => {
+                markSessionAlive();
             });
             socket.addEventListener('close', () => {
                 clearWsTimer();
