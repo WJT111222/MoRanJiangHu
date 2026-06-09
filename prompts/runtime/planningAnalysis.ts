@@ -2,6 +2,33 @@ import { 核心_剧情推动 } from '../core/story';
 import { 构建女主剧情规划协议 } from '../core/heroinePlan';
 import { 构建女主规划专项提示词 } from '../core/heroinePlanCot';
 
+export const 构建规划性别比例约束摘要 = (genderRatio?: unknown): string => {
+    if (typeof genderRatio === 'string' && genderRatio.trim()) {
+        return [
+            '【规划性别比例约束】',
+            `- 当前世界/NPC系统男女比例：${genderRatio.trim()}。`,
+            '- 规划新增 NPC、公共场景路人、组织成员、敌友角色池或女主候选补位时，若正文事实、明确称谓、社交档案或原著硬约束未锁定性别，应按该比例保持新增人物池分布。',
+            '- 已有事实、角色身份边界、后宫/后院/妻妾等特殊场景和玩家明确要求优先于该比例。'
+        ].join('\n');
+    }
+
+    if (genderRatio && typeof genderRatio === 'object') {
+        const entries = Object.entries(genderRatio as Record<string, unknown>)
+            .filter(([, value]) => typeof value === 'number' || (typeof value === 'string' && value.trim()))
+            .map(([key, value]) => `${key}:${String(value).trim()}`);
+        if (entries.length > 0) {
+            return [
+                '【规划性别比例约束】',
+                `- 当前世界/NPC系统性别比例：${entries.join('，')}。`,
+                '- 规划新增 NPC、公共场景路人、组织成员、敌友角色池或女主候选补位时，若正文事实、明确称谓、社交档案或原著硬约束未锁定性别，应按该比例保持新增人物池分布。',
+                '- 已有事实、角色身份边界、后宫/后院/妻妾等特殊场景和玩家明确要求优先于该比例。'
+            ].join('\n');
+        }
+    }
+
+    return '';
+};
+
 export const 构建统一规划分析系统提示词 = (options?: { heroineEnabled?: boolean; ntl?: boolean; fandom?: boolean }): string => {
     const heroineEnabled = options?.heroineEnabled === true;
     const ntl = heroineEnabled && options?.ntl === true;
@@ -28,6 +55,8 @@ export const 构建统一规划分析系统提示词 = (options?: { heroineEnabl
             '- 本回合 `<剧情规划>` 只作为辅助材料：用于理解主剧情主动保留了哪些承接、延后了哪些推进；若与正文事实冲突，以正文和当前状态为准。',
             '- 规划分析不读取本回合主剧情 `<命令>` 作为判断依据；本回合已落地结果只认“当前状态 + 最近完整正文 + 本回合 `<剧情规划>`”。',
             '- 当前 `【当前世界状态】` 已经是世界演变链路处理后的最新世界树。规划分析必须读取它，判断当前章相关的后台后果是否已经沉淀、迁移、跨章化，不能只盯正文摘要切章。',
+            '- 规划分析若要新增 NPC、公共场景路人、组织成员、敌友角色池或女主候选补位，必须先读取当前世界状态中的世界观/NPC系统约束；若其中存在男女比例或性别比例设定，应把它作为新增人物池的分布约束。',
+            '- 性别比例只约束“未被正文、社交档案、原著硬约束或明确称谓锁定”的新人物；已有事实、角色身份边界、后宫/后院/妻妾等特殊场景和玩家明确要求优先于比例。',
             '- 当前上下文会额外提供小说分解后的章节滑窗：`【当前章节内容】 / 【下一章节内容】`。你必须先判断当前章对齐的是哪一个分解组，再决定是否切章。',
             '- 提供给你的滑窗是“剧情执行版”注入，不是世界执行版：重点读取承接事实、结束状态、关键事件门槛与角色推进。',
             '- 读取滑窗后的第一件事，就是核对当前 `剧情.当前章节.当前分解组` 是否仍和 `【当前章节内容】` 对齐；不要把旧的 `当前分解组` 当成天然正确值机械沿用。',
@@ -97,13 +126,16 @@ export const 构建统一规划分析用户提示词 = (params: {
     recentBodiesText: string;
     currentPlanText?: string;
     auditFocusText: string;
+    genderRatioConstraintText?: string;
     heroineEnabled?: boolean;
 }): string => [
     '【当前章节状态与当前激活主线规划树】',
     params.currentStoryJson,
     '',
-    '【当前女主规划树】',
-    params.heroineEnabled === false ? '当前上下文未同时注入 <女主剧情规划协议> 与 <女主剧情规划思考协议>' : params.currentHeroinePlanJson,
+    params.heroineEnabled === false ? '【女主规划状态】' : '【当前女主规划树】',
+    params.heroineEnabled === false
+        ? '女主剧情规划未启用；本次任务不得新增、推断、补位、修订或输出任何 `女主剧情规划.*` / `同人女主剧情规划.*` 命令。即使正文提到女性角色，也只能按普通社交、剧情或世界状态处理。'
+        : params.currentHeroinePlanJson,
     '',
     '【当前世界状态】',
     params.worldJson,
@@ -113,6 +145,10 @@ export const 构建统一规划分析用户提示词 = (params: {
     '',
     '【当前环境】',
     params.envJson,
+    '',
+    (params.genderRatioConstraintText || '').trim()
+        ? params.genderRatioConstraintText.trim()
+        : '【规划性别比例约束】\n- 当前上下文未注入明确比例；若当前世界状态中存在世界观/NPC系统男女比例或性别比例设定，仍需在新增人物池时读取并遵守。',
     '',
     '【本回合<剧情规划>】',
     (params.currentPlanText || '').trim()
@@ -128,6 +164,7 @@ export const 构建统一规划分析用户提示词 = (params: {
     '- 优先审计“任务/事件清空门禁”：当前章任务、待触发事件、女主互动事件，哪些已经完成或过期，哪些只是接近触发、正在推进、待结算、待迁移；只要还有未终态项，就不得切章。',
     '- 只有已完成、已结算、已失效、已过期、已取消，或已明确迁移为跨章延续事项 / 世界承接结构的任务与事件，才算通过这一门禁。',
     '- 再读取 `【当前世界状态】`，确认与当前章直接相关的 NPC 行动、待执行事件、进行中事件、世界镜头和地点余波，是否已经完成、失效、迁移或明确允许跨章承接。',
+    '- 若本回合需要补新的 NPC、公共场景路人、组织成员、敌友角色池或女主候选补位，必须同步读取 `【当前世界状态】` 中的世界观/NPC系统男女比例或性别比例设定；没有明确正文事实锁定性别时，按该比例保持新增人物池分布，不默认把所有补位都写成女性或男性。',
     '- 只有当“任务/事件清空 + 当前章正文收束 + 当前章规划池收尾 + 当前章世界余波可承接 + 下一章起点已成立”五道门禁全部通过时，才允许切章。',
     '- 若未通过“任务/事件清空门禁”或后续四道门禁，就保持当前章不动，并优先补承接、迁移、修状态、清失效项，而不是顺势切章。',
     '- 若启用了女主规划，本回合默认顺序是“先清已结算旧项，再修状态，再补最小新承接”；不要反过来先补一堆新条目。',
