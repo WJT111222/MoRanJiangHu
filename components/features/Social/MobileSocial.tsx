@@ -24,10 +24,18 @@ interface Props {
     onLearnSkill?: (npc: NPC结构, skill: any) => void;
     onRecruitToSect?: (npc: NPC结构) => void;
     onStealFromNpc?: (npc: NPC结构, target?: string) => void;
-    onRetryImage?: (npcId: string) => void;
+    onRetryImage?: (npcId: string, options?: { 构图?: NPC重绘构图 }) => void;
     playerSect?: any;
     openingConfig?: OpeningConfig;
 }
+
+type NPC重绘构图 = '头像' | '半身' | '立绘';
+
+const NPC重绘构图选项: Array<{ value: NPC重绘构图; label: string; description: string }> = [
+    { value: '头像', label: '头像', description: '用于名册头像和社交小图。' },
+    { value: '半身', label: '半身', description: '用于详情卡片展示，上半身构图。' },
+    { value: '立绘', label: '立绘', description: '用于角色详情和图册展示的完整立绘。' }
+];
 
 const 是女性角色 = (npc?: NPC结构 | null): boolean => String((npc as any)?.性别 || '').trim() === '女';
 const 死亡状态正则 = /(死亡|已死|身亡|阵亡|战死|气绝|断气|毙命|殒命|已故)/;
@@ -133,6 +141,7 @@ const MobileSocial: React.FC<Props> = ({
     }, [组织名称, 当前组织为末世营地, 当前组织为无限流]);
     const [imageViewer, setImageViewer] = useState<{ src: string; alt: string } | null>(null);
     const [imageViewerZoom, setImageViewerZoom] = useState(1);
+    const [imageRetryTarget, setImageRetryTarget] = useState<NPC结构 | null>(null);
     const [stealTargets, setStealTargets] = useState<Record<string, string>>({});
 
     const filteredSocialList = React.useMemo(() => {
@@ -511,6 +520,15 @@ const MobileSocial: React.FC<Props> = ({
         setImageViewer(null);
         setImageViewerZoom(1);
     };
+    const 打开重绘选择 = (npc?: NPC结构 | null) => {
+        if (!npc || !onRetryImage) return;
+        setImageRetryTarget(npc);
+    };
+    const 提交重绘选择 = (构图: NPC重绘构图) => {
+        if (!imageRetryTarget || !onRetryImage) return;
+        onRetryImage(imageRetryTarget.id, { 构图 });
+        setImageRetryTarget(null);
+    };
     const 调整图片缩放 = (delta: number) => {
         setImageViewerZoom((prev) => Math.min(3, Math.max(0.5, Number((prev + delta).toFixed(2)))));
     };
@@ -746,9 +764,17 @@ const MobileSocial: React.FC<Props> = ({
                                        h-[7rem] 控整卡高度
                                        rounded-[1.45rem] 控整卡圆角
                                        px-1.5 py-1.5 控整卡内边距 */
-                                    <button
+                                    <div
+                                        role="button"
+                                        tabIndex={0}
                                         key={npcStableId}
                                         onClick={() => {
+                                            setSelectedId(npcStableId);
+                                            onSelectedNpcIdChange?.(npcStableId);
+                                        }}
+                                        onKeyDown={(event) => {
+                                            if (event.key !== 'Enter' && event.key !== ' ') return;
+                                            event.preventDefault();
                                             setSelectedId(npcStableId);
                                             onSelectedNpcIdChange?.(npcStableId);
                                         }}
@@ -768,17 +794,24 @@ const MobileSocial: React.FC<Props> = ({
                                                 rounded-[1.2rem] 控头像框圆角 */}
                                             <div className={`relative h-full w-[6.25rem] shrink-0 self-stretch rounded-[1.2rem] overflow-hidden border bg-black/50 shadow-[0_12px_28px_rgba(0,0,0,0.32)] ${npcDead ? 'border-gray-500/50' : 'border-white/10'}`}>
                                             {rosterMainImage ? (
-                                                <button
-                                                    type="button"
+                                                <div
+                                                    role="button"
+                                                    tabIndex={0}
                                                     className="block h-full w-full"
                                                     title="查看头像"
                                                     onClick={(event) => {
                                                         event.stopPropagation();
                                                         打开图片查看器(rosterMainImage, `${npc.姓名} 头像`);
                                                     }}
+                                                    onKeyDown={(event) => {
+                                                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                                                        event.preventDefault();
+                                                        event.stopPropagation();
+                                                        打开图片查看器(rosterMainImage, `${npc.姓名} 头像`);
+                                                    }}
                                                 >
                                                     <img src={rosterMainImage} alt={npc.姓名} className={`w-full h-full object-cover object-center ${npcDead ? 'grayscale opacity-60' : ''}`} />
-                                                </button>
+                                                </div>
                                             ) : (
                                                 <div className={`w-full h-full flex items-center justify-center font-serif font-bold text-3xl ${npcDead ? 'text-gray-500/60 grayscale' : 是女性角色(npc) ? 'text-pink-500/50' : 'text-blue-500/50'}`}>
                                                     {npc.姓名[0]}
@@ -792,7 +825,7 @@ const MobileSocial: React.FC<Props> = ({
                                             {onRetryImage && (
                                                 <button
                                                     type="button"
-                                                    onClick={(e) => { e.stopPropagation(); onRetryImage(npc.id); }}
+                                                    onClick={(e) => { e.stopPropagation(); 打开重绘选择(npc); }}
                                                     className="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded border border-wuxia-gold/30 bg-black/60 text-wuxia-gold/80 hover:bg-wuxia-gold/20 hover:text-wuxia-gold transition-all z-10"
                                                 >
                                                     重绘
@@ -875,7 +908,7 @@ const MobileSocial: React.FC<Props> = ({
                                             </div>
                                         </div>
                                         </div>
-                                    </button>
+                                    </div>
                                 );})}
                                 {filteredSocialList.length === 0 && (
                                      <div className="w-full rounded-[1.5rem] border border-dashed border-white/10 bg-black/20 py-8 text-center text-gray-500 text-xs font-serif flex flex-col items-center gap-2">
@@ -964,10 +997,16 @@ const MobileSocial: React.FC<Props> = ({
                                     <div className="absolute inset-0 bg-[linear-gradient(125deg,rgba(255,255,255,0.025),transparent_28%,transparent_72%,rgba(212,175,55,0.05))] pointer-events-none"></div>
                                     <div className="relative z-10 grid grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] gap-3 items-start">
                                         <div className="flex min-w-0 flex-col gap-2.5">
-                                            <button
-                                                type="button"
+                                            <div
+                                                role="button"
+                                                tabIndex={0}
                                                 className="relative w-full overflow-hidden rounded-[1.35rem] border border-wuxia-gold/25 bg-black/55 shadow-[0_18px_30px_rgba(0,0,0,0.42)] aspect-[3/4]"
                                                 onClick={() => 打开图片查看器(当前详情主图, `${currentNPC.姓名}${当前立绘 ? ' 立绘' : ' 头像'}`)}
+                                                onKeyDown={(event) => {
+                                                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                                                    event.preventDefault();
+                                                    打开图片查看器(当前详情主图, `${currentNPC.姓名}${当前立绘 ? ' 立绘' : ' 头像'}`);
+                                                }}
                                                 title={当前详情主图 ? '点击查看图片大图' : ''}
                                             >
                                                 {当前详情主图 ? (
@@ -985,7 +1024,7 @@ const MobileSocial: React.FC<Props> = ({
                                                         {onRetryImage && (
                                                             <button
                                                                 type="button"
-                                                                onClick={(e) => { e.stopPropagation(); onRetryImage(currentNPC.id); }}
+                                                                onClick={(e) => { e.stopPropagation(); 打开重绘选择(currentNPC); }}
                                                                 className="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded border border-wuxia-gold/30 bg-black/60 text-wuxia-gold/80 hover:bg-wuxia-gold/20 hover:text-wuxia-gold transition-all z-10"
                                                             >
                                                                 重绘
@@ -995,7 +1034,7 @@ const MobileSocial: React.FC<Props> = ({
                                                 ) : (
                                                     <div className="flex h-full w-full items-center justify-center font-serif text-5xl text-wuxia-gold/30">{currentNPC.姓名[0]}</div>
                                                 )}
-                                            </button>
+                                            </div>
                                             {/* 左侧立绘下方的三颗操作按钮：
                                                 这里控制的是“召回到场 / 设为重要 / 忘却此人”这整组按钮。
                                                 `space-y-2` 控制按钮与按钮之间的垂直间距。
@@ -1732,6 +1771,32 @@ const MobileSocial: React.FC<Props> = ({
                             className="max-w-[85vw] max-h-[92vh] object-contain bg-black transition-transform duration-150 origin-center"
                             style={{ transform: `scale(${imageViewerZoom})` }}
                         />
+                    </div>
+                </div>
+            )}
+            {imageRetryTarget && (
+                <div className="fixed inset-0 z-[270] flex items-center justify-center bg-black/78 p-4 backdrop-blur-sm" onClick={() => setImageRetryTarget(null)}>
+                    <div className="w-full max-w-sm rounded-2xl border border-wuxia-gold/30 bg-[#120d09] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.65)]" onClick={(event) => event.stopPropagation()}>
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                            <div>
+                                <div className="text-base font-bold text-wuxia-gold">选择重绘构图</div>
+                                <div className="mt-1 text-[11px] text-gray-400">当前角色：{imageRetryTarget.姓名 || '未命名NPC'}</div>
+                            </div>
+                            <button type="button" className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-gray-300 active:border-red-400/50 active:text-red-200" onClick={() => setImageRetryTarget(null)}>关闭</button>
+                        </div>
+                        <div className="grid gap-2">
+                            {NPC重绘构图选项.map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-left transition-all active:border-wuxia-gold/50 active:bg-wuxia-gold/10"
+                                    onClick={() => 提交重绘选择(option.value)}
+                                >
+                                    <div className="text-sm font-bold text-gray-100">{option.label}</div>
+                                    <div className="mt-1 text-[11px] leading-relaxed text-gray-400">{option.description}</div>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}

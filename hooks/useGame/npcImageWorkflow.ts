@@ -384,7 +384,7 @@ export const 执行NPC生图工作流 = async (
     const 构图: '头像' | '半身' | '立绘' = options?.构图 || '头像';
     const latestNpc = (typeof deps.获取社交列表 === 'function' ? deps.获取社交列表() : [])
         .find((candidate: any, index: number) => deps.获取NPC唯一标识(candidate, index) === npcKey);
-    if (latestNpc && NPC已有成功构图(latestNpc, 构图)) return;
+    if (!options?.force && latestNpc && NPC已有成功构图(latestNpc, 构图)) return;
 
     deps.NPC生图进行中集合.add(npcKey);
     const 画风 = options?.画风 || imageFeature.NPC画风;
