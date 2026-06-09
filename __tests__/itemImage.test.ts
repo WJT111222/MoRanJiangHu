@@ -248,6 +248,43 @@ describe('item image prompt classification', () => {
         expect(negativePrompt).toContain('staff');
     });
 
+    it('treats quivers as carrying containers instead of generic weapons', () => {
+        const item = {
+            名称: '牛皮箭囊',
+            类型: '杂物',
+            品质: '凡品',
+            描述: '用牛皮缝制的旧箭囊，肩带磨损，囊口露出几枚羽箭尾羽。'
+        };
+        const prompt = 构建物品图提示词(item);
+        const negativePrompt = 构建物品负面提示词(item);
+
+        expect(prompt).toContain('quiver');
+        expect(prompt).toContain('arrow container');
+        expect(prompt).not.toContain('strict traditional weapon prop only');
+        expect(prompt).not.toContain('blade, bow, hilt, handle, grip, shaft or scabbard must be the main subject');
+        expect(negativePrompt).toContain('bow as main subject');
+        expect(negativePrompt).toContain('sword');
+    });
+
+    it('renders fox pets as living animals instead of plush toys or figurines', () => {
+        const item = {
+            名称: '小狐狸宠物',
+            类型: '杂物',
+            品质: '良品',
+            描述: '一只机警的小狐狸，毛发柔顺，尾巴蓬松，会跟着主人行动。'
+        };
+        const prompt = 构建物品图提示词(item);
+        const negativePrompt = 构建物品负面提示词(item);
+
+        expect(prompt).toContain('real living');
+        expect(prompt).toContain('fox');
+        expect(prompt).toContain('full-body portrait');
+        expect(prompt).toContain('natural animal anatomy');
+        expect(negativePrompt).toContain('plush toy');
+        expect(negativePrompt).toContain('stuffed animal');
+        expect(negativePrompt).toContain('resin figurine');
+    });
+
     it('treats old military uniforms as soft cloth garments instead of armor', () => {
         const item = {
             名称: '旧军装',
@@ -342,8 +379,10 @@ describe('item image prompt classification', () => {
         const negativePrompt = 构建物品负面提示词(item);
 
         expect(prompt).toContain('short herbal-gathering knife');
-        expect(prompt).toContain('strict traditional wuxia weapon prop only');
-        expect(prompt).toContain('blade, hilt, handle');
+        expect(prompt).toContain('strict edged weapon prop');
+        expect(prompt).toContain('blade');
+        expect(prompt).toContain('hilt');
+        expect(prompt).toContain('handle');
         expect(prompt).not.toContain('strict botanical herb or flower');
         expect(negativePrompt).toContain('potted plant');
         expect(negativePrompt).toContain('flowerpot');
