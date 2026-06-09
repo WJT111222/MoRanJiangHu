@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { 创建运行时变量工作流 } from '../hooks/useGame/runtimeVariableWorkflow';
 import { 规范化社交列表 } from '../hooks/useGame/stateTransforms';
 
-const 创建依赖 = () => {
+const 创建依赖 = (options?: { heroinePlanEnabled?: boolean }) => {
     let social: any[] = [];
     const state = {
         角色: {},
@@ -53,9 +53,10 @@ const 创建依赖 = () => {
         设置任务列表: (value: any) => { state.任务列表 = value; },
         设置约定列表: (value: any) => { state.约定列表 = value; },
         应用并同步记忆系统: (value: any) => { state.记忆系统 = value; },
-        performAutoSave
+        performAutoSave,
+        女主规划已启用: () => options?.heroinePlanEnabled !== false
     };
-    return { deps, getSocial: () => social, performAutoSave };
+    return { deps, getSocial: () => social, getState: () => state, performAutoSave };
 };
 
 describe('运行时变量管理', () => {
@@ -80,5 +81,29 @@ describe('运行时变量管理', () => {
             ]),
             force: true
         }));
+    });
+
+    it('关闭女主规划时忽略女主规划分区保存', async () => {
+        const { deps, getState, performAutoSave } = 创建依赖({ heroinePlanEnabled: false });
+        const workflow = 创建运行时变量工作流(deps);
+
+        await workflow.updateRuntimeVariableSection('女主剧情规划', { 现状: '新规划' });
+        await workflow.updateRuntimeVariableSection('同人女主剧情规划', { 现状: '新同人规划' });
+
+        expect(getState().女主剧情规划).toBeUndefined();
+        expect(getState().同人女主剧情规划).toBeUndefined();
+        expect(performAutoSave).not.toHaveBeenCalled();
+    });
+
+    it('关闭女主规划时忽略女主规划变量命令', async () => {
+        const { deps, getState, performAutoSave } = 创建依赖({ heroinePlanEnabled: false });
+        const workflow = 创建运行时变量工作流(deps);
+
+        await workflow.applyRuntimeVariableCommand({ action: 'set', key: '女主剧情规划.现状', value: '新规划' } as any);
+        await workflow.applyRuntimeVariableCommand({ action: 'set', key: '同人女主剧情规划.现状', value: '新同人规划' } as any);
+
+        expect(getState().女主剧情规划).toBeUndefined();
+        expect(getState().同人女主剧情规划).toBeUndefined();
+        expect(performAutoSave).not.toHaveBeenCalled();
     });
 });

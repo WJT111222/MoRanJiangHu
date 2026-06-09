@@ -1543,9 +1543,10 @@ export const 构建系统提示词 = ({
     const contextMemory = options?.禁用中期长期记忆 ? '' : `${longMemory}\n${midMemory}`;
     const contextNPCData = npcContext.在场数据块;
     const contextStoryPlan = 构建剧情安排(statePayload);
-    const contextHeroinePlan = openingConfig?.启用女主剧情规划 !== undefined
-        ? openingConfig.启用女主剧情规划
-        : normalizedGameConfig.启用女主剧情规划
+    const heroinePlanEnabled = openingConfig?.启用女主剧情规划 !== undefined
+        ? openingConfig.启用女主剧情规划 === true
+        : normalizedGameConfig.启用女主剧情规划 === true;
+    const contextHeroinePlan = heroinePlanEnabled
         ? 构建女主剧情规划文本(statePayload)
         : '';
     const contextWorldState = 构建世界状态文本(statePayload);
