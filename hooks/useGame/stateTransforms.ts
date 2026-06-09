@@ -2890,7 +2890,8 @@ const 是否应丢弃NPC条目 = (rawNpc: any): boolean => {
 
 const 推断NPC性别 = (npc: any): string => {
     const raw = 规范化文本(npc?.性别);
-    if (raw && !/^(未知|不详|未定|待定|无)$/u.test(raw)) return raw;
+    const normalizedRaw = 规范化性别枚举(raw);
+    if (normalizedRaw !== '未知') return normalizedRaw;
     const 扶她设定 = 规范化文本(npc?.扶她设定);
     if (扶她设定 && !/^(无扶她设定|否|无)$/u.test(扶她设定) && /扶她/.test(扶她设定)) return '扶她';
     const 男娘设定 = 规范化文本(npc?.男娘设定);
@@ -2898,15 +2899,25 @@ const 推断NPC性别 = (npc: any): string => {
     return '未知';
 };
 
-const 性别是否明确 = (value: unknown): value is '男' | '女' | '男娘' | '扶她' => {
+const 规范化性别枚举 = (value: unknown): '男' | '女' | '男娘' | '扶她' | '未知' => {
     const text = 规范化文本(value);
+    if (!text || /^(未知|不详|未定|待定|无)$/u.test(text)) return '未知';
+    if (/扶她/.test(text)) return '扶她';
+    if (/男娘/.test(text)) return '男娘';
+    if (/^(男|男性|男子|男修|男身|男性修士)$/u.test(text)) return '男';
+    if (/^(女|女性|女子|女修|女身|女性修士)$/u.test(text)) return '女';
+    return '未知';
+};
+
+const 性别是否明确 = (value: unknown): value is '男' | '女' | '男娘' | '扶她' => {
+    const text = 规范化性别枚举(value);
     return text === '男' || text === '女' || text === '男娘' || text === '扶她';
 };
 
 const 重算合并后NPC性别 = (leftRaw: any, rightRaw: any): string => {
-    const rightExplicit = 规范化文本(rightRaw?.性别);
+    const rightExplicit = 规范化性别枚举(rightRaw?.性别);
     if (性别是否明确(rightExplicit)) return rightExplicit;
-    const leftExplicit = 规范化文本(leftRaw?.性别);
+    const leftExplicit = 规范化性别枚举(leftRaw?.性别);
     if (性别是否明确(leftExplicit)) return leftExplicit;
 
     const rightDerived = 推断NPC性别(rightRaw);

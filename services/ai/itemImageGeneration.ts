@@ -222,7 +222,7 @@ const 物品是否箭矢弹药 = (item: any): boolean => {
         item?.视觉描述,
         Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
     ].map((value) => 读取文本(value)).join(' ');
-    return /弩箭|箭矢|羽箭|箭枝|箭头|箭簇|arrow bundle|crossbow bolt/i.test(text);
+    return /弩箭|箭矢|羽箭|箭枝|箭头|箭簇|箭束|箭矢弹药|箭矢类|arrow bundle|arrows|arrowhead|crossbow bolt/i.test(text);
 };
 
 const 物品是否科幻能量武器 = (item: any): boolean => {
@@ -309,7 +309,13 @@ const 物品是否活体生物 = (item: any): boolean => {
         item?.视觉描述,
         Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
     ].map((value) => 读取文本(value)).join(' ');
-    return /宠物|灵宠|灵兽|幼崽|活物|活体|兽宠|狐狸|狐妖|白狐|赤狐|灵狐|黑猫|白猫|狸花猫|猫咪|小猫|犬|狗|小狗|猎犬|狼犬|兔|白兔|灵兔|鸟|雀|鹰|鹦鹉|乌鸦|鸽子|猫\b|dog\b|fox\b|rabbit\b|bird\b|pet\b|familiar\b/i.test(text);
+    if (/皮毛|毛皮|皮革|兽皮|骨|牙|犬牙|爪|角|筋|肉|标本|玩偶|手办|摆件|雕像|模型|饰品|挂件|毛绒|stuffed|plush|figurine|statue|taxidermy/i.test(text)) {
+        return false;
+    }
+    const hasLivingContext = /宠物|灵宠|灵兽|幼崽|幼兽|活物|活体|兽宠|伙伴|饲养|喂养|会动|会叫|生命|跟着主人|pet\b|familiar\b/i.test(text);
+    const hasAnimalSpecies = /狐狸|狐妖|白狐|赤狐|灵狐|黑猫|白猫|狸花猫|猫咪|小猫|小狗|猎犬|狼犬|白兔|灵兔|鹦鹉|乌鸦|鸽子|cat\b|dog\b|fox\b|rabbit\b|bird\b/i.test(text);
+    const explicitSmallAnimal = /小狐狸|小猫|小狗|小兔|白兔/.test(text);
+    return hasAnimalSpecies && (hasLivingContext || explicitSmallAnimal);
 };
 
 const 物品是否武器 = (item: any): boolean => {
@@ -344,11 +350,11 @@ const 获取物品外形纠偏类别 = (item: any): 物品外形纠偏类别 => 
         item?.视觉描述,
         Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
     ].map((value) => 读取文本(value)).join(' ');
+    if (物品是否装箭容器(item)) return '装箭容器';
+    if (物品是否箭矢弹药(item)) return '箭矢弹药';
     if (物品是否科幻能量武器(item)) return '科幻能量武器';
     if (物品是否现代枪械(item)) return '现代枪械';
     if (物品是否弩(item)) return '弩';
-    if (物品是否装箭容器(item)) return '装箭容器';
-    if (物品是否箭矢弹药(item)) return '箭矢弹药';
     if (/弓|长弓|短弓/.test(text)) return '弓';
     if (/枪|矛|戟|叉|矟|槊/.test(text) && !/步枪|手枪|枪械|光枪|激光枪|能量枪|粒子枪|脉冲枪/.test(text)) return '长柄锐器';
     if (/棍|棒|杖|锤|锏|锄|棒槌|baton|club|mace/i.test(text)) return '钝器';
@@ -591,8 +597,9 @@ const 物品名称转英文描述 = (name: string): string => {
     if (/储物戒/.test(name)) return 'single ring magical artifact, photographed alone, no hand';
     if (/葫芦|铃|宝镜|镜|索/.test(name)) return 'xianxia magical artifact treasure prop, ancient Chinese material, clear single object silhouette';
     if (/箭囊|箭袋|箭筒|箭匣|quiver/i.test(name)) return 'arrow-carrying quiver or arrow case, leather or wood container with strap and visible feathered arrow ends, no bow';
+    if (/弩箭|箭矢|羽箭|箭枝|箭头|箭簇|箭束|arrow bundle|arrowhead|arrows|bolt/i.test(name)) return 'grouped arrow ammunition prop, fletched shafts with visible arrowheads and nocks, bundled or laid together, not a bow, not a blade weapon';
     if (/弩|弩机/.test(name)) return 'crossbow weapon prop, horizontal bow limbs, stock, trigger, taut string and bolt rail clearly visible, compact ranged weapon';
-    if (/暗器|兵器|刀|短刀|匕首|剑|弓|箭|枪|矛|戟|棍|棒|杖|斧|锤|鞭|刃|镖/.test(name)) return 'traditional weapon prop, clearly visible blade, bow, hilt, shaft, grip or scabbard';
+    if (/暗器|兵器|刀|短刀|匕首|剑|弓|枪|矛|戟|棍|棒|杖|斧|锤|鞭|刃|镖/.test(name)) return 'traditional weapon prop, clearly visible blade, bow, hilt, shaft, grip or scabbard';
     if (/牌|令|符/.test(name)) return 'wooden or metal plaque token';
     if (/壶|瓶|罐/.test(name)) return 'ceramic or metal container vessel';
     if (/匣|盒|箱/.test(name)) return 'wooden box or case';
@@ -611,11 +618,11 @@ const 构建物品视觉主体描述 = (item: any): string => {
     const isLivingAnimal = 物品是否活体生物(item);
     const isLivingMount = 物品是否坐骑生物(item);
     const isFan = 物品是否折扇(item);
-    const isModernFirearm = 物品是否现代枪械(item);
     const shapeCorrection = 获取物品外形纠偏类别(item);
     const isQuiver = shapeCorrection === '装箭容器';
     const isArrowAmmo = shapeCorrection === '箭矢弹药';
     const isCrossbow = shapeCorrection === '弩';
+    const isModernFirearm = shapeCorrection === '现代枪械';
     const isEnergyWeapon = shapeCorrection === '科幻能量武器';
     const isTacticalVest = 物品是否战术背心(item);
     const isCigarette = 物品是否香烟(item);
@@ -659,8 +666,8 @@ const 构建物品视觉主体描述 = (item: any): string => {
 
 export const 构建物品负面提示词 = (item: any): string => {
     const isFan = 物品是否折扇(item);
-    const isModernFirearm = 物品是否现代枪械(item);
     const shapeCorrection = 获取物品外形纠偏类别(item);
+    const isModernFirearm = shapeCorrection === '现代枪械';
     const isCrossbow = shapeCorrection === '弩';
     const isQuiver = shapeCorrection === '装箭容器';
     const isArrowAmmo = shapeCorrection === '箭矢弹药';
@@ -712,9 +719,9 @@ export const 构建物品图提示词 = (
     const isLivingAnimal = 物品是否活体生物(item);
     const isLivingMount = 物品是否坐骑生物(item);
     const isFan = 物品是否折扇(item);
-    const isModernFirearm = 物品是否现代枪械(item);
     const shapeCorrection = 获取物品外形纠偏类别(item);
     const isCrossbow = shapeCorrection === '弩';
+    const isModernFirearm = shapeCorrection === '现代枪械';
     const isEnergyWeapon = shapeCorrection === '科幻能量武器';
     const isTacticalVest = 物品是否战术背心(item);
     const isCigarette = 物品是否香烟(item);
@@ -808,8 +815,8 @@ export const 生成物品图标 = async (
     const enrichedItemIsSoftGarment = 物品是否柔性服装(enrichedItem);
     const enrichedItemIsLivingAnimal = 物品是否活体生物(enrichedItem);
     const enrichedItemIsLivingMount = 物品是否坐骑生物(enrichedItem);
-    const enrichedItemIsModernFirearm = 物品是否现代枪械(enrichedItem);
     const enrichedItemShapeCorrection = 获取物品外形纠偏类别(enrichedItem);
+    const enrichedItemIsModernFirearm = enrichedItemShapeCorrection === '现代枪械';
     const enrichedItemIsEnergyWeapon = enrichedItemShapeCorrection === '科幻能量武器';
     const enrichedItemIsQuiver = enrichedItemShapeCorrection === '装箭容器';
     const enrichedItemIsArrowAmmo = enrichedItemShapeCorrection === '箭矢弹药';

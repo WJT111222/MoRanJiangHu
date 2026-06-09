@@ -2035,14 +2035,18 @@ export const useGame = () => {
         )) || null;
     };
 
+    const 显式NPC生图性别集合 = new Set(['男', '女', '男娘', '扶她']);
+
+    const NPC生图性别是否显式 = (value: string): boolean => 显式NPC生图性别集合.has(value);
+
     const 读取NPC需性别补正构图列表 = (npc: any): Array<'头像' | '半身' | '立绘'> => {
         const currentGender = 读取NPC文本字段(npc, '性别');
-        if (currentGender !== '男' && currentGender !== '女') return [];
+        if (!NPC生图性别是否显式(currentGender)) return [];
         return (['头像', '半身', '立绘'] as const).filter((构图) => {
             const record = 读取NPC最近成功构图记录(npc, 构图);
             if (!record) return false;
             const previousGender = typeof record?.NPC性别 === 'string' ? record.NPC性别.trim() : '';
-            return previousGender !== '男' && previousGender !== '女';
+            return !NPC生图性别是否显式(previousGender) || previousGender !== currentGender;
         });
     };
 
@@ -2050,7 +2054,7 @@ export const useGame = () => {
         if (!npc || typeof npc !== 'object') return false;
         if (!NPC符合自动生图条件(npc)) return false;
         const gender = 读取NPC文本字段(npc, '性别');
-        if (gender !== '男' && gender !== '女') return false;
+        if (!NPC生图性别是否显式(gender)) return false;
         return 读取NPC需性别补正构图列表(npc).length > 0;
     };
 
@@ -2119,7 +2123,8 @@ export const useGame = () => {
 
     const 执行NPC自动构图任务 = async (
         npc: any,
-        构图: '头像' | '半身' | '立绘'
+        构图: '头像' | '半身' | '立绘',
+        options?: { force?: boolean }
     ): Promise<boolean> => {
         const npcKey = 获取NPC唯一标识(npc);
         const npcName = 读取NPC文本字段(npc, '姓名') || 读取NPC文本字段(npc, '名称') || npcKey;
@@ -2135,7 +2140,7 @@ export const useGame = () => {
             输出NPC自动生图调试('跳过：不符合自动生图条件', { npcKey, npcName, 构图 });
             return false;
         }
-        if (NPC是否已有成功构图(npc, [构图])) {
+        if (!options?.force && NPC是否已有成功构图(npc, [构图])) {
             输出NPC自动生图调试('跳过：已有成功构图', { npcKey, npcName, 构图 });
             return false;
         }

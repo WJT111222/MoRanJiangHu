@@ -16,6 +16,7 @@ const 格式化多段文本 = (text: string): string => (
 );
 
 const 剧情面板发送者黑名单 = new Set(['旁白', '判定', '系统', '【判定】', '【系统】', '[判定]', '[系统]']);
+const 主角对白别名黑名单 = new Set(['主角', '玩家', '我', '我方', '己方']);
 
 const 提取对白候选角色列表 = (response: GameResponse): string[] => {
     const seen = new Set<string>();
@@ -24,6 +25,7 @@ const 提取对白候选角色列表 = (response: GameResponse): string[] => {
     logs.forEach((log) => {
         const sender = typeof log?.sender === 'string' ? log.sender.trim() : '';
         if (!sender || 剧情面板发送者黑名单.has(sender)) return;
+        if (主角对白别名黑名单.has(sender)) return;
         if (sender.includes('判定') || sender.includes('系统')) return;
         if (seen.has(sender)) return;
         seen.add(sender);
