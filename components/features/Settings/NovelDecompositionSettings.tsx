@@ -47,6 +47,8 @@ import {
     列出小说分解创意工坊模块,
     type 小说分解创意工坊条目
 } from '../../../services/workshopNovelDecomposition';
+import { 发布创意工坊模块, 导入本地创意工坊模块 } from '../../../services/creativeWorkshop';
+import { 构建小说拆分模式包创意工坊模块 } from '../../../services/novelDecompositionWorkshopBridge';
 import { 读取云端游玩会话 } from '../../../services/cloudPlayService';
 
 interface Props {
@@ -454,6 +456,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
     const [workshopLoading, setWorkshopLoading] = useState(false);
     const [workshopBusyId, setWorkshopBusyId] = useState('');
     const [workshopPublishing, setWorkshopPublishing] = useState(false);
+    const [modePackagePublishing, setModePackagePublishing] = useState(false);
     const [workshopAnonymous, setWorkshopAnonymous] = useState(false);
     const [workshopUsername, setWorkshopUsername] = useState('');
     const [workshopEditingId, setWorkshopEditingId] = useState('');
@@ -1620,6 +1623,72 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
         }
     };
 
+    const handleGenerateModePackageFromSelectedDataset = async () => {
+        if (!selectedDataset) {
+            setMessage('请先选择一个数据集。');
+            return;
+        }
+        try {
+            const module = 构建小说拆分模式包创意工坊模块({
+                dataset: 聚合小说拆分数据集(selectedDataset),
+                contributor: workshopUsername || ''
+            });
+            const local = 导入本地创意工坊模块(module);
+            设置状态消息(`已生成本地创意工坊模式包：${local.title}。新开同人存档时可在创意工坊模式包中套用。`);
+            onNotify?.({
+                title: '模式包已生成',
+                message: `已保存到本地创意工坊：${local.title}`,
+                tone: 'success'
+            });
+        } catch (error: any) {
+            推送错误提示(`生成小说分解模式包失败：${error?.message || '未知错误'}`);
+        }
+    };
+
+    const handlePublishModePackageFromSelectedDataset = async () => {
+        if (!selectedDataset) {
+            setMessage('请先选择一个数据集。');
+            return;
+        }
+        if (!workshopUsername) {
+            推送错误提示('请先登录联机账号再贡献模式包到创意工坊。匿名发布只隐藏显示署名，仍会绑定账号用于编辑和删除。');
+            return;
+        }
+        const ok = requestConfirm
+            ? await requestConfirm({
+                title: '贡献小说同人模式包',
+                message: '将把当前小说分解结果转换成标准创意工坊模式包，包含模式世界书、原著规则、能力体系和跨世界时间线硬约束。它不是 ZIP 分享包，而是给其他玩家新开同人存档直接套用的模式包。是否继续？',
+                confirmText: '贡献模式包',
+                cancelText: '取消'
+            })
+            : window.confirm('将把当前小说分解结果转换成标准创意工坊模式包，供其他玩家新开同人存档直接套用。是否继续？');
+        if (!ok) return;
+
+        setModePackagePublishing(true);
+        try {
+            const module = 构建小说拆分模式包创意工坊模块({
+                dataset: 聚合小说拆分数据集(selectedDataset),
+                contributor: workshopUsername
+            });
+            const local = 导入本地创意工坊模块(module);
+            const published = await 发布创意工坊模块({
+                module: local,
+                contributor: workshopUsername,
+                anonymous: workshopAnonymous
+            });
+            设置状态消息(`已贡献创意工坊模式包：${published.title}。其他玩家可直接套用为新开同人存档的模式世界书。`);
+            onNotify?.({
+                title: '模式包贡献成功',
+                message: `已发布到创意工坊：${published.title}`,
+                tone: 'success'
+            });
+        } catch (error: any) {
+            推送错误提示(`贡献模式包失败：${error?.message || '未知错误'}`);
+        } finally {
+            setModePackagePublishing(false);
+        }
+    };
+
     const handleImportWorkshopEntry = async (entry: 小说分解创意工坊条目) => {
         setWorkshopBusyId(entry.id);
         try {
@@ -2059,7 +2128,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                         <div className="flex-1">
                             <h4 className="text-lg font-serif font-semibold text-wuxia-gold tracking-wide">小说分解数据集</h4>
                             <div className="mt-1.5 text-xs text-gray-400/80 leading-relaxed max-w-2xl">
-                                这里只管理已经分解、TXT/EPUB 导入或分享 ZIP 导入的数据集。是否用于某个存档，需要在新开局时手动选择。
+                                这里只管理已经分解、TXT/EPUB 导入或分享 ZIP 导入的数据集。分享 ZIP 用于复查和继续拆解；模式包会把分解出的题材口径、世界规则、能力体系和时间线硬约束保存到创意工坊，供新开同人存档直接套用。
                             </div>
                         </div>
                         <div className="w-full lg:w-80 shrink-0">
@@ -2109,6 +2178,13 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                 </div>
                             </div>
 
+                            <div className="rounded-xl border border-amber-500/20 bg-amber-950/10 px-4 py-3 text-xs leading-6 text-amber-100/90">
+                                <div className="font-medium text-amber-200">分解后建议先生成模式包</div>
+                                <div className="mt-1 text-amber-100/75">
+                                    小说分解 ZIP 是完整拆解档案；同人模式包才会进入新开局的模式世界书，自动携带原著硬约束、跨世界时间线、势力地点和能力口径。无限流/副本世界会特别约束“章节距离不等于世界内时间”，避免把 200 年压成一个月。
+                                </div>
+                            </div>
+
                             <div className="flex flex-wrap items-center gap-3 pt-2">
                                 <button
                                     onClick={() => void handleStartTaskForDataset()}
@@ -2129,6 +2205,20 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                     className="px-5 py-2.5 rounded-lg text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition-all disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {workshopPublishing ? '发布中...' : '发布为小说分解模块'}
+                                </button>
+                                <button
+                                    onClick={() => void handleGenerateModePackageFromSelectedDataset()}
+                                    className="px-5 py-2.5 rounded-lg text-xs font-medium border border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20 transition-all"
+                                >
+                                    生成本地模式包
+                                </button>
+                                <button
+                                    onClick={() => void handlePublishModePackageFromSelectedDataset()}
+                                    disabled={modePackagePublishing || !workshopUsername}
+                                    title={workshopUsername ? '贡献为标准创意工坊模式包' : '请先登录联机账号'}
+                                    className="px-5 py-2.5 rounded-lg text-xs font-medium border border-purple-500/30 bg-purple-500/10 text-purple-200 hover:bg-purple-500/20 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {modePackagePublishing ? '贡献中...' : '贡献模式包'}
                                 </button>
                                 <label className="inline-flex items-center gap-2 text-xs text-gray-300">
                                     <input type="checkbox" checked={workshopAnonymous} onChange={(event) => setWorkshopAnonymous(event.target.checked)} className="h-3.5 w-3.5 accent-wuxia-gold" />
@@ -2156,7 +2246,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                         <div>
                             <h4 className="text-lg font-serif font-semibold text-wuxia-gold tracking-wide">创意工坊 · 小说分解模块</h4>
                             <div className="mt-1.5 text-xs text-gray-400/80 leading-relaxed max-w-2xl">
-                                创意工坊是玩家内容总入口；当前分区收录小说分解分享 ZIP。题材模板、世界规则和能力体系已整合为“模式包”，下载后会作为一组内容注入新建角色和世界生成流程。
+                                当前分区收录小说分解分享 ZIP，适合下载后继续复查、编辑或接着拆解。若要给新开同人存档直接套用，请把当前数据集生成或贡献为“标准模式包”，模式世界书会自动携带题材口径、世界规则、能力体系和跨世界时间线硬约束。
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -2176,6 +2266,23 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                 className="px-4 py-2 rounded-lg text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition-all disabled:opacity-50"
                             >
                                 {workshopPublishing ? '发布中...' : '发布当前小说分解'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void handleGenerateModePackageFromSelectedDataset()}
+                                disabled={!selectedDataset}
+                                className="px-4 py-2 rounded-lg text-xs font-medium border border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20 transition-all disabled:opacity-50"
+                            >
+                                生成本地模式包
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void handlePublishModePackageFromSelectedDataset()}
+                                disabled={!selectedDataset || modePackagePublishing || !workshopUsername}
+                                title={workshopUsername ? '贡献当前数据集生成的标准模式包' : '请先登录联机账号'}
+                                className="px-4 py-2 rounded-lg text-xs font-medium border border-purple-500/30 bg-purple-500/10 text-purple-200 hover:bg-purple-500/20 transition-all disabled:opacity-50"
+                            >
+                                {modePackagePublishing ? '贡献中...' : '贡献模式包'}
                             </button>
                             <label className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-gray-300">
                                 <input type="checkbox" checked={workshopAnonymous} onChange={(event) => setWorkshopAnonymous(event.target.checked)} className="h-3.5 w-3.5 accent-wuxia-gold" />

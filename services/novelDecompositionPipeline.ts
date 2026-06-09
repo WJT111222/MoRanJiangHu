@@ -10,6 +10,7 @@ import type {
 import type { 当前可用接口结构 } from '../utils/apiConfig';
 import { 过滤疑似目录章节, 重排章节序号, 规范化标题, 识别TXT章节标题行 } from './novelStructureHeuristics';
 import { 默认小说时间线起点, 尝试规范化小说时间锚点, 规范化小说时间锚点 } from './novelDecompositionTime';
+import { 构建小说拆分跨世界时间线规则 } from './novelDecompositionTimelineConstraints';
 
 const 时间锚点格式正则 = /^\d{4,6}:\d{2}:\d{2}:\d{2}:\d{2}$/;
 const 读取文本 = (value: unknown): string => (typeof value === 'string' ? value : '');
@@ -996,6 +997,7 @@ const 构建世界演变时间线内容 = (
 
 export const 基于分段构建注入树 = (dataset: 小说拆分数据集结构): 小说拆分树节点结构[] => {
     const completedSegments = dataset.分段列表.filter((item) => item.处理状态 === '已完成' && item.启用注入 !== false);
+    const 跨世界时间线规则 = 构建小说拆分跨世界时间线规则(dataset);
     const stageNode = 构建树节点({
         datasetId: dataset.id,
         title: '当前阶段概括',
@@ -1027,6 +1029,14 @@ export const 基于分段构建注入树 = (dataset: 小说拆分数据集结构
         type: 'summary',
         order: 40,
         targets: ['planning', 'world_evolution']
+    });
+    const crossWorldTimelineNode = 构建树节点({
+        datasetId: dataset.id,
+        title: '跨世界时间线硬约束',
+        content: 跨世界时间线规则.join('\n'),
+        type: 'summary',
+        order: 45,
+        targets: ['planning', 'world_evolution', 'main_story']
     });
     const mainStorySegmentChildren = completedSegments.map((segment, index) => 构建树节点({
         datasetId: dataset.id,
@@ -1137,6 +1147,7 @@ export const 基于分段构建注入树 = (dataset: 小说拆分数据集结构
         characterArchiveNode,
         factionArchiveNode,
         locationArchiveNode,
+        crossWorldTimelineNode,
         segmentGroup,
         planningSegmentGroup,
         worldSegmentGroup,
