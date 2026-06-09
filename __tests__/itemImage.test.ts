@@ -266,6 +266,25 @@ describe('item image prompt classification', () => {
         expect(negativePrompt).toContain('sword');
     });
 
+    it('renders fox pets as living animals instead of plush toys or figurines', () => {
+        const item = {
+            名称: '小狐狸宠物',
+            类型: '杂物',
+            品质: '良品',
+            描述: '一只机警的小狐狸，毛发柔顺，尾巴蓬松，会跟着主人行动。'
+        };
+        const prompt = 构建物品图提示词(item);
+        const negativePrompt = 构建物品负面提示词(item);
+
+        expect(prompt).toContain('real living');
+        expect(prompt).toContain('fox');
+        expect(prompt).toContain('full-body portrait');
+        expect(prompt).toContain('natural animal anatomy');
+        expect(negativePrompt).toContain('plush toy');
+        expect(negativePrompt).toContain('stuffed animal');
+        expect(negativePrompt).toContain('resin figurine');
+    });
+
     it('treats old military uniforms as soft cloth garments instead of armor', () => {
         const item = {
             名称: '旧军装',

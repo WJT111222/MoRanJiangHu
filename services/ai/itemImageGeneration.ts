@@ -299,6 +299,19 @@ const 物品是否坐骑生物 = (item: any): boolean => {
     return /坐骑|骏马|马匹|马\b|黑马|白马|赤兔|的卢|汗血|乌骓|青骢|黄骠|驴|骡|骆驼|牦牛/.test(text);
 };
 
+const 物品是否活体生物 = (item: any): boolean => {
+    const text = [
+        item?.名称,
+        item?.类型,
+        item?.装备位置,
+        item?.当前装备部位,
+        item?.描述,
+        item?.视觉描述,
+        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
+    ].map((value) => 读取文本(value)).join(' ');
+    return /宠物|灵宠|灵兽|幼崽|活物|活体|兽宠|狐狸|狐妖|白狐|赤狐|灵狐|黑猫|白猫|狸花猫|猫咪|小猫|犬|狗|小狗|猎犬|狼犬|兔|白兔|灵兔|鸟|雀|鹰|鹦鹉|乌鸦|鸽子|猫\b|dog\b|fox\b|rabbit\b|bird\b|pet\b|familiar\b/i.test(text);
+};
+
 const 物品是否武器 = (item: any): boolean => {
     if (物品是否装箭容器(item) || 物品是否箭矢弹药(item)) return false;
     const text = [
@@ -539,6 +552,16 @@ const 物品名称转英文描述 = (name: string): string => {
         '血参': 'red ginseng root medicinal herb, branching natural root shape, organic plant texture',
         '人参': 'ginseng root medicinal herb, branching natural root shape, organic plant texture',
         '灵芝': 'lingzhi mushroom medicinal herb, glossy red brown fungus cap, organic botanical specimen',
+        '狐狸': 'real living fox, full body animal, natural fur coat, pointed ears, narrow snout and bushy tail',
+        '白狐': 'real living white fox, full body animal, natural white fur coat, pointed ears and bushy tail',
+        '赤狐': 'real living red fox, full body animal, orange-red fur coat, pointed ears and bushy tail',
+        '灵狐': 'real living fox-like spirit beast, full body animal, natural fur, elegant posture and bushy tail',
+        '黑猫': 'real living black cat, full body animal, natural fur coat, upright ears and long tail',
+        '白猫': 'real living white cat, full body animal, natural fur coat, upright ears and long tail',
+        '小猫': 'real living kitten or young cat, full body animal, natural fur coat and upright ears',
+        '小狗': 'real living puppy or young dog, full body animal, natural fur coat and alert posture',
+        '兔子': 'real living rabbit, full body animal, natural fur coat, long ears and small paws',
+        '白兔': 'real living white rabbit, full body animal, natural fur coat, long ears and small paws',
         '骏马': 'real living horse, full body animal, natural coat and mane',
         '马匹': 'real living horse, full body animal, natural coat and mane',
         '黑马': 'real living black horse, full body animal, natural coat and mane',
@@ -585,6 +608,7 @@ const 物品名称转英文描述 = (name: string): string => {
 
 const 构建物品视觉主体描述 = (item: any): string => {
     const name = 读取文本(item?.名称);
+    const isLivingAnimal = 物品是否活体生物(item);
     const isLivingMount = 物品是否坐骑生物(item);
     const isFan = 物品是否折扇(item);
     const isModernFirearm = 物品是否现代枪械(item);
@@ -604,7 +628,7 @@ const 构建物品视觉主体描述 = (item: any): string => {
     const isWearableArmor = !isSoftGarment && 物品是否可穿戴护甲(item);
     const isAncientMedicine = !isCigarette && 物品是否古代药物(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
-    const typeEn = isLivingMount ? 'living mount animal' : isFan ? 'folded Chinese hand fan' : isModernFirearm ? 'modern firearm' : isEnergyWeapon ? 'sci-fi energy weapon' : isCrossbow ? 'crossbow' : isQuiver ? 'arrow container' : isArrowAmmo ? 'arrow ammunition' : isWeapon ? 'weapon' : isSoftGarment ? 'cloth garment' : isTacticalVest ? 'wearable tactical vest' : isWearableArmor ? 'wearable torso armor vest' : isAncientMedicine ? 'ancient medicinal powder or pills' : isBotanicalHerb ? 'botanical medicinal herb' : 物品类型转英文(读取文本(item?.类型, '物品'));
+    const typeEn = isLivingMount ? 'living mount animal' : isLivingAnimal ? 'living animal' : isFan ? 'folded Chinese hand fan' : isModernFirearm ? 'modern firearm' : isEnergyWeapon ? 'sci-fi energy weapon' : isCrossbow ? 'crossbow' : isQuiver ? 'arrow container' : isArrowAmmo ? 'arrow ammunition' : isWeapon ? 'weapon' : isSoftGarment ? 'cloth garment' : isTacticalVest ? 'wearable tactical vest' : isWearableArmor ? 'wearable torso armor vest' : isAncientMedicine ? 'ancient medicinal powder or pills' : isBotanicalHerb ? 'botanical medicinal herb' : 物品类型转英文(读取文本(item?.类型, '物品'));
     const qualityEn = 物品品质转英文(读取文本(item?.品质, '普通'));
     const nameEn = 物品名称转英文描述(name);
     const description = 读取文本(item?.视觉描述) || (!是否游戏机制文案(读取文本(item?.描述) || '') ? 读取文本(item?.描述) : '');
@@ -612,10 +636,10 @@ const 构建物品视觉主体描述 = (item: any): string => {
         ? item.视觉标签.map((tag: unknown) => 读取文本(tag)).filter(Boolean).join(', ')
         : '';
     return [
-        isLivingMount
-            ? (nameEn ? `a single real living ${qualityEn} mount animal, ${nameEn}` : `a single real living ${qualityEn} ${typeEn}`)
+        isLivingMount || isLivingAnimal
+            ? (nameEn ? `a single real living ${qualityEn} ${isLivingMount ? 'mount animal' : 'animal'}, ${nameEn}` : `a single real living ${qualityEn} ${typeEn}`)
             : (nameEn ? `a single ${qualityEn} ${nameEn}` : `a single ${qualityEn} ${typeEn} prop`),
-        isLivingMount ? 'alive organic animal anatomy, natural fur coat, visible eyes, nostrils, mane or tail, standing on real ground, full body animal portrait' : '',
+        isLivingMount || isLivingAnimal ? 'alive organic animal anatomy, natural fur, visible eyes, nose or snout, ears, paws or hooves, and tail when applicable, standing or sitting naturally on real ground, full body animal portrait' : '',
         isFan ? 'strict hand fan prop: folded or half-open fan, visible ribs, silk or paper leaf, jade/bamboo/wood spine, decorative tassel; absolutely no sword blade, no knife, no spearhead' : '',
         获取外形纠偏强调描述(shapeCorrection),
         isCigarette ? 'strict cigarette prop: opened damp cardboard cigarette pack, half-empty paper pack, visible bent cigarettes, water-stained paper and soggy edges; absolutely not a pouch, not a leather bag, not a drawstring bag' : '',
@@ -649,13 +673,14 @@ export const 构建物品负面提示词 = (item: any): string => {
     const isWearableArmor = !isSoftGarment && 物品是否可穿戴护甲(item);
     const isClothShoe = 物品是否布鞋(item);
     const isBandageDressing = 物品是否绷带敷料(item);
+    const isLivingAnimal = 物品是否活体生物(item);
     const isLivingMount = 物品是否坐骑生物(item);
     const isAncientMedicine = !isCigarette && 物品是否古代药物(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
     return [
-        isLivingMount ? 'rider, saddle covering the body, harness covering the body, cart, carriage, vehicle, boat' : 'person, human, face, hand, foot, feet, body part, skin, portrait, headshot, framed portrait, photo frame, picture frame',
-        isLivingMount ? 'toy horse, plastic horse, resin figurine, statue, sculpture, ceramic, porcelain, model horse, miniature, collectible figurine, carousel horse, rocking horse, fake animal, mannequin, doll, glossy plastic, product prop, studio toy photography' : '',
-        isLivingMount ? '' : 'toy, plastic figurine, resin model, statue, sculpture, mannequin',
+        isLivingMount ? 'rider, saddle covering the body, harness covering the body, cart, carriage, vehicle, boat' : isLivingAnimal ? 'person, human handler, leash held by person, cage, carrier bag, framed portrait, stuffed display, taxidermy scene' : 'person, human, face, hand, foot, feet, body part, skin, portrait, headshot, framed portrait, photo frame, picture frame',
+        isLivingMount ? 'toy horse, plastic horse, resin figurine, statue, sculpture, ceramic, porcelain, model horse, miniature, collectible figurine, carousel horse, rocking horse, fake animal, mannequin, doll, glossy plastic, product prop, studio toy photography' : isLivingAnimal ? 'plush toy, stuffed animal, toy fox, toy cat, toy dog, plush doll, resin figurine, statue, sculpture, ceramic animal, porcelain animal, taxidermy mount, fake animal, mannequin, glossy plastic pet toy, chibi animal illustration' : '',
+        isLivingMount || isLivingAnimal ? '' : 'toy, plastic figurine, resin model, statue, sculpture, mannequin',
         isFan ? 'sword, saber, knife, dagger, blade, spear, spearhead, arrowhead, metal cutting edge, sharpened weapon, polearm, staff weapon' : '',
         'text, typography, letters, words, numbers, caption, label, plaque, sign, inscription, readable inscription, pseudo text, fake text, gibberish text, Chinese characters, English letters, carved words, engraved words, engraved Chinese characters, vertical calligraphy, calligraphy, glyphs, runes, ideograms, seal, stamp, logo, watermark, signature, title, poster text, text on object surface',
         'game controller, gamepad, joystick, console controller, d-pad, analog stick, buttons, electronic device, gadget, plastic controller, remote control, keyboard, mouse',
@@ -684,6 +709,7 @@ export const 构建物品图提示词 = (
 ): string => {
     const style = options?.画风 || '写实';
     const renderStyle = options?.渲染风格 || '写实道具';
+    const isLivingAnimal = 物品是否活体生物(item);
     const isLivingMount = 物品是否坐骑生物(item);
     const isFan = 物品是否折扇(item);
     const isModernFirearm = 物品是否现代枪械(item);
@@ -704,11 +730,15 @@ export const 构建物品图提示词 = (
     const softGarmentGuard = isSoftGarment
         ? 'for clothing items: soft fabric garment laid flat or neatly folded, visible cloth weave, seams, wrinkles, flexible drape'
         : '';
-    if (isLivingMount) {
+    if (isLivingMount || isLivingAnimal) {
         return [
-            'photorealistic full-body portrait of one real living mount animal, alive animal, standing naturally on real ground, no rider',
-            'natural animal anatomy, organic body, realistic fur coat, real eyes, nostrils, mane and tail, subtle muscle structure, natural posture',
-            'outdoor natural light or neutral stable-yard light, clean background, clear silhouette, documentary animal photography',
+            isLivingMount
+                ? 'photorealistic full-body portrait of one real living mount animal, alive animal, standing naturally on real ground, no rider'
+                : 'photorealistic full-body portrait of one real living animal or pet, alive animal, standing or sitting naturally on real ground, no toy treatment, no person holding it',
+            isLivingMount
+                ? 'natural animal anatomy, organic body, realistic fur coat, real eyes, nostrils, mane and tail, subtle muscle structure, natural posture'
+                : 'natural animal anatomy, organic body, realistic fur coat or feathers, real eyes, nose or snout, ears, paws or claws, natural posture, lifelike pet photography',
+            'outdoor natural light or neutral natural light, clean background, clear silhouette, documentary animal photography',
             style === '写实' ? 'photorealistic' : style,
             构建物品视觉主体描述(item)
         ].filter(Boolean).join('\n');
@@ -776,6 +806,7 @@ export const 生成物品图标 = async (
         视觉描述: 读取文本((item as any)?.视觉描述) || 构建物品视觉描述(item),
     };
     const enrichedItemIsSoftGarment = 物品是否柔性服装(enrichedItem);
+    const enrichedItemIsLivingAnimal = 物品是否活体生物(enrichedItem);
     const enrichedItemIsLivingMount = 物品是否坐骑生物(enrichedItem);
     const enrichedItemIsModernFirearm = 物品是否现代枪械(enrichedItem);
     const enrichedItemShapeCorrection = 获取物品外形纠偏类别(enrichedItem);
@@ -802,6 +833,8 @@ export const 生成物品图标 = async (
         尺寸: size,
         附加正向提示词: `${enrichedItemIsLivingMount
             ? 'real living animal, alive mount, full body animal portrait, natural fur, organic anatomy, standing on real ground, no toy, no statue'
+            : enrichedItemIsLivingAnimal
+            ? 'real living animal, alive pet or beast, full body animal portrait, natural fur or feathers, organic anatomy, natural posture on real ground, not a plush toy, not a figurine, not a doll, photorealistic animal photo'
             : enrichedItemIsModernFirearm
             ? 'single physical modern firearm prop, receiver, barrel, magazine, stock, grip and trigger guard clearly visible, not a spear, photorealistic product photo, neutral matte studio background'
             : enrichedItemIsEnergyWeapon
