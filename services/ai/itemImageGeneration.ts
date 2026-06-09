@@ -199,6 +199,45 @@ const 物品是否弩 = (item: any): boolean => {
     return /弩机|改装弩|消音弩|十字弩|弩\b|crossbow/i.test(text);
 };
 
+const 物品是否装箭容器 = (item: any): boolean => {
+    const text = [
+        item?.名称,
+        item?.类型,
+        item?.装备位置,
+        item?.当前装备部位,
+        item?.描述,
+        item?.视觉描述,
+        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
+    ].map((value) => 读取文本(value)).join(' ');
+    return /箭囊|箭袋|箭筒|箭匣|quiver|arrow case|arrow bag/i.test(text);
+};
+
+const 物品是否箭矢弹药 = (item: any): boolean => {
+    const text = [
+        item?.名称,
+        item?.类型,
+        item?.装备位置,
+        item?.当前装备部位,
+        item?.描述,
+        item?.视觉描述,
+        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
+    ].map((value) => 读取文本(value)).join(' ');
+    return /弩箭|箭矢|羽箭|箭枝|箭头|箭簇|arrow bundle|crossbow bolt/i.test(text);
+};
+
+const 物品是否科幻能量武器 = (item: any): boolean => {
+    const text = [
+        item?.名称,
+        item?.类型,
+        item?.装备位置,
+        item?.当前装备部位,
+        item?.描述,
+        item?.视觉描述,
+        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
+    ].map((value) => 读取文本(value)).join(' ');
+    return /光剑|光刃|激光剑|能量剑|等离子剑|光枪|激光枪|能量枪|粒子枪|脉冲枪|光矛|激光矛|lightsaber|laser sword|energy blade|plasma blade|laser rifle|plasma rifle|energy spear/i.test(text);
+};
+
 const 物品是否战术背心 = (item: any): boolean => {
     const text = [
         item?.名称,
@@ -261,6 +300,7 @@ const 物品是否坐骑生物 = (item: any): boolean => {
 };
 
 const 物品是否武器 = (item: any): boolean => {
+    if (物品是否装箭容器(item) || 物品是否箭矢弹药(item)) return false;
     const text = [
         item?.名称,
         item?.类型,
@@ -271,8 +311,63 @@ const 物品是否武器 = (item: any): boolean => {
         Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
     ].map((value) => 读取文本(value)).join(' ');
     return 物品是否现代枪械(item)
+        || 物品是否科幻能量武器(item)
         || 物品是否弩(item)
         || /武器|武型|主手|副手|暗器|兵器|刀|短刀|匕首|剑|长剑|短剑|弓|弩|箭|枪|矛|戟|棍|棒|杖|斧|锤|鞭|刃|飞刀|袖箭|镖/.test(text);
+};
+
+// 这里只服务于生图时的外形纠偏，用来约束主视觉轮廓，避免模型被名称里的用途词或题材先验带偏。
+// 它不是正式的物品系统分类，不参与背包/装备栏/拍卖行等游戏语义判断。
+type 物品外形纠偏类别 = '无' | '科幻能量武器' | '现代枪械' | '弩' | '装箭容器' | '箭矢弹药' | '弓' | '长柄锐器' | '锐器' | '钝器';
+
+const 获取物品外形纠偏类别 = (item: any): 物品外形纠偏类别 => {
+    const name = 读取文本(item?.名称);
+    const text = [
+        name,
+        item?.类型,
+        item?.装备位置,
+        item?.当前装备部位,
+        item?.描述,
+        item?.视觉描述,
+        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
+    ].map((value) => 读取文本(value)).join(' ');
+    if (物品是否科幻能量武器(item)) return '科幻能量武器';
+    if (物品是否现代枪械(item)) return '现代枪械';
+    if (物品是否弩(item)) return '弩';
+    if (物品是否装箭容器(item)) return '装箭容器';
+    if (物品是否箭矢弹药(item)) return '箭矢弹药';
+    if (/弓|长弓|短弓/.test(text)) return '弓';
+    if (/枪|矛|戟|叉|矟|槊/.test(text) && !/步枪|手枪|枪械|光枪|激光枪|能量枪|粒子枪|脉冲枪/.test(text)) return '长柄锐器';
+    if (/棍|棒|杖|锤|锏|锄|棒槌|baton|club|mace/i.test(text)) return '钝器';
+    if (/刀|短刀|匕首|剑|刃|斧|镰|飞刀|袖箭|镖/.test(text)) return '锐器';
+    if (/武器|武型|主手|副手|暗器|兵器/.test(text)) return '锐器';
+    if (/箭/.test(name)) return '箭矢弹药';
+    return '无';
+};
+
+const 获取外形纠偏强调描述 = (category: 物品外形纠偏类别): string => {
+    switch (category) {
+        case '科幻能量武器':
+            return 'strict sci-fi energy weapon prop: futuristic hilt, emitter, barrel or energy core clearly visible, luminous energy edge or beam source, clear advanced-technology silhouette';
+        case '现代枪械':
+            return 'strict modern firearm prop: rifle or gun receiver, barrel, stock, magazine, grip and trigger guard clearly visible; the silhouette must be a firearm, not a spear or polearm';
+        case '弩':
+            return 'strict crossbow prop: horizontal bow limbs, short stock, trigger, taut string, bolt rail and compact ranged-weapon silhouette; not a spear, not a polearm, not a staff';
+        case '装箭容器':
+            return 'strict quiver or arrow container prop: carrying container with strap, mouth opening and visible feathered arrow ends; container silhouette must be the main subject, not a bow or blade';
+        case '箭矢弹药':
+            return 'strict arrow ammunition prop: grouped arrows or bolts, shafts, arrowheads and fletching clearly visible; not a bow, not a quiver as main subject';
+        case '弓':
+            return 'strict bow weapon prop: curved bow limbs, taut bowstring and bow grip clearly visible; the bow itself must be the main subject';
+        case '长柄锐器':
+            return 'strict polearm weapon prop: long shaft and spearhead, blade or pointed head clearly visible; polearm silhouette must be the main subject';
+        case '锐器':
+            return 'strict edged weapon prop: blade, edge, hilt, handle or scabbard clearly visible; if the name mentions gathering herbs, render the cutting tool itself, not herbs or plants';
+        case '钝器':
+            return 'strict blunt weapon prop: solid striking head or sturdy shaft clearly visible, impact-focused non-bladed weapon silhouette';
+        default:
+            return '';
+    }
 };
 
 const 物品是否折扇 = (item: any): boolean => {
@@ -333,6 +428,10 @@ const 物品名称转英文描述 = (name: string): string => {
         '飞刀': 'throwing knife, slim metal blade, small handle, hidden weapon prop',
         '袖箭': 'sleeve dart launcher or small dart projectile, hidden weapon prop',
         '弩箭': 'crossbow bolt, slender wooden shaft with metal arrowhead and fletching',
+        '箭囊': 'leather quiver for carrying arrows, shoulder strap, mouth opening and visible arrow feathers, no bow',
+        '箭袋': 'soft leather quiver or arrow bag with strap and visible feathered arrow ends, no bow',
+        '箭筒': 'rigid arrow tube quiver with strap and visible arrow feathers, no bow',
+        '箭匣': 'compact arrow case for storing bolts or arrows, fitted container with strap, no blade',
         '改装弩': 'modified compact crossbow, horizontal bow limbs, short stock, trigger, taut string, rail and bolt groove clearly visible, improvised survival weapon',
         '消音弩': 'quiet compact crossbow, horizontal bow limbs, stock, trigger, taut string, bolt rail, modern survival crossbow silhouette',
         '弩机': 'crossbow mechanism, horizontal bow limbs, wooden or metal stock, trigger and string, compact ranged weapon',
@@ -468,8 +567,9 @@ const 物品名称转英文描述 = (name: string): string => {
     if (/储物袋|灵兽袋/.test(name)) return 'small embroidered drawstring pouch cultivation treasure, no animal visible';
     if (/储物戒/.test(name)) return 'single ring magical artifact, photographed alone, no hand';
     if (/葫芦|铃|宝镜|镜|索/.test(name)) return 'xianxia magical artifact treasure prop, ancient Chinese material, clear single object silhouette';
+    if (/箭囊|箭袋|箭筒|箭匣|quiver/i.test(name)) return 'arrow-carrying quiver or arrow case, leather or wood container with strap and visible feathered arrow ends, no bow';
     if (/弩|弩机/.test(name)) return 'crossbow weapon prop, horizontal bow limbs, stock, trigger, taut string and bolt rail clearly visible, compact ranged weapon';
-    if (/暗器|兵器|刀|短刀|匕首|剑|弓|箭|枪|矛|戟|棍|棒|杖|斧|锤|鞭|刃|镖/.test(name)) return 'traditional wuxia weapon prop, metal blade or weapon body with visible handle, hilt, shaft or grip';
+    if (/暗器|兵器|刀|短刀|匕首|剑|弓|箭|枪|矛|戟|棍|棒|杖|斧|锤|鞭|刃|镖/.test(name)) return 'traditional weapon prop, clearly visible blade, bow, hilt, shaft, grip or scabbard';
     if (/牌|令|符/.test(name)) return 'wooden or metal plaque token';
     if (/壶|瓶|罐/.test(name)) return 'ceramic or metal container vessel';
     if (/匣|盒|箱/.test(name)) return 'wooden box or case';
@@ -488,7 +588,11 @@ const 构建物品视觉主体描述 = (item: any): string => {
     const isLivingMount = 物品是否坐骑生物(item);
     const isFan = 物品是否折扇(item);
     const isModernFirearm = 物品是否现代枪械(item);
-    const isCrossbow = 物品是否弩(item);
+    const shapeCorrection = 获取物品外形纠偏类别(item);
+    const isQuiver = shapeCorrection === '装箭容器';
+    const isArrowAmmo = shapeCorrection === '箭矢弹药';
+    const isCrossbow = shapeCorrection === '弩';
+    const isEnergyWeapon = shapeCorrection === '科幻能量武器';
     const isTacticalVest = 物品是否战术背心(item);
     const isCigarette = 物品是否香烟(item);
     const isWeapon = !isFan && 物品是否武器(item);
@@ -500,7 +604,7 @@ const 构建物品视觉主体描述 = (item: any): string => {
     const isWearableArmor = !isSoftGarment && 物品是否可穿戴护甲(item);
     const isAncientMedicine = !isCigarette && 物品是否古代药物(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
-    const typeEn = isLivingMount ? 'living mount animal' : isFan ? 'folded Chinese hand fan' : isModernFirearm ? 'modern firearm' : isCrossbow ? 'crossbow' : isWeapon ? 'traditional wuxia weapon' : isSoftGarment ? 'cloth garment' : isTacticalVest ? 'wearable tactical vest' : isWearableArmor ? 'wearable torso armor vest' : isAncientMedicine ? 'ancient medicinal powder or pills' : isBotanicalHerb ? 'botanical medicinal herb' : 物品类型转英文(读取文本(item?.类型, '物品'));
+    const typeEn = isLivingMount ? 'living mount animal' : isFan ? 'folded Chinese hand fan' : isModernFirearm ? 'modern firearm' : isEnergyWeapon ? 'sci-fi energy weapon' : isCrossbow ? 'crossbow' : isQuiver ? 'arrow container' : isArrowAmmo ? 'arrow ammunition' : isWeapon ? 'weapon' : isSoftGarment ? 'cloth garment' : isTacticalVest ? 'wearable tactical vest' : isWearableArmor ? 'wearable torso armor vest' : isAncientMedicine ? 'ancient medicinal powder or pills' : isBotanicalHerb ? 'botanical medicinal herb' : 物品类型转英文(读取文本(item?.类型, '物品'));
     const qualityEn = 物品品质转英文(读取文本(item?.品质, '普通'));
     const nameEn = 物品名称转英文描述(name);
     const description = 读取文本(item?.视觉描述) || (!是否游戏机制文案(读取文本(item?.描述) || '') ? 读取文本(item?.描述) : '');
@@ -513,9 +617,7 @@ const 构建物品视觉主体描述 = (item: any): string => {
             : (nameEn ? `a single ${qualityEn} ${nameEn}` : `a single ${qualityEn} ${typeEn} prop`),
         isLivingMount ? 'alive organic animal anatomy, natural fur coat, visible eyes, nostrils, mane or tail, standing on real ground, full body animal portrait' : '',
         isFan ? 'strict hand fan prop: folded or half-open fan, visible ribs, silk or paper leaf, jade/bamboo/wood spine, decorative tassel; absolutely no sword blade, no knife, no spearhead' : '',
-        isModernFirearm ? 'strict modern firearm prop: rifle or gun receiver, barrel, stock, magazine, grip and trigger guard clearly visible; the silhouette must be a firearm, not a spear or polearm' : '',
-        isCrossbow ? 'strict crossbow prop: horizontal bow limbs, short stock, trigger, taut string, bolt rail and compact ranged-weapon silhouette; not a spear, not a polearm, not a staff' : '',
-        isWeapon && !isModernFirearm ? 'strict traditional weapon prop: blade, edge, hilt, handle, grip, shaft or scabbard clearly visible; if the name mentions gathering herbs, render the cutting tool itself, not herbs or plants' : '',
+        获取外形纠偏强调描述(shapeCorrection),
         isCigarette ? 'strict cigarette prop: opened damp cardboard cigarette pack, half-empty paper pack, visible bent cigarettes, water-stained paper and soggy edges; absolutely not a pouch, not a leather bag, not a drawstring bag' : '',
         isClothShoe ? 'strict footwear prop: a pair of empty shoes or sandals placed side by side, visible soles and woven fabric or straw texture, unworn product still life' : '',
         isBandageDressing ? 'strict first-aid dressing prop: standalone rolled bandage or folded gauze cloth, white fabric strip spool, clean product still life' : '',
@@ -534,7 +636,11 @@ const 构建物品视觉主体描述 = (item: any): string => {
 export const 构建物品负面提示词 = (item: any): string => {
     const isFan = 物品是否折扇(item);
     const isModernFirearm = 物品是否现代枪械(item);
-    const isCrossbow = 物品是否弩(item);
+    const shapeCorrection = 获取物品外形纠偏类别(item);
+    const isCrossbow = shapeCorrection === '弩';
+    const isQuiver = shapeCorrection === '装箭容器';
+    const isArrowAmmo = shapeCorrection === '箭矢弹药';
+    const isEnergyWeapon = shapeCorrection === '科幻能量武器';
     const isTacticalVest = 物品是否战术背心(item);
     const isCigarette = 物品是否香烟(item);
     const isWeapon = !isFan && 物品是否武器(item);
@@ -553,8 +659,10 @@ export const 构建物品负面提示词 = (item: any): string => {
         isFan ? 'sword, saber, knife, dagger, blade, spear, spearhead, arrowhead, metal cutting edge, sharpened weapon, polearm, staff weapon' : '',
         'text, typography, letters, words, numbers, caption, label, plaque, sign, inscription, readable inscription, pseudo text, fake text, gibberish text, Chinese characters, English letters, carved words, engraved words, engraved Chinese characters, vertical calligraphy, calligraphy, glyphs, runes, ideograms, seal, stamp, logo, watermark, signature, title, poster text, text on object surface',
         'game controller, gamepad, joystick, console controller, d-pad, analog stick, buttons, electronic device, gadget, plastic controller, remote control, keyboard, mouse',
-        isModernFirearm ? 'spear, polearm, lance, staff, sword, saber, knife, medieval weapon, fantasy weapon, wooden shaft, spearhead, bow, crossbow, shield, helmet, armor suit' : 'modern weapon, firearm, gun, rifle, pistol, shotgun, assault rifle, sniper rifle, machine gun, firearm stock, trigger guard, gun barrel, magazine, bullet, ammunition, grenade, rocket launcher, cannon, sci-fi weapon, futuristic weapon, tactical gear, plastic gun, mechanical firearm',
+        isModernFirearm ? 'spear, polearm, lance, staff, sword, saber, knife, medieval weapon, fantasy weapon, wooden shaft, spearhead, bow, crossbow, shield, helmet, armor suit' : isEnergyWeapon ? 'ancient spear, polearm, wooden shaft, bow, crossbow, medieval weapon, leather scabbard, rustic wooden weapon, modern ballistic firearm, tactical rifle' : 'modern weapon, firearm, gun, rifle, pistol, shotgun, assault rifle, sniper rifle, machine gun, firearm stock, trigger guard, gun barrel, magazine, bullet, ammunition, grenade, rocket launcher, cannon, sci-fi weapon, futuristic weapon, tactical gear, plastic gun, mechanical firearm',
         isCrossbow ? 'spear, polearm, lance, staff, baton, walking stick, sword, saber, knife, shield, rifle, pistol, firearm, gun barrel, magazine, armor suit, helmet' : '',
+        isQuiver ? 'bow as main subject, crossbow as main subject, sword, dagger, spearhead, blade weapon, shield, helmet' : '',
+        isArrowAmmo ? 'bow as main subject, quiver as main subject, sword, shield, helmet, armor suit' : '',
         isTacticalVest ? 'shield only, medieval shield, riot shield, round shield, kite shield, helmet only, spear, polearm, sword, breastplate-only medieval armor, full armor suit, hard cuirass without fabric straps' : '',
         isWearableArmor ? 'sword, saber, knife, dagger, blade, spear, staff, scabbard, sheath, hilt, handle, pommel, long narrow weapon, umbrella, baton, column, tower, statue, helmet only, shield only' : '',
         isWeapon ? 'flower, plant, potted plant, bonsai, grass, herb specimen, petals, leaves as main subject, vase, flowerpot, medicine bottle, pill packet' : '',
@@ -579,7 +687,9 @@ export const 构建物品图提示词 = (
     const isLivingMount = 物品是否坐骑生物(item);
     const isFan = 物品是否折扇(item);
     const isModernFirearm = 物品是否现代枪械(item);
-    const isCrossbow = 物品是否弩(item);
+    const shapeCorrection = 获取物品外形纠偏类别(item);
+    const isCrossbow = shapeCorrection === '弩';
+    const isEnergyWeapon = shapeCorrection === '科幻能量武器';
     const isTacticalVest = 物品是否战术背心(item);
     const isCigarette = 物品是否香烟(item);
     const isWeapon = !isFan && 物品是否武器(item);
@@ -608,16 +718,20 @@ export const 构建物品图提示词 = (
         renderStyle === '写实道具'
             ? (isModernFirearm || isTacticalVest || isCrossbow
                 ? 'photorealistic product photo of a single modern survival inventory item, centered on a plain neutral background, realistic materials and soft shadow'
-                : 'photorealistic product photo of a single physical wuxia inventory item, centered on a plain neutral background, realistic materials and soft shadow')
+                : isEnergyWeapon
+                ? 'photorealistic product photo of a single sci-fi inventory weapon prop, centered on a plain neutral background, realistic materials and soft shadow'
+                : 'photorealistic product photo of a single physical inventory item, centered on a plain neutral background, realistic materials and soft shadow')
             : (isModernFirearm || isTacticalVest || isCrossbow
                 ? 'single modern survival inventory item asset on a plain neutral background, centered composition, clean silhouette'
-                : 'single wuxia inventory item asset on a plain neutral background, centered composition, clean silhouette'),
+                : isEnergyWeapon
+                ? 'single sci-fi inventory weapon asset on a plain neutral background, centered composition, clean silhouette'
+                : 'single inventory item asset on a plain neutral background, centered composition, clean silhouette'),
         获取渲染风格要求(renderStyle),
         style === '写实' ? 'photorealistic' : style,
         isFan ? 'strict Chinese hand fan prop only: folded or half-open fan, visible ribs and fan leaf, jade or bamboo frame, tassel, elegant accessory; no blade, no knife, no sword, no spear' : '',
         isModernFirearm ? 'strict modern firearm prop only: rifle or gun body with receiver, barrel, magazine, stock, grip and trigger guard; not a spear, not a polearm, not a sword' : '',
         isCrossbow ? 'strict crossbow prop only: horizontal bow limbs, stock, trigger, taut string and bolt rail; compact survival ranged weapon, not a spear, not a staff, not a firearm' : '',
-        isWeapon && !isModernFirearm ? 'strict traditional wuxia weapon prop only: blade, hilt, handle, grip, shaft or scabbard must be the main subject; herb-related words describe use or wear, not the object category' : '',
+        isEnergyWeapon ? 'strict sci-fi energy weapon prop only: futuristic hilt, emitter, barrel or energy core clearly visible, luminous energy edge or beam source, advanced-technology silhouette' : '',
         isClothShoe ? 'strict empty footwear prop only: two unworn sandals or cloth shoes side by side, product still life' : '',
         isBandageDressing ? 'strict bandage dressing prop only: standalone rolled gauze bandage or folded cloth strips, first-aid supply still life' : '',
         isCigarette ? 'strict cigarette pack prop only: opened damp cardboard cigarette pack, crumpled paper box, half-empty pack, visible bent cigarettes, stained soggy paper edges; not a pouch, not a leather bag, not a drawstring bag' : '',
@@ -664,6 +778,10 @@ export const 生成物品图标 = async (
     const enrichedItemIsSoftGarment = 物品是否柔性服装(enrichedItem);
     const enrichedItemIsLivingMount = 物品是否坐骑生物(enrichedItem);
     const enrichedItemIsModernFirearm = 物品是否现代枪械(enrichedItem);
+    const enrichedItemShapeCorrection = 获取物品外形纠偏类别(enrichedItem);
+    const enrichedItemIsEnergyWeapon = enrichedItemShapeCorrection === '科幻能量武器';
+    const enrichedItemIsQuiver = enrichedItemShapeCorrection === '装箭容器';
+    const enrichedItemIsArrowAmmo = enrichedItemShapeCorrection === '箭矢弹药';
     const enrichedItemIsTacticalVest = 物品是否战术背心(enrichedItem);
     const enrichedItemIsWeapon = 物品是否武器(enrichedItem);
     const enrichedItemIsClothShoe = 物品是否布鞋(enrichedItem);
@@ -686,10 +804,16 @@ export const 生成物品图标 = async (
             ? 'real living animal, alive mount, full body animal portrait, natural fur, organic anatomy, standing on real ground, no toy, no statue'
             : enrichedItemIsModernFirearm
             ? 'single physical modern firearm prop, receiver, barrel, magazine, stock, grip and trigger guard clearly visible, not a spear, photorealistic product photo, neutral matte studio background'
+            : enrichedItemIsEnergyWeapon
+            ? 'single physical sci-fi energy weapon prop, futuristic hilt, emitter, barrel or energy core clearly visible, luminous energy edge or beam source, advanced-technology silhouette, photorealistic product photo, neutral matte studio background'
+            : enrichedItemIsQuiver
+            ? 'single physical quiver or arrow case, strap and opening clearly visible, feathered arrow ends visible, carrying container prop, photorealistic product photo, neutral matte studio background'
+            : enrichedItemIsArrowAmmo
+            ? 'single grouped arrow ammunition prop, shafts fletching and arrowheads clearly visible, not a bow, photorealistic product photo, neutral matte studio background'
             : enrichedItemIsTacticalVest
             ? 'single wearable tactical vest prop, MOLLE webbing, shoulder straps, front buckles, pouch panels, fabric torso gear, no shield, photorealistic product photo, neutral matte studio background'
             : enrichedItemIsWeapon
-            ? 'single physical traditional wuxia weapon prop, blade and handle clearly visible, weapon silhouette, metal or wood materials, no plant as main subject, photorealistic product photo, neutral matte studio background'
+            ? 'single physical weapon prop, defining blade, striking head, bow limbs, shaft, hilt, scabbard or handle clearly visible according to the object type, no plant as main subject, photorealistic product photo, neutral matte studio background'
             : enrichedItemIsClothShoe
             ? 'single pair of empty cloth shoes or straw sandals, footwear prop, side by side, unworn product still life, photorealistic product photo, neutral matte studio background'
             : enrichedItemIsBandageDressing
@@ -699,7 +823,7 @@ export const 生成物品图标 = async (
             : enrichedItemIsAncientMedicine
             ? 'ancient Chinese medicine prop, folded paper medicine packet, ceramic medicine vial, herbal powder or pills, pre-modern wuxia era, single physical object, photorealistic product photo, neutral matte studio background'
             : renderStyle === '写实道具'
-            ? `single physical ${enrichedItemIsModernFirearm || enrichedItemIsTacticalVest ? 'modern survival' : 'wuxia'} inventory item, photorealistic product photo, centered product composition, neutral matte studio background, clean silhouette, realistic material${enrichedItemIsSoftGarment ? ', soft fabric garment, cloth folds, flexible drape' : ''}`
+            ? `single physical ${enrichedItemIsModernFirearm || enrichedItemIsTacticalVest ? 'modern survival' : 'non-modern'} inventory item, photorealistic product photo, centered product composition, neutral matte studio background, clean silhouette, realistic material${enrichedItemIsSoftGarment ? ', soft fabric garment, cloth folds, flexible drape' : ''}`
             : 'single physical object, centered composition, clean silhouette, plain asset presentation'}; ${noTextGuard}`,
         附加负面提示词: 构建物品负面提示词(enrichedItem),
     });

@@ -83,10 +83,12 @@ const 读取记录原始描述姓名 = (record: any): string => {
     }
 };
 
-const 读取目标性别 = (source: any): '男' | '女' | '' => {
+const 读取目标性别 = (source: any): '男' | '女' | '男娘' | '扶她' | '' => {
     const gender = typeof source?.性别 === 'string' ? source.性别.trim() : '';
     if (gender === '男') return '男';
     if (gender === '女') return '女';
+    if (gender === '男娘') return '男娘';
+    if (gender === '扶她') return '扶她';
     return '';
 };
 
