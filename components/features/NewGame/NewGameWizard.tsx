@@ -10,7 +10,7 @@ import InlineSelect from '../../ui/InlineSelect';
 import NewGameDiyTools from './NewGameDiyTools';
 import * as dbService from '../../../services/dbService';
 import { 读取小说拆分数据集列表 } from '../../../services/novelDecompositionStore';
-import { 合并去重开局预设方案, 标准化开局预设方案, 生成自定义开局预设ID, 自定义开局预设存储键 } from '../../../utils/customNewGamePresets';
+import { 合并去重开局预设方案, 标准化开局预设方案, 生成自定义开局预设ID, 自定义开局预设存储键, 构建开局运行时快照, 构建预设表单恢复结果, 获取快速重开运行时恢复参数 } from '../../../utils/customNewGamePresets';
 import {
     获取题材关系侧重选项,
     获取题材开局切入偏好选项,
@@ -634,8 +634,12 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
     };
     const 应用预设到表单 = (preset: 开局预设方案结构, options?: { 保持当前步骤?: boolean }) => {
         const nextWorldConfig: WorldGenConfig = { ...worldConfig, ...preset.worldConfig };
-        const nextBackground = 根据名称查找背景(preset.character.背景名称);
-        const nextTalents = 根据名称查找天赋列表(preset.character.天赋名称列表);
+        const restored = 构建预设表单恢复结果(preset, {
+            fallbackBackgrounds: 当前题材预设背景,
+            fallbackTalents: 当前题材预设天赋,
+            selectedBackgroundCatalog: 全部背景选项,
+            selectedTalentCatalog: 全部天赋选项
+        });
         setWorldConfig(nextWorldConfig);
         setCharName(preset.character.姓名);
         setCharGender(preset.character.性别);
@@ -645,8 +649,8 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
         setCharAppearance(preset.character.外貌);
         setCharPersonality(preset.character.性格);
         setStats(preset.character.属性);
-        setSelectedBackground(nextBackground);
-        setSelectedTalents(nextTalents);
+        setSelectedBackground(restored.selectedBackground);
+        setSelectedTalents(restored.selectedTalents);
         const normalizedOpeningConfig = 规范化可选开局配置(preset.openingConfig);
         const normalizedPartner = normalizedOpeningConfig?.初始伙伴 || 默认初始伙伴配置();
         setOpeningConfigEnabled(Boolean(normalizedOpeningConfig) && normalizedOpeningConfig?.配置约束启用 !== false);
@@ -671,7 +675,10 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
             效果: normalizedPartner.背景效果 || 预设背景[0].效果
         });
         setPartnerTalents(normalizedPartner.天赋列表 as 天赋结构[]);
-        setOpeningExtraRequirement(preset.openingExtraRequirement || '');
+        setOpeningExtraRequirement(restored.openingExtraRequirement || '');
+        setActiveModuleExtraRules(restored.activeModuleExtraRules || '');
+        设置模式包背景列表(restored.模式包背景列表);
+        设置模式包天赋列表(restored.模式包天赋列表);
         if (!options?.保持当前步骤) setStep(1);
     };
     const 当前性别模式: '男' | '女' | '男娘' | '扶她' | '自定义' = ['男', '女', '男娘', '扶她'].includes(charGender.trim())
@@ -1453,32 +1460,48 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
         }
     };
 
-    const 构建当前表单开局预设 = (meta?: Partial<自定义开局预设元信息> & { id?: string }): 开局预设方案结构 => ({
-        id: meta?.id || 正在编辑开局预设ID || 生成自定义开局预设ID(),
-        名称: meta?.名称?.trim() || customPresetMeta.名称.trim(),
-        简介: meta?.简介?.trim() || customPresetMeta.简介.trim() || '自定义开局方案',
-        worldConfig: {
-            ...worldConfig,
-            worldExtraRequirement: worldConfig.worldExtraRequirement?.trim() || '',
-            manualWorldPrompt: worldConfig.manualWorldPrompt?.trim() || '',
-            manualRealmPrompt: worldConfig.manualRealmPrompt?.trim() || ''
-        },
-        character: {
-            姓名: charName.trim(),
-            性别: charGender.trim(),
-            年龄: charAge,
-            出生月: birthMonth,
-            出生日: birthDay,
-            外貌: charAppearance.trim(),
-            性格: charPersonality.trim(),
-            属性: { ...stats },
-            背景名称: selectedBackground?.名称 || '',
-            天赋名称列表: selectedTalents.map(item => item.名称).slice(0, 3)
-        },
-        openingConfig: 构建有效开局配置(),
-        openingStreaming: true,
-        openingExtraRequirement: openingExtraRequirement.trim()
-    });
+    const 构建当前表单开局预设 = (meta?: Partial<自定义开局预设元信息> & { id?: string }): 开局预设方案结构 => {
+        const effectiveOpeningConfig = 构建有效开局配置();
+        const runtimeSnapshot = 构建开局运行时快照({
+            openingConfig: effectiveOpeningConfig,
+            openingStreaming: true,
+            openingExtraRequirement: openingExtraRequirement.trim(),
+            activeModuleExtraRules: activeModuleExtraRules.trim(),
+            modeBackgrounds: 模式包背景列表,
+            modeTalents: 模式包天赋列表
+        });
+        return {
+            id: meta?.id || 正在编辑开局预设ID || 生成自定义开局预设ID(),
+            名称: meta?.名称?.trim() || customPresetMeta.名称.trim(),
+            简介: meta?.简介?.trim() || customPresetMeta.简介.trim() || '自定义开局方案',
+            worldConfig: {
+                ...worldConfig,
+                worldExtraRequirement: worldConfig.worldExtraRequirement?.trim() || '',
+                manualWorldPrompt: worldConfig.manualWorldPrompt?.trim() || '',
+                manualRealmPrompt: worldConfig.manualRealmPrompt?.trim() || ''
+            },
+            character: {
+                姓名: charName.trim(),
+                性别: charGender.trim(),
+                年龄: charAge,
+                出生月: birthMonth,
+                出生日: birthDay,
+                外貌: charAppearance.trim(),
+                性格: charPersonality.trim(),
+                属性: { ...stats },
+                背景名称: selectedBackground?.名称 || '',
+                天赋名称列表: selectedTalents.map(item => item.名称).slice(0, 3)
+            },
+            openingConfig: effectiveOpeningConfig
+                ? {
+                    ...effectiveOpeningConfig,
+                    ...(runtimeSnapshot ? { runtimeSnapshot } : {})
+                }
+                : undefined,
+            openingStreaming: true,
+            openingExtraRequirement: openingExtraRequirement.trim()
+        };
+    };
 
     const 保存自定义开局预设列表 = async (nextList: 开局预设方案结构[]) => {
         设置自定义开局预设列表(nextList);
@@ -1618,7 +1641,13 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                 天赋列表: 根据名称查找天赋列表(preset.character.天赋名称列表)
             })
             : 构建角色数据();
-        const effectiveOpeningExtraRequirement = preset?.openingExtraRequirement ?? openingExtraRequirement;
+        const runtimeRestore = 获取快速重开运行时恢复参数({
+            openingConfig: effectiveOpeningConfig,
+            openingStreaming: preset?.openingStreaming,
+            openingExtraRequirement: preset?.openingExtraRequirement ?? openingExtraRequirement,
+            activeModuleExtraRules
+        });
+        const effectiveOpeningExtraRequirement = runtimeRestore.openingExtraRequirement || '';
         const ok = requestConfirm
             ? await requestConfirm({
                 title: '确认创建',
@@ -1627,7 +1656,7 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
             })
             : true;
         if (!ok) return;
-        onComplete(effectiveWorldConfig, charData, effectiveOpeningConfig, 'all', true, effectiveOpeningExtraRequirement.trim(), undefined, activeModuleExtraRules || undefined);
+        onComplete(effectiveWorldConfig, charData, effectiveOpeningConfig, 'all', runtimeRestore.openingStreaming, effectiveOpeningExtraRequirement.trim(), undefined, runtimeRestore.activeModuleExtraRules || undefined);
     };
 
     if (loading) {

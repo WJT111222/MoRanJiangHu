@@ -1,3 +1,4 @@
+import type { OpeningConfig, OpeningRuntimeSnapshot, 天赋结构, 背景结构 } from '../types';
 import type { 开局预设方案结构 } from '../data/newGamePresets';
 import { 属性最大值, 属性最小值, 规范化可选开局配置 } from './openingConfig';
 import { 规范化模式运行时配置 } from './modeRuntimeProfile';
@@ -75,8 +76,8 @@ export const 标准化开局预设方案 = (raw: any): 开局预设方案结构 
         openingConfig: openingConfig && modeRuntimeProfile
             ? { ...openingConfig, modeRuntimeProfile }
             : openingConfig,
-        openingStreaming: raw?.openingStreaming !== false,
-        openingExtraRequirement: 标准化文本(raw?.openingExtraRequirement)
+        openingStreaming: openingConfig?.runtimeSnapshot?.openingStreaming ?? raw?.openingStreaming !== false,
+        openingExtraRequirement: 标准化文本(raw?.openingExtraRequirement || openingConfig?.runtimeSnapshot?.openingExtraRequirement)
     };
 };
 
@@ -88,4 +89,122 @@ export const 合并去重开局预设方案 = (rawList: 开局预设方案结构
         map.set(normalized.id, normalized);
     });
     return Array.from(map.values());
+};
+
+const 合并去重背景 = (rawList: 背景结构[]): 背景结构[] => {
+    const map = new Map<string, 背景结构>();
+    rawList.forEach((item) => {
+        const 名称 = 标准化文本(item?.名称);
+        const 描述 = 标准化文本(item?.描述);
+        const 效果 = 标准化文本(item?.效果);
+        if (!名称 || !描述 || !效果) return;
+        map.set(名称, { ...item, 名称, 描述, 效果 });
+    });
+    return Array.from(map.values());
+};
+
+const 合并去重天赋 = (rawList: 天赋结构[]): 天赋结构[] => {
+    const map = new Map<string, 天赋结构>();
+    rawList.forEach((item) => {
+        const 名称 = 标准化文本(item?.名称);
+        const 描述 = 标准化文本(item?.描述);
+        const 效果 = 标准化文本(item?.效果);
+        if (!名称 || !描述 || !效果) return;
+        map.set(名称, { 名称, 描述, 效果 });
+    });
+    return Array.from(map.values());
+};
+
+export const 构建开局运行时快照 = (params: {
+    openingConfig?: OpeningConfig;
+    openingStreaming?: boolean;
+    openingExtraRequirement?: string;
+    openingExtraPrompt?: string;
+    activeModuleExtraRules?: string;
+    modeBackgrounds?: 背景结构[];
+    modeTalents?: 天赋结构[];
+}): OpeningRuntimeSnapshot | undefined => {
+    const modeBackgrounds = 合并去重背景(params.modeBackgrounds || []);
+    const modeTalents = 合并去重天赋(params.modeTalents || []);
+    const snapshot: OpeningRuntimeSnapshot = {
+        openingStreaming: params.openingStreaming !== false,
+        openingExtraRequirement: 标准化文本(params.openingExtraRequirement),
+        openingExtraPrompt: 标准化文本(params.openingExtraPrompt),
+        activeModuleExtraRules: 标准化文本(params.activeModuleExtraRules),
+        ...(modeBackgrounds.length > 0 ? { modeBackgrounds } : {}),
+        ...(modeTalents.length > 0 ? { modeTalents } : {})
+    };
+    if (
+        snapshot.openingStreaming === true
+        && !snapshot.openingExtraRequirement
+        && !snapshot.openingExtraPrompt
+        && !snapshot.activeModuleExtraRules
+        && modeBackgrounds.length <= 0
+        && modeTalents.length <= 0
+    ) {
+        return params.openingConfig?.runtimeSnapshot;
+    }
+    return snapshot;
+};
+
+export const 获取快速重开运行时恢复参数 = (params: {
+    openingConfig?: OpeningConfig;
+    openingStreaming?: boolean;
+    openingExtraPrompt?: string;
+    openingExtraRequirement?: string;
+    activeModuleExtraRules?: string;
+}) => {
+    const snapshot = params.openingConfig?.runtimeSnapshot;
+    return {
+        openingStreaming: snapshot?.openingStreaming ?? params.openingStreaming !== false,
+        openingExtraPrompt: 标准化文本(snapshot?.openingExtraPrompt || params.openingExtraPrompt),
+        openingExtraRequirement: 标准化文本(snapshot?.openingExtraRequirement || params.openingExtraRequirement),
+        activeModuleExtraRules: 标准化文本(snapshot?.activeModuleExtraRules || params.activeModuleExtraRules)
+    };
+};
+
+export const 构建预设表单恢复结果 = (
+    preset: 开局预设方案结构,
+    options: {
+        fallbackBackgrounds: 背景结构[];
+        fallbackTalents: 天赋结构[];
+        selectedBackgroundCatalog?: 背景结构[];
+        selectedTalentCatalog?: 天赋结构[];
+    }
+) => {
+    const snapshot = preset.openingConfig?.runtimeSnapshot;
+    const 模式包背景列表 = 合并去重背景(snapshot?.modeBackgrounds || []);
+    const 模式包天赋列表 = 合并去重天赋(snapshot?.modeTalents || []);
+    const 已选背景兜底列表 = 合并去重背景(options.selectedBackgroundCatalog || []);
+    const 已选天赋兜底列表 = 合并去重天赋(options.selectedTalentCatalog || []);
+    const 全部背景选项 = 合并去重背景([
+        ...模式包背景列表,
+        ...options.fallbackBackgrounds,
+        ...已选背景兜底列表
+    ]);
+    const 全部天赋选项 = 合并去重天赋([
+        ...模式包天赋列表,
+        ...options.fallbackTalents,
+        ...已选天赋兜底列表
+    ]);
+    const selectedBackground = 全部背景选项.find((item) => item.名称 === 标准化文本(preset.character?.背景名称))
+        || 全部背景选项[0]
+        || options.fallbackBackgrounds[0];
+    const selectedTalents = (Array.isArray(preset.character?.天赋名称列表) ? preset.character.天赋名称列表 : [])
+        .map((name) => 全部天赋选项.find((item) => item.名称 === 标准化文本(name)))
+        .filter(Boolean) as 天赋结构[];
+    const runtimeRestore = 获取快速重开运行时恢复参数({
+        openingConfig: preset.openingConfig,
+        openingStreaming: preset.openingStreaming,
+        openingExtraRequirement: preset.openingExtraRequirement
+    });
+    return {
+        模式包背景列表,
+        模式包天赋列表,
+        全部背景选项,
+        全部天赋选项,
+        selectedBackground,
+        selectedTalents,
+        ...runtimeRestore
+    };
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { 创意工坊模块分区, 创意工坊模块列表 } from '../data/creativeWorkshopModules';
-import { 标准化开局预设方案 } from '../utils/customNewGamePresets';
+import { 标准化开局预设方案, 构建预设表单恢复结果 } from '../utils/customNewGamePresets';
 import { 题材模式顺序 } from '../utils/topicModeProfiles';
 import { 获取题材预设背景, 获取题材预设天赋 } from '../data/presets';
 
@@ -104,6 +104,230 @@ describe('creativeWorkshopModules', () => {
             expect(normalized?.openingConfig?.modeRuntimeProfile?.identity.baseMode).toBeTruthy();
             expect(normalized?.worldConfig?.modeRuntimeProfile?.identity.baseMode).toBe(normalized?.openingConfig?.modeRuntimeProfile?.identity.baseMode);
         }
+    });
+
+    it('标准化开局预设方案保留运行时恢复快照', () => {
+        const normalized = 标准化开局预设方案({
+            id: 'runtime_snapshot_case',
+            名称: '运行时恢复测试',
+            简介: '测试创意工坊运行时快照是否被保留',
+            worldConfig: {
+                worldName: '测试世界',
+                worldSize: '九州宏大',
+                dynastySetting: '测试王朝',
+                sectDensity: '适中',
+                tianjiaoSetting: '测试天骄',
+                difficulty: 'normal',
+                worldExtraRequirement: '',
+                manualWorldPrompt: '',
+                manualRealmPrompt: ''
+            },
+            character: {
+                姓名: '测试角色',
+                性别: '男',
+                年龄: 18,
+                出生月: 1,
+                出生日: 1,
+                外貌: '普通',
+                性格: '谨慎',
+                属性: { 力量: 5, 敏捷: 5, 体质: 5, 根骨: 5, 悟性: 5, 福源: 5 },
+                背景名称: '宗门旧徒',
+                天赋名称列表: ['稳扎稳打']
+            },
+            openingConfig: {
+                题材模式: '武侠',
+                初始关系模板: '随机邂逅',
+                关系侧重: ['友情'],
+                开局切入偏好: '市井起手',
+                开局生成门派: true,
+                开局生成同门: false,
+                同人融合: {
+                    enabled: false,
+                    作品名: '',
+                    来源类型: '小说',
+                    融合强度: '轻度映射',
+                    保留原著角色: false,
+                    启用角色替换: false,
+                    替换目标角色名: '',
+                    附加替换角色名列表: [],
+                    附加角色替换规则列表: [],
+                    启用附加小说: false,
+                    附加小说数据集ID: ''
+                },
+                runtimeSnapshot: {
+                    openingStreaming: false,
+                    openingExtraRequirement: '恢复这个额外要求',
+                    openingExtraPrompt: '恢复这个额外提示',
+                    activeModuleExtraRules: '恢复模块额外规则',
+                    modeBackgrounds: [
+                        { 名称: '工坊背景', 描述: '描述', 效果: '效果' }
+                    ],
+                    modeTalents: [
+                        { 名称: '工坊天赋', 描述: '描述', 效果: '效果' }
+                    ]
+                }
+            },
+            openingStreaming: true,
+            openingExtraRequirement: '表层额外要求'
+        });
+
+        expect(normalized?.openingConfig?.runtimeSnapshot).toEqual({
+            openingStreaming: false,
+            openingExtraRequirement: '恢复这个额外要求',
+            openingExtraPrompt: '恢复这个额外提示',
+            activeModuleExtraRules: '恢复模块额外规则',
+            modeBackgrounds: [
+                { 名称: '工坊背景', 描述: '描述', 效果: '效果' }
+            ],
+            modeTalents: [
+                { 名称: '工坊天赋', 描述: '描述', 效果: '效果' }
+            ]
+        });
+    });
+
+    it('预设表单恢复结果同时保留工坊天赋和题材预设天赋', () => {
+        const preset = 标准化开局预设方案({
+            id: 'restore_with_workshop_traits',
+            名称: '工坊恢复测试',
+            简介: '验证工坊天赋和题材预设天赋都能恢复',
+            worldConfig: {
+                worldName: '测试世界',
+                worldSize: '九州宏大',
+                dynastySetting: '测试王朝',
+                sectDensity: '适中',
+                tianjiaoSetting: '测试天骄',
+                difficulty: 'normal',
+                worldExtraRequirement: '',
+                manualWorldPrompt: '',
+                manualRealmPrompt: ''
+            },
+            character: {
+                姓名: '测试角色',
+                性别: '男',
+                年龄: 18,
+                出生月: 1,
+                出生日: 1,
+                外貌: '普通',
+                性格: '谨慎',
+                属性: { 力量: 5, 敏捷: 5, 体质: 5, 根骨: 5, 悟性: 5, 福源: 5 },
+                背景名称: '宗门旧徒',
+                天赋名称列表: ['稳扎稳打', '工坊天赋']
+            },
+            openingConfig: {
+                题材模式: '武侠',
+                初始关系模板: '随机邂逅',
+                关系侧重: ['友情'],
+                开局切入偏好: '市井起手',
+                开局生成门派: true,
+                开局生成同门: false,
+                同人融合: {
+                    enabled: false,
+                    作品名: '',
+                    来源类型: '小说',
+                    融合强度: '轻度映射',
+                    保留原著角色: false,
+                    启用角色替换: false,
+                    替换目标角色名: '',
+                    附加替换角色名列表: [],
+                    附加角色替换规则列表: [],
+                    启用附加小说: false,
+                    附加小说数据集ID: ''
+                },
+                runtimeSnapshot: {
+                    modeBackgrounds: [
+                        { 名称: '工坊背景', 描述: '描述', 效果: '效果' }
+                    ],
+                    modeTalents: [
+                        { 名称: '工坊天赋', 描述: '描述', 效果: '效果' }
+                    ]
+                }
+            }
+        });
+
+        const restored = 构建预设表单恢复结果(preset!, {
+            fallbackBackgrounds: 获取题材预设背景('武侠'),
+            fallbackTalents: 获取题材预设天赋('武侠')
+        });
+
+        expect(restored.模式包背景列表.map((item) => item.名称)).toContain('工坊背景');
+        expect(restored.模式包天赋列表.map((item) => item.名称)).toContain('工坊天赋');
+        expect(restored.全部背景选项.map((item) => item.名称)).toContain('宗门旧徒');
+        expect(restored.全部背景选项.map((item) => item.名称)).toContain('工坊背景');
+        expect(restored.全部天赋选项.map((item) => item.名称)).toContain('稳扎稳打');
+        expect(restored.全部天赋选项.map((item) => item.名称)).toContain('工坊天赋');
+        expect(restored.selectedTalents.map((item) => item.名称)).toEqual(['稳扎稳打', '工坊天赋']);
+    });
+
+    it('工坊天赋和官方预设天赋可在同一组同时恢复', () => {
+        const preset = 标准化开局预设方案({
+            id: 'restore_mixed_talent_sources',
+            名称: '混合来源天赋恢复',
+            简介: '验证工坊天赋与官方天赋同组恢复',
+            worldConfig: {
+                worldName: '测试世界',
+                worldSize: '九州宏大',
+                dynastySetting: '测试王朝',
+                sectDensity: '适中',
+                tianjiaoSetting: '测试天骄',
+                difficulty: 'normal',
+                worldExtraRequirement: '',
+                manualWorldPrompt: '',
+                manualRealmPrompt: ''
+            },
+            character: {
+                姓名: '测试角色',
+                性别: '男',
+                年龄: 18,
+                出生月: 1,
+                出生日: 1,
+                外貌: '普通',
+                性格: '谨慎',
+                属性: { 力量: 5, 敏捷: 5, 体质: 5, 根骨: 5, 悟性: 5, 福源: 5 },
+                背景名称: '宗门旧徒',
+                天赋名称列表: ['纯阳体质', '劫后回甘']
+            },
+            openingConfig: {
+                题材模式: '武侠',
+                初始关系模板: '随机邂逅',
+                关系侧重: ['友情'],
+                开局切入偏好: '市井起手',
+                开局生成门派: true,
+                开局生成同门: false,
+                同人融合: {
+                    enabled: false,
+                    作品名: '',
+                    来源类型: '小说',
+                    融合强度: '轻度映射',
+                    保留原著角色: false,
+                    启用角色替换: false,
+                    替换目标角色名: '',
+                    附加替换角色名列表: [],
+                    附加角色替换规则列表: [],
+                    启用附加小说: false,
+                    附加小说数据集ID: ''
+                },
+                runtimeSnapshot: {
+                    modeTalents: [
+                        { 名称: '纯阳体质', 描述: '体内阳气充沛。', 效果: '长期提升阳属性修行、恢复与抗寒表现。' }
+                    ]
+                }
+            }
+        });
+
+        const restored = 构建预设表单恢复结果(preset!, {
+            fallbackBackgrounds: 获取题材预设背景('武侠'),
+            fallbackTalents: 获取题材预设天赋('武侠'),
+            selectedTalentCatalog: [
+                ...获取题材预设天赋('武侠'),
+                { 名称: '纯阳体质', 描述: '体内阳气充沛。', 效果: '长期提升阳属性修行、恢复与抗寒表现。' },
+                { 名称: '劫后回甘', 描述: '你经历损伤后，常能从痛苦里沉淀出新的修行理解。', 效果: '长期提升伤后恢复、失败复盘、破境感悟和逆境成长。' }
+            ]
+        });
+
+        expect(restored.模式包天赋列表.map((item) => item.名称)).toContain('纯阳体质');
+        expect(restored.全部天赋选项.map((item) => item.名称)).toContain('纯阳体质');
+        expect(restored.全部天赋选项.map((item) => item.名称)).toContain('劫后回甘');
+        expect(restored.selectedTalents.map((item) => item.名称)).toEqual(['纯阳体质', '劫后回甘']);
     });
 
     it('开局配置保留在新建存档流程，不作为创意工坊分区模块', () => {
