@@ -14,6 +14,7 @@ import { 女主剧情规划结构 } from './heroinePlan';
 import { 同人剧情规划结构 } from './fandomPlanning/story';
 import { 同人女主剧情规划结构 } from './fandomPlanning/heroinePlan';
 import { 战斗状态结构 } from './battle';
+import { 世界书结构 } from './worldbook';
 
 export type 接口供应商类型 = 'gemini' | 'claude' | 'openai' | 'deepseek' | 'zhipu' | 'openai_compatible';
 
@@ -675,6 +676,7 @@ export interface OpeningConfig {
     配置约束启用?: boolean;
     题材模式: 题材模式类型;
     modeRuntimeProfile?: ModeRuntimeProfile;
+    runtimeSnapshot?: OpeningRuntimeSnapshot;
     初始关系模板: 初始关系模板类型;
     关系侧重: 关系侧重类型[];
     开局切入偏好: 开局切入偏好类型;
@@ -686,6 +688,28 @@ export interface OpeningConfig {
     初始伙伴?: 初始伙伴配置结构;
     同人融合: 同人融合配置结构;
     启用女主剧情规划?: boolean;
+}
+
+export interface OpeningRuntimeSnapshot {
+    openingStreaming?: boolean;
+    openingExtraRequirement?: string;
+    openingExtraPrompt?: string;
+    activeModuleExtraRules?: string;
+    modeWorldbooks?: 世界书结构[];
+    workshopSelection?: {
+        selectedMode?: 题材模式类型 | '';
+        selectedModules?: Partial<Record<string, string>>;
+    };
+    modeBackgrounds?: Array<{
+        名称: string;
+        描述: string;
+        效果: string;
+    }>;
+    modeTalents?: Array<{
+        名称: string;
+        描述: string;
+        效果: string;
+    }>;
 }
 
 export interface WorldGenConfig {

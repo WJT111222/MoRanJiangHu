@@ -12,6 +12,7 @@ import { 规范化游戏设置 } from '../../utils/gameSettings';
 import { 获取繁体输出指令 } from '../../utils/traditionalChinese';
 import { 按功能开关过滤提示词内容 } from '../../utils/promptFeatureToggles';
 import { 构建题材默认境界体系提示词, 题材是否使用默认现代境界 } from '../../utils/topicRealmDefaults';
+import { 构建开局运行时快照 } from '../../utils/customNewGamePresets';
 import { 合并世界基底到开场状态 } from './storyState';
 
 type 世界生成选项 = {
@@ -245,14 +246,30 @@ export const 执行世界生成工作流 = async (
     const openingRequestStreaming = openingStreaming && 开局阶段是否使用流式请求(currentApi);
 
     const normalizedOpeningExtraPrompt = (openingExtraPrompt || '').trim();
+    const normalizedOpeningConfig = openingConfig
+        ? {
+            ...openingConfig,
+            runtimeSnapshot: 构建开局运行时快照({
+                openingConfig,
+                openingStreaming,
+                openingExtraPrompt: normalizedOpeningExtraPrompt,
+                openingExtraRequirement: openingConfig.runtimeSnapshot?.openingExtraRequirement,
+                activeModuleExtraRules: openingConfig.runtimeSnapshot?.activeModuleExtraRules,
+                modeWorldbooks: openingConfig.runtimeSnapshot?.modeWorldbooks,
+                workshopSelection: openingConfig.runtimeSnapshot?.workshopSelection,
+                modeBackgrounds: openingConfig.runtimeSnapshot?.modeBackgrounds,
+                modeTalents: openingConfig.runtimeSnapshot?.modeTalents
+            })
+        }
+        : undefined;
     deps.设置最近开局配置({
         worldConfig: JSON.parse(JSON.stringify(worldConfig)),
         charData: JSON.parse(JSON.stringify(charData)),
-        openingConfig: openingConfig ? JSON.parse(JSON.stringify(openingConfig)) : undefined,
+        openingConfig: normalizedOpeningConfig ? JSON.parse(JSON.stringify(normalizedOpeningConfig)) : undefined,
         openingStreaming,
         openingExtraPrompt: normalizedOpeningExtraPrompt
     });
-    deps.设置开局配置(openingConfig ? JSON.parse(JSON.stringify(openingConfig)) : undefined);
+    deps.设置开局配置(normalizedOpeningConfig ? JSON.parse(JSON.stringify(normalizedOpeningConfig)) : undefined);
     deps.清空重Roll快照();
     deps.重置自动存档状态();
 

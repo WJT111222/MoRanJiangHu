@@ -1,5 +1,6 @@
 import type {
     OpeningConfig,
+    OpeningRuntimeSnapshot,
     初始伙伴配置结构,
     同人角色替换规则结构,
     游戏难度,
@@ -675,6 +676,72 @@ const 规范化天赋列表 = (value: unknown): 初始伙伴配置结构['天赋
         : []
 );
 
+const 规范化开局运行时快照 = (raw?: any): OpeningRuntimeSnapshot | undefined => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+    const modeWorldbooks = Array.isArray(raw?.modeWorldbooks)
+        ? raw.modeWorldbooks.filter((item: any) => item && typeof item === 'object' && !Array.isArray(item)) as NonNullable<OpeningRuntimeSnapshot['modeWorldbooks']>
+        : [];
+    const workshopSelection = raw?.workshopSelection && typeof raw.workshopSelection === 'object' && !Array.isArray(raw.workshopSelection)
+        ? (() => {
+            const selectedMode = 读取文本(raw.workshopSelection.selectedMode) as NonNullable<OpeningRuntimeSnapshot['workshopSelection']>['selectedMode'];
+            const selectedModules = raw.workshopSelection.selectedModules && typeof raw.workshopSelection.selectedModules === 'object' && !Array.isArray(raw.workshopSelection.selectedModules)
+                ? Object.fromEntries(
+                    Object.entries(raw.workshopSelection.selectedModules)
+                        .map(([key, value]) => [key, 读取文本(value)])
+                        .filter(([, value]) => value)
+                ) as NonNullable<NonNullable<OpeningRuntimeSnapshot['workshopSelection']>['selectedModules']>
+                : undefined;
+            if (!selectedMode && (!selectedModules || Object.keys(selectedModules).length <= 0)) return undefined;
+            return {
+                ...(selectedMode ? { selectedMode } : {}),
+                ...(selectedModules && Object.keys(selectedModules).length > 0 ? { selectedModules } : {})
+            };
+        })()
+        : undefined;
+    const modeBackgrounds = Array.isArray(raw?.modeBackgrounds)
+        ? raw.modeBackgrounds
+            .map((item: any) => ({
+                名称: 读取文本(item?.名称),
+                描述: 读取文本(item?.描述),
+                效果: 读取文本(item?.效果)
+            }))
+            .filter((item) => item.名称 && item.描述 && item.效果)
+        : [];
+    const modeTalents = Array.isArray(raw?.modeTalents)
+        ? raw.modeTalents
+            .map((item: any) => ({
+                名称: 读取文本(item?.名称),
+                描述: 读取文本(item?.描述),
+                效果: 读取文本(item?.效果)
+            }))
+            .filter((item) => item.名称 && item.描述 && item.效果)
+        : [];
+    const snapshot: OpeningRuntimeSnapshot = {
+        openingStreaming: raw?.openingStreaming !== false,
+        openingExtraRequirement: 读取文本(raw?.openingExtraRequirement),
+        openingExtraPrompt: 读取文本(raw?.openingExtraPrompt),
+        activeModuleExtraRules: 读取文本(raw?.activeModuleExtraRules),
+        ...(modeWorldbooks.length > 0 ? { modeWorldbooks } : {}),
+        ...(workshopSelection ? { workshopSelection } : {}),
+        ...(modeBackgrounds.length > 0 ? { modeBackgrounds } : {}),
+        ...(modeTalents.length > 0 ? { modeTalents } : {})
+    };
+    if (
+        snapshot.openingStreaming === true
+        && !snapshot.openingExtraRequirement
+        && !snapshot.openingExtraPrompt
+        && !snapshot.activeModuleExtraRules
+        && modeWorldbooks.length <= 0
+        && !workshopSelection?.selectedMode
+        && (!workshopSelection?.selectedModules || Object.keys(workshopSelection.selectedModules).length <= 0)
+        && modeBackgrounds.length <= 0
+        && modeTalents.length <= 0
+    ) {
+        return undefined;
+    }
+    return snapshot;
+};
+
 export const 规范化初始伙伴配置 = (raw?: any): 初始伙伴配置结构 => {
     const fallback = 默认初始伙伴配置();
     return {
@@ -736,6 +803,7 @@ export const 规范化开局配置 = (raw?: any): OpeningConfig => {
         配置约束启用: raw?.配置约束启用 !== false,
         题材模式,
         modeRuntimeProfile: 规范化模式运行时配置(raw?.modeRuntimeProfile, 题材模式),
+        runtimeSnapshot: 规范化开局运行时快照(raw?.runtimeSnapshot),
         初始关系模板,
         关系侧重: 关系侧重.length > 0 ? 关系侧重 : fallback.关系侧重,
         开局切入偏好,

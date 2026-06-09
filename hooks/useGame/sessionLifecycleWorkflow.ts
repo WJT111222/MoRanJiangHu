@@ -11,6 +11,7 @@ import type {
 } from '../../types';
 import type { 当前可用接口结构 } from '../../utils/apiConfig';
 import { 获取主剧情接口配置, 接口配置是否可用 } from '../../utils/apiConfig';
+import { 获取快速重开运行时恢复参数 } from '../../utils/customNewGamePresets';
 import { 执行开场剧情生成工作流 } from './openingStoryWorkflow';
 import { 执行世界生成工作流 } from './worldGenerationWorkflow';
 
@@ -406,8 +407,24 @@ export const 创建会话生命周期工作流 = (deps: 会话生命周期依赖
         const worldConfig = deps.深拷贝(deps.最近开局配置.worldConfig);
         const charData = deps.深拷贝(deps.最近开局配置.charData);
         const openingConfig = deps.深拷贝(deps.最近开局配置.openingConfig);
-        const openingStreaming = deps.最近开局配置.openingStreaming;
-        const openingExtraPrompt = deps.最近开局配置.openingExtraPrompt || '';
+        const restoredRuntime = 获取快速重开运行时恢复参数({
+            openingConfig,
+            openingStreaming: deps.最近开局配置.openingStreaming,
+            openingExtraPrompt: deps.最近开局配置.openingExtraPrompt,
+            openingExtraRequirement: openingConfig?.runtimeSnapshot?.openingExtraRequirement,
+            activeModuleExtraRules: openingConfig?.runtimeSnapshot?.activeModuleExtraRules
+        });
+        if (openingConfig && (restoredRuntime.modeRuntimeProfile || restoredRuntime.runtimeSnapshot)) {
+            if (restoredRuntime.modeRuntimeProfile) {
+                openingConfig.modeRuntimeProfile = restoredRuntime.modeRuntimeProfile;
+                worldConfig.modeRuntimeProfile = restoredRuntime.modeRuntimeProfile;
+            }
+            if (restoredRuntime.runtimeSnapshot) {
+                openingConfig.runtimeSnapshot = restoredRuntime.runtimeSnapshot;
+            }
+        }
+        const openingStreaming = restoredRuntime.openingStreaming;
+        const openingExtraPrompt = restoredRuntime.openingExtraPrompt || '';
         const currentApi = 获取主剧情接口配置(deps.apiConfig);
         if (!接口配置是否可用(currentApi)) {
             deps.追加系统消息('[快速重开失败] 请先在设置中填写 API 地址/API Key，并选择主剧情使用模型。');
@@ -432,7 +449,8 @@ export const 创建会话生命周期工作流 = (deps: 会话生命周期依赖
                 'step',
                 openingStreaming,
                 openingExtraPrompt,
-                { 清空前端变量: true }
+                { 清空前端变量: true },
+                restoredRuntime.activeModuleExtraRules
             );
             return;
         }
@@ -471,7 +489,8 @@ export const 创建会话生命周期工作流 = (deps: 会话生命周期依赖
             'all',
             openingStreaming,
             openingExtraPrompt,
-            { 清空前端变量: true }
+            { 清空前端变量: true },
+            restoredRuntime.activeModuleExtraRules
         );
     };
 
