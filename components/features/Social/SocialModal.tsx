@@ -26,10 +26,18 @@ interface Props {
     onLearnSkill?: (npc: NPC结构, skill: any) => void;
     onRecruitToSect?: (npc: NPC结构) => void;
     onStealFromNpc?: (npc: NPC结构, target?: string) => void;
-    onRetryImage?: (npcId: string) => void;
+    onRetryImage?: (npcId: string, options?: { 构图?: NPC重绘构图 }) => void;
     playerSect?: any;
     openingConfig?: OpeningConfig;
 }
+
+type NPC重绘构图 = '头像' | '半身' | '立绘';
+
+const NPC重绘构图选项: Array<{ value: NPC重绘构图; label: string; description: string }> = [
+    { value: '头像', label: '头像', description: '用于名册头像和社交小图。' },
+    { value: '半身', label: '半身', description: '用于详情卡片展示，上半身构图。' },
+    { value: '立绘', label: '立绘', description: '用于角色详情和图册展示的完整立绘。' }
+];
 
 const 是女性角色 = (npc?: NPC结构 | null): boolean => String((npc as any)?.性别 || '').trim() === '女';
 const 死亡状态正则 = /(死亡|已死|身亡|阵亡|战死|气绝|断气|毙命|殒命|已故)/;
@@ -91,6 +99,7 @@ const SocialModal: React.FC<Props> = ({
     const [showFullBackground, setShowFullBackground] = useState(false);
     const [imageViewer, setImageViewer] = useState<{ src: string; alt: string } | null>(null);
     const [imageViewerZoom, setImageViewerZoom] = useState(1);
+    const [imageRetryTarget, setImageRetryTarget] = useState<NPC结构 | null>(null);
     const [stealTargets, setStealTargets] = useState<Record<string, string>>({});
     const 资源文案 = 获取题材资源文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
     const 界面文案 = 获取题材界面文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
@@ -452,6 +461,15 @@ const SocialModal: React.FC<Props> = ({
         setImageViewer(null);
         setImageViewerZoom(1);
     };
+    const 打开重绘选择 = (npc?: NPC结构 | null) => {
+        if (!npc || !onRetryImage) return;
+        setImageRetryTarget(npc);
+    };
+    const 提交重绘选择 = (构图: NPC重绘构图) => {
+        if (!imageRetryTarget || !onRetryImage) return;
+        onRetryImage(imageRetryTarget.id, { 构图 });
+        setImageRetryTarget(null);
+    };
     const 调整图片缩放 = (delta: number) => {
         setImageViewerZoom((prev) => Math.min(3, Math.max(0.5, Number((prev + delta).toFixed(2)))));
     };
@@ -791,15 +809,6 @@ const SocialModal: React.FC<Props> = ({
                                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-wuxia-gold drop-shadow-[0_0_5px_rgba(212,175,55,0.8)]">
                                                             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
                                                         </svg>
-                                                        {onRetryImage && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => { e.stopPropagation(); onRetryImage(currentNPC.id); }}
-                                                                className="text-[10px] px-2 py-0.5 rounded border border-wuxia-gold/40 bg-wuxia-gold/10 text-wuxia-gold hover:bg-wuxia-gold/20 transition-all"
-                                                            >
-                                                                重新生成
-                                                            </button>
-                                                        )}
                                                     </div>
                                                 </>
                                             ) : (
@@ -808,7 +817,7 @@ const SocialModal: React.FC<Props> = ({
                                             {onRetryImage && (
                                                 <button
                                                     type="button"
-                                                    onClick={(e) => { e.stopPropagation(); onRetryImage(currentNPC.id); }}
+                                                    onClick={(e) => { e.stopPropagation(); 打开重绘选择(currentNPC); }}
                                                     className="absolute bottom-1 right-1 text-[10px] px-2 py-0.5 rounded border border-wuxia-gold/40 bg-wuxia-gold/10 text-wuxia-gold hover:bg-wuxia-gold/20 transition-all"
                                                 >
                                                     重绘
@@ -1515,6 +1524,32 @@ const SocialModal: React.FC<Props> = ({
                             className="max-w-[85vw] max-h-[calc(100vh-2rem)] object-contain rounded-lg transition-transform duration-150 origin-center"
                             style={{ transform: `scale(${imageViewerZoom})` }}
                         />
+                    </div>
+                </div>
+            ), document.body)}
+            {imageRetryTarget && typeof document !== 'undefined' && createPortal((
+                <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" onClick={() => setImageRetryTarget(null)}>
+                    <div className="w-full max-w-md rounded-2xl border border-wuxia-gold/30 bg-[#120d09] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.65)]" onClick={(event) => event.stopPropagation()}>
+                        <div className="mb-4 flex items-start justify-between gap-3">
+                            <div>
+                                <div className="text-lg font-bold text-wuxia-gold">选择重绘构图</div>
+                                <div className="mt-1 text-xs text-gray-400">为 {imageRetryTarget.姓名 || '该角色'} 选择本次要重新生成的图片类型。</div>
+                            </div>
+                            <button type="button" className="rounded-full border border-white/10 px-2 py-1 text-xs text-gray-300 hover:border-red-400/50 hover:text-red-200" onClick={() => setImageRetryTarget(null)}>关闭</button>
+                        </div>
+                        <div className="grid gap-2">
+                            {NPC重绘构图选项.map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-left transition-all hover:border-wuxia-gold/50 hover:bg-wuxia-gold/10"
+                                    onClick={() => 提交重绘选择(option.value)}
+                                >
+                                    <div className="text-sm font-bold text-gray-100">{option.label}</div>
+                                    <div className="mt-1 text-xs text-gray-400">{option.description}</div>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             ), document.body)}

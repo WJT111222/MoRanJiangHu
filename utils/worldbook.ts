@@ -1281,7 +1281,8 @@ export const 选择生效世界书条目 = ({
             if (!keywords.some((keyword) => corpus.includes(keyword))) return;
         }
         const estimated = `${entry.标题}\n${entry.内容}`.length;
-        if (budget > 0 && selected.length > 0 && totalChars + estimated > budget) return;
+        const shouldApplyBudget = Boolean(maxChars) || entry.注入模式 === 'match_any';
+        if (shouldApplyBudget && budget > 0 && selected.length > 0 && totalChars + estimated > budget) return;
         selected.push(entry);
         totalChars += estimated;
     });

@@ -68,9 +68,26 @@ type 运行时变量工作流依赖 = {
     设置约定列表: (updater: any) => void;
     应用并同步记忆系统: (value: any) => void;
     performAutoSave: (snapshot: any) => Promise<any> | any;
+    女主规划已启用?: () => boolean;
+};
+
+const 是否女主规划分区 = (section: string): boolean => (
+    section === '女主剧情规划' || section === '同人女主剧情规划'
+);
+
+const 是否女主规划命令 = (rawKey: string): boolean => {
+    const normalizedKey = normalizeStateCommandKey(rawKey || '');
+    return normalizedKey === 'gameState.女主剧情规划'
+        || normalizedKey.startsWith('gameState.女主剧情规划.')
+        || normalizedKey.startsWith('gameState.女主剧情规划[')
+        || normalizedKey === 'gameState.同人女主剧情规划'
+        || normalizedKey.startsWith('gameState.同人女主剧情规划.')
+        || normalizedKey.startsWith('gameState.同人女主剧情规划[');
 };
 
 export const 创建运行时变量工作流 = (deps: 运行时变量工作流依赖) => {
+    const 女主规划允许写入 = () => deps.女主规划已启用?.() !== false;
+
     const 同步剧情时间校准 = async (params: {
         previousStory: any;
         nextStory: any;
@@ -159,6 +176,7 @@ export const 创建运行时变量工作流 = (deps: 运行时变量工作流依
     };
 
     const updateRuntimeVariableSection = async (section: 运行时变量分区类型, value: any) => {
+        if (!女主规划允许写入() && 是否女主规划分区(section)) return;
         const 历史记录 = deps.获取历史记录();
         const 当前状态 = deps.获取当前状态();
         switch (section) {
@@ -281,6 +299,7 @@ export const 创建运行时变量工作流 = (deps: 运行时变量工作流依
         }
         const safeCommand = sanitizeInventoryCommand(command, 当前状态.角色);
         if (!safeCommand) return;
+        if (!女主规划允许写入() && 是否女主规划命令(safeCommand.key || '')) return;
         const result = applyStateCommand(
             当前状态.角色,
             当前状态.环境,

@@ -2668,6 +2668,10 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                                     </div>
                                 )}
 
+                                <div className="mb-4 rounded-2xl border border-wuxia-cyan/20 bg-wuxia-cyan/5 px-3 py-3 text-[11px] text-gray-300 leading-5">
+                                    当前题材：<span className="text-wuxia-gold">{当前题材配置.label}</span>。想切到西幻风格时，回到“世界观”页选择“西方奇幻 / 西幻模式包”，这里会自动刷新为魔力、骑士、公会与冒险者天赋。
+                                </div>
+
                                 <div className="mb-4 space-y-3 rounded-2xl border border-gray-800 bg-black/25 p-3">
                                     <div className="grid grid-cols-2 gap-2 rounded-full border border-gray-700 bg-black/35 p-1 text-[11px]">
                                         {(['抽卡', '列表'] as const).map((mode) => (

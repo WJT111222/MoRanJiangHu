@@ -458,6 +458,31 @@ export const 解析世界观生成结果 = (content: string): WorldFoundationRes
         throw new Error('世界观生成解析失败: 输出为空');
     }
 
+    const 清理世界观候选文本 = (value: unknown): string => {
+        if (typeof value !== 'string') return '';
+        return value
+            .replace(/^```(?:json|JSON)?\s*/g, '')
+            .replace(/\s*```$/g, '')
+            .replace(/^\s*(?:以下是|下面是|这是)?\s*(?:生成的|整理后的)?\s*世界观(?:设定|母本|提示词)?\s*[:：]\s*/i, '')
+            .trim();
+    };
+
+    const 提取无标签世界观候选 = (text: string): string => {
+        const withoutThinking = text
+            .replace(/<\s*thinking\s*>[\s\S]*?<\s*\/\s*thinking\s*>/gi, '')
+            .replace(/<\s*think\s*>[\s\S]*?<\s*\/\s*think\s*>/gi, '')
+            .trim();
+        const markerMatch = withoutThinking.match(/(?:【\s*世界观(?:设定|母本|提示词)?\s*】|#+\s*世界观(?:设定|母本|提示词)?|世界观(?:设定|母本|提示词)?\s*[:：])([\s\S]*)/i);
+        const candidateSource = markerMatch?.[1] || withoutThinking;
+        const [candidate] = candidateSource.split(/(?:<\s*世界基底\s*>|【\s*世界基底\s*】|#+\s*世界基底|\n\s*(?:world_foundation|mapLayers|map_layers|factions|faction_list)\s*[:：])/i);
+        const cleaned = 清理世界观候选文本(candidate);
+        if (!cleaned) return '';
+        const hasEnoughWorldText = cleaned.length >= 80 || /世界|大陆|王国|宗门|公会|魔法|灵气|势力|地理|历史|规则|货币|地图|冒险/i.test(cleaned);
+        if (!hasEnoughWorldText) return '';
+        if (/^(抱歉|对不起|无法|不能|I\s+can't|I cannot)/i.test(cleaned)) return '';
+        return cleaned;
+    };
+
     const findLastMatch = (text: string, regex: RegExp): { index: number; length: number } | null => {
         const re = new RegExp(regex.source, regex.flags);
         let match: RegExpExecArray | null = null;
@@ -490,14 +515,20 @@ export const 解析世界观生成结果 = (content: string): WorldFoundationRes
         : '';
 
     const parsed = parseJsonWithRepair<Record<string, unknown>>(textForParsing);
-    if (!worldTagBlock && (!parsed.value || typeof parsed.value !== 'object')) {
+    const jsonPrompt = parsed.value && typeof parsed.value === 'object'
+        ? [
+            parsed.value.world_prompt,
+            parsed.value.worldPrompt,
+            (parsed.value as any).世界观,
+            (parsed.value as any).世界观提示词,
+            (parsed.value as any).世界观母本
+        ].map(清理世界观候选文本).find(Boolean) || ''
+        : '';
+    const fallbackPrompt = 提取无标签世界观候选(textForParsing);
+    if (!worldTagBlock && !jsonPrompt && !fallbackPrompt && (!parsed.value || typeof parsed.value !== 'object')) {
         throw new Error(`世界观生成解析失败: 未找到<世界观>标签，且JSON解析失败: ${parsed.error || '未获得有效 JSON'}`);
     }
-    const prompt = worldTagBlock || (typeof parsed.value?.world_prompt === 'string'
-        ? parsed.value.world_prompt.trim()
-        : typeof parsed.value?.worldPrompt === 'string'
-            ? parsed.value.worldPrompt.trim()
-            : '');
+    const prompt = worldTagBlock || jsonPrompt || fallbackPrompt;
     if (!prompt) throw new Error('世界观生成解析失败: 未找到<世界观>标签且world_prompt为空');
 
     const foundationMatches = Array.from(source.matchAll(/<\s*世界基底\s*>([\s\S]*?)(?:<\s*\/\s*世界基底\s*>|$)/gi));
@@ -1771,6 +1802,7 @@ const 构建规划分析消息链 = (
             recentBodiesText: params.recentBodiesText,
             currentPlanText: params.currentPlanText,
             auditFocusText: params.auditFocusText,
+            genderRatioConstraintText: params.genderRatioConstraintText,
             heroineEnabled: params.heroineEnabled === true
         })}`,
         normalizedExtraPrompt ? `【最终输出附加要求】\n${normalizedExtraPrompt}` : ''
@@ -1809,6 +1841,7 @@ export const generatePlanningAnalysis = async (
         recentBodiesText: string;
         currentPlanText?: string;
         auditFocusText: string;
+        genderRatioConstraintText?: string;
         heroineEnabled?: boolean;
         ntlEnabled?: boolean;
         fandomEnabled?: boolean;

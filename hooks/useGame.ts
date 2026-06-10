@@ -2793,98 +2793,108 @@ export const useGame = () => {
         },
         options?: {
             applyState?: boolean;
+            heroinePlanEnabled?: boolean;
         }
-    ) => 执行响应命令处理(
-        response,
-        {
-            角色,
-            环境,
-            社交,
-            世界,
-            战斗,
-            玩家门派,
-            任务列表,
-            约定列表,
-            剧情,
-            剧情规划,
-            女主剧情规划,
-            同人剧情规划,
-            同人女主剧情规划
-        },
-        {
-            规范化环境信息,
-            规范化社交列表: 规范化社交列表安全,
-            规范化世界状态,
-            规范化战斗状态,
-            规范化门派状态,
-            规范化剧情状态,
-            规范化剧情规划状态,
-            规范化女主剧情规划状态,
-            规范化同人剧情规划状态,
-            规范化同人女主剧情规划状态,
-            规范化角色物品容器映射,
-            角色规范化选项: {
-                启用饱腹口渴系统: gameConfig?.启用饱腹口渴系统,
-                题材模式: 开局配置?.题材模式
+    ) => {
+        const normalizedRuntimeConfig = 规范化游戏设置(gameConfig);
+        const heroinePlanEnabled = 开局配置?.启用女主剧情规划 !== undefined
+            ? 开局配置.启用女主剧情规划 === true
+            : normalizedRuntimeConfig.启用女主剧情规划 === true;
+        return 执行响应命令处理(
+            response,
+            {
+                角色,
+                环境,
+                社交,
+                世界,
+                战斗,
+                玩家门派,
+                任务列表,
+                约定列表,
+                剧情,
+                剧情规划,
+                女主剧情规划,
+                同人剧情规划,
+                同人女主剧情规划
             },
-            战斗结束自动清空,
-            设置角色,
-            设置环境,
-            设置社交,
-            设置世界,
-            设置战斗,
-            设置玩家门派,
-            设置任务列表,
-            设置约定列表,
-            设置剧情,
-            设置剧情规划,
-            设置女主剧情规划,
-            设置同人剧情规划,
-            设置同人女主剧情规划,
-            命令后校准: (nextState) => {
-                const 清理题材物品 = (state: typeof nextState): typeof nextState => ({
-                    ...state,
-                    角色: 规范化角色物品容器映射(state.角色 || 角色, {
-                        启用饱腹口渴系统: gameConfig?.启用饱腹口渴系统,
-                        题材模式: 开局配置?.题材模式
-                    })
-                });
-                const 修复开局伙伴 = (state: typeof nextState): typeof nextState => ({
-                    ...state,
-                    社交: 修复开局伙伴社交列表(state.社交, 开局配置, state.角色 || 角色)
-                });
-                const finalizeState = (state: typeof nextState): typeof nextState => (
-                    同步角色与门派状态(修复开局伙伴(清理题材物品(state))) as typeof nextState
-                );
-                if (!变量生成功能已启用(apiConfig)) {
-                    return finalizeState(nextState);
+            {
+                规范化环境信息,
+                规范化社交列表: 规范化社交列表安全,
+                规范化世界状态,
+                规范化战斗状态,
+                规范化门派状态,
+                规范化剧情状态,
+                规范化剧情规划状态,
+                规范化女主剧情规划状态,
+                规范化同人剧情规划状态,
+                规范化同人女主剧情规划状态,
+                规范化角色物品容器映射,
+                角色规范化选项: {
+                    启用饱腹口渴系统: gameConfig?.启用饱腹口渴系统,
+                    题材模式: 开局配置?.题材模式
+                },
+                战斗结束自动清空,
+                设置角色,
+                设置环境,
+                设置社交,
+                设置世界,
+                设置战斗,
+                设置玩家门派,
+                设置任务列表,
+                设置约定列表,
+                设置剧情,
+                设置剧情规划,
+                设置女主剧情规划,
+                设置同人剧情规划,
+                设置同人女主剧情规划,
+                命令后校准: (nextState) => {
+                    const 清理题材物品 = (state: typeof nextState): typeof nextState => ({
+                        ...state,
+                        角色: 规范化角色物品容器映射(state.角色 || 角色, {
+                            启用饱腹口渴系统: gameConfig?.启用饱腹口渴系统,
+                            题材模式: 开局配置?.题材模式
+                        })
+                    });
+                    const 修复开局伙伴 = (state: typeof nextState): typeof nextState => ({
+                        ...state,
+                        社交: 修复开局伙伴社交列表(state.社交, 开局配置, state.角色 || 角色)
+                    });
+                    const finalizeState = (state: typeof nextState): typeof nextState => (
+                        同步角色与门派状态(修复开局伙伴(清理题材物品(state))) as typeof nextState
+                    );
+                    if (!变量生成功能已启用(apiConfig)) {
+                        return finalizeState(nextState);
+                    }
+                    const calibrated = 执行变量自动校准(nextState, {
+                        规范化环境信息,
+                        规范化社交列表: 规范化社交列表安全,
+                        规范化世界状态,
+                        规范化战斗状态,
+                        规范化门派状态,
+                        规范化剧情状态,
+                        规范化剧情规划状态,
+                        规范化女主剧情规划状态,
+                        规范化同人剧情规划状态,
+                        规范化同人女主剧情规划状态,
+                        规范化角色物品容器映射: (raw?: any, calibrationOptions?: any) => 规范化角色物品容器映射(raw, {
+                            ...calibrationOptions,
+                            启用饱腹口渴系统: gameConfig?.启用饱腹口渴系统,
+                            题材模式: 开局配置?.题材模式
+                        })
+                    });
+                    return {
+                        ...calibrated,
+                        state: finalizeState(calibrated.state)
+                    };
                 }
-                const calibrated = 执行变量自动校准(nextState, {
-                    规范化环境信息,
-                    规范化社交列表: 规范化社交列表安全,
-                    规范化世界状态,
-                    规范化战斗状态,
-                    规范化门派状态,
-                    规范化剧情状态,
-                    规范化剧情规划状态,
-                    规范化女主剧情规划状态,
-                    规范化同人剧情规划状态,
-                    规范化同人女主剧情规划状态,
-                    规范化角色物品容器映射: (raw?: any, calibrationOptions?: any) => 规范化角色物品容器映射(raw, {
-                        ...calibrationOptions,
-                        启用饱腹口渴系统: gameConfig?.启用饱腹口渴系统,
-                        题材模式: 开局配置?.题材模式
-                    })
-                });
-                return {
-                    ...calibrated,
-                    state: finalizeState(calibrated.state)
-                };
+            },
+            baseState,
+            {
+                ...options,
+                heroinePlanEnabled: options?.heroinePlanEnabled ?? heroinePlanEnabled
             }
-        },
-        baseState,
-        options
-    );
+        );
+    };
 
     const 执行世界演变更新 = async (params?: {
         来源?: 'manual' | 'auto_due' | 'story_dynamic' | 'story_dynamic_and_due';
@@ -3725,7 +3735,13 @@ export const useGame = () => {
         设置任务列表,
         设置约定列表,
         应用并同步记忆系统,
-        performAutoSave
+        performAutoSave,
+        女主规划已启用: () => {
+            const normalizedRuntimeConfig = 规范化游戏设置(gameConfig);
+            return 开局配置?.启用女主剧情规划 !== undefined
+                ? 开局配置.启用女主剧情规划 === true
+                : normalizedRuntimeConfig.启用女主剧情规划 === true;
+        }
     });
 
     const {

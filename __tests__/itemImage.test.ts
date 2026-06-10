@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { 获取物品已选图标地址 } from '../utils/itemImage';
+import { 获取物品图标复用Key, 获取物品已选图标地址 } from '../utils/itemImage';
 import { 构建最终图片提示词, 全局无文字正向提示词, 全局无文字负面提示词 } from '../services/ai/image';
 import { 构建物品图提示词, 构建物品负面提示词, 构建物品视觉描述, 物品无文字正向约束 } from '../services/ai/itemImageGeneration';
 
@@ -152,6 +152,29 @@ describe('item image preset fallback', () => {
         };
 
         expect(获取物品已选图标地址(item)).toBe('https://cdn.example.com/items/jade-pendant.png');
+    });
+});
+
+describe('item image reuse key', () => {
+    it('uses visual identity instead of instance ID for repeated distributed items', () => {
+        const sectSwordA: any = { ID: 'sect_a_001', 名称: '宗门制式长剑', 类型: '武器', 品质: '凡品' };
+        const sectSwordB: any = { ID: 'npc_bag_777', 名称: '宗门制式长剑', 类型: '武器', 品质: '凡品' };
+
+        expect(获取物品图标复用Key(sectSwordA)).toBe(获取物品图标复用Key(sectSwordB));
+    });
+
+    it('keeps visually different items separated even when names match', () => {
+        const normalSword: any = { ID: 'sword_001', 名称: '宗门制式长剑', 类型: '武器', 品质: '凡品' };
+        const rareSword: any = { ID: 'sword_002', 名称: '宗门制式长剑', 类型: '武器', 品质: '上品' };
+
+        expect(获取物品图标复用Key(normalSword)).not.toBe(获取物品图标复用Key(rareSword));
+    });
+
+    it('keeps visual tag order from splitting the same item icon cache', () => {
+        const first: any = { ID: 'item_a', 名称: '夜明珠', 类型: '宝物', 品质: '珍品', 视觉标签: ['发光', '圆润', '青色'] };
+        const second: any = { ID: 'item_b', 名称: '夜明珠', 类型: '宝物', 品质: '珍品', 视觉标签: ['青色', '发光', '圆润'] };
+
+        expect(获取物品图标复用Key(first)).toBe(获取物品图标复用Key(second));
     });
 });
 

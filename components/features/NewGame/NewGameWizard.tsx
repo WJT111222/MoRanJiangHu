@@ -2907,6 +2907,9 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                                         <div className="text-[11px] uppercase tracking-[0.35em] text-wuxia-red/70 font-mono">Talent Matrix</div>
                                         <h3 className="text-2xl font-serif font-bold text-wuxia-gold mt-2">天赋选择</h3>
                                         <p className="text-xs text-gray-400 mt-2 leading-6">选择最多三个天赋，组合出你的长期成长风格、擅长判定与可走路线。</p>
+                                        <p className="mt-2 rounded-xl border border-wuxia-cyan/20 bg-wuxia-cyan/5 px-3 py-2 text-[11px] text-gray-300 leading-5">
+                                            当前题材：<span className="text-wuxia-gold">{当前题材配置.label}</span>。想切到西幻风格时，回到“世界观”页选择“西方奇幻 / 西幻模式包”，这里的天赋卷宗会自动刷新为魔力、骑士、公会与冒险者口径。
+                                        </p>
                                     </div>
                                     <div className="flex flex-col items-start md:items-end gap-2">
                                         <div className="flex rounded-full border border-gray-700 bg-black/35 p-1 text-xs">

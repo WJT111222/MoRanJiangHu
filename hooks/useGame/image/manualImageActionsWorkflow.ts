@@ -334,12 +334,14 @@ export const 创建手动图片动作工作流 = (deps: 手动图片动作工作
         });
     };
 
-    const retryNpcImageGeneration = async (npcId: string) => {
+    const retryNpcImageGeneration = async (npcId: string, options?: Pick<手动NPC生图选项, '构图'>) => {
         if (!npcId) return;
         const targetNpc = (Array.isArray(deps.获取社交列表()) ? deps.获取社交列表() : []).find((npc: any) => npc && npc.id === npcId);
         if (!targetNpc) return;
+        const allowedCompositions = ['头像', '半身', '立绘'];
+        const requestedComp = allowedCompositions.includes(options?.构图 as string) ? options?.构图 : undefined;
         const comp = targetNpc?.图片档案?.最近生图结果?.构图 || targetNpc?.最近生图结果?.构图;
-        const validComp = ['头像', '半身', '立绘'].includes(comp as string) ? (comp as '头像' | '半身' | '立绘') : undefined;
+        const validComp = requestedComp || (allowedCompositions.includes(comp as string) ? (comp as '头像' | '半身' | '立绘') : undefined);
         await deps.执行单个NPC生图(targetNpc, {
             force: true,
             source: 'retry',

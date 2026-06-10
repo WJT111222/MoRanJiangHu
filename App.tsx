@@ -20,7 +20,7 @@ import { 生成地图更新 } from './hooks/useGame/mapUpdateWorkflow';
 import { 构建字体注入样式文本, 构建UI文字CSS变量 } from './utils/visualSettings';
 import { 获取图片资源文本地址, 读取远程图片兜底资源ID } from './utils/imageAssets';
 import { 生成物品图标 } from './services/ai/itemImageGeneration';
-import { 合并物品图片档案, 物品已有可用图标 } from './utils/itemImage';
+import { 合并物品图片档案, 获取物品图标复用Key, 物品已有可用图标 } from './utils/itemImage';
 import { 生图最大自动重试次数, 执行生图模型调用带重试, 读取生图错误文本 } from './utils/imageGenerationRetry';
 import { 丢弃背包物品, 是否杂物类物品 } from './utils/inventoryActions';
 import { MusicProvider } from './components/features/Music/MusicProvider';
@@ -59,11 +59,16 @@ const getDesktopDetailDefaultWidth = (_panelId: string | null): number => {
     return DESKTOP_DETAIL_MAX_WIDTH;
 };
 
-const 获取物品自动生图Key = (scope: 'bag' | 'auction', item: any, ownerId?: string): string => [
-    scope,
-    ownerId || '',
-    item?.ID || item?.名称 || 'unknown'
-].join(':');
+const 获取物品自动生图Key = (_scope: 'bag' | 'auction', item: any): string => 获取物品图标复用Key(item);
+
+const 是同类物品图标复用目标 = (left: any, right: any): boolean => (
+    获取物品图标复用Key(left) === 获取物品图标复用Key(right)
+);
+
+const 复用物品图片档案 = (targetItem: 游戏物品, sourceItem: 游戏物品): 游戏物品 => ({
+    ...(targetItem as any),
+    图片档案: sourceItem.图片档案
+});
 
 const 是生图后端不可用错误文本 = (message: string): boolean => (
     /ComfyUI\s*未返回\s*prompt_id|ComfyUI\s*连接失败|不是可用的\s*ComfyUI|HTTP\s*200.*text\/html|Content-Type:\s*text\/html|服务端返回的是\s*HTML|地址已失效|地址失效|工作区休眠|登录页|代理页面|错误页面|CNB\s*8188/i.test(message)
@@ -480,6 +485,10 @@ const App: React.FC = () => {
     const safeGameConfig = state.gameConfig ?? ({} as typeof state.gameConfig);
     const safeCharacter = state.角色 ?? ({} as typeof state.角色);
     const safeShowSaveLoad = state.showSaveLoad ?? { show: false, mode: 'save' as const };
+    const latestCharacterRef = React.useRef(state.角色);
+    React.useEffect(() => {
+        latestCharacterRef.current = state.角色;
+    }, [state.角色]);
     const [showCharacter, setShowCharacter] = React.useState(false);
     const [showImageManager, setShowImageManager] = React.useState(false);
     const [showWorldbookManager, setShowWorldbookManager] = React.useState(false);
@@ -1337,7 +1346,7 @@ const App: React.FC = () => {
             if (!item || entry?.状态 !== '上架中') return;
             if (物品已有可用图标(item)) return;
             candidates.push({
-                key: 获取物品自动生图Key('auction', item, entry?.ID),
+                key: 获取物品自动生图Key('auction', item),
                 item,
                 sourceLocation: '拍卖行',
                 auctionId: entry?.ID
@@ -1367,10 +1376,18 @@ const App: React.FC = () => {
         let cancelled = false;
         const 写回候选物品 = (nextItem: 游戏物品, shouldSave: boolean) => {
             if (candidate.sourceLocation === '背包') {
-                const nextItems = bagItems.map((item: 游戏物品) => 是同一个物品(item, candidate.item) ? nextItem : item);
-                const changed = nextItems.some((item: 游戏物品, index: number) => item !== bagItems[index]);
+                const latestCharacter = latestCharacterRef.current as any;
+                const latestBagItems = Array.isArray(latestCharacter?.物品列表) ? latestCharacter.物品列表 : [];
+                const nextItems = latestBagItems.map((item: 游戏物品) => {
+                    if (是同一个物品(item, candidate.item)) return nextItem;
+                    if (物品已有可用图标(item)) return item;
+                    return 是同类物品图标复用目标(item, candidate.item)
+                        ? 复用物品图片档案(item, nextItem)
+                        : item;
+                });
+                const changed = nextItems.some((item: 游戏物品, index: number) => item !== latestBagItems[index]);
                 if (changed) {
-                    const nextCharacter = { ...state.角色, 物品列表: nextItems };
+                    const nextCharacter = { ...(latestCharacter || state.角色), 物品列表: nextItems };
                     setters.setCharacter(nextCharacter);
                     if (shouldSave) {
                         void actions.performAutoSave?.({ role: nextCharacter, force: true });
@@ -1381,7 +1398,14 @@ const App: React.FC = () => {
             if (candidate.sourceLocation === '拍卖行' && candidate.auctionId) {
                 setAuctionHouseState((prev) => {
                     const list = Array.isArray(prev?.拍卖品列表) ? prev.拍卖品列表 : [];
-                    const nextList = list.map((entry: any) => entry?.ID === candidate.auctionId ? { ...entry, 物品: nextItem } : entry);
+                    const nextList = list.map((entry: any) => {
+                        if (entry?.ID === candidate.auctionId) return { ...entry, 物品: nextItem };
+                        const item = entry?.物品;
+                        if (!item || 物品已有可用图标(item)) return entry;
+                        return 是同类物品图标复用目标(item, candidate.item)
+                            ? { ...entry, 物品: 复用物品图片档案(item, nextItem) }
+                            : entry;
+                    });
                     const changed = nextList.some((entry: any, index: number) => entry !== list[index]);
                     if (!changed) return prev;
                     const nextState = { ...prev, 拍卖品列表: nextList };
@@ -1406,7 +1430,7 @@ const App: React.FC = () => {
                     itemName: candidate.item?.名称 || '无名物品',
                     ageMs: startedAt - recentSuccess.completedAt
                 });
-                写回候选物品(recentSuccess.nextItem, true);
+                写回候选物品(复用物品图片档案(candidate.item, recentSuccess.nextItem), true);
                 return;
             }
 

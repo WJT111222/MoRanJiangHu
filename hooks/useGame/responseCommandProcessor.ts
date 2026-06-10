@@ -59,6 +59,16 @@ const 是否游戏初始时间命令 = (rawKey: string): boolean => {
     return trimmed === '游戏初始时间' || trimmed === 'gameState.游戏初始时间';
 };
 
+const 是否女主规划命令 = (rawKey: string): boolean => {
+    const normalizedKey = normalizeStateCommandKey(rawKey || '');
+    return normalizedKey === 'gameState.女主剧情规划'
+        || normalizedKey.startsWith('gameState.女主剧情规划.')
+        || normalizedKey.startsWith('gameState.女主剧情规划[')
+        || normalizedKey === 'gameState.同人女主剧情规划'
+        || normalizedKey.startsWith('gameState.同人女主剧情规划.')
+        || normalizedKey.startsWith('gameState.同人女主剧情规划[');
+};
+
 const 是否时间回退或异常重置 = (oldTime: unknown, newValue: unknown): boolean => {
     const newCanonical = typeof newValue === 'string' ? newValue.trim() : '';
     if (!newCanonical) return true;
@@ -875,8 +885,10 @@ const NPC字段是否含关系目标语义 = (npc: any): boolean => {
 
 const 应用女性关系目标主要角色兜底 = (
     response: GameResponse,
-    socialList: any[]
+    socialList: any[],
+    options?: { heroinePlanEnabled?: boolean }
 ): any[] => {
+    if (options?.heroinePlanEnabled === false) return socialList;
     if (!Array.isArray(socialList) || socialList.length <= 0) return socialList;
     const factText = 提取关系目标事实文本(response);
     const hasGlobalTargetFact = 攻略目标事实正则.test(factText) || 关系成立事实正则.test(factText);
@@ -1244,9 +1256,11 @@ export const 执行响应命令处理 = (
     baseState?: Partial<响应命令处理状态>,
     options?: {
         applyState?: boolean;
+        heroinePlanEnabled?: boolean;
     }
 ): 响应命令处理状态 => {
     const shouldApplyState = options?.applyState !== false;
+    const heroinePlanEnabled = options?.heroinePlanEnabled !== false;
     let charBuffer = baseState?.角色 || currentState.角色;
     let envBuffer = deps.规范化环境信息(baseState?.环境 || currentState.环境);
     let socialBuffer = Array.isArray(baseState?.社交) ? baseState.社交 : currentState.社交;
@@ -1288,6 +1302,7 @@ export const 执行响应命令处理 = (
                 dialogueSenderKeys
             );
             if (!safeCmd) return;
+            if (!heroinePlanEnabled && 是否女主规划命令(safeCmd.key)) return;
             if (命令存在社交删除风险(safeCmd, socialBuffer)) return;
             if (是否游戏初始时间命令(safeCmd.key)) {
                 return;
@@ -1358,7 +1373,7 @@ export const 执行响应命令处理 = (
             { 合并同名: false }
         );
         socialBuffer = deps.规范化社交列表(
-            应用女性关系目标主要角色兜底(response, socialBuffer),
+            应用女性关系目标主要角色兜底(response, socialBuffer, { heroinePlanEnabled }),
             { 合并同名: false }
         );
         socialBuffer = deps.规范化社交列表(
@@ -1464,7 +1479,8 @@ export const 执行响应命令处理 = (
                                 ),
                                 envBuffer,
                                 charBuffer?.姓名
-                            )
+                            ),
+                            { heroinePlanEnabled }
                         )
                     ),
                     charBuffer?.姓名

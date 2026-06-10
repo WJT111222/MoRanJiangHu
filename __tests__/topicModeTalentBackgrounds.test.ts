@@ -33,6 +33,18 @@ describe('topic mode talent and background presets', () => {
         }
     });
 
+    it('西方奇幻天赋卷宗不直接混入武侠默认天赋名', () => {
+        const talentNames = 获取题材预设天赋('西方奇幻').map((item) => item.名称);
+
+        expect(talentNames).toContain('魔力亲和');
+        expect(talentNames).toContain('骑士誓言');
+        expect(talentNames).toContain('幸运银币');
+        expect(talentNames).not.toContain('稳扎稳打');
+        expect(talentNames).not.toContain('过目不忘');
+        expect(talentNames).not.toContain('山水识路');
+        expect(talentNames).not.toContain('百工底子');
+    });
+
     it('无限流身份和天赋贴合主神空间口径', () => {
         const talentNames = 获取题材预设天赋('无限流').map((item) => item.名称);
         const backgroundNames = 获取题材预设背景('无限流').map((item) => item.名称);

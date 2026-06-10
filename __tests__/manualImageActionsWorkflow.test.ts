@@ -13,6 +13,40 @@ const 创建依赖 = (socialList: any[]) => ({
 });
 
 describe('manualImageActionsWorkflow', () => {
+    it('retryNpcImageGeneration forwards the selected composition', async () => {
+        const deps = 创建依赖([{
+            id: 'npc_portrait',
+            姓名: '沈照雪',
+            性别: '女',
+            图片档案: {}
+        }]);
+        const workflow = 创建手动图片动作工作流(deps);
+
+        await workflow.retryNpcImageGeneration('npc_portrait', { 构图: '立绘' });
+
+        expect(deps.执行单个NPC生图).toHaveBeenCalledWith(
+            expect.objectContaining({ id: 'npc_portrait' }),
+            expect.objectContaining({ force: true, source: 'retry', 构图: '立绘' })
+        );
+    });
+
+    it('retryNpcImageGeneration ignores invalid requested composition and falls back to the last valid one', async () => {
+        const deps = 创建依赖([{
+            id: 'npc_portrait',
+            姓名: '沈照雪',
+            性别: '女',
+            图片档案: { 最近生图结果: { 构图: '半身' } }
+        }]);
+        const workflow = 创建手动图片动作工作流(deps);
+
+        await workflow.retryNpcImageGeneration('npc_portrait', { 构图: '场景' as any });
+
+        expect(deps.执行单个NPC生图).toHaveBeenCalledWith(
+            expect.objectContaining({ id: 'npc_portrait' }),
+            expect.objectContaining({ force: true, source: 'retry', 构图: '半身' })
+        );
+    });
+
     it('全部生成时男娘主要角色只生成男性两处特写', async () => {
         const deps = 创建依赖([{
             id: 'npc_femboy',

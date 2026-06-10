@@ -485,6 +485,47 @@ describe('responseCommandProcessor female relationship target major role fallbac
         expect(result.社交.find((npc: any) => npc.id === 'npc_su_wanqing')?.是否主要角色).toBe(true);
     });
 
+    it('does not promote female relationship targets when heroine planning is disabled', () => {
+        const state = 构建基础状态();
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '杨培强决定把苏晚晴锁定为攻略对象，后续重点推进她的关系线。' }
+            ],
+            tavern_commands: [
+                {
+                    action: 'push',
+                    key: '社交',
+                    value: {
+                        id: 'npc_su_wanqing',
+                        姓名: '苏晚晴',
+                        性别: '女',
+                        是否主要角色: false,
+                        关系状态: '攻略对象'
+                    }
+                }
+            ]
+        } as any, state, deps, undefined, { applyState: false, heroinePlanEnabled: false });
+
+        expect(result.社交.find((npc: any) => npc.id === 'npc_su_wanqing')?.是否主要角色).toBe(false);
+    });
+
+    it('ignores heroine planning commands when heroine planning is disabled', () => {
+        const state = 构建基础状态();
+        state.女主剧情规划 = { 现状: '旧规划' } as any;
+        state.同人女主剧情规划 = { 现状: '旧同人规划' } as any;
+
+        const result = 执行响应命令处理({
+            logs: [{ sender: '旁白', text: '本回合没有女主规划。' }],
+            tavern_commands: [
+                { action: 'set', key: '女主剧情规划.现状', value: '新规划' },
+                { action: 'set', key: '同人女主剧情规划.现状', value: '新同人规划' }
+            ]
+        } as any, state, deps, undefined, { applyState: false, heroinePlanEnabled: false });
+
+        expect((result.女主剧情规划 as any)?.现状).toBe('旧规划');
+        expect((result.同人女主剧情规划 as any)?.现状).toBe('旧同人规划');
+    });
+
     it('marks an existing female NPC as major when relationship is established by story fact', () => {
         const state = 构建基础状态();
         state.环境 = { 时间: '五月初二 夜' } as any;

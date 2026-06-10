@@ -24,6 +24,7 @@ import { 同步剧情小说分解时间校准 } from '../../services/novelDecomp
 import { 创建工作流性能诊断 } from '../../utils/performanceDebug';
 import { 后台分段执行, 后台让出主线程 } from '../../utils/backgroundScheduling';
 import { 执行游戏后台重计算 } from '../../utils/gameHeavyWorkerClient';
+import { 构建规划性别比例约束摘要 } from '../../prompts/runtime/planningAnalysis';
 
 type 规划更新工作流依赖 = {
     apiConfig: any;
@@ -479,6 +480,7 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
         ]
             .filter(Boolean)
             .join('\n\n');
+        const genderRatioConstraintText = 构建规划性别比例约束摘要(deps.开局配置?.modeRuntimeProfile?.npc?.genderRatio);
 
         const planningStoryPayload = 裁剪修炼体系上下文数据({
             剧情: alignedStoryForPlanning,
@@ -553,6 +555,7 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
             recentBodiesText,
             currentPlanText,
             auditFocusText: auditFocus.length > 0 ? auditFocus.join('\n') : '常规回合固定审计',
+            genderRatioConstraintText,
             heroineEnabled,
             ntlEnabled: normalizedGameConfig.剧情风格 === 'NTL后宫',
             fandomEnabled,
