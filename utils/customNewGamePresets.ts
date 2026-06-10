@@ -158,9 +158,21 @@ const 构建模块额外规则文本 = (module: 创意工坊模块条目, backgr
         extraParts.push('【模块使用说明】', module.usagePrompt);
     }
     if (backgrounds.length > 0) {
+        const formatItems = (items?: Array<{ 名称: string; 数量?: number; 类型?: string }>) => (
+            Array.isArray(items) && items.length > 0
+                ? items.map((item) => `${item.名称}${item.数量 ? `x${item.数量}` : ''}${item.类型 ? `(${item.类型})` : ''}`).join('、')
+                : ''
+        );
         extraParts.push(
             '【本世界可用出身背景池】',
-            ...backgrounds.map((b, i) => `${i + 1}. ${b.名称}：${b.描述}${b.效果 ? `（效果：${b.效果}）` : ''}`)
+            ...backgrounds.map((b, i) => {
+                const details = [
+                    formatItems(b.初始物品) ? `必投物品：${formatItems(b.初始物品)}` : '',
+                    formatItems(b.开局货币) ? `开局货币：${formatItems(b.开局货币)}` : '',
+                    formatItems(b.可选初始物品) ? `可选物品：${formatItems(b.可选初始物品)}` : '',
+                ].filter(Boolean).join('；');
+                return `${i + 1}. ${b.名称}：${b.描述}${b.效果 ? `（效果：${b.效果}）` : ''}${details ? `（${details}）` : ''}`;
+            })
         );
     }
     if (talents.length > 0) {
