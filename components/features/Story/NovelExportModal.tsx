@@ -1,7 +1,6 @@
 import React from 'react';
 import { generatePolishedBody } from '../../../services/ai/text';
 import { 获取文章优化接口配置, 接口配置是否可用 } from '../../../utils/apiConfig';
-import { 创建并记录ObjectURL, 释放并记录ObjectURL } from '../../../utils/objectUrlLifecycle';
 
 interface Props {
     isOpen: boolean;
@@ -328,22 +327,14 @@ const saveTextFile = async (content: string, prefix: string, extension: 'txt' | 
 
     if (typeof document !== 'undefined') {
         const blob = new Blob([content], { type: extension === 'md' ? 'text/markdown;charset=utf-8' : 'text/plain;charset=utf-8' });
-        const url = 创建并记录ObjectURL(blob, {
-            source: 'NovelExportModal.saveExportContent',
-            kind: 'novel-export',
-            detail: { fileName, extension }
-        });
+        const url = URL.createObjectURL(blob);
         const anchor = document.createElement('a');
         anchor.href = url;
         anchor.download = fileName;
         document.body.appendChild(anchor);
         anchor.click();
         document.body.removeChild(anchor);
-        释放并记录ObjectURL(url, {
-            source: 'NovelExportModal.saveExportContent',
-            kind: 'novel-export',
-            detail: { fileName, extension, reason: 'download-clicked' }
-        });
+        URL.revokeObjectURL(url);
         return {
             method: 'download',
             message: `已开始下载：${fileName}`,

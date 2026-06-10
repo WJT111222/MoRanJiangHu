@@ -19,7 +19,6 @@ import type {
 } from '../../../types';
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
 import { 获取图片展示地址, 获取图片资源文本地址, 是否存在本地图片副本, 格式化本地图片描述 } from '../../../utils/imageAssets';
-import { 创建并记录ObjectURL, 释放并记录ObjectURL } from '../../../utils/objectUrlLifecycle';
 import ToggleSwitch from '../../ui/ToggleSwitch';
 import { 获取命中模型词组转化器预设, 规范化接口设置 } from '../../../utils/apiConfig';
 import { 自动场景横屏尺寸选项, 自动场景竖屏尺寸选项 } from '../../../utils/imageSizeOptions';
@@ -1922,20 +1921,12 @@ const ImageManagerModal: React.FC<Props> = ({
 
     const 导出JSON文件 = (filename: string, payload: unknown) => {
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
-        const url = 创建并记录ObjectURL(blob, {
-            source: 'ImageManagerModal.导出JSON文件',
-            kind: 'image-settings-json-export',
-            detail: { filename }
-        });
+        const url = URL.createObjectURL(blob);
         const anchor = document.createElement('a');
         anchor.href = url;
         anchor.download = filename;
         anchor.click();
-        释放并记录ObjectURL(url, {
-            source: 'ImageManagerModal.导出JSON文件',
-            kind: 'image-settings-json-export',
-            detail: { filename, reason: 'download-clicked' }
-        });
+        URL.revokeObjectURL(url);
     };
 
     const handleExportArtistPresets = () => {

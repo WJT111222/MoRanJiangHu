@@ -3,7 +3,6 @@ import * as dbService from '../../../services/dbService';
 import { 解析ZIP存档文件 } from '../../../services/saveArchiveService';
 import { parseJsonWithRepair } from '../../../utils/jsonRepair';
 import { 设置分类定义表, 设置键, type 设置分类类型 } from '../../../utils/settingsSchema';
-import { 创建并记录ObjectURL, 释放并记录ObjectURL } from '../../../utils/objectUrlLifecycle';
 import GameButton from '../../ui/GameButton';
 import ToggleSwitch from '../../ui/ToggleSwitch';
 
@@ -356,11 +355,7 @@ const StorageManager: React.FC<Props> = ({ requestConfirm }) => {
             const payload = await dbService.导出研发设置模板();
             const json = JSON.stringify(payload, null, 2);
             const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
-            const url = 创建并记录ObjectURL(blob, {
-                source: 'StorageManager.handleExportDevSettingsTemplate',
-                kind: 'dev-settings-template-export',
-                detail: { fileName: `wuxia-dev-settings-template-${new Date().toISOString().replace(/[:.]/g, '-')}.json` }
-            });
+            const url = URL.createObjectURL(blob);
             const stamp = new Date().toISOString().replace(/[:.]/g, '-');
             const link = document.createElement('a');
             link.href = url;
@@ -368,11 +363,7 @@ const StorageManager: React.FC<Props> = ({ requestConfirm }) => {
             document.body.appendChild(link);
             link.click();
             link.remove();
-            释放并记录ObjectURL(url, {
-                source: 'StorageManager.handleExportDevSettingsTemplate',
-                kind: 'dev-settings-template-export',
-                detail: { reason: 'download-clicked' }
-            });
+            URL.revokeObjectURL(url);
             pushNotice('success', '研发设置模板已导出。');
         } catch (error: any) {
             pushNotice('error', `导出失败：${error?.message || '未知错误'}`);
@@ -425,11 +416,7 @@ const StorageManager: React.FC<Props> = ({ requestConfirm }) => {
             const payload = await dbService.导出全部设置备份({ 保留APIKey: true });
             const json = JSON.stringify(payload, null, 2);
             const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
-            const url = 创建并记录ObjectURL(blob, {
-                source: 'StorageManager.handleExportSettingsBackup',
-                kind: 'settings-backup-export',
-                detail: { fileName: `moranjianghu-settings-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json` }
-            });
+            const url = URL.createObjectURL(blob);
             const stamp = new Date().toISOString().replace(/[:.]/g, '-');
             const link = document.createElement('a');
             link.href = url;
@@ -437,11 +424,7 @@ const StorageManager: React.FC<Props> = ({ requestConfirm }) => {
             document.body.appendChild(link);
             link.click();
             link.remove();
-            释放并记录ObjectURL(url, {
-                source: 'StorageManager.handleExportSettingsBackup',
-                kind: 'settings-backup-export',
-                detail: { reason: 'download-clicked' }
-            });
+            URL.revokeObjectURL(url);
             pushNotice('success', '全部设置备份已导出。');
         } catch (error: any) {
             pushNotice('error', `导出失败：${error?.message || '未知错误'}`);
