@@ -3,6 +3,7 @@ import { 视觉设置结构, MusicTrack } from '../../../types';
 import { 读取设置, 保存设置, 读取图片资源 } from '../../../services/dbService';
 import { 设置键 } from '../../../utils/settingsSchema';
 import { 默认背景音乐曲库 } from '../../../data/defaultMusicTracks';
+import { 释放并记录ObjectURL } from '../../../utils/objectUrlLifecycle';
 
 interface MusicContextType {
     tracks: MusicTrack[];
@@ -55,7 +56,14 @@ const MusicContext = createContext<MusicContextType>(默认音乐上下文);
 const 释放音乐封面ObjectURL = (track?: MusicTrack | null) => {
     const coverUrl = track?.封面URL;
     if (typeof coverUrl !== 'string' || !coverUrl.startsWith('blob:')) return;
-    URL.revokeObjectURL(coverUrl);
+    释放并记录ObjectURL(coverUrl, {
+        source: 'MusicProvider.removeTrack',
+        kind: 'music-cover',
+        detail: {
+            trackId: track?.id,
+            trackName: track?.名称
+        }
+    });
 };
 
 export const useMusic = () => {
