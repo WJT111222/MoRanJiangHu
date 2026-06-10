@@ -81,6 +81,7 @@ const PromptManager: React.FC<Props> = ({ prompts, onUpdate, requestConfirm, run
         a.href = url;
         a.download = 'wuxia_prompts.json';
         a.click();
+        URL.revokeObjectURL(url);
     };
 
     const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {

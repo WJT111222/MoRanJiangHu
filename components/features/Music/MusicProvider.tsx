@@ -52,6 +52,12 @@ const 默认音乐上下文: MusicContextType = {
 
 const MusicContext = createContext<MusicContextType>(默认音乐上下文);
 
+const 释放音乐封面ObjectURL = (track?: MusicTrack | null) => {
+    const coverUrl = track?.封面URL;
+    if (typeof coverUrl !== 'string' || !coverUrl.startsWith('blob:')) return;
+    URL.revokeObjectURL(coverUrl);
+};
+
 export const useMusic = () => {
     return useContext(MusicContext);
 };
@@ -273,9 +279,11 @@ export const MusicProvider: React.FC<{
 
     const removeTrack = async (id: string) => {
         if (id.startsWith('default_')) return;
+        const removedTrack = tracks.find(t => t.id === id);
         const updatedTracks = tracks.filter(t => t.id !== id);
         setTracks(updatedTracks);
         await 保存设置(设置键.音乐曲库, updatedTracks);
+        释放音乐封面ObjectURL(removedTrack);
         
         if (currentTrackId === id) {
             handleNext();
