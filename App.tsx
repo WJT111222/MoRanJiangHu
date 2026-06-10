@@ -2866,6 +2866,7 @@ const App: React.FC = () => {
                             loading={state.loading}
                             apiConfig={state.apiConfig}
                             requestConfirm={requestConfirm}
+                            isStreamingDefault={!state.gameConfig?.启用非流式输出}
                         />
                     ) : (
                         <NewGameWizard
@@ -2876,6 +2877,7 @@ const App: React.FC = () => {
                             loading={state.loading}
                             apiConfig={state.apiConfig}
                             requestConfirm={requestConfirm}
+                            isStreamingDefault={!state.gameConfig?.启用非流式输出}
                         />
                     )}
                 </懒加载边界>
@@ -3078,6 +3080,7 @@ const App: React.FC = () => {
                                      mainStoryModelInfo={mainStoryApiInfo}
                                      externalDraft={chatDraftRequest}
                                      options={currentOptions}
+                                     isStreamingDefault={!state.gameConfig?.启用非流式输出}
                                  />
                             </div>
                             {sceneQuickGenToastVisible && (

@@ -16,6 +16,18 @@ import { 同人女主剧情规划结构 } from './fandomPlanning/heroinePlan';
 import { 战斗状态结构 } from './battle';
 import { 世界书结构 } from './worldbook';
 
+type 背景初始物品快照 = {
+    名称: string;
+    数量?: number;
+    描述?: string;
+    类型?: string;
+};
+
+type 背景开局货币快照 = 背景初始物品快照 & {
+    最小数量?: number;
+    最大数量?: number;
+};
+
 export type 接口供应商类型 = 'gemini' | 'claude' | 'openai' | 'deepseek' | 'zhipu' | 'openai_compatible';
 
 export type OpenAI兼容方案类型 = 'custom' | 'siliconflow' | 'together' | 'groq';
@@ -726,6 +738,9 @@ export interface OpeningRuntimeSnapshot {
         名称: string;
         描述: string;
         效果: string;
+        初始物品?: 背景初始物品快照[];
+        可选初始物品?: 背景初始物品快照[];
+        开局货币?: 背景开局货币快照[];
     }>;
     modeTalents?: Array<{
         名称: string;
@@ -923,6 +938,7 @@ export interface 游戏设置结构 {
     禁用APK自动更新: boolean; // Disable automatic APK update checks and release-note popups; manual update remains available
     启用回合结束自动存档: boolean; // Auto save after each completed story turn
     启用繁体模式: boolean; // Require AI-generated in-game text to use Traditional Chinese
+    启用非流式输出: boolean; // Disable streaming output, use non-streaming request instead
     启用NSFW模式: boolean; // Gate NSFW prompt and heroine privacy UI
     启用男娘NSFW内容: boolean; // Gate femboy/male NSFW archive prompts, UI, and auto secret image generation
     启用亲密边界机制: boolean; // Require consent, privacy, relationship thresholds, and character agency for intimacy

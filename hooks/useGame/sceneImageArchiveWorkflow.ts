@@ -1,4 +1,5 @@
 import type { 场景图片档案, 视觉设置结构 } from '../../types';
+import { recordDiagnosticLog } from '../../services/diagnosticLog';
 import { 规范化视觉设置 } from '../../utils/visualSettings';
 import { 获取图片展示地址, 压缩图片资源字段 } from '../../utils/imageAssets';
 
@@ -97,6 +98,10 @@ export const 创建场景图片档案工作流 = (deps: 场景图片档案工作
         void deps.保存场景图片档案设置(nextArchive);
         if (删除数量 > 0) {
             void deps.清理未引用图片资源().catch((error) => {
+                recordDiagnosticLog('error', ['清理超限场景图片资源失败', {
+                    message: error?.message || '',
+                    stack: typeof error?.stack === 'string' ? error.stack : undefined
+                }]);
                 console.error('清理超限场景图片资源失败', error);
             });
         }

@@ -267,7 +267,9 @@ const 构建正文文本 = (response: GameResponse): string => (
 );
 
 const 创建主剧情流式超时错误 = (stage: string, timeoutMs: number): Error => {
-    const error = new Error(`主剧情乾坤推演${stage}（${Math.max(1, Math.ceil(timeoutMs / 1000))} 秒无流式输出）`);
+    const isFirstResponse = stage === '等待首次响应超时';
+    const suffix = isFirstResponse ? '' : '无新增量';
+    const error = new Error(`主剧情乾坤推演${stage}（${Math.max(1, Math.ceil(timeoutMs / 1000))} 秒${suffix}）`);
     error.name = 'TimeoutError';
     return error;
 };
@@ -348,6 +350,12 @@ const 执行主剧情流式请求带空闲超时 = async <T,>(
     let timer: ReturnType<typeof setTimeout> | null = null;
     let rejectTimeout: ((reason?: any) => void) | null = null;
     let hasStreamActivity = false;
+    const streamTrace = {
+        requestStartAt: Date.now(),
+        firstDeltaAt: null as number | null,
+        lastDeltaAt: null as number | null,
+        deltaCount: 0
+    };
 
     const clearTimer = () => {
         if (timer) {
@@ -364,10 +372,28 @@ const 执行主剧情流式请求带空闲超时 = async <T,>(
         timer = setTimeout(() => {
             const completedResult = hasStreamActivity ? resolveCompletedDraft?.() : null;
             if (completedResult) {
+                const diagnosticInfo = {
+                    reason: 'acceptedDraft_and_aborted_stream',
+                    timeoutMs,
+                    hasStreamActivity,
+                    firstDeltaAt: streamTrace.firstDeltaAt,
+                    lastDeltaAt: streamTrace.lastDeltaAt,
+                    deltaCount: streamTrace.deltaCount,
+                    idleSinceLastDeltaMs: streamTrace.lastDeltaAt ? Date.now() - streamTrace.lastDeltaAt : null,
+                    totalElapsedMs: Date.now() - streamTrace.requestStartAt,
+                    completedResult
+                };
                 console.warn('[主剧情流式超时] 已收到完整协议草稿，接受当前草稿并中止尾部挂起连接', {
                     timeoutMs,
-                    hasStreamActivity
+                    hasStreamActivity,
+                    timeoutStage: '流式输出空闲超时',
+                    firstDeltaAt: streamTrace.firstDeltaAt,
+                    lastDeltaAt: streamTrace.lastDeltaAt,
+                    deltaCount: streamTrace.deltaCount,
+                    idleSinceLastDeltaMs: streamTrace.lastDeltaAt ? Date.now() - streamTrace.lastDeltaAt : null,
+                    totalElapsedMs: Date.now() - streamTrace.requestStartAt
                 });
+                recordDiagnosticLog('warn', ['主剧情流式超时-接受完整草稿', diagnosticInfo]);
                 rejectTimeout?.(completedResult);
                 try {
                     requestController.abort(new DOMException('Completed stream draft accepted', 'AbortError'));
@@ -376,12 +402,24 @@ const 执行主剧情流式请求带空闲超时 = async <T,>(
                 }
                 return;
             }
-            const timeoutError = 创建主剧情流式超时错误(hasStreamActivity ? '流式输出空闲超时' : '等待首次响应超时', timeoutMs);
-            console.warn('[主剧情流式超时] 乾坤推演无流式输出，准备中止本次请求并交给自动重试', {
+            const timeoutStage = hasStreamActivity ? '流式输出空闲超时' : '等待首次响应超时';
+            const timeoutError = 创建主剧情流式超时错误(timeoutStage, timeoutMs);
+            const diagnosticInfo = {
                 timeoutMs,
                 hasStreamActivity,
+                timeoutStage,
+                requestStartAt: streamTrace.requestStartAt,
+                firstDeltaAt: streamTrace.firstDeltaAt,
+                lastDeltaAt: streamTrace.lastDeltaAt,
+                deltaCount: streamTrace.deltaCount,
+                idleSinceLastDeltaMs: streamTrace.lastDeltaAt ? Date.now() - streamTrace.lastDeltaAt : null,
+                totalElapsedMs: Date.now() - streamTrace.requestStartAt
+            };
+            console.warn(`[主剧情流式超时] ${timeoutStage}，准备中止本次请求并交给自动重试`, {
+                ...diagnosticInfo,
                 reason: timeoutError.message
             });
+            recordDiagnosticLog('warn', ['主剧情流式超时', diagnosticInfo]);
             try {
                 requestController.abort(timeoutError);
             } catch {
@@ -392,6 +430,10 @@ const 执行主剧情流式请求带空闲超时 = async <T,>(
     };
     const markStreamActivity = () => {
         hasStreamActivity = true;
+        const now = Date.now();
+        if (streamTrace.firstDeltaAt === null) streamTrace.firstDeltaAt = now;
+        streamTrace.lastDeltaAt = now;
+        streamTrace.deltaCount++;
         startTimer();
     };
 
@@ -1011,6 +1053,10 @@ export const 执行主剧情发送工作流 = async (
     void Promise.resolve(deps.执行NPC变量自动备份?.(currentState.社交, {
         标签: `回合发送前 · ${currentGameTime}`
     })).catch((error) => {
+        recordDiagnosticLog('warn', ['NPC变量自动备份失败', {
+            message: error?.message || '',
+            stack: typeof error?.stack === 'string' ? error.stack : undefined
+        }]);
         console.warn('NPC变量自动备份失败', error);
     });
 
@@ -1210,6 +1256,13 @@ export const 执行主剧情发送工作流 = async (
         const aiResult = await deps.执行带自动重试的生成请求<textAIService.StoryResponseResult>({
             enabled: deps.游戏设置启用自动重试(runtimeGameConfig),
             onRetry: (attempt, maxAttempts, reason) => {
+                recordDiagnosticLog('warn', ['主剧情重试', {
+                    attempt,
+                    maxAttempts,
+                    reason: typeof reason === 'string' ? reason : reason?.message || '',
+                    errorName: reason?.name || '',
+                    streaming: isStreaming
+                }]);
                 if (isStreaming) {
                     deps.设置历史记录(prev => deps.更新流式草稿为自动重试提示(prev, attempt, maxAttempts, reason));
                 }
@@ -1577,6 +1630,10 @@ export const 执行主剧情发送工作流 = async (
             .join("\n");
         if (latestBodyText.trim()) {
             void Promise.resolve(deps.应用常驻壁纸为背景()).catch((error) => {
+                recordDiagnosticLog('warn', ['应用常驻壁纸失败', {
+                    message: error?.message || '',
+                    stack: typeof error?.stack === 'string' ? error.stack : undefined
+                }]);
                 console.error("应用常驻壁纸失败", error);
             });
             deps.触发场景自动生图({
@@ -2305,8 +2362,16 @@ export const 执行主剧情发送工作流 = async (
                         phase: "cancelled",
                         text: "后台队列已取消，当前正文保留。"
                     });
+                    recordDiagnosticLog('info', ['后台队列已取消', {
+                        reason: backgroundError?.message || 'parent signal aborted'
+                    }]);
                     return;
                 }
+                recordDiagnosticLog('error', ['后台队列执行失败', {
+                    message: backgroundError?.message || '',
+                    name: backgroundError?.name || typeof backgroundError,
+                    stack: typeof backgroundError?.stack === 'string' ? backgroundError.stack : undefined
+                }]);
                 console.error("后台队列执行失败", backgroundError);
                 options?.onPlanningProgress?.({
                     phase: "error",
@@ -2333,7 +2398,11 @@ export const 执行主剧情发送工作流 = async (
                 deps.设置历史记录(historyBeforeSend);
                 deps.应用并同步记忆系统(memBeforeSend);
             }
-            console.log('Request aborted by user');
+            recordDiagnosticLog('info', ['主剧情请求被用户取消', {
+                draftTextLength: (latestStreamDraftText || '').length,
+                gameTime: currentGameTime,
+                hadSnapshot: !!snapshot
+            }]);
             return { cancelled: true };
         }
 
@@ -2402,6 +2471,23 @@ export const 执行主剧情发送工作流 = async (
                 errorTitle: '标签结构不完整',
                 recoveryHint: '可直接手动补全缺失标签后恢复，或尝试自动修复恢复；如果不想保留这版内容，也可以直接重ROLL。'
             };
+        }
+
+        if (error?.name === 'TimeoutError') {
+            recordDiagnosticLog('warn', ['主剧情流式超时-外部兜底', {
+                errorMessage: error?.message || '',
+                draftTextLength: (latestStreamDraftText || '').length,
+                gameTime: currentGameTime,
+                stack: typeof error?.stack === 'string' ? error.stack : undefined
+            }]);
+        } else {
+            recordDiagnosticLog('error', ['主剧情请求未预期错误', {
+                message: error?.message || '',
+                name: error?.name || typeof error,
+                gameTime: currentGameTime,
+                draftTextLength: (latestStreamDraftText || '').length,
+                stack: typeof error?.stack === 'string' ? error.stack : undefined
+            }]);
         }
 
         const detail = deps.格式化错误详情(error);

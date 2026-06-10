@@ -1,6 +1,7 @@
 import type { NPC结构, 图片记录来源类型, 香闺秘档部位类型 } from '../../types';
 import type { 详细门派结构 } from '../../models/sect';
 import { 生成NPC生图记录ID } from './npcImageStateWorkflow';
+import { recordDiagnosticLog } from '../../services/diagnosticLog';
 
 type 手动NPC工作流依赖 = {
     获取环境: () => any;
@@ -220,6 +221,10 @@ export const 创建手动NPC工作流 = (deps: 手动NPC工作流依赖) => {
             void Promise.resolve(deps.执行NPC变量本地备份?.(beforeDeleteSnapshot, {
                 标签: `删除 ${removedNpc.姓名 || removedNpc.id || npcId} 前`
             })).catch((backupError) => {
+                recordDiagnosticLog('warn', ['删除NPC前备份失败', {
+                    message: backupError?.message || '',
+                    stack: typeof backupError?.stack === 'string' ? backupError.stack : undefined
+                }]);
                 console.warn('删除 NPC 前本地备份失败', backupError);
             });
         }

@@ -172,6 +172,7 @@ interface Props {
     openingPlanningProgress?: PlanningProgress | null;
     openingVariableGenerationProgress?: VariableGenerationProgress | null;
     openingMapUpdateProgress?: MapUpdateProgress | null;
+    isStreamingDefault?: boolean;
 }
 
 const InputArea: React.FC<Props> = ({
@@ -196,10 +197,11 @@ const InputArea: React.FC<Props> = ({
     openingWorldEvolutionProgress = null,
     openingPlanningProgress = null,
     openingVariableGenerationProgress = null,
-    openingMapUpdateProgress = null
+    openingMapUpdateProgress = null,
+    isStreamingDefault = true
 }) => {
     const [content, setContent] = useState('');
-    const [isStreaming, setIsStreaming] = useState(true);
+    const [isStreaming, setIsStreaming] = useState(isStreamingDefault);
     const [lastSentContent, setLastSentContent] = useState('');
     const [isPreparing, setIsPreparing] = useState(false);
     const [attachedRecallPreview, setAttachedRecallPreview] = useState('');
@@ -212,6 +214,10 @@ const InputArea: React.FC<Props> = ({
     const [variableGenerationProgress, setVariableGenerationProgress] = useState<VariableGenerationProgress | null>(null);
     const [mapUpdateProgress, setMapUpdateProgress] = useState<MapUpdateProgress | null>(null);
     const [expandedRawStageId, setExpandedRawStageId] = useState<string | null>(null);
+
+    useEffect(() => {
+        setIsStreaming(isStreamingDefault);
+    }, [isStreamingDefault]);
     const [expandedCommandStageId, setExpandedCommandStageId] = useState<string | null>(null);
     const [queueCollapsed, setQueueCollapsed] = useState(true);
     const [showQuickRestartMenu, setShowQuickRestartMenu] = useState(false);
