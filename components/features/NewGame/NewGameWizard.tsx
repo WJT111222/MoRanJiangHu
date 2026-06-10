@@ -3,7 +3,7 @@ import GameButton from '../../ui/GameButton';
 import { 接口设置结构, OpeningConfig, WorldGenConfig, 小说拆分数据集结构, 角色数据结构, 天赋结构, 背景结构, 游戏难度, 初始伙伴配置结构, 世界书结构 } from '../../../types';
 import { 预设天赋, 预设背景, 获取题材预设天赋, 获取题材预设背景 } from '../../../data/presets';
 import type { 开局预设方案结构 } from '../../../data/newGamePresets';
-import { 从模式世界书提取提示词, type 创意工坊模块条目, type 创意工坊模块类型 } from '../../../data/creativeWorkshopModules';
+import { 从模式世界书提取提示词, type 创意工坊模块条目, type 创意工坊模块类型, type 创意工坊世界细节生成配置 } from '../../../data/creativeWorkshopModules';
 import type { 题材模式类型 } from '../../../models/system';
 import { OrnateBorder } from '../../ui/decorations/OrnateBorder';
 import InlineSelect from '../../ui/InlineSelect';
@@ -50,6 +50,7 @@ import { 默认境界母板提示词 } from '../../../prompts/runtime/fandom';
 import { 设置键 } from '../../../utils/settingsSchema';
 import { 根据名称映射天赋抽卡, 根据名称映射抽卡, 补全天赋抽卡名称列表, 补全抽卡名称列表, 天赋抽卡数量, 出身抽卡数量, 抽取天赋卡牌, 抽取卡牌 } from '../../../utils/talentDraw';
 import { 构建开局世界观生成提示词预览 } from '../../../utils/worldGenerationPromptPreview';
+import { normalizeWorldMapDraft } from '../../../utils/newGameDiy';
 import { 获取主剧情接口配置, 接口配置是否可用 } from '../../../utils/apiConfig';
 import { 请求模型文本 } from '../../../services/ai/chatCompletionClient';
 import { 下载创意工坊模块, 列出创意工坊模块 } from '../../../services/creativeWorkshop';
@@ -99,6 +100,34 @@ const 创意工坊类型标签: Record<创意工坊模块类型, string> = {
     opening: '开局配置',
     ability: '能力体系',
     comfy_workflow: 'ComfyUI 工作流'
+};
+
+const 读取模块世界细节生成配置 = (module: 创意工坊模块条目): 创意工坊世界细节生成配置 => {
+    const payload = module.payload as any;
+    const raw = module.worldDetailGeneration || payload?.worldDetailGeneration;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        return { aiGenerate: true };
+    }
+    return {
+        aiGenerate: raw.aiGenerate !== false,
+        importantPeople: typeof raw.importantPeople === 'string' ? raw.importantPeople.trim() : '',
+        importantFactions: typeof raw.importantFactions === 'string' ? raw.importantFactions.trim() : '',
+        mapDesign: typeof raw.mapDesign === 'string' ? raw.mapDesign.trim() : '',
+        mapDiyDraft: raw.mapDiyDraft && typeof raw.mapDiyDraft === 'object' && !Array.isArray(raw.mapDiyDraft)
+            ? normalizeWorldMapDraft(raw.mapDiyDraft)
+            : undefined
+    };
+};
+
+const 渲染模块世界细节要求 = (config: 创意工坊世界细节生成配置): string => {
+    if (config.aiGenerate) return '';
+    return [
+        '【创意工坊自定义世界细节】',
+        '该模式包要求优先使用贡献者自定义的重要人物、重要势力和地图分布；AI 只能补齐空白与细节，不得另起一套核心世界骨架。',
+        config.importantPeople ? `【重要人物】\n${config.importantPeople}` : '',
+        config.importantFactions ? `【重要势力/宗门/组织】\n${config.importantFactions}` : '',
+        config.mapDesign ? `【地图层级与地图块介绍】\n${config.mapDesign}` : ''
+    ].filter(Boolean).join('\n\n');
 };
 type DropdownProps = {
     value: number;
@@ -969,6 +998,8 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
             const moduleBackgrounds = 提取模块背景列表(module);
             const moduleTalents = 提取模块天赋列表(module);
             const modeWorldbooks = Array.isArray(module.modeWorldbooks) ? module.modeWorldbooks : Array.isArray((module.payload as any)?.modeWorldbooks) ? (module.payload as any).modeWorldbooks : [];
+            const worldDetailGeneration = 读取模块世界细节生成配置(module);
+            const worldDetailRequirement = 渲染模块世界细节要求(worldDetailGeneration);
             const extraParts: string[] = [];
             if (module.safetyNotes?.length) {
                 extraParts.push('【模块安全说明】', ...module.safetyNotes.map((n) => `- ${n}`));
@@ -1021,7 +1052,11 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                 modeRuntimeProfile,
                 ...构建运行时生成性别补丁(modeRuntimeProfile)
             }));
-            setWorldConfig((prev) => ({ ...prev, modeRuntimeProfile }));
+            setWorldConfig((prev) => ({
+                ...prev,
+                modeRuntimeProfile,
+                ...(worldDetailGeneration.mapDiyDraft?.enabled ? { mapDiyDraft: { ...worldDetailGeneration.mapDiyDraft, enabled: true } } : {})
+            }));
             const content = String((module.payload as any)?.content || '').trim();
             if (module.type === 'topic') {
                 if (module.preset) {
@@ -1056,7 +1091,7 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                         setWorldConfig((prev) => ({ ...prev, manualWorldPrompt: 拼接额外要求(prev.manualWorldPrompt, topicPrompt) }));
                     }
                 }
-                const worldExtra = String(extractedPrompts.worldExtraRequirement || (module.payload as any)?.worldExtraRequirement || module.preset?.openingExtraRequirement || '').trim();
+                const worldExtra = String(extractedPrompts.worldExtraRequirement || (module.payload as any)?.worldExtraRequirement || module.preset?.openingExtraRequirement || worldDetailRequirement || '').trim();
                 if (worldExtra) setWorldConfig((prev) => ({ ...prev, worldExtraRequirement: 拼接额外要求(prev.worldExtraRequirement, worldExtra) }));
                 const realmPrompt = String(extractedPrompts.manualRealmPrompt || (module.payload as any)?.manualRealmPrompt || module.preset?.worldConfig?.manualRealmPrompt || '').trim();
                 if (realmPrompt) {

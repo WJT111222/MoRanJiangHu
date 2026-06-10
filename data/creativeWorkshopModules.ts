@@ -1,5 +1,5 @@
 import type { 开局预设方案结构 } from './newGamePresets';
-import type { ModeRuntimeProfile, 世界书结构, 世界书条目结构, 世界书类型, 世界书作用域 } from '../types';
+import type { ModeRuntimeProfile, WorldMapDiyDraft, 世界书结构, 世界书条目结构, 世界书类型, 世界书作用域 } from '../types';
 import { 题材模式配置表, 题材模式顺序 } from '../utils/workshopEngine';
 import { 构建官方模式运行时配置, 规范化模式运行时配置, 渲染模式运行时配置世界书内容 } from '../utils/modeRuntimeProfile';
 import { 默认ComfyUI工作流JSON, 默认NSFWComfyUI工作流JSON } from './defaultComfyWorkflow';
@@ -7,6 +7,14 @@ import { 获取题材预设背景, 获取题材预设天赋 } from './presets';
 
 export type 创意工坊模块类型 = 'topic' | 'world_rules' | 'opening' | 'ability' | 'comfy_workflow';
 export type 创意工坊模块来源 = 'builtin' | 'cloud' | 'local';
+
+export interface 创意工坊世界细节生成配置 {
+    aiGenerate: boolean;
+    importantPeople?: string;
+    importantFactions?: string;
+    mapDesign?: string;
+    mapDiyDraft?: WorldMapDiyDraft;
+}
 
 export interface 创意工坊模块条目 {
     id: string;
@@ -18,6 +26,7 @@ export interface 创意工坊模块条目 {
     description: string;
     tags: string[];
     payload: Record<string, unknown>;
+    worldDetailGeneration?: 创意工坊世界细节生成配置;
     modeWorldbooks?: 世界书结构[];
     modeRuntimeProfile?: ModeRuntimeProfile;
     contentBlocks?: Array<{

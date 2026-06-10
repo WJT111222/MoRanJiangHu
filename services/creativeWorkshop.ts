@@ -110,6 +110,22 @@ const 提取模块正文 = (entry: 创意工坊模块条目): string => {
     return entry.injectionPreview.join('\n').trim();
 };
 
+const 规范化世界细节生成配置 = (raw: any): 创意工坊模块条目['worldDetailGeneration'] | undefined => {
+    const source = raw && typeof raw === 'object' && !Array.isArray(raw)
+        ? raw
+        : undefined;
+    if (!source) return undefined;
+    return {
+        aiGenerate: source.aiGenerate !== false,
+        importantPeople: typeof source.importantPeople === 'string' ? source.importantPeople.trim() : '',
+        importantFactions: typeof source.importantFactions === 'string' ? source.importantFactions.trim() : '',
+        mapDesign: typeof source.mapDesign === 'string' ? source.mapDesign.trim() : '',
+        mapDiyDraft: source.mapDiyDraft && typeof source.mapDiyDraft === 'object' && !Array.isArray(source.mapDiyDraft)
+            ? source.mapDiyDraft
+            : undefined
+    };
+};
+
 const 升级旧版开局模块 = (entry: 创意工坊模块条目): 创意工坊模块条目 => {
     if (entry.type !== 'opening') return entry;
     const payload = entry.payload as any;
@@ -230,6 +246,7 @@ const 规范化模块 = (raw: any, source: 创意工坊模块条目['source']): 
         description: typeof raw.description === 'string' ? raw.description.trim() : '',
         tags: Array.isArray(raw.tags) ? raw.tags.map((item: unknown) => String(item || '').trim()).filter(Boolean).slice(0, 12) : [],
         payload: raw.payload && typeof raw.payload === 'object' && !Array.isArray(raw.payload) ? raw.payload : {},
+        worldDetailGeneration: 规范化世界细节生成配置(raw.worldDetailGeneration || raw.payload?.worldDetailGeneration),
         modeWorldbooks: Array.isArray(raw.modeWorldbooks)
             ? raw.modeWorldbooks
             : Array.isArray(raw.payload?.modeWorldbooks)

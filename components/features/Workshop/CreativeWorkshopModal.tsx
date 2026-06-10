@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { 从模式世界书提取提示词, 创意工坊模块分区, type 创意工坊模块条目, type 创意工坊模块类型 } from '../../../data/creativeWorkshopModules';
+import { 从模式世界书提取提示词, 创意工坊模块分区, type 创意工坊模块条目, type 创意工坊模块类型, type 创意工坊世界细节生成配置 } from '../../../data/creativeWorkshopModules';
 import type { 接口设置结构, ModeRuntimeProfile, 世界书结构 } from '../../../types';
 import type { 题材模式类型 } from '../../../models/system';
 import { 题材模式配置表, 题材模式顺序 } from '../../../utils/topicModeProfiles';
@@ -206,6 +206,10 @@ type 贡献草稿 = {
     topicBody: string;
     worldRulesBody: string;
     abilityBody: string;
+    aiGenerateWorldDetails: boolean;
+    importantPeople: string;
+    importantFactions: string;
+    mapDesign: string;
     usagePrompt: string;
     safetyNotes: string;
     style: string;
@@ -276,6 +280,10 @@ const 空贡献草稿 = (): 贡献草稿 => ({
     topicBody: '',
     worldRulesBody: '',
     abilityBody: '',
+    aiGenerateWorldDetails: false,
+    importantPeople: '',
+    importantFactions: '',
+    mapDesign: '',
     usagePrompt: '',
     safetyNotes: '',
     style: '',
@@ -350,6 +358,19 @@ const 提取模块模式元数据 = (entry: 创意工坊模块条目): Record<st
     };
 };
 
+const 提取模块世界细节生成配置 = (entry: 创意工坊模块条目): 创意工坊世界细节生成配置 => {
+    const payload = entry.payload as any;
+    const raw = entry.worldDetailGeneration || payload?.worldDetailGeneration;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { aiGenerate: true };
+    return {
+        aiGenerate: raw.aiGenerate !== false,
+        importantPeople: typeof raw.importantPeople === 'string' ? raw.importantPeople.trim() : '',
+        importantFactions: typeof raw.importantFactions === 'string' ? raw.importantFactions.trim() : '',
+        mapDesign: typeof raw.mapDesign === 'string' ? raw.mapDesign.trim() : '',
+        mapDiyDraft: raw.mapDiyDraft && typeof raw.mapDiyDraft === 'object' && !Array.isArray(raw.mapDiyDraft) ? raw.mapDiyDraft : undefined
+    };
+};
+
 const 构建预览页说明 = (entry: 创意工坊模块条目): string => {
     if (entry.type === 'comfy_workflow') {
         return '完整只读配置页。这里展示该工作流实际携带的基础信息、使用提示、工作流内容、内容块和原始模块数据。';
@@ -372,8 +393,36 @@ const 构建模式元数据 = (draft: 贡献草稿) => ({
     talentSuggestions: 分割短语(draft.talentSuggestions)
 });
 
+const 构建世界细节生成配置 = (draft: 贡献草稿): 创意工坊世界细节生成配置 => ({
+    aiGenerate: draft.aiGenerateWorldDetails,
+    importantPeople: draft.importantPeople.trim(),
+    importantFactions: draft.importantFactions.trim(),
+    mapDesign: draft.mapDesign.trim()
+});
+
+const 世界细节配置有自定义内容 = (config: 创意工坊世界细节生成配置): boolean => (
+    Boolean(config.importantPeople?.trim() || config.importantFactions?.trim() || config.mapDesign?.trim() || config.mapDiyDraft?.enabled)
+);
+
+const 渲染世界细节生成配置 = (config: 创意工坊世界细节生成配置): string => {
+    if (config.aiGenerate) {
+        return [
+            '世界细节生成模式：AI 默认生成',
+            '说明：未锁定重要人物、重要势力或地图分布，开局时由 AI 按题材口径自动补全。'
+        ].join('\n');
+    }
+    return [
+        '世界细节生成模式：贡献者自定义',
+        '开局世界生成必须优先保留下列设定；AI 只能补齐空白、润色描述、修正层级关系，不能另起一套重要人物、势力或地图结构。',
+        config.importantPeople?.trim() ? `【重要人物】\n${config.importantPeople.trim()}` : '',
+        config.importantFactions?.trim() ? `【重要势力/宗门/组织】\n${config.importantFactions.trim()}` : '',
+        config.mapDesign?.trim() ? `【地图层级与地图块介绍】\n${config.mapDesign.trim()}` : ''
+    ].filter(Boolean).join('\n\n');
+};
+
 const 渲染模式元数据世界书内容 = (draft: 贡献草稿): string => {
     const metadata = 构建模式元数据(draft);
+    const worldDetailGeneration = 构建世界细节生成配置(draft);
     return [
         `题材模式：${metadata.mode}`,
         `货币显示：${metadata.currencyDisplayMode}`,
@@ -384,7 +433,8 @@ const 渲染模式元数据世界书内容 = (draft: 贡献草稿): string => {
         `技能建议：${metadata.skillNames.join('、')}`,
         `预设物品关键词：${metadata.presetItemKeywords.join('、')}`,
         `背景建议：${metadata.backgroundSuggestions.join('、')}`,
-        `天赋建议：${metadata.talentSuggestions.join('、')}`
+        `天赋建议：${metadata.talentSuggestions.join('、')}`,
+        `世界细节：${worldDetailGeneration.aiGenerate ? 'AI 默认生成' : '贡献者自定义'}`
     ].filter((line) => !line.endsWith('：')).join('\n');
 };
 
@@ -422,6 +472,20 @@ const 构建贡献模式世界书 = (draft: 贡献草稿, suiteId: string, suite
             注入模式: 'always',
             关键词: [],
             优先级: 104,
+            启用: true,
+            创建时间: Date.now(),
+            更新时间: Date.now()
+        },
+        {
+            id: `${suiteId}-world-details`,
+            标题: '世界细节生成策略',
+            内容: 渲染世界细节生成配置(构建世界细节生成配置(draft)),
+            条目形态: 'normal',
+            类型: 'system_rule',
+            作用域: ['main', 'opening', 'world_evolution', 'variable_calibration', 'story_plan', 'heroine_plan', 'tavern'],
+            注入模式: 'always',
+            关键词: [],
+            优先级: 103,
             启用: true,
             创建时间: Date.now(),
             更新时间: Date.now()
@@ -547,6 +611,8 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string): 创意
     const safetyNotes = 分割文本行(draft.safetyNotes);
     const usagePrompt = draft.usagePrompt.trim() || '作为完整模式包注入新建存档：模式专属世界书会统一接管题材口径、世界规则和能力体系。';
     const modeMetadata = 构建模式元数据(draft);
+    const worldDetailGeneration = 构建世界细节生成配置(draft);
+    const worldDetailContent = 渲染世界细节生成配置(worldDetailGeneration);
     const modeRuntimeProfile = 规范化模式运行时配置({
         ...draft.modeRuntimeProfile,
         identity: {
@@ -571,7 +637,12 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string): 创意
         },
         map: {
             ...draft.modeRuntimeProfile.map,
-            mapPrompt: modeMetadata.mapPrompt
+            mapPrompt: [
+                modeMetadata.mapPrompt,
+                !worldDetailGeneration.aiGenerate && worldDetailGeneration.mapDesign.trim()
+                    ? '地图生成必须优先使用贡献者填写的地图层级与地图块介绍。'
+                    : ''
+            ].filter(Boolean).join('\n')
         },
         opening: {
             ...draft.modeRuntimeProfile.opening,
@@ -595,6 +666,13 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string): 创意
             purpose: '追加到世界观细化要求，约束势力、市场、地图、资源和社会规则。',
             injectionTarget: 'worldExtraRequirement',
             content: draft.worldRulesBody.trim()
+        },
+        {
+            id: 'world-detail-main',
+            title: '世界细节生成策略',
+            purpose: '控制重要人物、重要势力和地图层级是由 AI 默认生成，还是优先使用贡献者自定义内容。',
+            injectionTarget: 'worldExtraRequirement',
+            content: worldDetailContent
         },
         {
             id: 'ability-main',
@@ -623,6 +701,7 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string): 创意
             mode: modeRuntimeProfile.identity.baseMode,
             modeMetadata,
             modeRuntimeProfile,
+            worldDetailGeneration,
             modeWorldbooks,
             manualWorldPrompt: extractedPrompts.manualWorldPrompt,
             worldExtraRequirement: extractedPrompts.worldExtraRequirement,
@@ -632,6 +711,7 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string): 创意
             usagePrompt,
             safetyNotes
         },
+        worldDetailGeneration,
         modeWorldbooks,
         modeRuntimeProfile,
         contentBlocks,
@@ -643,6 +723,7 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string): 创意
             `适用题材：${modeRuntimeProfile.identity.baseMode}`,
             `市场名称：${modeMetadata.auctionName || '未填写'}`,
             `时间口径：${modeRuntimeProfile.time.displayFormat} / ${modeRuntimeProfile.time.narrativeStyle.slice(0, 80)}`,
+            `世界细节：${worldDetailGeneration.aiGenerate ? 'AI 默认生成' : '贡献者自定义'}`,
             `地图口径：${modeMetadata.mapPrompt.slice(0, 120) || '未填写'}`,
             `题材口径：${draft.topicBody.trim().slice(0, 160)}`,
             `世界规则：${draft.worldRulesBody.trim().slice(0, 160)}`,
@@ -677,6 +758,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
             ? [contributionModule]
             : [构建模式包模块(contributionDraft, contributor)]
     ), [contributionDraft, contributionModule, contributor]);
+    const worldDetailsReady = contributionDraft.aiGenerateWorldDetails || 世界细节配置有自定义内容(构建世界细节生成配置(contributionDraft));
     const contributionReady = contributionDraft.title.trim().length > 0 && (
         contributionDraft.type === 'comfy_workflow'
             ? contributionDraft.body.trim().length > 0
@@ -690,6 +772,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                 && 分割短语(contributionDraft.presetItemKeywords).length > 0
                 && 分割短语(contributionDraft.backgroundSuggestions).length > 0
                 && 分割短语(contributionDraft.talentSuggestions).length > 0
+                && worldDetailsReady
     );
     const 更新运行时配置字段 = (field: 运行时配置字段, value: any) => {
         setContributionDraft((prev) => {
@@ -1017,6 +1100,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         const runtimeProfile = 提取模块运行时配置(entry);
         const modeWorldbooks = 提取模块模式世界书(entry);
         const modeMetadata = 提取模块模式元数据(entry);
+        const worldDetailGeneration = 提取模块世界细节生成配置(entry);
         const metadataFields = [
             ['题材模式', String(modeMetadata.mode || '')],
             ['货币显示', String(modeMetadata.currencyDisplayMode || '')],
@@ -1069,6 +1153,39 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                 </label>
                             ))}
                         </div>
+                    </section>
+                ) : null}
+
+                {entry.type !== 'comfy_workflow' ? (
+                    <section className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.045] p-4">
+                        <div className="text-xs font-bold tracking-[0.14em] text-emerald-200">世界细节生成</div>
+                        <div className="mt-2 text-sm font-bold text-gray-100">
+                            {worldDetailGeneration.aiGenerate ? 'AI 默认生成' : '贡献者自定义'}
+                        </div>
+                        {worldDetailGeneration.aiGenerate ? (
+                            <div className="mt-2 text-xs leading-5 text-gray-400">该模块未锁定重要人物、重要势力或地图分布，开局时会按题材口径自动补全。</div>
+                        ) : (
+                            <div className="mt-3 grid gap-3">
+                                {worldDetailGeneration.importantPeople && (
+                                    <label className="block text-xs text-gray-300">
+                                        重要人物
+                                        <textarea value={worldDetailGeneration.importantPeople} readOnly className="mt-1 min-h-20 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm leading-5 text-gray-100 outline-none" />
+                                    </label>
+                                )}
+                                {worldDetailGeneration.importantFactions && (
+                                    <label className="block text-xs text-gray-300">
+                                        重要势力 / 宗门 / 组织
+                                        <textarea value={worldDetailGeneration.importantFactions} readOnly className="mt-1 min-h-20 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm leading-5 text-gray-100 outline-none" />
+                                    </label>
+                                )}
+                                {worldDetailGeneration.mapDesign && (
+                                    <label className="block text-xs text-gray-300">
+                                        地图层级与地图块介绍
+                                        <textarea value={worldDetailGeneration.mapDesign} readOnly className="mt-1 min-h-24 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm leading-5 text-gray-100 outline-none" />
+                                    </label>
+                                )}
+                            </div>
+                        )}
                     </section>
                 ) : null}
 
@@ -1345,6 +1462,59 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                                 </label>
                                             </div>
                                         </div>
+                                        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.045] p-3">
+                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                                <div>
+                                                    <div className="text-xs font-bold tracking-[0.14em] text-emerald-200">世界细节生成</div>
+                                                    <div className="mt-1 text-[11px] leading-5 text-gray-400">控制重要人物、重要势力和地图分布由 AI 默认生成，还是由贡献者先写好骨架。</div>
+                                                </div>
+                                                <label className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-black/20 px-3 py-2 text-xs text-emerald-100">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={contributionDraft.aiGenerateWorldDetails}
+                                                        onChange={(event) => setContributionDraft((prev) => ({ ...prev, aiGenerateWorldDetails: event.target.checked }))}
+                                                        className="h-3.5 w-3.5 accent-emerald-400"
+                                                    />
+                                                    默认由 AI 生成
+                                                </label>
+                                            </div>
+                                            {!contributionDraft.aiGenerateWorldDetails && (
+                                                <div className="mt-3 grid gap-3">
+                                                    <label className="block text-xs text-gray-300">
+                                                        重要人物
+                                                        <textarea
+                                                            value={contributionDraft.importantPeople}
+                                                            onChange={(event) => setContributionDraft((prev) => ({ ...prev, importantPeople: event.target.value }))}
+                                                            placeholder="写主要 NPC、关键人物关系、立场、可登场地点和长期目标。"
+                                                            className="mt-1 min-h-24 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm leading-5 text-gray-100 outline-none placeholder:text-gray-500 focus:border-emerald-400/60"
+                                                        />
+                                                    </label>
+                                                    <label className="block text-xs text-gray-300">
+                                                        重要势力 / 宗门 / 组织
+                                                        <textarea
+                                                            value={contributionDraft.importantFactions}
+                                                            onChange={(event) => setContributionDraft((prev) => ({ ...prev, importantFactions: event.target.value }))}
+                                                            placeholder="写势力名称、地盘、目标、冲突关系、代表资源或宗门/组织特色。"
+                                                            className="mt-1 min-h-24 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm leading-5 text-gray-100 outline-none placeholder:text-gray-500 focus:border-emerald-400/60"
+                                                        />
+                                                    </label>
+                                                    <label className="block text-xs text-gray-300">
+                                                        地图层级与地图块介绍
+                                                        <textarea
+                                                            value={contributionDraft.mapDesign}
+                                                            onChange={(event) => setContributionDraft((prev) => ({ ...prev, mapDesign: event.target.value }))}
+                                                            placeholder="按 寰宇 / 大地点 / 中地点 / 小地点 / 区地点 / 子地点 写地图分布、父子关系、区域描述、控制势力和剧情用途。"
+                                                            className="mt-1 min-h-28 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm leading-5 text-gray-100 outline-none placeholder:text-gray-500 focus:border-emerald-400/60"
+                                                        />
+                                                    </label>
+                                                    {!worldDetailsReady && (
+                                                        <div className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-[11px] leading-5 text-amber-100">
+                                                            未启用 AI 默认生成时，至少填写重要人物、重要势力或地图层级中的一项。
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                         <details open className="rounded-xl border border-sky-500/15 bg-sky-500/[0.04] p-3">
                                             <summary className="cursor-pointer text-xs font-bold tracking-[0.14em] text-sky-200">
                                                 运行时模式配置
@@ -1546,6 +1716,11 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                 <div className="mt-3 rounded-lg border border-wuxia-gold/15 bg-black/30 p-3">
                                     <div className="text-xs font-bold tracking-[0.14em] text-wuxia-gold">标准格式预览</div>
                                     <div className="mt-2 text-xs leading-5 text-gray-300">使用提示：{contributionDraft.type === 'comfy_workflow' ? contributionModule.usagePrompt : '完整模式包会以模式专属世界书的形式统一生效。'}</div>
+                                    {contributionDraft.type !== 'comfy_workflow' && (
+                                        <div className="mt-2 rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-1.5 text-[11px] leading-5 text-emerald-100">
+                                            世界细节：{contributionDraft.aiGenerateWorldDetails ? 'AI 默认生成' : '贡献者自定义'}
+                                        </div>
+                                    )}
                                     <ul className="mt-2 space-y-1 text-xs leading-5 text-gray-300">
                                         {contributionModules.flatMap((module) => module.injectionPreview.slice(0, 4)).map((line, index) => <li key={index}>{line}</li>)}
                                     </ul>
