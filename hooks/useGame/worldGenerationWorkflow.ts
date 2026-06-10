@@ -13,6 +13,7 @@ import { 获取繁体输出指令 } from '../../utils/traditionalChinese';
 import { 按功能开关过滤提示词内容 } from '../../utils/promptFeatureToggles';
 import { 构建题材默认境界体系提示词, 题材是否使用默认现代境界 } from '../../utils/topicRealmDefaults';
 import { 构建开局运行时快照 } from '../../utils/customNewGamePresets';
+import { recordDiagnosticLog } from '../../services/diagnosticLog';
 import { 合并世界基底到开场状态 } from './storyState';
 
 type 世界生成选项 = {
@@ -577,6 +578,11 @@ export const 执行世界生成工作流 = async (
         if (worldStreamHeartbeat) clearInterval(worldStreamHeartbeat);
         if (realmStreamHeartbeat) clearInterval(realmStreamHeartbeat);
         开局流式历史更新器?.停止();
+        recordDiagnosticLog('error', ['世界观生成失败', {
+            message: error?.message || '',
+            name: error?.name || typeof error,
+            stack: typeof error?.stack === 'string' ? error.stack : undefined
+        }]);
         console.error(error);
         const errorMessage = error?.message || '未知错误';
         deps.设置历史记录(prev => ([

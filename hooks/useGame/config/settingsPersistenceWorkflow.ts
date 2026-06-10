@@ -15,6 +15,7 @@ import type {
     词组转化器提示词预设结构
 } from '../../../types';
 import * as dbService from '../../../services/dbService';
+import { recordDiagnosticLog } from '../../../services/diagnosticLog';
 import { bundledDefaultWorldbookIds, loadAllBundledWorldbookPresets } from '../../../data/worldbookPresets';
 import { 按场景图上限裁剪档案 } from '../sceneImageArchiveWorkflow';
 import { 规范化游戏设置 } from '../../../utils/gameSettings';
@@ -109,6 +110,10 @@ export const 创建设置持久化工作流 = (deps: 设置持久化工作流依
             const savedEntries = await dbService.读取设置(内置提示词存储键);
             deps.设置内置提示词列表(规范化内置提示词列表(savedEntries));
         } catch (error) {
+            recordDiagnosticLog('error', ['读取内置提示词失败', {
+                message: error?.message || '',
+                stack: typeof error?.stack === 'string' ? error.stack : undefined
+            }]);
             console.error('读取内置提示词失败', error);
         }
     };
@@ -121,6 +126,10 @@ export const 创建设置持久化工作流 = (deps: 设置持久化工作流依
             try {
                 bundledDefaults = await loadAllBundledWorldbookPresets();
             } catch (error) {
+                recordDiagnosticLog('warn', ['读取默认世界书预置失败', {
+                    message: error?.message || '',
+                    stack: typeof error?.stack === 'string' ? error.stack : undefined
+                }]);
                 console.error('读取默认世界书预置失败', error);
             }
             const normalizedMergedEntries = 规范化世界书列表([...bundledDefaults, ...normalizedSavedEntries]);
@@ -130,6 +139,10 @@ export const 创建设置持久化工作流 = (deps: 设置持久化工作流依
                 await dbService.保存设置(世界书存储键, normalizedMergedEntries);
             }
         } catch (error) {
+            recordDiagnosticLog('error', ['读取世界书列表失败', {
+                message: error?.message || '',
+                stack: typeof error?.stack === 'string' ? error.stack : undefined
+            }]);
             console.error('读取世界书列表失败', error);
         }
     };
@@ -139,6 +152,10 @@ export const 创建设置持久化工作流 = (deps: 设置持久化工作流依
             const savedGroups = await dbService.读取设置(世界书预设组存储键);
             deps.设置世界书预设组列表(规范化世界书预设组列表(savedGroups));
         } catch (error) {
+            recordDiagnosticLog('error', ['读取世界书预设组失败', {
+                message: error?.message || '',
+                stack: typeof error?.stack === 'string' ? error.stack : undefined
+            }]);
             console.error('读取世界书预设组失败', error);
         }
     };

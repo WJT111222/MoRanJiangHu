@@ -1,4 +1,5 @@
 import type { 香闺秘档部位类型 } from '../../../types';
+import { recordDiagnosticLog } from '../../../services/diagnosticLog';
 
 type 右下角提示参数 = {
     title: string;
@@ -218,6 +219,10 @@ export const 创建手动图片动作工作流 = (deps: 手动图片动作工作
             额外要求: options?.额外要求,
             尺寸: options?.尺寸
         }).catch((error) => {
+            recordDiagnosticLog('error', ['手动NPC生图任务执行失败', {
+                message: error?.message || '',
+                stack: typeof error?.stack === 'string' ? error.stack : undefined
+            }]);
             console.error('手动NPC生图任务执行失败', error);
         });
     };

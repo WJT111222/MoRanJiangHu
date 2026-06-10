@@ -758,24 +758,29 @@ const 解析SSE文本 = async (
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
     const processor = 创建SSE文本处理器(extractDelta, onDelta);
+    const fetchStats = {
+        totalChunks: 0,
+        totalBytes: 0,
+        firstChunkAt: 0,
+        lastChunkAt: 0,
+        startAt: Date.now()
+    };
 
     try {
         while (!processor.是否完成()) {
             const { value, done } = await reader.read();
             if (done) break;
             const chunkText = decoder.decode(value, { stream: true });
-            写入流式诊断日志('fetch stream chunk', {
-                byteLength: value.byteLength,
-                textLength: chunkText.length
-            });
+            const now = Date.now();
+            if (fetchStats.totalChunks === 0) fetchStats.firstChunkAt = now;
+            fetchStats.totalChunks++;
+            fetchStats.totalBytes += value.byteLength;
+            fetchStats.lastChunkAt = now;
             processor.追加文本(chunkText);
         }
 
         const tail = decoder.decode();
         if (tail) {
-            写入流式诊断日志('fetch stream tail', {
-                textLength: tail.length
-            });
             processor.追加文本(tail);
         }
     } finally {
@@ -785,6 +790,18 @@ const 解析SSE文本 = async (
             // ignore release errors
         }
     }
+
+    const fetchElapsedMs = Date.now() - fetchStats.startAt;
+    写入流式诊断日志('fetch stream done', {
+        totalChunks: fetchStats.totalChunks,
+        totalBytes: fetchStats.totalBytes,
+        firstChunkAt: fetchStats.firstChunkAt,
+        lastChunkAt: fetchStats.lastChunkAt,
+        elapsedMs: fetchElapsedMs,
+        avgChunkIntervalMs: fetchStats.totalChunks > 1 && fetchStats.lastChunkAt > fetchStats.firstChunkAt
+            ? Math.round((fetchStats.lastChunkAt - fetchStats.firstChunkAt) / (fetchStats.totalChunks - 1))
+            : null
+    });
 
     return processor.完成();
 };
@@ -926,6 +943,13 @@ const 解析SSE文本XHR = (
     const processor = 创建SSE文本处理器(extractDelta, onDelta);
     let consumedLength = 0;
     let settled = false;
+    const streamStats = {
+        totalChunks: 0,
+        totalBytes: 0,
+        firstChunkAt: 0,
+        lastChunkAt: 0,
+        startAt: Date.now()
+    };
 
     const settleReject = (error: unknown) => {
         if (settled) return;
@@ -944,21 +968,39 @@ const 解析SSE文本XHR = (
         if (text.length <= consumedLength) return;
         const chunk = text.slice(consumedLength);
         consumedLength = text.length;
-        写入流式诊断日志('xhr stream chunk', {
-            textLength: chunk.length,
-            totalTextLength: consumedLength,
-            readyState: xhr.readyState,
-            status: xhr.status || 0
-        });
+        const now = Date.now();
+        if (streamStats.totalChunks === 0) streamStats.firstChunkAt = now;
+        streamStats.totalChunks++;
+        streamStats.totalBytes = consumedLength;
+        streamStats.lastChunkAt = now;
         processor.追加文本(chunk);
     };
 
+    const writeStreamSummary = (eventType: string) => {
+        const elapsedMs = Date.now() - streamStats.startAt;
+        写入流式诊断日志(eventType, {
+            totalChunks: streamStats.totalChunks,
+            totalBytes: streamStats.totalBytes,
+            firstChunkAt: streamStats.firstChunkAt,
+            lastChunkAt: streamStats.lastChunkAt,
+            elapsedMs,
+            avgChunkIntervalMs: streamStats.totalChunks > 1 && streamStats.lastChunkAt > streamStats.firstChunkAt
+                ? Math.round((streamStats.lastChunkAt - streamStats.firstChunkAt) / (streamStats.totalChunks - 1))
+                : null,
+            responseTextLength: (xhr.responseText || '').length,
+            readyState: xhr.readyState,
+            status: xhr.status || 0
+        });
+    };
+
     const abortHandler = () => {
+        const responseTextLengthAtAbort = (xhr.responseText || '').length;
         try {
             xhr.abort();
         } catch {
             // ignore abort errors
         }
+        writeStreamSummary('xhr stream abort');
         settleReject(new DOMException('Aborted', 'AbortError'));
     };
 
@@ -983,18 +1025,12 @@ const 解析SSE文本XHR = (
     };
 
     xhr.onerror = () => {
-        写入流式诊断日志('xhr stream network error', {
-            readyState: xhr.readyState,
-            status: xhr.status || 0
-        });
+        writeStreamSummary('xhr stream network error');
         settleReject(new 协议请求错误('API Error: network error during stream request'));
     };
 
     xhr.ontimeout = () => {
-        写入流式诊断日志('xhr stream timeout', {
-            readyState: xhr.readyState,
-            status: xhr.status || 0
-        });
+        writeStreamSummary('xhr stream timeout');
         settleReject(new 协议请求错误('API Error: stream request timeout'));
     };
 
@@ -1002,10 +1038,10 @@ const 解析SSE文本XHR = (
         signal?.removeEventListener('abort', abortHandler);
         try {
             const contentType = (xhr.getResponseHeader('content-type') || '').toLowerCase();
-            写入流式诊断日志('xhr stream load', {
+            writeStreamSummary('xhr stream load');
+            写入流式诊断日志('xhr stream load status', {
                 status: xhr.status,
-                contentType,
-                totalTextLength: (xhr.responseText || '').length
+                contentType
             });
             if (xhr.status < 200 || xhr.status >= 300) {
                 const detail = (xhr.responseText || '').trim();

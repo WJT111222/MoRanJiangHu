@@ -765,6 +765,10 @@ export const 执行开场剧情生成工作流 = async (
             );
             deps.setPrompts(openingPromptSnapshot);
             await dbService.保存设置(设置键.提示词池, openingPromptSnapshot).catch((error) => {
+                recordDiagnosticLog('error', ['开局持久化同人境界体系失败', {
+                    message: error?.message || '',
+                    stack: typeof error?.stack === 'string' ? error.stack : undefined
+                }]);
                 console.error('开局前置持久化同人境界体系失败', error);
             });
         }

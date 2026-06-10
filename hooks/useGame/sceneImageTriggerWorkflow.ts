@@ -1,4 +1,5 @@
 import type { GameResponse, 生图任务来源类型 } from '../../types';
+import { recordDiagnosticLog } from '../../services/diagnosticLog';
 
 type 场景生图触发参数 = {
     response: GameResponse;
@@ -247,6 +248,10 @@ export const 创建场景生图触发工作流 = (deps: 场景生图触发工作
                 }
             ))
             .catch((error) => {
+                recordDiagnosticLog('error', ['场景生图任务执行失败', {
+                    message: error?.message || '',
+                    stack: typeof error?.stack === 'string' ? error.stack : undefined
+                }]);
                 console.error('场景生图任务执行失败', error);
             });
     };

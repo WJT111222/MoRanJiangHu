@@ -38,6 +38,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as dbService from '../services/dbService';
 import * as textAIService from '../services/ai/text';
 import { 终止全部ComfyUI生图任务 } from '../services/ai/image';
+import { recordDiagnosticLog } from '../services/diagnosticLog';
 import { useGameState } from './useGameState';
 import { 规范化接口设置, 获取当前接口配置, 获取主剧情接口配置, 获取剧情回忆接口配置, 获取记忆总结接口配置, 获取文章优化接口配置, 获取变量计算接口配置, 获取世界演变接口配置, 获取文生图接口配置, 获取场景文生图接口配置, 获取NSFW文生图接口配置, 获取生图词组转化器接口配置, 获取生图画师串预设, 获取词组转化器预设提示词, 接口配置是否可用, 刷新已发现ComfyUI后端缓存, 变量校准功能已启用 as 变量生成功能已启用 } from '../utils/apiConfig';
 import type { 当前可用接口结构 } from '../utils/apiConfig';
@@ -2258,6 +2259,12 @@ export const useGame = () => {
         window.setTimeout(() => {
             npcList.forEach((npc) => {
                 void 执行NPC自动构图任务(npc, '头像').catch((error) => {
+                    recordDiagnosticLog('warn', ['NPC自动生图失败', {
+                        npc: 读取NPC文本字段(npc, 'id') || 读取NPC文本字段(npc, '姓名'),
+                        composition: '头像',
+                        message: error?.message || '',
+                        stack: typeof error?.stack === 'string' ? error.stack : undefined
+                    }]);
                     console.warn('新增 NPC 头像自动生图失败', 读取NPC文本字段(npc, 'id') || 读取NPC文本字段(npc, '姓名'), error);
                 });
             });
@@ -2479,6 +2486,12 @@ export const useGame = () => {
                 });
                 构图列表.forEach((构图) => {
                     void 执行NPC自动构图任务(npc, 构图, { force: true }).catch((error) => {
+                        recordDiagnosticLog('warn', ['NPC补正生图失败', {
+                            npc: 读取NPC文本字段(npc, 'id') || 读取NPC文本字段(npc, '姓名'),
+                            composition: 构图,
+                            message: error?.message || '',
+                            stack: typeof error?.stack === 'string' ? error.stack : undefined
+                        }]);
                         console.warn('NPC 性别明确后的补正生图失败', 读取NPC文本字段(npc, 'id') || 读取NPC文本字段(npc, '姓名'), 构图, error);
                     });
                 });
@@ -3267,6 +3280,10 @@ export const useGame = () => {
                 performAutoSave,
                 执行NPC变量自动备份: (socialSnapshot, options) => {
                     void 自动备份NPC变量(socialSnapshot, options).catch((error) => {
+                        recordDiagnosticLog('warn', ['NPC变量自动备份失败', {
+                            message: error?.message || '',
+                            stack: typeof error?.stack === 'string' ? error.stack : undefined
+                        }]);
                         console.warn('NPC变量自动备份失败', error);
                     });
                 },
@@ -3654,6 +3671,10 @@ export const useGame = () => {
                 来源: 'before_manual_delete',
                 标签: options?.标签
             }).catch((error) => {
+                recordDiagnosticLog('warn', ['删除NPC前本地备份失败', {
+                    message: error?.message || '',
+                    stack: typeof error?.stack === 'string' ? error.stack : undefined
+                }]);
                 console.warn('删除 NPC 前本地备份失败', error);
             });
         },
