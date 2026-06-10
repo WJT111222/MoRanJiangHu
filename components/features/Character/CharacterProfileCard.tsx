@@ -285,8 +285,11 @@ const CharacterProfileCard: React.FC<Props> = ({ character, visualConfig, openin
                                             <span className="text-xs font-semibold tracking-[0.16em] text-[#7a3f12]">{part.名称}</span>
                                             <span className={`text-[11px] ${danger ? 'text-[#b42318]' : 'text-[#198754]'}`}>{part.状态}</span>
                                         </div>
-                                        <div className="mt-2 h-2 overflow-hidden rounded-full border border-[#d8c4a2] bg-[#f3e7cf]">
-                                            <div className={`h-full ${danger ? 'bg-[#b42318]' : 'bg-[#198754]'}`} style={{ width: `${part.比例}%` }} />
+                                        <div className="mt-2 h-3 overflow-hidden rounded-full border border-[#c5ad86] bg-[#eadcc0] shadow-inner">
+                                            <div
+                                                className={`h-full rounded-full transition-[width] ${danger ? 'bg-gradient-to-r from-[#d92d20] to-[#b42318]' : 'bg-gradient-to-r from-[#16a34a] to-[#047857] shadow-[0_0_8px_rgba(22,163,74,0.28)]'}`}
+                                                style={{ width: `${part.比例}%` }}
+                                            />
                                         </div>
                                         <div className="mt-1 font-mono text-[11px] text-[#8a5a2f]">{part.当前}/{part.最大}</div>
                                     </div>

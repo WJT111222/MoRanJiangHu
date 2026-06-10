@@ -8,6 +8,7 @@ import type {
 import { 获取词组转化器预设上下文, type 当前可用接口结构 } from '../../utils/apiConfig';
 import { 生图最大自动重试次数, 执行生图模型调用带重试 } from '../../utils/imageGenerationRetry';
 import type { PNG解析参数结构, 角色锚点结构 } from '../../models/system';
+import { recordDiagnosticLog } from '../../services/diagnosticLog';
 type 图片功能配置 = {
     总开关: boolean;
     NPC开关: boolean;
@@ -359,6 +360,19 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
             状态: 'pending' as const,
             错误信息: undefined
         }, { 同步最近结果: false });
+        recordDiagnosticLog('info', '[NPC私密部位生图链路] 准备调用图片后端', {
+            taskId: task.id,
+            recordId,
+            npcKey,
+            npcName: typeof npc?.姓名 === 'string' ? npc.姓名 : '',
+            part,
+            backendType: imageApi?.图片后端类型 || '',
+            model: imageApi?.model || '',
+            size: 特写尺寸,
+            promptLength: 生图词组.length,
+            hasFinalPositivePrompt: Boolean(最终提示词.最终正向提示词),
+            hasFinalNegativePrompt: Boolean(最终提示词.最终负向提示词)
+        });
         const imageResult = await 执行生图模型调用带重试(
             () => imageAIService.generateImageByPrompt(生图词组, imageApi!, options?.signal, {
                 构图: '部位特写',
@@ -393,8 +407,27 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
                 }
             }
         );
+        recordDiagnosticLog('info', '[NPC私密部位生图链路] 图片后端已返回', {
+            taskId: task.id,
+            recordId,
+            npcKey,
+            part,
+            hasImageUrl: Boolean(imageResult?.图片URL),
+            hasLocalPath: Boolean(imageResult?.本地路径),
+            hasFinalPositivePrompt: Boolean(imageResult?.最终正向提示词),
+            hasFinalNegativePrompt: Boolean(imageResult?.最终负向提示词)
+        });
         const fixedImageResult = await imageAIService.修复部位特写底部缩略图栏(imageResult);
         const localizedImageResult = await imageAIService.persistImageAssetLocally(fixedImageResult);
+        recordDiagnosticLog('info', '[NPC私密部位生图链路] 图片资源本地化完成', {
+            taskId: task.id,
+            recordId,
+            npcKey,
+            part,
+            hasImageUrl: Boolean(localizedImageResult?.图片URL),
+            hasLocalPath: Boolean(localizedImageResult?.本地路径),
+            displayable: Boolean(localizedImageResult?.图片URL || localizedImageResult?.本地路径)
+        });
         if (!localizedImageResult.图片URL && !localizedImageResult.本地路径) {
             throw new Error('图片已生成，但未得到可展示或可保存的图片资源。');
         }
@@ -423,6 +456,16 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
             描述文本: partDescription
         };
         const writeSucceeded = deps.写入NPC香闺秘档部位记录(npcKey, part, successRecord, { 同步最近结果: false });
+        recordDiagnosticLog(writeSucceeded ? 'info' : 'error', '[NPC私密部位生图链路] 写入历史记录结果', {
+            taskId: task.id,
+            recordId,
+            npcKey,
+            npcName: typeof npc?.姓名 === 'string' ? npc.姓名 : '',
+            part,
+            writeSucceeded,
+            hasImageUrl: Boolean(successRecord.图片URL),
+            hasLocalPath: Boolean(successRecord.本地路径)
+        });
         if (!writeSucceeded) {
             throw new Error(`${part}特写已生成，但没有找到要写回的 NPC 档案；已阻止任务标记为成功。`);
         }

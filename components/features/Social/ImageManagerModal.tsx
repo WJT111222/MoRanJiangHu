@@ -10,6 +10,7 @@ import type {
     接口设置结构,
     图片管理设置结构,
     香闺秘档部位类型,
+    物品生图结果,
     画师串预设结构,
     角色数据结构,
     角色锚点结构,
@@ -26,21 +27,20 @@ import { IconScroll } from '../../ui/Icons';
 import { 获取本地图片图床迁移状态, 订阅本地图片图床迁移状态 } from '../../../services/dbService';
 import ImageMigrationStatusPanel from './ImageMigrationStatusPanel';
 
+type 物品历史展示记录 = 物品生图结果 & {
+    id: string;
+    物品名称: string;
+    物品类型?: string;
+    物品品质?: string;
+    来源位置?: '背包' | '拍卖行';
+};
+
 interface Props {
     socialList: NPC结构[];
     playerCharacter?: 角色数据结构 | null;
     cultivationSystemEnabled?: boolean;
     femboyNsfwEnabled?: boolean;
-    itemImageSequence?: Array<{
-        id: string;
-        物品名称: string;
-        物品类型?: string;
-        物品品质?: string;
-        生成时间?: number;
-        状态?: 图片生成状态类型;
-        构图?: string;
-        错误信息?: string;
-    }>;
+    itemImageSequence?: 物品历史展示记录[];
     queue: NPC生图任务记录[];
     sceneArchive: 场景图片档案;
     sceneQueue: 场景生图任务记录[];
@@ -110,13 +110,16 @@ type 合并队列记录 = {
 };
 
 type 合并历史记录 = {
-    类型: 'npc' | 'scene';
+    类型: 'npc' | 'scene' | 'item';
     key: string;
     时间: number;
     状态: 图片生成状态类型;
     npcRecord?: NPC图片记录;
     sceneRecord?: 场景图片档案['最近生图结果'];
+    itemRecord?: 物品历史展示记录;
 };
+
+const 香闺秘档部位列表: 香闺秘档部位类型[] = ['胸部', '小穴', '屁穴', '肉棒'];
 
 const 状态样式: Record<图片生成状态类型, string> = {
     success: 'border-emerald-700 text-emerald-300 bg-emerald-950/20',
@@ -178,8 +181,11 @@ const 从任务状态推导阶段 = (status?: NPC生图任务记录['状态']): 
     return undefined;
 };
 
-const 获取NPC构图文案 = (构图?: NPC生图任务记录['构图'] | 场景生图任务记录['构图'], 部位?: 香闺秘档部位类型): string => {
+const 获取NPC构图文案 = (构图?: NPC生图任务记录['构图'] | 场景生图任务记录['构图'] | string, 部位?: 香闺秘档部位类型): string => {
     if (构图 === '场景') return '场景图片';
+    if (构图 === '物品图标') return '物品图标';
+    if (构图 === '物品特写') return '物品特写';
+    if (构图 === '物品展示图') return '物品展示图';
     if (构图 === '部位特写') {
         return 部位 ? `${部位}特写` : '部位特写';
     }
@@ -560,8 +566,22 @@ const ImageManagerModal: React.FC<Props> = ({
                 const history = hasExplicitHistory ? npc.图片档案?.生图历史 : [];
                 const fallbackRecent = !hasExplicitHistory && npc?.最近生图结果 ? [npc.最近生图结果] : [];
                 const safeHistory = Array.isArray(history) ? history : [];
-                const resultList = (safeHistory.length > 0 ? safeHistory : fallbackRecent)
+                const baseResultList = (safeHistory.length > 0 ? safeHistory : fallbackRecent)
                     .filter((item) => item && typeof item === 'object');
+                const seenIds = new Set(baseResultList.map((item: any) => String(item?.id || '')).filter(Boolean));
+                const secretArchive = npc?.图片档案?.香闺秘档部位档案;
+                const secretFallbackList = secretArchive && typeof secretArchive === 'object'
+                    ? 香闺秘档部位列表
+                        .map((part) => secretArchive?.[part])
+                        .filter((item) => item && typeof item === 'object')
+                        .filter((item: any) => {
+                            const id = String(item?.id || '');
+                            if (id && seenIds.has(id)) return false;
+                            if (id) seenIds.add(id);
+                            return true;
+                        })
+                    : [];
+                const resultList = [...baseResultList, ...secretFallbackList];
                 const npcGender: NPC图片记录['NPC性别'] = ['男', '女', '男娘', '扶她'].includes(String(npc?.性别))
                     ? (npc.性别 as NPC图片记录['NPC性别'])
                     : undefined;
@@ -1143,8 +1163,34 @@ const ImageManagerModal: React.FC<Props> = ({
                 状态: result?.状态 || 'success',
                 sceneRecord: result
             }));
-        return [...npcItems, ...sceneItems].sort((a, b) => b.时间 - a.时间);
-    }, [filteredRecords, filters, sceneHistory]);
+        const itemItems: 合并历史记录[] = itemSequenceList
+            .filter((result) => {
+                if (filters.目标类型 && filters.目标类型 !== '全部' && filters.目标类型 !== 'item') return false;
+                if (filters.状态 && filters.状态 !== '全部' && (result?.状态 || 'success') !== filters.状态) return false;
+                const keyword = (filters.角色姓名 || '').trim().toLowerCase();
+                if (!keyword) return true;
+                const text = [
+                    result?.物品名称,
+                    result?.物品类型,
+                    result?.物品品质,
+                    result?.构图,
+                    result?.画风,
+                    result?.渲染风格,
+                    result?.使用模型,
+                    result?.来源位置,
+                    '物品'
+                ].filter(Boolean).join(' ').toLowerCase();
+                return text.includes(keyword);
+            })
+            .map((result) => ({
+                类型: 'item' as const,
+                key: `item_${result?.id || result?.生成时间 || Math.random()}`,
+                时间: result?.生成时间 || 0,
+                状态: result?.状态 || 'success',
+                itemRecord: result
+            }));
+        return [...npcItems, ...sceneItems, ...itemItems].sort((a, b) => b.时间 - a.时间);
+    }, [filteredRecords, filters, itemSequenceList, sceneHistory]);
 
     const recentQueueTask = React.useMemo(() => {
         if (!selectedNpcId) return null;
@@ -2968,7 +3014,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                 <div className="flex items-center gap-2">
                                     <div className="text-[11px] text-cyan-100/70">{itemSequenceList.length} 条</div>
                                     {onClearItemImageHistory && (
-                                        <button type="button" onClick={() => { void onClearItemImageHistory(); }} className="rounded border border-cyan-400/30 bg-cyan-950/30 px-2 py-1 text-[10px] text-cyan-200/80 hover:border-cyan-400/50 hover:text-cyan-100">清空</button>
+                                        <button type="button" onClick={() => { void onClearItemImageHistory(); }} className={次级按钮样式(true)}>清空</button>
                                     )}
                                 </div>
                             </div>
@@ -3570,6 +3616,15 @@ const ImageManagerModal: React.FC<Props> = ({
                                 清空场景历史
                             </button>
                         )}
+                        {onClearItemImageHistory && (
+                            <button
+                                type="button"
+                                onClick={() => { void onClearItemImageHistory(); }}
+                                className={次级按钮样式(true)}
+                            >
+                                清空物品历史
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -3706,6 +3761,126 @@ const ImageManagerModal: React.FC<Props> = ({
                                                             保存到本地
                                                         </button>
                                                     )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+
+                                if (entry.类型 === 'item' && entry.itemRecord) {
+                                    const result = entry.itemRecord;
+                                    const imageId = typeof result?.id === 'string' ? result.id : '';
+                                    const imageSrc = 获取图片展示地址(result);
+                                    const status = result?.状态 || 'success';
+                                    const hasLocalCopy = 是否存在本地图片副本(result);
+
+                                    return (
+                                        <div key={entry.key} className="rounded border border-cyan-400/20 bg-black/40 overflow-hidden flex flex-col xl:flex-row group hover:border-cyan-300/50 hover:shadow-[0_4px_20px_rgba(34,211,238,0.14)] transition-all duration-300">
+                                            <div className="xl:w-1/3 aspect-square xl:aspect-auto xl:min-h-[240px] bg-[radial-gradient(circle_at_center,#102024,black)] border-b xl:border-b-0 xl:border-r border-cyan-300/10 flex items-center justify-center relative overflow-hidden">
+                                                {imageSrc ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => 打开图片查看器(imageSrc, `${result.物品名称} 图片`)}
+                                                        className="w-full h-full block text-left"
+                                                        title="查看大图"
+                                                    >
+                                                        <img src={imageSrc} alt={`${result.物品名称} 图片`} className="w-full h-full object-contain p-4 transition-transform duration-700 group-hover:scale-[1.03]" />
+                                                    </button>
+                                                ) : (
+                                                    <div className="text-xs text-gray-500 font-serif">图片不可用</div>
+                                                )}
+                                                <div className="absolute top-2 left-2 flex flex-col gap-1.5 opacity-90 transition-opacity group-hover:opacity-100">
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded border inline-block w-fit backdrop-blur bg-black/60 shadow-md ${状态样式[status]}`}>
+                                                        {获取图片状态文案(result)}
+                                                    </span>
+                                                    <span className="rounded border border-cyan-300/40 bg-black/60 backdrop-blur-sm px-2 py-0.5 text-[10px] text-cyan-100/85 shadow-md w-fit">
+                                                        物品
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="p-4 flex flex-col flex-1 bg-gradient-to-b xl:bg-gradient-to-r from-transparent to-black/30">
+                                                <div className="flex items-start justify-between gap-3 border-b border-cyan-300/10 pb-3 mb-4">
+                                                    <div>
+                                                        <div className="text-lg font-serif text-cyan-100">{result.物品名称 || '未命名物品'}</div>
+                                                        <div className="text-[10px] text-gray-500 mt-1 flex flex-wrap gap-2 items-center">
+                                                            <span className="px-1.5 py-0.5 rounded border border-cyan-300/20 bg-cyan-300/5 text-cyan-100/70">{result.构图 || '物品图'}</span>
+                                                            <span>{result.物品类型 || '未分类'}</span>
+                                                            <span>{result.物品品质 || '未知品质'}</span>
+                                                            <span>{result.来源位置 || '未知来源'}</span>
+                                                            <span className="font-mono">{格式化时间(result.生成时间)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 flex-1">
+                                                    <div className="rounded border border-cyan-300/10 bg-black/50 p-3">
+                                                        <div className="text-cyan-100/50 text-[10px] mb-1">使用模型</div>
+                                                        <div className="text-gray-300 text-xs font-mono break-words">{result.使用模型 || '未记录'}</div>
+                                                    </div>
+                                                    <div className="rounded border border-cyan-300/10 bg-black/50 p-3">
+                                                        <div className="text-cyan-100/50 text-[10px] mb-1">画风 / 渲染风格</div>
+                                                        <div className="text-gray-300 text-xs font-mono break-words">{[result.画风, result.渲染风格].filter(Boolean).join(' / ') || '无'}</div>
+                                                    </div>
+                                                    <div className="rounded border border-cyan-300/10 bg-black/50 p-3">
+                                                        <div className="text-cyan-100/50 text-[10px] mb-1">尺寸</div>
+                                                        <div className="text-gray-300 text-xs font-mono break-words">{result.尺寸 || '未记录'}</div>
+                                                    </div>
+                                                    <div className="rounded border border-cyan-300/10 bg-black/50 p-3">
+                                                        <div className="text-cyan-100/50 text-[10px] mb-1">本地副本</div>
+                                                        <div className="text-gray-300 text-xs font-mono break-words">{hasLocalCopy ? '存在' : '未保存或不可用'}</div>
+                                                    </div>
+                                                    <div className="rounded border border-cyan-300/10 bg-black/50 p-3 md:col-span-2">
+                                                        <div className="text-cyan-100/50 text-[10px] mb-1">本地路径</div>
+                                                        <div className="text-gray-300 text-[10px] font-mono break-all">{格式化本地图片描述(result.本地路径)}</div>
+                                                    </div>
+                                                    {result.错误信息 && (
+                                                        <div className="rounded border border-red-900/40 bg-red-950/20 p-3 md:col-span-2 text-red-200 text-xs font-mono break-words">
+                                                            错误：{result.错误信息}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex flex-col gap-2">
+                                                    <details className="group/details">
+                                                        <summary className={`text-[11px] text-gray-400 cursor-pointer select-none hover:text-cyan-100 transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90`}>
+                                                            最终正向提示词
+                                                        </summary>
+                                                        <div className="mt-2 text-[10px] text-gray-400/80 bg-black/80 p-3 rounded border border-cyan-300/10 whitespace-pre-wrap break-words max-h-32 overflow-y-auto custom-scrollbar font-mono leading-relaxed">
+                                                            {result.最终正向提示词 || result.生图词组 || '未记录提示词'}
+                                                        </div>
+                                                    </details>
+                                                    {!!result.最终负向提示词 && (
+                                                        <details className="group/details">
+                                                            <summary className={`text-[11px] text-gray-400 cursor-pointer select-none hover:text-cyan-100 transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90`}>
+                                                                最终负面提示词
+                                                            </summary>
+                                                            <div className="mt-2 text-[10px] text-gray-400/80 bg-black/80 p-3 rounded border border-cyan-300/10 whitespace-pre-wrap break-words max-h-32 overflow-y-auto custom-scrollbar font-mono leading-relaxed">
+                                                                {result.最终负向提示词}
+                                                            </div>
+                                                        </details>
+                                                    )}
+                                                    <details className="group/details">
+                                                        <summary className={`text-[11px] text-gray-400 cursor-pointer select-none hover:text-cyan-100 transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90`}>
+                                                            原始描述
+                                                        </summary>
+                                                        <div className="mt-2 text-[10px] text-gray-400/80 bg-black/80 p-3 rounded border border-cyan-300/10 whitespace-pre-wrap break-words max-h-32 overflow-y-auto custom-scrollbar font-mono leading-relaxed">
+                                                            {result.原始描述 || '未记录描述'}
+                                                        </div>
+                                                    </details>
+                                                </div>
+
+                                                <div className="mt-4 pt-3 flex flex-wrap justify-end gap-2 border-t border-cyan-300/10">
+                                                    {imageSrc && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => 打开图片查看器(imageSrc, `${result.物品名称} 图片`)}
+                                                            className={次级按钮样式()}
+                                                        >
+                                                            查看大图
+                                                        </button>
+                                                    )}
+                                                    <span className="self-center text-[10px] text-gray-500 font-mono">{imageId || '无记录ID'}</span>
                                                 </div>
                                             </div>
                                         </div>

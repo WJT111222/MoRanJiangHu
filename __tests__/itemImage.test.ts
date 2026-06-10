@@ -545,4 +545,23 @@ describe('item image prompt classification', () => {
         expect(bundle.最终负向提示词).toContain('Chinese characters');
         expect(bundle.最终负向提示词).toContain('pseudo text');
     });
+
+    it('defaults people in scene snapshots to Chinese unless foreign features are explicit', () => {
+        const bundle = 构建最终图片提示词('cinematic scene, young man and woman standing in a white light plaza', {
+            图片后端类型: 'comfyui',
+            baseUrl: 'https://example.com',
+            apiKey: '',
+            model: 'mock'
+        } as any, {
+            构图: '场景',
+            场景类型: '剧照场景',
+            附加负面提示词: '',
+            附加正向提示词: ''
+        });
+
+        expect(bundle.最终正向提示词).toContain('Chinese person');
+        expect(bundle.最终正向提示词).toContain('East Asian facial features');
+        expect(bundle.最终负向提示词).toContain('Caucasian face');
+        expect(bundle.最终负向提示词).toContain('blonde hair');
+    });
 });

@@ -584,7 +584,7 @@ export const 执行变量模型校准工作流 = async (
         .filter(Boolean)
         .join('\n\n');
 
-    const result = await textAIService.generateVariableCalibrationUpdate(
+    const 请求变量模型 = (retryHint = '') => textAIService.generateVariableCalibrationUpdate(
         {
             stateJson: 序列化变量模型状态(params.baseState, {
                 survivalNeedsEnabled: 启用饱腹口渴系统,
@@ -603,85 +603,105 @@ export const 执行变量模型校准工作流 = async (
         },
         variableApi,
         params.signal,
-        mergedExtraPrompt,
+        [mergedExtraPrompt, retryHint].filter(Boolean).join('\n\n'),
         params.onStreamDelta,
         runtimeGameConfig.独立APIGPT模式?.变量生成 === true
     );
 
-    const baseCommands = Array.isArray(params.parsedResponse?.tavern_commands)
-        ? params.parsedResponse.tavern_commands
-        : [];
-    const existingKeys = new Set(baseCommands.map(序列化命令去重键));
+    const 校验并规整变量结果 = (result: Awaited<ReturnType<typeof 请求变量模型>>): 变量模型校准结果 | null => {
+        const baseCommands = Array.isArray(params.parsedResponse?.tavern_commands)
+            ? params.parsedResponse.tavern_commands
+            : [];
+        const existingKeys = new Set(baseCommands.map(序列化命令去重键));
 
-    const rejectedReports: string[] = [];
-    const dedupedCommands = (Array.isArray(result.commands) ? result.commands : [])
-        .filter((cmd) => {
-            if (!是否允许变量生成命令(cmd)) return false;
-            const validation = 校验变量命令是否登记(cmd, params.baseState as any);
-            if (!validation.allowed) {
-                rejectedReports.push(`已拦截未登记变量命令：${cmd.action} ${validation.normalizedKey || cmd.key}（${validation.reason || '路径未登记'}）`);
-                return false;
-            }
-            return true;
-        })
-        .filter((cmd) => {
-            const dedupeKey = 序列化命令去重键(cmd);
-            if (existingKeys.has(dedupeKey)) return false;
-            existingKeys.add(dedupeKey);
-            return true;
+        const rejectedReports: string[] = [];
+        const dedupedCommands = (Array.isArray(result.commands) ? result.commands : [])
+            .filter((cmd) => {
+                if (!是否允许变量生成命令(cmd)) return false;
+                const validation = 校验变量命令是否登记(cmd, params.baseState as any);
+                if (!validation.allowed) {
+                    rejectedReports.push(`已拦截未登记变量命令：${cmd.action} ${validation.normalizedKey || cmd.key}（${validation.reason || '路径未登记'}）`);
+                    return false;
+                }
+                return true;
+            })
+            .filter((cmd) => {
+                const dedupeKey = 序列化命令去重键(cmd);
+                if (existingKeys.has(dedupeKey)) return false;
+                existingKeys.add(dedupeKey);
+                return true;
+            });
+
+        const blacklistHits = 提取命中新女性角色姓名黑名单({
+            commands: dedupedCommands,
+            currentSocial: params.baseState.社交,
+            includeLogSenders: false
         });
+        if (blacklistHits.length > 0) {
+            const message = `变量生成命中女性模板姓名黑名单：${blacklistHits.join('、')}。请重新生成变量命令，并确保正文 sender、人物称呼与社交姓名使用同一个非模板原创姓名。`;
+            const error = new Error(message);
+            (error as any).parseDetail = message;
+            throw error;
+        }
 
-    const blacklistHits = 提取命中新女性角色姓名黑名单({
-        commands: dedupedCommands,
-        currentSocial: params.baseState.社交,
-        includeLogSenders: false
-    });
-    if (blacklistHits.length > 0) {
-        const message = `变量生成命中女性模板姓名黑名单：${blacklistHits.join('、')}。请重新生成变量命令，并确保正文 sender、人物称呼与社交姓名使用同一个非模板原创姓名。`;
-        const error = new Error(message);
-        (error as any).parseDetail = message;
-        throw error;
-    }
+        const renameIssues = 提取变量命令NPC姓名改写(dedupedCommands, params.baseState.社交);
+        if (renameIssues.length > 0) {
+            const message = `变量生成试图改写已生成 NPC 姓名：${renameIssues.join('；')}。前端不会修改既有变量，请重新生成变量命令并保留已有 NPC 姓名。`;
+            const error = new Error(message);
+            (error as any).parseDetail = message;
+            throw error;
+        }
 
-    const renameIssues = 提取变量命令NPC姓名改写(dedupedCommands, params.baseState.社交);
-    if (renameIssues.length > 0) {
-        const message = `变量生成试图改写已生成 NPC 姓名：${renameIssues.join('；')}。前端不会修改既有变量，请重新生成变量命令并保留已有 NPC 姓名。`;
-        const error = new Error(message);
-        (error as any).parseDetail = message;
-        throw error;
-    }
+        const deletionIssues = 检测社交删除风险命令(dedupedCommands, params.baseState.社交);
+        if (deletionIssues.length > 0) {
+            const message = `变量生成试图删除或替换既有 NPC：${deletionIssues.join('；')}。未经玩家手动确认，变量生成只能更新 NPC 字段，不能删除角色或整组覆盖社交列表。`;
+            const error = new Error(message);
+            (error as any).parseDetail = message;
+            throw error;
+        }
 
-    const deletionIssues = 检测社交删除风险命令(dedupedCommands, params.baseState.社交);
-    if (deletionIssues.length > 0) {
-        const message = `变量生成试图删除或替换既有 NPC：${deletionIssues.join('；')}。未经玩家手动确认，变量生成只能更新 NPC 字段，不能删除角色或整组覆盖社交列表。`;
-        const error = new Error(message);
-        (error as any).parseDetail = message;
-        throw error;
-    }
+        const deathIssues = 检测NPC死亡判定风险命令(dedupedCommands, params.baseState.社交, params.parsedResponse);
+        if (deathIssues.length > 0) {
+            const message = `变量生成试图把 NPC 判定为死亡/已故，但证据不足：${deathIssues.join('；')}。死亡判定必须同时写入：当前血量归零、死亡状态、死亡时间、死亡描述；否则只能写重伤、濒死、失踪或状态未知。请重新生成变量命令。`;
+            const error = new Error(message);
+            (error as any).parseDetail = message;
+            throw error;
+        }
 
-    const deathIssues = 检测NPC死亡判定风险命令(dedupedCommands, params.baseState.社交, params.parsedResponse);
-    if (deathIssues.length > 0) {
-        const message = `变量生成试图把 NPC 判定为死亡/已故，但证据不足：${deathIssues.join('；')}。死亡判定必须同时写入：当前血量归零、死亡状态、死亡时间、死亡描述；否则只能写重伤、濒死、失踪或状态未知。请重新生成变量命令。`;
-        const error = new Error(message);
-        (error as any).parseDetail = message;
-        throw error;
-    }
+        const normalizedReports = [
+            ...(Array.isArray(result.reports) ? result.reports : []),
+            ...rejectedReports
+        ]
+            .map((item) => (item || '').trim())
+            .filter(Boolean);
 
-    const normalizedReports = [
-        ...(Array.isArray(result.reports) ? result.reports : []),
-        ...rejectedReports
-    ]
-        .map((item) => (item || '').trim())
-        .filter(Boolean);
+        if (dedupedCommands.length === 0 && normalizedReports.length === 0) {
+            return null;
+        }
 
-    if (dedupedCommands.length === 0 && normalizedReports.length === 0) {
-        return null;
-    }
-
-    return {
-        commands: dedupedCommands,
-        reports: normalizedReports,
-        rawText: typeof result.rawText === 'string' ? result.rawText : '',
-        model: variableApi.model
+        return {
+            commands: dedupedCommands,
+            reports: normalizedReports,
+            rawText: typeof result.rawText === 'string' ? result.rawText : '',
+            model: variableApi.model
+        };
     };
+
+    const 构建变量重试提示 = (error: any, rawText?: string): string => [
+        '【自动重试：变量生成结果未通过前端校验】',
+        `失败原因：${error?.parseDetail || error?.message || String(error || '未知错误')}`,
+        '请基于同一正文和同一当前变量状态重新生成一版完整变量结果。',
+        '不要解释错误；不要输出补丁说明；直接重新输出 <thinking>、<说明>、<命令> 三个顶层标签。',
+        '必须避开失败原因中指出的问题；若涉及已有 NPC，只允许更新字段，不得删除、替换、改名或整组覆盖社交列表。',
+        rawText ? `【上一版未通过校验的变量模型原始输出】\n${rawText}` : ''
+    ].filter(Boolean).join('\n\n');
+
+    let firstResult = await 请求变量模型();
+    try {
+        return 校验并规整变量结果(firstResult);
+    } catch (error: any) {
+        if (params.signal?.aborted || error?.name === 'AbortError') throw error;
+        const retryResult = await 请求变量模型(构建变量重试提示(error, firstResult.rawText));
+        return 校验并规整变量结果(retryResult);
+    }
 };

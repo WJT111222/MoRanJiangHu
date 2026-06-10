@@ -181,7 +181,7 @@ const 是否应合并硬换行片段 = (previousText: string, nextLine: string):
     if (/^[，,。！？!?；;：:、）)\]】]/.test(next)) return true;
     if (/【[^】\n]{1,24}】[，,。！？!?；;：:]?$/.test(next)) return true;
     if (/(?:摸到了两个坚硬的物体|平日里习惯随身携带的|另一件则是他的|另一件是他的|一把是他|一件是他|则是他的)$/.test(previous)) return true;
-    if (!/[。！？!?；;”"」』）)]$/.test(previous) && /^[\u4e00-\u9fa5A-Za-z0-9【《“"「『]/.test(next) && next.length <= 18) return true;
+    if (!/[。！？!?；;”"」』）)]$/.test(previous) && /^[\u4e00-\u9fa5A-Za-z0-9【《“"「『（(]/.test(next) && next.length <= 36) return true;
     return false;
 };
 
@@ -543,9 +543,9 @@ export const 执行正文润色 = async (
         return { response: baseResponse, applied: false, error: '正文为空，无法优化。' };
     }
 
-    const 执行一次文章优化 = async (prompt: string, retryHint = '') => {
+    const 执行一次文章优化 = async (prompt: string, retryHint = '', bodyOverride?: string) => {
         const result = await textAIService.generatePolishedBody(
-            sourceBody,
+            (bodyOverride || '').trim() || sourceBody,
             retryHint ? `${prompt}\n\n${retryHint}` : prompt,
             polishApi,
             options?.signal,
@@ -558,6 +558,13 @@ export const 执行正文润色 = async (
             throw new Error(pollution.reason);
         }
         return result;
+    };
+    const 提取可续写半成品正文 = (result: { bodyText?: string; rawText?: string } | undefined, logs: 正文日志结构): string => {
+        const body = (result?.bodyText || '').trim();
+        if (body) return body;
+        const rawBody = 提取正文标签内容(result?.rawText || '').trim();
+        if (rawBody) return rawBody;
+        return 构建正文文本(logs).trim();
     };
 
     let polishedResult;
@@ -645,10 +652,59 @@ export const 执行正文润色 = async (
                 return { response: baseResponse, applied: false, error: '文章优化二次扩写丢失了角色对白标签，已保留原文。', rawText: polishedResult.rawText };
             }
         } else if (!retryCheck.ok) {
-            lengthCheck = {
-                ok: false,
-                error: `文章优化未应用：二次扩写后正文仍偏短（当前约 ${retryLength} 字，目标至少 ${requiredEnough} 字，容错 ${tolerance} 字），已保留原始正文。`
-            };
+            const partialBody = 提取可续写半成品正文(retryResult, retryLogs.length > 0 ? retryLogs : polishedLogs);
+            if (partialBody && !options?.signal?.aborted) {
+                const continuationPrompt = [
+                    effectivePolishPrompt,
+                    '【自动抗截断续写要求】',
+                    `上一版扩写正文约 ${retryLength} 字，仍低于目标 ${requiredEnough} 字，疑似模型输出被截断或过早收束。`,
+                    '下面会同时提供“原始事实大纲”和“上一版半成品正文”。你必须保留半成品中已经写出的有效正文，从断点继续补足，并输出一版从开头到结尾都完整的 <正文>。',
+                    '禁止只输出续写片段；禁止重新压缩成摘要；禁止改变事实、判定数量、角色名、已发生结果或跳到新事件。',
+                    `最终 <正文> 内可见正文尽量不少于 ${requiredEnough} 字；必须闭合 </正文> 标签。`
+                ].join('\n\n');
+                const continuationSource = [
+                    '【原始正文事实大纲】',
+                    sourceBody,
+                    '',
+                    '【上一版半成品正文，疑似截断】',
+                    partialBody
+                ].join('\n');
+                const continuationResult = await 执行一次文章优化(continuationPrompt, [
+                    '【自动重试：续写补全】',
+                    '请把上一版半成品正文续写补完整，并输出完整 <thinking>...</thinking><正文>...</正文>。'
+                ].join('\n'), continuationSource);
+                const continuationLogs = 净化角色对白行(规范化对白日志(限制润色结果判定数量(
+                    sourceLogs,
+                    解析正文日志文本(continuationResult.bodyText)
+                )));
+                const continuationLength = 统计润色正文字符数(continuationLogs);
+                const continuationCheck = 评估润色长度结果({
+                    sourceLength,
+                    polishedLength: continuationLength,
+                    requiredLength: requiredBodyLength,
+                    allowExpansionForLength: true
+                });
+                if (continuationLogs.length > 0 && continuationCheck.ok) {
+                    polishedResult = continuationResult;
+                    polishedLogs = continuationLogs;
+                    polishedLength = continuationLength;
+                    lengthCheck = continuationCheck;
+                    if (sourceDialogueCount > 0 && 统计角色对白条数(polishedLogs) < sourceDialogueCount) {
+                        return { response: baseResponse, applied: false, error: '文章优化抗截断续写丢失了角色对白标签，已保留原文。', rawText: polishedResult.rawText };
+                    }
+                } else {
+                    lengthCheck = {
+                        ok: false,
+                        error: `文章优化未应用：抗截断续写后正文仍偏短（当前约 ${continuationLength} 字，目标至少 ${requiredEnough} 字，容错 ${tolerance} 字），已保留原始正文。`
+                    };
+                    polishedResult = continuationResult.rawText ? continuationResult : retryResult;
+                }
+            } else {
+                lengthCheck = {
+                    ok: false,
+                    error: `文章优化未应用：二次扩写后正文仍偏短（当前约 ${retryLength} 字，目标至少 ${requiredEnough} 字，容错 ${tolerance} 字），已保留原始正文。`
+                };
+            }
         }
     }
     if (!lengthCheck.ok) {

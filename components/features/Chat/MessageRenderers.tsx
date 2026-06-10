@@ -534,12 +534,7 @@ const RawResponseDebugButton: React.FC<{
                 event.stopPropagation();
                 onOpen();
             }}
-            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border shadow-[0_5px_14px_rgba(0,0,0,0.28)] transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-wuxia-gold/55 ${className}`}
-            style={{
-                color: '#f5d782',
-                backgroundColor: 'rgba(20, 16, 10, 0.88)',
-                borderColor: 'rgba(230, 200, 110, 0.62)'
-            }}
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#b58a55] bg-[#fff7e8] text-[#6f3b13] shadow-[0_5px_14px_rgba(111,59,19,0.18)] transition hover:scale-105 hover:border-[#8a5726] hover:bg-[#fff0d2] focus:outline-none focus:ring-2 focus:ring-wuxia-gold/55 ${className}`}
             title="查看本段 AI 原始回复"
             aria-label="查看本段 AI 原始回复"
             data-raw-response-button="true"

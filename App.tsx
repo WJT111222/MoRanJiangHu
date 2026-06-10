@@ -1208,13 +1208,16 @@ const App: React.FC = () => {
         const bagRecords = (Array.isArray(state.角色?.物品列表) ? state.角色.物品列表 : []).flatMap((item: any) => {
             const history = Array.isArray(item?.图片档案?.生图历史) ? item.图片档案.生图历史 : [];
             return history.map((record: any, index: number) => ({
+                ...record,
                 id: `${item?.ID || item?.名称 || 'item'}_${record?.id || record?.生成时间 || index}`,
+                原记录ID: record?.id,
                 物品名称: item?.名称 || '未命名物品',
                 物品类型: item?.类型,
                 物品品质: item?.品质,
                 生成时间: record?.生成时间,
                 状态: record?.状态 || 'success',
                 构图: record?.构图,
+                来源位置: '背包' as const,
                 错误信息: typeof record?.错误信息 === 'string' ? record.错误信息.trim() : ''
             }));
         });
@@ -1222,13 +1225,16 @@ const App: React.FC = () => {
             const item = entry?.物品;
             const history = Array.isArray(item?.图片档案?.生图历史) ? item.图片档案.生图历史 : [];
             return history.map((record: any, index: number) => ({
+                ...record,
                 id: `auction_${entry?.ID || 'item'}_${record?.id || record?.生成时间 || index}`,
+                原记录ID: record?.id,
                 物品名称: item?.名称 || '未命名物品',
                 物品类型: item?.类型,
                 物品品质: item?.品质,
                 生成时间: record?.生成时间,
                 状态: record?.状态 || 'success',
                 构图: record?.构图,
+                来源位置: '拍卖行' as const,
                 错误信息: typeof record?.错误信息 === 'string' ? record.错误信息.trim() : ''
             }));
         });
@@ -1456,9 +1462,20 @@ const App: React.FC = () => {
                 错误信息: errorMessage,
                 来源: 'generated'
             };
+            const nextArchive = 合并物品图片档案(candidate.item, record);
+            recordDiagnosticLog(status === 'failed' ? 'warn' : 'info', '[物品自动生图] 写回占位/失败记录', {
+                recordId,
+                status,
+                sourceLocation: candidate.sourceLocation,
+                itemName: candidate.item?.名称 || '无名物品',
+                historyCount: Array.isArray(nextArchive?.生图历史) ? nextArchive.生图历史.length : 0,
+                recentId: nextArchive?.最近生图结果?.id || '',
+                hasError: Boolean(errorMessage),
+                errorMessage: errorMessage || ''
+            });
             写回候选物品({
                 ...(candidate.item as any),
-                图片档案: 合并物品图片档案(candidate.item, record)
+                图片档案: nextArchive
             }, status === 'failed');
         };
 
@@ -1497,7 +1514,20 @@ const App: React.FC = () => {
                         }
                     }
                 );
+                const successHistory = Array.isArray(result.nextItem?.图片档案?.生图历史)
+                    ? result.nextItem.图片档案.生图历史
+                    : [];
                 写回候选物品(result.nextItem, true);
+                recordDiagnosticLog('info', '[物品自动生图] 成功结果写回候选物品', {
+                    recordId,
+                    resultRecordId: result.imageRecord?.id || '',
+                    sourceLocation: candidate.sourceLocation,
+                    itemName: result.nextItem?.名称 || candidate.item?.名称 || '无名物品',
+                    historyCount: successHistory.length,
+                    recentId: result.nextItem?.图片档案?.最近生图结果?.id || '',
+                    hasImageUrl: Boolean(result.imageRecord?.图片URL),
+                    hasLocalPath: Boolean(result.imageRecord?.本地路径)
+                });
                 autoItemImageRecentSuccessRef.current.set(candidate.key, {
                     completedAt: Date.now(),
                     recordId,
@@ -2142,12 +2172,24 @@ const App: React.FC = () => {
                 force: true,
                 extraPrompt
             });
+            const history = Array.isArray(result.nextItem?.图片档案?.生图历史)
+                ? result.nextItem.图片档案.生图历史
+                : [];
             const nextItems = sourceItems.map((item: any) => (
                 item?.ID === itemRef || item?.名称 === itemRef ? result.nextItem : item
             ));
             const nextCharacter = { ...state.角色, 物品列表: nextItems };
             setters.setCharacter(nextCharacter);
             void actions.performAutoSave?.({ role: nextCharacter, force: true });
+            recordDiagnosticLog('info', '[物品手动生图] 成功写入背包物品档案', {
+                itemRef,
+                recordId: result.imageRecord?.id || '',
+                itemName: (result.nextItem as any)?.名称 || (freshItem as any)?.名称 || '无名物品',
+                historyCount: history.length,
+                recentId: result.nextItem?.图片档案?.最近生图结果?.id || '',
+                hasImageUrl: Boolean(result.imageRecord?.图片URL),
+                hasLocalPath: Boolean(result.imageRecord?.本地路径)
+            });
             actions.pushNotification({
                 title: '物品图标已更新',
                 message: `「${(result.nextItem as any)?.名称 || (freshItem as any)?.名称 || '无名物品'}」的新图标已写入背包。`,
@@ -2155,6 +2197,11 @@ const App: React.FC = () => {
             });
         } catch (error) {
             const message = 读取生图错误文本(error, '物品重生图失败');
+            recordDiagnosticLog('warn', '[物品手动生图] 生成或写回失败', {
+                itemRef,
+                itemName: (freshItem as any)?.名称 || '无名物品',
+                errorMessage: message
+            });
             actions.pushNotification({ title: '物品重生图失败', message, tone: 'error' });
             throw error;
         }

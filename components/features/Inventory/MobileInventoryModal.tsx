@@ -385,11 +385,6 @@ const MobileInventoryModal: React.FC<Props> = ({ character, openingConfig, onClo
                                         </span>
                                         <span className="font-mono">{getSafeNumber(item?.重量)}斤</span>
                                     </div>
-                                    {description ? (
-                                        <div className="mt-1 line-clamp-2 text-[10px] leading-4 text-gray-400">
-                                            {description}
-                                        </div>
-                                    ) : null}
                                 </div>
                             </button>
                         );

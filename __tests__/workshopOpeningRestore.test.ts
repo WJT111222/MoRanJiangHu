@@ -317,4 +317,70 @@ describe('workshop opening restore helpers', () => {
         expect(restored.selectedBackground?.名称).toBe('预设身份');
         expect(restored.selectedTalents.map((item) => item.名称)).toEqual(['预设天赋']);
     });
+
+    it('预设直开按预设题材恢复背景天赋，不被当前页面兜底池串成武侠出身', () => {
+        const restored = 构建预设直开恢复结果({
+            id: 'direct-open-infinite-mode-with-wuxia-fallback',
+            名称: '无限流直开恢复',
+            简介: '复现当前页面仍是武侠池时，无限流预设不应恢复成名门之后',
+            worldConfig: {
+                worldName: '主神空间',
+                worldSize: '无尽位面',
+                dynastySetting: '',
+                sectDensity: '稀少',
+                tianjiaoSetting: '',
+                difficulty: 'normal',
+                worldExtraRequirement: '',
+                manualWorldPrompt: '',
+                manualRealmPrompt: ''
+            },
+            character: {
+                姓名: '周砚',
+                性别: '男',
+                年龄: 24,
+                出生月: 1,
+                出生日: 1,
+                外貌: '普通',
+                性格: '谨慎',
+                属性: { 力量: 5, 敏捷: 5, 体质: 5, 根骨: 5, 悟性: 5, 福源: 5 },
+                背景名称: '恐怖片影迷',
+                天赋名称列表: ['情报记忆', '恐惧抗性']
+            },
+            openingConfig: {
+                题材模式: '无限流',
+                初始关系模板: '随机邂逅',
+                关系侧重: ['友情'],
+                开局切入偏好: '市井起手',
+                开局生成门派: true,
+                开局生成同门: true,
+                同人融合: {
+                    enabled: false,
+                    作品名: '',
+                    来源类型: '小说',
+                    融合强度: '轻度映射',
+                    保留原著角色: false,
+                    启用角色替换: false,
+                    替换目标角色名: '',
+                    附加替换角色名列表: [],
+                    附加角色替换规则列表: [],
+                    启用附加小说: false,
+                    附加小说数据集ID: ''
+                }
+            },
+            openingStreaming: true,
+            openingExtraRequirement: ''
+        }, {
+            fallbackBackgrounds: [
+                { 名称: '名门之后', 描述: '武林世家出身，血缘、家学与旧交会在很长时间里持续影响你的道路。', 效果: '武侠兜底身份' }
+            ],
+            fallbackTalents: [
+                { 名称: '天生剑骨', 描述: '武侠兜底天赋', 效果: '武侠兜底效果' }
+            ]
+        });
+
+        expect(restored.openingConfig?.题材模式).toBe('无限流');
+        expect(restored.selectedBackground?.名称).toBe('恐怖片影迷');
+        expect(restored.selectedBackground?.描述).not.toContain('武林世家出身');
+        expect(restored.selectedTalents.map((item) => item.名称)).toEqual(['情报记忆', '恐惧抗性']);
+    });
 });

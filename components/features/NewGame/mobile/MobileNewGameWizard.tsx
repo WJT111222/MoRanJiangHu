@@ -433,6 +433,29 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
             .filter((item): item is 天赋结构 => Boolean(item))
             .slice(0, 3)
     );
+    const 获取预设恢复题材模式 = (preset: 开局预设方案结构): 题材模式类型 => {
+        const normalizedOpeningConfig = 规范化可选开局配置(preset.openingConfig);
+        const runtimeRestore = 获取快速重开运行时恢复参数({
+            openingConfig: preset.openingConfig,
+            openingStreaming: preset.openingStreaming,
+            openingExtraRequirement: preset.openingExtraRequirement,
+            validModuleKeys: 恢复链有效模块键
+        });
+        return (runtimeRestore.modeRuntimeProfile?.identity.baseMode
+            || normalizedOpeningConfig?.题材模式
+            || openingConfig.题材模式) as 题材模式类型;
+    };
+    const 构建预设恢复候选池 = (preset: 开局预设方案结构) => {
+        const presetMode = 获取预设恢复题材模式(preset);
+        const presetModeBackgrounds = 获取题材预设背景(presetMode);
+        const presetModeTalents = 获取题材预设天赋(presetMode);
+        return {
+            fallbackBackgrounds: 合并去重背景([...presetModeBackgrounds, ...自定义背景列表, ...全部背景选项]),
+            fallbackTalents: 合并去重天赋([...presetModeTalents, ...自定义天赋列表, ...全部天赋选项]),
+            selectedBackgroundCatalog: 合并去重背景([...presetModeBackgrounds, ...自定义背景列表, ...全部背景选项]),
+            selectedTalentCatalog: 合并去重天赋([...presetModeTalents, ...自定义天赋列表, ...全部天赋选项])
+        };
+    };
     const 读取图片文件 = (file: File, setter: (value: string) => void) => {
         if (!file || !file.type.startsWith('image/')) return;
         const reader = new FileReader();
@@ -643,11 +666,9 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
         };
     };
     const 应用预设到表单 = (preset: 开局预设方案结构, options?: { 保持当前步骤?: boolean }) => {
+        const presetRestoreCatalog = 构建预设恢复候选池(preset);
         const restored = 构建预设表单恢复结果(preset, {
-            fallbackBackgrounds: 当前题材预设背景,
-            fallbackTalents: 当前题材预设天赋,
-            selectedBackgroundCatalog: 全部背景选项,
-            selectedTalentCatalog: 全部天赋选项,
+            ...presetRestoreCatalog,
             validModuleKeys: 恢复链有效模块键
         });
         const normalizedOpeningConfig = 规范化可选开局配置(preset.openingConfig);
@@ -1569,13 +1590,11 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
     };
 
     const handleGenerate = async (preset?: 开局预设方案结构) => {
+        const presetRestoreCatalog = preset ? 构建预设恢复候选池(preset) : null;
         const presetRuntime = preset
             ? 构建预设直开恢复结果(preset, {
                 validModuleKeys: 恢复链有效模块键,
-                fallbackBackgrounds: [...全部背景选项, ...预设背景, ...自定义背景列表],
-                fallbackTalents: [...全部天赋选项, ...预设天赋, ...自定义天赋列表],
-                selectedBackgroundCatalog: 全部背景选项,
-                selectedTalentCatalog: 全部天赋选项
+                ...(presetRestoreCatalog || {})
             })
             : null;
         const effectiveWorldConfig = presetRuntime?.worldConfig || worldConfig;
@@ -1654,8 +1673,10 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                 出生月: preset.character.出生月,
                 出生日: preset.character.出生日,
                 属性: preset.character.属性,
-                背景: 根据名称查找背景(preset.character.背景名称),
-                天赋列表: 根据名称查找天赋列表(preset.character.天赋名称列表)
+                背景: presetRuntime?.selectedBackground || 根据名称查找背景(preset.character.背景名称),
+                天赋列表: presetRuntime?.selectedTalents?.length
+                    ? presetRuntime.selectedTalents
+                    : 根据名称查找天赋列表(preset.character.天赋名称列表)
             })
             : 构建角色数据();
         const runtimeRestore = preset
@@ -1681,9 +1702,9 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                 ...(runtimeRestore.runtimeSnapshot ? { runtimeSnapshot: runtimeRestore.runtimeSnapshot } : {})
             }
             : effectiveOpeningConfig;
-        const runtimeWorldConfig = runtimeRestore.modeRuntimeProfile
+        const runtimeWorldConfig = (runtimeRestore.modeRuntimeProfile
             ? { ...effectiveWorldConfig, modeRuntimeProfile: runtimeRestore.modeRuntimeProfile }
-            : effectiveWorldConfig;
+            : effectiveWorldConfig) as WorldGenConfig;
         const ok = requestConfirm
             ? await requestConfirm({
                 title: '确认创建',

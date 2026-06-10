@@ -6,6 +6,7 @@ import { 合并物品图片档案 } from '../../utils/itemImage';
 import { 默认NSFWComfyUI工作流JSON } from '../../data/defaultComfyWorkflow';
 import { 查找结构化物品 } from '../../data/structuredItemLibrary';
 import { generateImageByPrompt, persistImageAssetLocally, 全局无文字正向提示词 } from './image';
+import { recordDiagnosticLog } from '../diagnosticLog';
 
 type 物品生图来源位置 = '背包' | '拍卖行';
 
@@ -835,6 +836,22 @@ export const 生成物品图标 = async (
     const finalPrompt = extraPrompt
         ? `${prompt}\n\nuser requested extra visual direction:\n${extraPrompt}`
         : prompt;
+    const recordId = options?.recordId || `item_img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    recordDiagnosticLog('info', '[物品生图链路] 准备调用图片后端', {
+        recordId,
+        itemId: (item as any)?.ID || '',
+        itemName: (item as any)?.名称 || '未命名物品',
+        itemType: (item as any)?.类型 || '',
+        itemQuality: (item as any)?.品质 || '',
+        source: options?.source || 'manual',
+        sourceLocation,
+        backendType: imageApi.图片后端类型 || '',
+        model: imageApi.model || '',
+        size,
+        promptLength: finalPrompt.length,
+        hasExtraPrompt: Boolean(extraPrompt),
+        renderStyle
+    });
     const rawResult = await generateImageByPrompt(finalPrompt, imageApi, options?.signal, {
         构图: '物品图标',
         尺寸: size,
@@ -867,9 +884,24 @@ export const 生成物品图标 = async (
             : 'single physical object, centered composition, clean silhouette, plain asset presentation'}; ${noTextGuard}`,
         附加负面提示词: 构建物品负面提示词(enrichedItem),
     });
+    recordDiagnosticLog('info', '[物品生图链路] 图片后端已返回', {
+        recordId,
+        itemName: (item as any)?.名称 || '未命名物品',
+        hasImageUrl: Boolean(rawResult?.图片URL),
+        hasLocalPath: Boolean(rawResult?.本地路径),
+        hasFinalPositivePrompt: Boolean(rawResult?.最终正向提示词),
+        hasFinalNegativePrompt: Boolean(rawResult?.最终负向提示词)
+    });
     const localResult = await persistImageAssetLocally(rawResult);
+    recordDiagnosticLog('info', '[物品生图链路] 图片资源本地化完成', {
+        recordId,
+        itemName: (item as any)?.名称 || '未命名物品',
+        hasImageUrl: Boolean(localResult?.图片URL),
+        hasLocalPath: Boolean(localResult?.本地路径),
+        displayable: Boolean(localResult?.图片URL || localResult?.本地路径)
+    });
     const imageRecord: 物品生图结果 = {
-        id: options?.recordId || `item_img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        id: recordId,
         图片URL: localResult.图片URL,
         本地路径: localResult.本地路径,
         生图词组: finalPrompt,
@@ -885,10 +917,21 @@ export const 生成物品图标 = async (
         状态: 'success',
         来源: 'generated',
     };
+    const nextArchive = 合并物品图片档案(enrichedItem, imageRecord);
+    recordDiagnosticLog('info', '[物品生图链路] 图片记录已合并入物品档案', {
+        recordId,
+        itemId: (item as any)?.ID || '',
+        itemName: (item as any)?.名称 || '未命名物品',
+        selectedIconId: nextArchive?.已选图标图片ID || '',
+        historyCount: Array.isArray(nextArchive?.生图历史) ? nextArchive.生图历史.length : 0,
+        recentId: nextArchive?.最近生图结果?.id || '',
+        hasRecentImageUrl: Boolean(nextArchive?.最近生图结果?.图片URL),
+        hasRecentLocalPath: Boolean(nextArchive?.最近生图结果?.本地路径)
+    });
     const nextItem: 游戏物品 = {
         ...(enrichedItem as any),
         视觉描述来源: (enrichedItem as any).视觉描述来源 || '规则生成',
-        图片档案: 合并物品图片档案(enrichedItem, imageRecord),
+        图片档案: nextArchive,
     };
 
     return { nextItem, imageRecord, prompt, imageApi };

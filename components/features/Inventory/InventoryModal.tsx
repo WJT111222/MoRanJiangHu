@@ -596,22 +596,11 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                                     </div>
                                                 </div>
 
-                                                {description ? (
-                                                    <div className="pointer-events-none absolute inset-x-1.5 top-1.5 z-10 rounded-md border border-white/10 bg-black/75 px-2 py-1 text-[10px] leading-4 text-gray-100 opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
-                                                        <div className="line-clamp-3 break-words">{description}</div>
-                                                    </div>
-                                                ) : null}
-
                                                 <div className="absolute bottom-2 left-0 right-0 px-1.5 text-center">
                                                     <div className={`line-clamp-2 break-words text-[13px] font-bold leading-[1.1] tracking-wide drop-shadow-sm ${getRarityNameClass(getSafeText(item?.品质))}`}>
                                                         {name}
                                                     </div>
                                                     <div className="mt-0.5 font-mono text-xs text-gray-200">x{count}</div>
-                                                    {description ? (
-                                                        <div className="mt-0.5 line-clamp-1 text-[10px] leading-4 text-gray-400">
-                                                            {description}
-                                                        </div>
-                                                    ) : null}
                                                 </div>
                                             </button>
                                         );

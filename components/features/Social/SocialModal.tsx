@@ -558,7 +558,7 @@ const SocialModal: React.FC<Props> = ({
                             <div key={record.类型} className="social-intimacy-record rounded border border-pink-900/25 bg-black/35 p-2 text-xs">
                                 <div className="mb-1 flex items-center justify-between gap-2">
                                     <span className="font-bold text-pink-300">{record.类型}</span>
-                                    <span className={`rounded px-1.5 py-0.5 text-[9px] ${record.是否已发生 ? 'bg-pink-500/15 text-pink-200' : 'bg-gray-800 text-gray-500'}`}>{record.是否已发生 ? '已发生' : '未发生'}</span>
+                                    <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold ${record.是否已发生 ? 'border-pink-500/35 bg-pink-500/12 text-pink-700' : 'border-stone-300 bg-[#fff8ec] text-stone-700'}`}>{record.是否已发生 ? '已发生' : '未发生'}</span>
                                 </div>
                                 {record.是否已发生 ? (
                                     <div className="space-y-1 text-pink-100/85">
@@ -566,7 +566,7 @@ const SocialModal: React.FC<Props> = ({
                                         <div><span className="text-gray-500">第一次时间：</span>{record.第一次时间 || '未知时间'}</div>
                                     </div>
                                 ) : (
-                                    <div className="text-[11px] text-gray-500">尚未发生</div>
+                                    <div className="text-[11px] text-stone-600">尚未发生</div>
                                 )}
                             </div>
                         ))}

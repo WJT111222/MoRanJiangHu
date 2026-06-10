@@ -118,7 +118,7 @@ const TurnItem: React.FC<Props> = ({
     const [isPolishing, setIsPolishing] = useState(false);
     const [polishError, setPolishError] = useState<string | null>(null);
     const [showOriginalBody, setShowOriginalBody] = useState(false);
-    const [rawLogPreview, setRawLogPreview] = useState<{ title: string; text: string } | null>(null);
+    const [expandedRawLogKey, setExpandedRawLogKey] = useState<string | null>(null);
     const chatStyle = 构建区域文字样式(visualConfig, '聊天');
     const 紧凑字号 = 'var(--ui-compact-font-size, 14px)';
     const 微字号 = 'var(--ui-micro-font-size, 12px)';
@@ -345,11 +345,35 @@ const TurnItem: React.FC<Props> = ({
         setShowOriginalBody(prev => !prev);
     };
 
-    const openRawLogPreview = (log: GameLog, index: number) => {
-        setRawLogPreview({
-            title: `第 ${index + 1} 段原始回复片段`,
-            text: 格式化日志原始片段(log)
-        });
+    const getRawLogKey = (index: number) => `raw-log-${turnNumber}-${index}`;
+    const toggleRawLogPreview = (index: number) => {
+        const key = getRawLogKey(index);
+        setExpandedRawLogKey(prev => prev === key ? null : key);
+    };
+
+    const renderRawLogPanel = (log: GameLog, index: number) => {
+        const key = getRawLogKey(index);
+        if (expandedRawLogKey !== key) return null;
+        return (
+            <div className="mx-auto my-2 w-[min(100%,768px)] overflow-hidden rounded-lg border border-amber-600/35 bg-[#fffaf0] text-[#20160a] shadow-[0_10px_28px_rgba(111,59,19,0.16)]" data-raw-response-panel="true">
+                <div className="flex items-center justify-between gap-3 border-b border-amber-700/20 bg-[#f5e6c8] px-4 py-3">
+                    <div className="min-w-0">
+                        <div className="truncate text-sm font-black tracking-[0.12em] text-stone-950">第 {index + 1} 段原始回复片段</div>
+                        <div className="mt-0.5 text-[11px] font-semibold text-stone-600">当前气泡进入解析/渲染前的来源片段</div>
+                    </div>
+                    <button
+                        type="button"
+                        className="shrink-0 rounded border border-stone-500/40 bg-white/80 px-3 py-1.5 text-xs font-bold text-stone-800 transition hover:bg-white"
+                        onClick={() => setExpandedRawLogKey(null)}
+                    >
+                        关闭
+                    </button>
+                </div>
+                <pre className="max-h-[44vh] overflow-auto whitespace-pre-wrap break-words bg-white/90 p-4 font-mono text-[12px] leading-5 text-stone-950" style={{ fontSize: 紧凑等宽字号 }} data-raw-response-text="true">
+                    {格式化日志原始片段(log)}
+                </pre>
+            </div>
+        );
     };
 
     if (isEditing) {
@@ -624,15 +648,25 @@ const TurnItem: React.FC<Props> = ({
                     const textJudgmentPrefix = 提取判定日志前缀(rawText);
                     const senderJudgmentPrefix = 提取判定日志前缀(rawSender);
                     const textStartsWithJudgment = Boolean(textJudgmentPrefix);
-                    const openThisRawLog = () => openRawLogPreview(log, idx);
-                    if (是否奖励日志(rawSender, rawText)) return <RewardRenderer key={idx} text={rawText} visualConfig={visualConfig} onOpenRawResponse={openThisRawLog} />;
-                    if (rawSender === '旁白' && !textStartsWithJudgment) return <NarratorRenderer key={idx} text={rawText} visualConfig={visualConfig} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} socialList={socialList} onOpenNpcDetail={onOpenNpcDetail} onOpenRawResponse={openThisRawLog} />;
-                    if (senderJudgmentPrefix || textStartsWithJudgment) {
+                    const openThisRawLog = () => toggleRawLogPreview(idx);
+                    let renderedLog: React.ReactNode;
+                    if (是否奖励日志(rawSender, rawText)) {
+                        renderedLog = <RewardRenderer text={rawText} visualConfig={visualConfig} onOpenRawResponse={openThisRawLog} />;
+                    } else if (rawSender === '旁白' && !textStartsWithJudgment) {
+                        renderedLog = <NarratorRenderer text={rawText} visualConfig={visualConfig} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} socialList={socialList} onOpenNpcDetail={onOpenNpcDetail} onOpenRawResponse={openThisRawLog} />;
+                    } else if (senderJudgmentPrefix || textStartsWithJudgment) {
                         const prefix = senderJudgmentPrefix || textJudgmentPrefix || rawSender;
                         const isNsfw = prefix.includes('NSFW');
-                        return <JudgmentRenderer key={idx} text={rawText} thoughtBlock={matchedJudgeBlock} isNsfw={isNsfw} visualConfig={visualConfig} prefix={prefix} onOpenRawResponse={openThisRawLog} />;
+                        renderedLog = <JudgmentRenderer text={rawText} thoughtBlock={matchedJudgeBlock} isNsfw={isNsfw} visualConfig={visualConfig} prefix={prefix} onOpenRawResponse={openThisRawLog} />;
+                    } else {
+                        renderedLog = <CharacterRenderer sender={rawSender} text={rawText} visualConfig={visualConfig} socialList={socialList} playerProfile={playerProfile} onOpenNpcDetail={onOpenNpcDetail} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} onOpenRawResponse={openThisRawLog} />;
                     }
-                    return <CharacterRenderer key={idx} sender={rawSender} text={rawText} visualConfig={visualConfig} socialList={socialList} playerProfile={playerProfile} onOpenNpcDetail={onOpenNpcDetail} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} onOpenRawResponse={openThisRawLog} />;
+                    return (
+                        <React.Fragment key={idx}>
+                            {renderedLog}
+                            {renderRawLogPanel(log, idx)}
+                        </React.Fragment>
+                    );
                 })}
             </div>
 
@@ -647,35 +681,6 @@ const TurnItem: React.FC<Props> = ({
                 <span className="text-[11px] text-gray-600">中文计数: {中文计数}字</span>
                 {response.shortTerm && <span className="text-[11px] text-gray-600 max-w-[200px] truncate" title={response.shortTerm}>记忆: {response.shortTerm}</span>}
             </div>
-            {rawLogPreview && (
-                <div
-                    className="fixed inset-0 z-[1005] flex items-center justify-center bg-black/50 p-3 sm:p-6 backdrop-blur-sm"
-                    data-raw-response-panel="true"
-                    onClick={() => setRawLogPreview(null)}
-                >
-                    <div
-                        className="w-full max-w-3xl overflow-hidden rounded-lg border border-amber-600/45 bg-[#fffaf0] text-[#20160a] shadow-2xl"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between gap-3 border-b border-amber-700/20 bg-[#f5e6c8] px-4 py-3">
-                            <div className="min-w-0">
-                                <div className="truncate text-sm font-black tracking-[0.12em] text-stone-950">{rawLogPreview.title}</div>
-                                <div className="mt-0.5 text-[11px] font-semibold text-stone-600">只显示当前气泡进入解析/渲染前的来源片段</div>
-                            </div>
-                            <button
-                                type="button"
-                                className="shrink-0 rounded border border-stone-500/40 bg-white/80 px-3 py-1.5 text-xs font-bold text-stone-800 transition hover:bg-white"
-                                onClick={() => setRawLogPreview(null)}
-                            >
-                                关闭
-                            </button>
-                        </div>
-                        <pre className="max-h-[65vh] overflow-auto whitespace-pre-wrap break-words bg-white/90 p-4 font-mono text-[12px] leading-5 text-stone-950" data-raw-response-text="true">
-                            {rawLogPreview.text}
-                        </pre>
-                    </div>
-                </div>
-            )}
             <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-16 h-px bg-gray-800"></div>
         </div>
     );

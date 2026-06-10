@@ -315,6 +315,7 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
     ) => {
         if (!record || typeof record !== 'object') return;
         const shouldUpdateRecent = options?.同步最近结果 !== false;
+        let writeInfo: any = null;
         更新社交并自动存档((baseList) => {
             let changed = false;
             const nextList = baseList.map((npc, index) => {
@@ -354,6 +355,18 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
                     npcName: npc?.姓名,
                     source: 'write-history'
                 });
+                writeInfo = {
+                    npcKey,
+                    npcName: npc?.姓名 || '',
+                    recordId: nextRecord.id,
+                    composition: nextRecord.构图 || '',
+                    part: nextRecord.部位 || '',
+                    status: nextRecord.状态 || 'success',
+                    historyCount: nextHistory.length,
+                    hasImageUrl: Boolean(nextRecord.图片URL),
+                    hasLocalPath: Boolean(nextRecord.本地路径),
+                    syncedRecent: shouldUpdateRecent
+                };
                 return {
                     ...npc,
                     图片档案: {
@@ -369,6 +382,14 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
                 };
             });
             return { nextList, changed };
+        });
+        recordDiagnosticLog(writeInfo ? 'info' : 'warn', '[NPC图片历史] 写入记录', writeInfo || {
+            npcKey,
+            recordId: record?.id,
+            composition: record?.构图 || '',
+            part: record?.部位 || '',
+            status: record?.状态 || 'success',
+            matched: false
         });
     };
 
@@ -409,6 +430,7 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
     ): boolean => {
         if (!record || typeof record !== 'object') return false;
         const shouldUpdateRecent = options?.同步最近结果 !== false;
+        let writeInfo: any = null;
         const updated = 更新社交并自动存档((baseList) => {
             let changed = false;
             const nextList = baseList.map((npc, index) => {
@@ -454,6 +476,18 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
                 const nextSelectedPortraitImageId = currentSelectedPortraitImageId && nextHistory.some((item: any) => item?.id === currentSelectedPortraitImageId && 是否可作立绘图片(item))
                     ? currentSelectedPortraitImageId
                     : (nextHistory.find(是否可作立绘图片)?.id || undefined);
+                writeInfo = {
+                    npcKey,
+                    npcName: npc?.姓名 || '',
+                    part,
+                    recordId: nextRecord.id,
+                    status: nextRecord.状态 || 'success',
+                    historyCount: nextHistory.length,
+                    secretArchiveParts: Object.keys(nextSecretArchive || {}),
+                    hasImageUrl: Boolean(nextRecord.图片URL),
+                    hasLocalPath: Boolean(nextRecord.本地路径),
+                    syncedRecent: shouldUpdateRecent
+                };
                 return {
                     ...npc,
                     图片档案: {
@@ -470,6 +504,9 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
             });
             return { nextList, changed };
         });
+        if (writeInfo) {
+            recordDiagnosticLog('info', '[NPC私密部位历史] 写入记录', writeInfo);
+        }
         if (!updated) {
             const availableNpcKeys = (Array.isArray(deps.获取社交列表()) ? deps.获取社交列表() : [])
                 .map((npc: any, index: number) => deps.获取NPC唯一标识(npc, index))
