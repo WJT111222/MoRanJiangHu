@@ -660,8 +660,9 @@ export const 执行NPC生图工作流 = async (
             进度文本: localizedImageResult.客户提示 || '图片已生成，正在写回图片档案。'
         }));
         deps.更新NPC最近生图结果(npcKey, (currentNpc) => {
+            const 新ID = currentNpc?.图片档案?.最近生图结果?.id || currentNpc?.最近生图结果?.id || deps.生成NPC生图记录ID();
             const 成功结果 = {
-                id: currentNpc?.图片档案?.最近生图结果?.id || currentNpc?.最近生图结果?.id || deps.生成NPC生图记录ID(),
+                id: 新ID,
                 图片URL: localizedImageResult.图片URL,
                 本地路径: localizedImageResult.本地路径,
                 生图词组,
@@ -679,13 +680,18 @@ export const 执行NPC生图工作流 = async (
                 尺寸,
                 状态: 'success' as const
             };
+            const archive = currentNpc?.图片档案 && typeof currentNpc.图片档案 === 'object' ? currentNpc.图片档案 : {};
+            const 已选头像图片ID = 构图 === '头像' ? 新ID : (typeof archive.已选头像图片ID === 'string' ? archive.已选头像图片ID.trim() : '') || undefined;
+            const 已选立绘图片ID = (构图 === '半身' || 构图 === '立绘') ? 新ID : (typeof archive.已选立绘图片ID === 'string' ? archive.已选立绘图片ID.trim() : '') || undefined;
             return {
                 ...currentNpc,
                 最近生图结果: 成功结果,
                 图片档案: {
-                    ...(currentNpc?.图片档案 && typeof currentNpc.图片档案 === 'object' ? currentNpc.图片档案 : {}),
+                    ...archive,
                     最近生图结果: 成功结果,
-                    生图历史: 合并生图历史记录(currentNpc, 成功结果)
+                    生图历史: 合并生图历史记录(currentNpc, 成功结果),
+                    已选头像图片ID,
+                    已选立绘图片ID
                 }
             };
         });
