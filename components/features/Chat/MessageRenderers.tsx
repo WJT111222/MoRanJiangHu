@@ -416,7 +416,7 @@ const ItemReferenceButton: React.FC<{
                 <span className="truncate">{itemName}</span>
                 <span className="opacity-75">》</span>
             </button>
-            <span className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-50 hidden w-64 max-w-[72vw] -translate-x-1/2 rounded-lg border border-wuxia-gold/35 bg-[#11100d]/95 p-3 text-left text-xs leading-5 text-amber-50 shadow-2xl backdrop-blur group-hover/item-ref:block group-focus-within/item-ref:block">
+            <span className="pointer-events-none absolute left-1/2 bottom-[calc(100%+8px)] z-[9999] hidden w-64 max-w-[72vw] -translate-x-1/2 rounded-lg border border-wuxia-gold/35 bg-[#11100d]/95 p-3 text-left text-xs leading-5 text-amber-50 shadow-2xl backdrop-blur group-hover/item-ref:block group-focus-within/item-ref:block">
                 <span className="mb-2 flex items-center gap-3">
                     <span className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border ${styles.border} ${styles.bg}`}>
                         {iconUrl ? (
