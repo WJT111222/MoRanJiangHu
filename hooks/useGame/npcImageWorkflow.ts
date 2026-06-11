@@ -684,7 +684,7 @@ export const 执行NPC生图工作流 = async (
             const 旧头像ID = typeof archive.已选头像图片ID === 'string' ? archive.已选头像图片ID.trim() : undefined;
             const 旧立绘ID = typeof archive.已选立绘图片ID === 'string' ? archive.已选立绘图片ID.trim() : undefined;
             const 已选头像图片ID = 构图 === '头像' ? 新ID : 旧头像ID;
-            const 已选立绘图片ID = (构图 === '半身' || 构图 === '立绘') ? 新ID : 旧立绘ID;
+            const 已选立绘图片ID = 构图 === '立绘' ? 新ID : 旧立绘ID;
             if (构图 === '头像' && 已选头像图片ID !== 旧头像ID) {
                 console.info('[npc.image.slot.set]', {
                     npcKey, npcName,
@@ -693,7 +693,7 @@ export const 执行NPC生图工作流 = async (
                     previousImageId: 旧头像ID,
                     source: 'auto-generate'
                 });
-            } else if ((构图 === '半身' || 构图 === '立绘') && 已选立绘图片ID !== 旧立绘ID) {
+            } else if (构图 === '立绘' && 已选立绘图片ID !== 旧立绘ID) {
                 console.info('[npc.image.slot.set]', {
                     npcKey, npcName,
                     field: '已选立绘图片ID',
