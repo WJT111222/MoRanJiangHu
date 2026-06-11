@@ -249,6 +249,22 @@ const InputArea: React.FC<Props> = ({
     const [variableGenerationProgress, setVariableGenerationProgress] = useState<VariableGenerationProgress | null>(null);
     const [mapUpdateProgress, setMapUpdateProgress] = useState<MapUpdateProgress | null>(null);
     const [expandedRawStageId, setExpandedRawStageId] = useState<string | null>(null);
+    const [mainStoryElapsed, setMainStoryElapsed] = useState(0);
+    const mainStoryStartRef = useRef<number>(0);
+
+    useEffect(() => {
+        if (loading) {
+            mainStoryStartRef.current = Date.now();
+            setMainStoryElapsed(0);
+            const timer = setInterval(() => {
+                setMainStoryElapsed(Date.now() - mainStoryStartRef.current);
+            }, 200);
+            return () => clearInterval(timer);
+        } else {
+            setMainStoryElapsed(0);
+            mainStoryStartRef.current = 0;
+        }
+    }, [loading]);
 
     useEffect(() => {
         setIsStreaming(isStreamingDefault);
@@ -1250,6 +1266,12 @@ const InputArea: React.FC<Props> = ({
 
                 {/* Send / Stop Button */}
                 {loading || isPreparing || variableGenerationRunning || postStoryQueueRunning ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        {loading && mainStoryElapsed > 0 && (
+                            <span className="text-[11px] text-gray-400 font-mono tabular-nums min-w-[3.5ch] text-right">
+                                {格式化队列耗时(mainStoryElapsed)}
+                            </span>
+                        )}
                     <button 
                         onClick={variableGenerationRunning && onCancelVariableGeneration ? onCancelVariableGeneration : handleStop}
                         className="w-10 sm:w-12 h-9 sm:h-11 shrink-0 bg-wuxia-red text-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(163,24,24,0.3)] hover:bg-red-600 hover:scale-105 active:scale-95 transition-all"
@@ -1259,6 +1281,7 @@ const InputArea: React.FC<Props> = ({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                          </svg>
                     </button>
+                    </div>
                 ) : (
                     <button 
                         onClick={() => { void handleSend(); }} 

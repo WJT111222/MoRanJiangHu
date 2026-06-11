@@ -3121,7 +3121,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                         <div className="absolute top-0 right-0 px-2 py-0.5 bg-cyan-400/10 border-b border-l border-cyan-300/20 text-[10px] text-cyan-100/80 font-serif rounded-bl">
                                             物品任务
                                         </div>
-                                        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+                                        <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                                             <div className="pr-16 min-w-0">
                                                 <div className="text-lg font-serif text-cyan-100 truncate" title={item.物品名称}>{item.物品名称 || '未命名物品'}</div>
                                                 <div className="text-[10px] text-gray-500 mt-1 flex flex-wrap items-center gap-2">
@@ -3135,6 +3135,15 @@ const ImageManagerModal: React.FC<Props> = ({
                                                 <span className={`text-[11px] px-2.5 py-1 rounded border shadow-sm ${队列状态样式[从图片状态推导队列状态(status)]}`}>{获取图片状态文案(item)}</span>
                                             </div>
                                         </div>
+
+                                        {imageSrc && (
+                                            <div className="mb-3 flex justify-center">
+                                                <div className="w-32 h-32 rounded border border-cyan-300/20 bg-black/50 overflow-hidden flex items-center justify-center">
+                                                    <img src={imageSrc} alt={item.物品名称 || '物品图'} className="max-w-full max-h-full object-contain" loading="lazy" />
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 text-[11px]">
                                             <div className="rounded border border-cyan-300/10 bg-black/50 p-2.5">
                                                 <div className="text-cyan-100/50 mb-1">记录时间</div>
@@ -3154,12 +3163,25 @@ const ImageManagerModal: React.FC<Props> = ({
                                                 <div className="text-gray-300 pl-1">{item.错误信息 || (imageSrc ? '图片已返回并写入历史。' : '等待图片后端返回或本地化。')}</div>
                                             </div>
                                         </div>
+
                                         <div className="mt-3 flex flex-col gap-2 border-t border-cyan-300/10 pt-3">
                                             {渲染生图调试链路(item.调试链路, 'border-cyan-300/10 bg-black/80 text-gray-400')}
                                             {item.最终正向提示词 && (
                                                 <details className="group/details">
-                                                    <summary className="text-[11px] text-gray-400 cursor-pointer select-none hover:text-cyan-100 transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90">最终正向提示词</summary>
+                                                    <summary className="text-[11px] text-gray-400 cursor-pointer select-none hover:text-cyan-100 transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90">正向提示词</summary>
                                                     <div className="mt-2 text-[10px] text-gray-400/80 bg-black/80 p-3 rounded border border-cyan-300/10 whitespace-pre-wrap break-words max-h-32 overflow-y-auto custom-scrollbar font-mono leading-relaxed">{item.最终正向提示词}</div>
+                                                </details>
+                                            )}
+                                            {item.最终负向提示词 && (
+                                                <details className="group/details">
+                                                    <summary className="text-[11px] text-gray-400 cursor-pointer select-none hover:text-cyan-100 transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90">负向提示词</summary>
+                                                    <div className="mt-2 text-[10px] text-gray-400/80 bg-black/80 p-3 rounded border border-cyan-300/10 whitespace-pre-wrap break-words max-h-32 overflow-y-auto custom-scrollbar font-mono leading-relaxed">{item.最终负向提示词}</div>
+                                                </details>
+                                            )}
+                                            {item.生图词组 && item.生图词组 !== item.最终正向提示词 && (
+                                                <details className="group/details">
+                                                    <summary className="text-[11px] text-gray-400 cursor-pointer select-none hover:text-cyan-100 transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90">原始提示词</summary>
+                                                    <div className="mt-2 text-[10px] text-gray-400/80 bg-black/80 p-3 rounded border border-cyan-300/10 whitespace-pre-wrap break-words max-h-32 overflow-y-auto custom-scrollbar font-mono leading-relaxed">{item.生图词组}</div>
                                                 </details>
                                             )}
                                         </div>
@@ -3190,6 +3212,13 @@ const ImageManagerModal: React.FC<Props> = ({
                                                 )}
                                             </div>
                                         </div>
+                                        {(() => { const sceneImg = 获取图片展示地址(task as any); return sceneImg ? (
+                                            <div className="mb-3 flex justify-center">
+                                                <div className="w-40 h-28 rounded border border-wuxia-gold/20 bg-black/50 overflow-hidden flex items-center justify-center">
+                                                    <img src={sceneImg} alt={task.摘要 || '场景图'} className="max-w-full max-h-full object-contain" loading="lazy" />
+                                                </div>
+                                            </div>
+                                        ) : null; })()}
                                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 text-[11px]">
                                             <div className="rounded border border-wuxia-gold/10 bg-black/50 p-2.5">
                                                 <div className="text-wuxia-gold/50 mb-1">创建时间</div>
@@ -3212,6 +3241,28 @@ const ImageManagerModal: React.FC<Props> = ({
                                         <div className="mt-3">
                                             {渲染生图调试链路(task.调试链路)}
                                         </div>
+                                        {(task.最终正向提示词 || task.最终负向提示词 || task.生图词组) && (
+                                            <div className="mt-3 flex flex-col gap-2 border-t border-wuxia-gold/10 pt-3">
+                                                {task.最终正向提示词 && (
+                                                    <details className="group/details">
+                                                        <summary className="text-[11px] text-gray-400 cursor-pointer select-none hover:text-wuxia-gold transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90">正向提示词</summary>
+                                                        <div className="mt-2 text-[10px] text-gray-400/80 bg-black/80 p-3 rounded border border-wuxia-gold/10 whitespace-pre-wrap break-words max-h-32 overflow-y-auto custom-scrollbar font-mono leading-relaxed">{task.最终正向提示词}</div>
+                                                    </details>
+                                                )}
+                                                {task.最终负向提示词 && (
+                                                    <details className="group/details">
+                                                        <summary className="text-[11px] text-gray-400 cursor-pointer select-none hover:text-wuxia-gold transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90">负向提示词</summary>
+                                                        <div className="mt-2 text-[10px] text-gray-400/80 bg-black/80 p-3 rounded border border-wuxia-gold/10 whitespace-pre-wrap break-words max-h-32 overflow-y-auto custom-scrollbar font-mono leading-relaxed">{task.最终负向提示词}</div>
+                                                    </details>
+                                                )}
+                                                {task.生图词组 && task.生图词组 !== task.最终正向提示词 && (
+                                                    <details className="group/details">
+                                                        <summary className="text-[11px] text-gray-400 cursor-pointer select-none hover:text-wuxia-gold transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90">原始提示词</summary>
+                                                        <div className="mt-2 text-[10px] text-gray-400/80 bg-black/80 p-3 rounded border border-wuxia-gold/10 whitespace-pre-wrap break-words max-h-32 overflow-y-auto custom-scrollbar font-mono leading-relaxed">{task.生图词组}</div>
+                                                    </details>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             }
@@ -3241,6 +3292,13 @@ const ImageManagerModal: React.FC<Props> = ({
                                             )}
                                         </div>
                                     </div>
+                                    {(() => { const npcImg = 获取图片展示地址(task as any); return npcImg ? (
+                                        <div className="mb-3 flex justify-center">
+                                            <div className="w-32 h-32 rounded-full border border-wuxia-gold/20 bg-black/50 overflow-hidden flex items-center justify-center">
+                                                <img src={npcImg} alt={task.NPC姓名 || 'NPC头像'} className="max-w-full max-h-full object-contain" loading="lazy" />
+                                            </div>
+                                        </div>
+                                    ) : null; })()}
                                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 text-[11px]">
                                         <div className="rounded border border-wuxia-gold/10 bg-black/50 p-2.5">
                                             <div className="text-wuxia-gold/50 mb-1">创建时间</div>
@@ -3263,6 +3321,28 @@ const ImageManagerModal: React.FC<Props> = ({
                                     <div className="mt-3">
                                         {渲染生图调试链路(task.调试链路)}
                                     </div>
+                                    {(task.最终正向提示词 || task.最终负向提示词 || task.生图词组) && (
+                                        <div className="mt-3 flex flex-col gap-2 border-t border-wuxia-gold/10 pt-3">
+                                            {task.最终正向提示词 && (
+                                                <details className="group/details">
+                                                    <summary className="text-[11px] text-gray-400 cursor-pointer select-none hover:text-wuxia-gold transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90">正向提示词</summary>
+                                                    <div className="mt-2 text-[10px] text-gray-400/80 bg-black/80 p-3 rounded border border-wuxia-gold/10 whitespace-pre-wrap break-words max-h-32 overflow-y-auto custom-scrollbar font-mono leading-relaxed">{task.最终正向提示词}</div>
+                                                </details>
+                                            )}
+                                            {task.最终负向提示词 && (
+                                                <details className="group/details">
+                                                    <summary className="text-[11px] text-gray-400 cursor-pointer select-none hover:text-wuxia-gold transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90">负向提示词</summary>
+                                                    <div className="mt-2 text-[10px] text-gray-400/80 bg-black/80 p-3 rounded border border-wuxia-gold/10 whitespace-pre-wrap break-words max-h-32 overflow-y-auto custom-scrollbar font-mono leading-relaxed">{task.最终负向提示词}</div>
+                                                </details>
+                                            )}
+                                            {task.生图词组 && task.生图词组 !== task.最终正向提示词 && (
+                                                <details className="group/details">
+                                                    <summary className="text-[11px] text-gray-400 cursor-pointer select-none hover:text-wuxia-gold transition-colors outline-none flex items-center gap-1 before:content-['▶'] before:text-[8px] before:transition-transform group-open/details:before:rotate-90">原始提示词</summary>
+                                                    <div className="mt-2 text-[10px] text-gray-400/80 bg-black/80 p-3 rounded border border-wuxia-gold/10 whitespace-pre-wrap break-words max-h-32 overflow-y-auto custom-scrollbar font-mono leading-relaxed">{task.生图词组}</div>
+                                                </details>
+                                            )}
+                                        </div>
+                                    )}
                                     {task.状态 === 'failed' && (
                                         <div className="mt-4 pt-3 border-t border-wuxia-gold/10 flex flex-wrap justify-end gap-2">
                                             {task.构图 !== '部位特写' && (
