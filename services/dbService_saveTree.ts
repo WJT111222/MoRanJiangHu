@@ -59,8 +59,7 @@ export const 删除存档树并重新保存全量存档 = async (saveId: number)
     
     if (treeIds.length === 0) throw new Error('未找到存档树节点');
 
-    await 批量删除存档(treeIds);
-
+    // 先保存新全量存档，再删除旧树，避免图片资源在新存档写入前被清理
     const cleanedSave: 存档结构 = {
         ...fullSave,
         类型: 'manual',
@@ -71,5 +70,10 @@ export const 删除存档树并重新保存全量存档 = async (saveId: number)
         }
     };
 
-    await 保存存档(cleanedSave);
+    // 用新ID保存，避免与旧树冲突
+    const newSave = { ...cleanedSave, id: undefined };
+    await 保存存档(newSave as 存档结构);
+
+    // 新存档写入成功后再删除旧树
+    await 批量删除存档(treeIds);
 };
