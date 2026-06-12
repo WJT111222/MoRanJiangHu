@@ -6,6 +6,14 @@ export const 收集存档树节点ID = async (rootId: number, allSaves: 存档�
     const byHash = new Map<string, 存档摘要结构>();
     const byId = new Map<number, 存档摘要结构>();
     
+    const 匹配存档哈希 = (targetHash: string, save: 存档摘要结构): boolean => {
+        const fullHash = typeof save.元数据?.存档哈希 === 'string' ? save.元数据.存档哈希.trim() : '';
+        if (!fullHash || !targetHash) return false;
+        return fullHash === targetHash
+            || fullHash.slice(0, 16) === targetHash.slice(0, 16)
+            || fullHash.slice(-8) === targetHash.slice(-8);
+    };
+
     allSaves.forEach((save) => {
         if (typeof save.id === 'number') byId.set(save.id, save);
         const hash = typeof save.元数据?.存档哈希 === 'string' ? save.元数据.存档哈希.trim() : '';
@@ -21,14 +29,16 @@ export const 收集存档树节点ID = async (rootId: number, allSaves: 存档�
         
         const parentHash = typeof node.元数据?.存档父节点哈希 === 'string' ? node.元数据.存档父节点哈希.trim() : '';
         if (parentHash) {
-            const parent = byHash.get(parentHash);
+            const parent = allSaves.find((s) => 匹配存档哈希(parentHash, s));
             if (parent) traverse(parent);
         }
 
         const nodeHash = typeof node.元数据?.存档哈希 === 'string' ? node.元数据.存档哈希.trim() : '';
         allSaves.forEach((child) => {
             const childParentHash = typeof child.元数据?.存档父节点哈希 === 'string' ? child.元数据.存档父节点哈希.trim() : '';
-            if (childParentHash === nodeHash) traverse(child);
+            if (childParentHash && nodeHash && 匹配存档哈希(childParentHash, { 元数据: { 存档哈希: nodeHash } } as any)) {
+                traverse(child);
+            }
         });
     };
 

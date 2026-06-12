@@ -1281,7 +1281,7 @@ const InputArea: React.FC<Props> = ({
                     <button 
                         onClick={postStoryQueueRunning ? handleStop : (variableGenerationRunning && onCancelVariableGeneration ? onCancelVariableGeneration : handleStop)}
                         className="w-10 sm:w-12 h-9 sm:h-11 shrink-0 bg-wuxia-red text-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(163,24,24,0.3)] hover:bg-red-600 hover:scale-105 active:scale-95 transition-all"
-                        title={variableGenerationRunning ? "取消变量生成" : (recallRunning ? "取消检索" : (postStoryQueueRunning ? "强制终止AI推演" : "停止生成"))}
+                        title={postStoryQueueRunning ? "强制终止AI推演" : (variableGenerationRunning ? "取消变量生成" : (recallRunning ? "取消检索" : "停止生成"))}
                     >
                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
