@@ -160,6 +160,7 @@ const NewGameCurrencySystemSetup: React.FC<Props> = ({ profile, onChangeProfile,
     }, [profile.economy.currencySystem, profile.economy.currencyTiers, profile.economy.currencyDisplayMode, profile, templates]);
 
     const 写入草稿 = (nextDraft: CurrencySystem, touched = true, templateId: 模板选择值 = 'custom') => {
+        if (templateId === 'legacy' || selectedTemplateId === 'legacy') return;
         setDraft(nextDraft);
         setSelectedTemplateId(templateId);
         onTouched?.(touched && templateId !== 'topic-default', templateId);
@@ -257,7 +258,12 @@ const NewGameCurrencySystemSetup: React.FC<Props> = ({ profile, onChangeProfile,
                     <div className="mt-1 text-[11px] text-wuxia-cyan">已自定义：当前货币体系与预设模板不完全一致。</div>
                 )}
             </label>
-            <div className="grid gap-3 md:grid-cols-2">
+            {selectedTemplateId === 'legacy' ? (
+                <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-4 text-center text-[11px] leading-5 text-gray-400">
+                    旧版三层货币系统由题材配置决定，不支持直接编辑。如需自定义货币，请先在上方切换为自定义模式。
+                </div>
+            ) : (
+            <><div className="grid gap-3 md:grid-cols-2">
                 <label className="block text-xs text-gray-300">
                     货币体系名称
                     <input value={draft.name} onChange={(event) => 写入草稿({ ...draft, name: event.target.value })}
@@ -319,6 +325,7 @@ const NewGameCurrencySystemSetup: React.FC<Props> = ({ profile, onChangeProfile,
                 className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-200 hover:border-wuxia-gold/35 hover:text-wuxia-gold">
                 新增货币单位
             </button>
+            </>)}
             {errors.length > 0 && (
                 <div className="rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-[11px] leading-5 text-red-200">
                     {errors.map((error) => <div key={error}>{error}</div>)}
