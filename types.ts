@@ -61,6 +61,7 @@ export interface GameResponse {
     shortTerm?: string;
     action_options?: string[]; // Quick actions for the user
     dynamic_world?: string[]; // Hints for world-evolution model
+    declaredSpeakers?: string[]; // Names declared via <角色名单> tag
     judge_blocks?: JudgmentThoughtBlock[];
     body_optimized?: boolean;
     body_optimized_manual?: boolean;

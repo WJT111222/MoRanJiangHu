@@ -2943,7 +2943,7 @@ const 合并NPC图片档案对象 = (leftRaw: any, rightRaw: any): any | undefin
     };
 };
 
-const NPC真实姓名最大长度 = 4;
+const NPC真实姓名最大长度 = 6;
 const NPC真实姓名最小长度 = 2;
 const 男性NPC真实姓名列表 = [
     '顾长风', '沈砚', '陆怀安', '谢行舟', '裴景明', '温玄', '晏清河', '秦照夜',
@@ -2963,7 +2963,11 @@ const 是否噪声NPC姓名 = (value: unknown): boolean => {
     if (!name) return true;
     if (name.length > 12 || name.length > NPC真实姓名最大长度) return true;
     if (/[，。！？；：、,.!?;:\s\n\r]/.test(name)) return true;
-    if (/^[\u4e00-\u9fa5]{2,4}$/u.test(name) && !姓名含已知中文姓氏(name)) return true;
+    if (/^[\u4e00-\u9fa5]{2,3}$/u.test(name)) {
+        if (/^(此时|此刻|同时|另一边|不远处|远方|身后|前方|这时|那时|突然|忽然|瞬间|刹那|所有人|全场)$/u.test(name)) return true;
+        return false;
+    }
+    if (/^[\u4e00-\u9fa5]{4,6}$/u.test(name) && !姓名含已知中文姓氏(name)) return true;
     if (/^(旁白|判定|NSFW判定|免责声明|disclaimer)$/.test(name)) return true;
     if (/^(?:自己|自身|本人|主角|玩家|他|她|它|你|我|他们|她们|对方|那人|此人|有人|众人)(?:已经|没有|只能|只好|仍旧|还是|刚刚|继续|再|又|便|就|不再|无法|不能)?.*$/u.test(name)) return true;
     if (噪声NPC姓名完整短语正则.test(name)) return true;

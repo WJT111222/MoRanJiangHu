@@ -863,7 +863,24 @@ const 提取正文中的Judge区块 = (body: string): { cleanBody: string; judge
     };
 };
 
-const 解析正文日志 = (body: string): Array<{ sender: string; text: string }> => {
+const 解析角色名单标签 = (tagContent: string): Set<string> => {
+    const text = (tagContent || '').trim();
+    if (!text) return new Set();
+    const names = new Set<string>();
+    for (const rawLine of text.split('\n')) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        for (const rawName of line.split(/[,，、\s]+/)) {
+            const name = rawName.trim();
+            if (name && /^[\u4e00-\u9fa5]{2,6}$/u.test(name)) {
+                names.add(name);
+            }
+        }
+    }
+    return names;
+};
+
+const 解析正文日志 = (body: string, declaredNames?: Set<string>): Array<{ sender: string; text: string }> => {
     if (!body || !body.trim()) return [];
     const lines = body.replace(/\r\n/g, '\n').split('\n');
     const logs: Array<{ sender: string; text: string }> = [];
@@ -904,7 +921,7 @@ const 解析正文日志 = (body: string): Array<{ sender: string; text: string 
         if (match) {
             const sender = 规范化日志发送者(match[1]);
             const text = (match[2] || '').trim();
-            if (!是否可信正文标签发送者(sender)) {
+            if (!是否可信正文标签发送者(sender, { declaredNames })) {
                 写入旁白行(rawLine.trimEnd());
                 continue;
             }
@@ -1502,6 +1519,8 @@ const 解析标签协议响应 = (content: string, options?: Required<StoryParse
     const commandBlock = 提取首个标签内容(textWithoutThinking, '命令') || titleSections.命令 || '';
     const actionOptionsBlock = 提取首个标签内容(textWithoutThinking, '行动选项') || titleSections.行动选项 || '';
     const dynamicWorldBlock = 提取首个标签内容(textWithoutThinking, '动态世界') || titleSections.动态世界 || '';
+    const declaredSpeakerBlock = 提取首个标签内容(text, '角色名单') || '';
+    const declaredNames = 解析角色名单标签(declaredSpeakerBlock);
     const bodyJudgeExtraction = 提取正文中的Judge区块(清理正文残留协议内容(bodyBlock || ''));
     const fallbackJudgeBlocks = 提取标签内容列表(textWithoutThinking, 'judge', { 兼容错误闭合: true })
         .map(item => item.replace(/\r\n/g, '\n').trim())
@@ -1531,7 +1550,7 @@ const 解析标签协议响应 = (content: string, options?: Required<StoryParse
         );
     }
 
-    let logs = 规范化对白日志(解析正文日志(bodyJudgeExtraction.cleanBody));
+    let logs = 规范化对白日志(解析正文日志(bodyJudgeExtraction.cleanBody, declaredNames));
     if (logs.length === 0) {
         const fallbackBody = titleSections.正文 || 提取候选正文文本(textWithoutThinking);
         const stripped = 提取正文中的Judge区块(清理正文初始化泄露内容(fallbackBody)).cleanBody
@@ -1560,6 +1579,7 @@ const 解析标签协议响应 = (content: string, options?: Required<StoryParse
         shortTerm: shortTerm || undefined,
         action_options: actionOptions.length > 0 ? actionOptions : undefined,
         dynamic_world: dynamicWorld.length > 0 ? dynamicWorld : undefined,
+        declaredSpeakers: declaredNames.size > 0 ? [...declaredNames] : undefined,
         judge_blocks: judgeBlocks
     };
 };
