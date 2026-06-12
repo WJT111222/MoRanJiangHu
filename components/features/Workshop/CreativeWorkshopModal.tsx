@@ -933,6 +933,34 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         [activeType, entries, sourceFilter]
     );
 
+    const [selectedVersionByGroup, setSelectedVersionByGroup] = useState<Record<string, string>>({});
+
+    const groupedEntries = useMemo(() => {
+        const groups = new Map<string, { key: string; title: string; contributor: string; versions: 创意工坊模块条目[] }>();
+        for (const entry of activeEntries) {
+            const groupKey = entry.baseModuleId || `${entry.title}::${entry.contributor || 'anon'}`;
+            let group = groups.get(groupKey);
+            if (!group) {
+                group = { key: groupKey, title: entry.title, contributor: entry.contributor || '', versions: [] };
+                groups.set(groupKey, group);
+            }
+            group.versions.push(entry);
+        }
+        for (const group of groups.values()) {
+            group.versions.sort((a, b) => (b.version || 1) - (a.version || 1));
+        }
+        return Array.from(groups.values());
+    }, [activeEntries]);
+
+    const getDisplayEntry = (group: { key: string; versions: 创意工坊模块条目[] }): 创意工坊模块条目 => {
+        const selected = selectedVersionByGroup[group.key];
+        if (selected) {
+            const found = group.versions.find(v => v.id === selected);
+            if (found) return found;
+        }
+        return group.versions[0];
+    };
+
     const refreshEntries = async () => {
         setLoading(true);
         try {
@@ -1963,14 +1991,16 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                     {status && <div className="mb-4 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{status}</div>}
 
                     <div className="grid gap-3 lg:grid-cols-2">
-                        {activeEntries.map((entry) => {
+                        {groupedEntries.map((group) => {
+                            const entry = getDisplayEntry(group);
                             const canPublishEntry = entry.source !== 'builtin' && entry.source !== 'cloud' && (
                                 entry.type === 'comfy_workflow' || typeof (entry.payload as any)?.suiteId === 'string'
                             );
                             const canManageEntry = entry.source === 'cloud' && Boolean(cloudUsername) && entry.ownerUsername === cloudUsername;
                             const editing = editingEntryId === entry.id;
+                            const hasVersions = group.versions.length > 1;
                             return (
-                                <div key={`${entry.source || 'builtin'}:${entry.id}`} className="rounded-xl border border-white/10 bg-black/25 p-4">
+                                <div key={group.key} className="rounded-xl border border-white/10 bg-black/25 p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <h3 className="text-base font-serif font-bold text-gray-100">{entry.title}{typeof entry.version === 'number' && entry.version > 1 ? <span className="ml-2 inline-block rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[11px] font-mono text-amber-200">v{entry.version}</span> : null}</h3>

@@ -10,6 +10,7 @@ interface Props {
     onOpenNpc?: (npc: any) => void;
     onLearnBook?: (book: any) => void;
     onClaimMonthlyStipend?: () => void;
+    onExchange?: (goodId: string, price: number) => void;
     learnedBookIds?: string[];
     env?: 环境信息结构;
 }
@@ -248,7 +249,7 @@ const 估算月俸数量 = (sectData: 详细门派结构): number => {
     return Math.max(0, base + contributionBonus + scaleBonus);
 };
 
-const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook, onClaimMonthlyStipend, learnedBookIds = [], env }) => {
+const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook, onClaimMonthlyStipend, onExchange, learnedBookIds = [], env }) => {
     const [activeTab, setActiveTab] = useState<Tab>('hall');
     const 文案 = useMemo(() => 获取组织显示文案(sectData), [sectData]);
     const 显示职位 = (rank?: string) => 文案.rankMap[String(rank || '').trim()] || rank || '无';
@@ -554,7 +555,11 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook,
                                                      <div className="text-xs text-gray-200">库存: {good.库存}</div>
                                                  </div>
                                                  {当前折扣 > 0 && <div className="text-[11px] text-emerald-300">身份折扣：{当前折扣文本}</div>}
-                                                 <button className={`rounded px-3 py-2 text-sm font-bold transition-colors ${canExchange ? 'border border-wuxia-gold bg-wuxia-gold/15 text-wuxia-gold hover:bg-wuxia-gold hover:text-black' : 'border border-gray-700 bg-gray-900 text-gray-300 cursor-not-allowed'}`}>
+                                                  <button
+                                                      disabled={!canExchange}
+                                                      onClick={() => { if (canExchange && onExchange) onExchange(good.id, discountedPrice); }}
+                                                      className={`rounded px-3 py-2 text-sm font-bold transition-colors ${canExchange ? 'border border-wuxia-gold bg-wuxia-gold/15 text-wuxia-gold hover:bg-wuxia-gold hover:text-black' : 'border border-gray-700 bg-gray-900 text-gray-300 cursor-not-allowed'}`}
+                                                  >
                                                      {canExchange ? '可兑换' : !职位可达(good.要求职位) ? '身份不足' : '贡献不足'}
                                                  </button>
                                              </div>

@@ -253,9 +253,10 @@ const InputArea: React.FC<Props> = ({
     const mainStoryStartRef = useRef<number>(0);
 
     useEffect(() => {
-        if (loading) {
-            mainStoryStartRef.current = Date.now();
-            setMainStoryElapsed(0);
+        if (loading || postStoryQueueRunning) {
+            if (!mainStoryStartRef.current) {
+                mainStoryStartRef.current = Date.now();
+            }
             const timer = setInterval(() => {
                 setMainStoryElapsed(Date.now() - mainStoryStartRef.current);
             }, 200);
@@ -264,7 +265,7 @@ const InputArea: React.FC<Props> = ({
             setMainStoryElapsed(0);
             mainStoryStartRef.current = 0;
         }
-    }, [loading]);
+    }, [loading, postStoryQueueRunning]);
 
     useEffect(() => {
         setIsStreaming(isStreamingDefault);
@@ -732,10 +733,6 @@ const InputArea: React.FC<Props> = ({
         { id: 'map', label: '地图更新', progress: effectiveMapUpdateProgress }
     ]);
     const queueVisible = pipelineStages.some((stage) => Boolean(stage.progress));
-    const historyStages = pipelineStages.filter((stage) => {
-        const commandTexts = (stage.progress as { commandTexts?: string[] } | null)?.commandTexts;
-        return Array.isArray(commandTexts) && commandTexts.length > 0;
-    });
     const currentRunningStage = pipelineStages.find((stage) => stage.progress?.phase === 'start');
     const latestFinishedStage = [...pipelineStages].reverse().find((stage) => stage.progress && stage.progress.phase !== 'start');
     const queueRunning = Boolean(currentRunningStage);
@@ -912,9 +909,7 @@ const InputArea: React.FC<Props> = ({
                                                             <span className={取阶段状态色(phase)}>●</span>
                                                         )}
                                                         <span className="text-sm text-gray-100">{stage.label}</span>
-                                                        <span className={`text-xs ${取阶段状态色(phase)}`}>
-                                                            {取阶段状态文案(phase)}
-                                                        </span>
+                                                        {elapsedText && <span className="text-[11px] text-gray-500 font-mono">{elapsedText}</span>}
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         {isVariableStage && phase === 'start' && variableGenerationRunning && onCancelVariableGeneration && (
@@ -964,24 +959,26 @@ const InputArea: React.FC<Props> = ({
                                                         )}
                                                     </div>
                                                 </div>
-                                                {progressText && (
+                                                {progressText && phase === 'start' && (
                                                     <pre className="mt-2 text-sm whitespace-pre-wrap text-gray-300 leading-relaxed max-h-24 sm:max-h-32 overflow-y-auto no-scrollbar">
                                                         {progressText}
                                                     </pre>
                                                 )}
-                                                {(stage.progress?.channelName || (!hidesModel && stage.progress?.modelName) || elapsedText) && (
-                                                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] leading-5">
-                                                        <span className="rounded border border-wuxia-cyan/25 bg-wuxia-cyan/10 px-2 py-0.5 text-wuxia-cyan">
-                                                            渠道：{stage.progress?.channelName || '未配置渠道'}
-                                                        </span>
-                                                        {!hidesModel && (
-                                                            <span className="rounded border border-wuxia-gold/25 bg-wuxia-gold/10 px-2 py-0.5 text-wuxia-gold">
-                                                                模型：{stage.progress?.modelName || '未选择模型'}
+                                                {(phase === 'error' && stage.progress?.text) && (
+                                                    <pre className="mt-2 text-sm whitespace-pre-wrap text-red-300 leading-relaxed max-h-24 overflow-y-auto no-scrollbar">
+                                                        {stage.progress.text}
+                                                    </pre>
+                                                )}
+                                                {(stage.progress?.channelName || (!hidesModel && stage.progress?.modelName)) && (
+                                                    <div className="mt-1 flex flex-wrap gap-2 text-[11px] leading-5">
+                                                        {stage.progress?.channelName && (
+                                                            <span className="rounded border border-wuxia-cyan/25 bg-wuxia-cyan/10 px-2 py-0.5 text-wuxia-cyan">
+                                                                渠道：{stage.progress.channelName}
                                                             </span>
                                                         )}
-                                                        {elapsedText && (
-                                                            <span className="rounded border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-emerald-200">
-                                                                耗时：{elapsedText}
+                                                        {!hidesModel && stage.progress?.modelName && (
+                                                            <span className="rounded border border-wuxia-gold/25 bg-wuxia-gold/10 px-2 py-0.5 text-wuxia-gold">
+                                                                模型：{stage.progress.modelName}
                                                             </span>
                                                         )}
                                                     </div>
@@ -995,7 +992,7 @@ const InputArea: React.FC<Props> = ({
                                                     </div>
                                                 )}
                                                 {rawExpanded && rawText && (
-                                                    <pre className="mt-2 text-sm whitespace-pre-wrap text-emerald-200 leading-relaxed max-h-36 sm:max-h-56 overflow-y-auto no-scrollbar border border-emerald-500/20 bg-black/60 rounded p-2">
+                                                    <pre className="mt-2 text-sm whitespace-pre-wrap text-emerald-200 leading-[1.8] max-h-36 sm:max-h-56 overflow-y-auto no-scrollbar border border-emerald-500/20 bg-black/60 rounded p-2">
                                                         {rawText}
                                                     </pre>
                                                 )}
@@ -1003,21 +1000,6 @@ const InputArea: React.FC<Props> = ({
                                         );
                                     })}
                                 </div>
-                                {historyStages.length > 0 && (
-                                    <div className="rounded border border-wuxia-gold/20 bg-neutral-950 p-2 space-y-2 max-h-36 sm:max-h-64 overflow-y-auto no-scrollbar">
-                                        <div className="text-sm text-wuxia-gold">独立链命令历史面板</div>
-                                        <div className="grid grid-cols-1 gap-2">
-                                            {historyStages.map((stage) => (
-                                                <div key={`history_${stage.id}`} className="rounded border border-gray-800/80 bg-black/50 p-2">
-                                                    <div className="text-sm text-gray-100 mb-1">{stage.label}</div>
-                                                    <pre className="text-sm whitespace-pre-wrap text-sky-100 leading-relaxed max-h-28 sm:max-h-40 overflow-y-auto no-scrollbar">
-                                                        {合并队列命令展示(截断队列命令列表(((stage.progress as { commandTexts?: string[] } | null)?.commandTexts) || []) || [])}
-                                                    </pre>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         )}
                             </>
@@ -1266,11 +1248,14 @@ const InputArea: React.FC<Props> = ({
 
                 {/* Send / Stop Button */}
                 {loading || isPreparing || variableGenerationRunning || postStoryQueueRunning ? (
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        {loading && mainStoryElapsed > 0 && (
-                            <span className="text-[11px] text-gray-400 font-mono tabular-nums min-w-[3.5ch] text-right">
-                                {格式化队列耗时(mainStoryElapsed)}
-                            </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {(loading || postStoryQueueRunning) && mainStoryElapsed > 0 && (
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded border border-wuxia-cyan/30 bg-wuxia-cyan/10">
+                                <span className="text-[11px] text-wuxia-cyan/70">{loading ? '生成中' : '队列中'}</span>
+                                <span className="text-[12px] text-wuxia-cyan font-mono font-bold tabular-nums">
+                                    {格式化队列耗时(mainStoryElapsed)}
+                                </span>
+                            </div>
                         )}
                     <button 
                         onClick={variableGenerationRunning && onCancelVariableGeneration ? onCancelVariableGeneration : handleStop}

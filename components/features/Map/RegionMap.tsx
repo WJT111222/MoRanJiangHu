@@ -572,7 +572,7 @@ const RegionMap: React.FC<Props> = ({ nodes, currentNodeId, currentLocationName,
                                     <rect x={card.x + card.w - 1.1} y={card.y + 0.35} width={0.62} height={0.62} rx={0.12}
                                         fill="#40c870" stroke="#208040" strokeWidth={0.06} pointerEvents="none" />
                                 )}
-                                {desc && card.h > 4.2 && (
+                                {desc && card.h > 4.2 && !['小地点', '区地点', '子地点'].includes(card.node?.层级) && (
                                     <text x={card.x + card.w / 2} y={card.y + 2.8}
                                         textAnchor="middle" pointerEvents="none" fill="rgba(69,47,26,0.72)" fontSize={descSize} fontFamily="serif">
                                         {desc.slice(0, Math.max(12, Math.floor(card.w * 1.7)))}

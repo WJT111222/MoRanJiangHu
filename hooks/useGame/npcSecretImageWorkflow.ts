@@ -67,7 +67,7 @@ type NPC秘档部位生图工作流依赖 = {
     写入NPC香闺秘档部位记录: (npcKey: string, part: 香闺秘档部位类型, record: any, options?: { 同步最近结果?: boolean }) => boolean;
 };
 
-const 默认额外负面提示词 = 'face, eyes, portrait, headshot, upper body, half body, full body, torso, abdomen, legs, arm, feet, hands, multiple people, extra legs, extra arms, extra breasts, extra nipples, extra fingers, three legs, three breasts, merged body parts, duplicate anatomy, mirrored anatomy, multiple genitals, extra genitals, room focus, scenery focus, environment focus, background focus, wide shot, mid shot, collage, contact sheet, reference sheet, character sheet, split screen, panel layout, comic panel, manga panel, thumbnails, bottom strip, inset image, text, typography, letters, words, caption, subtitle, watermark, signature, logo, speech bubble, dialogue box, blurry, low quality, bad anatomy';
+const 默认额外负面提示词 = 'face, eyes, portrait, headshot, upper body, half body, full body, torso, abdomen, legs, arm, feet, hands, multiple people, extra legs, extra arms, extra breasts, extra nipples, extra fingers, three legs, three breasts, merged body parts, duplicate anatomy, mirrored anatomy, multiple genitals, extra genitals, room focus, scenery focus, environment focus, background focus, wide shot, mid shot, collage, contact sheet, reference sheet, character sheet, split screen, panel layout, comic panel, manga panel, thumbnails, bottom strip, inset image, blurry, low quality, bad anatomy';
 const 默认裸体正向提示词 = 'nude, naked, unclothed';
 const NSFW部位特写词组转化器提示词 = [
     '【NSFW ComfyUI 私密部位特写规则】',

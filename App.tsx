@@ -1202,6 +1202,12 @@ const App: React.FC = () => {
         if (!Array.isArray(state.约定列表) || state.约定列表.length === 0) {
             areas.delete('约定列表');
         }
+        if (!Array.isArray(state.角色?.功法列表) || state.角色.功法列表.length === 0) {
+            areas.delete('功法');
+        }
+        if (!Array.isArray(state.任务列表) || state.任务列表.length === 0) {
+            areas.delete('任务列表');
+        }
         return Array.from(areas);
     }, [latestAssistantMessage, state.约定列表]);
     const itemImageSequence = React.useMemo(() => {
@@ -1985,6 +1991,42 @@ const App: React.FC = () => {
         void actions.performAutoSave?.({ role: nextCharacter, force: true });
         actions.pushNotification({ title: `${题材界面文案.组织.能力库}${题材界面文案.组织.学习动作}成功`, message: `已${题材界面文案.组织.学习动作}「${learnedSkill.名称}」，可在${功法显示名称}页查看。`, tone: 'success' });
     }, [actions, setters, state.玩家门派?.名称, state.角色, 题材界面文案.组织.能力库, 题材界面文案.组织.学习动作, 功法显示名称]);
+    const handleSectExchange = React.useCallback((goodId: string, price: number) => {
+        const sect = state.玩家门派;
+        if (!sect) return;
+        const good = (sect.兑换列表 || []).find((g: any) => g.id === goodId);
+        if (!good) return;
+        const currentContribution = Math.max(0, Number(sect.玩家贡献 || 0));
+        if (currentContribution < price) {
+            actions.pushNotification({ title: '兑换失败', message: '当前贡献不足。', tone: 'error' });
+            return;
+        }
+        if (good.库存 <= 0) {
+            actions.pushNotification({ title: '兑换失败', message: '库存不足。', tone: 'error' });
+            return;
+        }
+        const nextSect = {
+            ...sect,
+            玩家贡献: currentContribution - price,
+            兑换列表: sect.兑换列表.map((g: any) => g.id === goodId ? { ...g, 库存: Math.max(0, (g.库存 || 1) - 1) } : g)
+        };
+        const newItem = {
+            ID: `exchange_${goodId}_${Date.now()}`,
+            名称: good.物品名称 || '兑换物品',
+            描述: good.描述 || '',
+            类型: good.类型 || '消耗品',
+            品质: good.品质 || '良品',
+            重量: good.重量 || 0.5,
+            堆叠数量: 1,
+            是否可堆叠: false
+        };
+        const currentItems = Array.isArray(state.角色?.物品列表) ? state.角色.物品列表 : [];
+        const nextCharacter = { ...state.角色, 物品列表: [...currentItems, newItem] };
+        setters.set玩家门派(nextSect);
+        setters.setCharacter(nextCharacter);
+        void actions.performAutoSave?.({ sect: nextSect, role: nextCharacter, force: true });
+        actions.pushNotification({ title: '兑换成功', message: `已兑换「${newItem.名称}」，消耗 ${price} 贡献。`, tone: 'success' });
+    }, [actions, setters, state.玩家门派, state.角色]);
     const handleClaimMonthlyStipend = React.useCallback(() => {
         const sect = state.玩家门派;
         const rule = sect?.月俸规则;
@@ -4175,6 +4217,7 @@ const App: React.FC = () => {
                                     onOpenNpc={openNpcDetailFromRecord}
                                     onLearnBook={handleLearnSectBook}
                                     onClaimMonthlyStipend={handleClaimMonthlyStipend}
+                                    onExchange={handleSectExchange}
                                     learnedBookIds={learnedSectBookIds}
                                     onClose={() => setters.setShowSect(false)}
                                 />
@@ -4185,6 +4228,7 @@ const App: React.FC = () => {
                                     onOpenNpc={openNpcDetailFromRecord}
                                     onLearnBook={handleLearnSectBook}
                                     onClaimMonthlyStipend={handleClaimMonthlyStipend}
+                                    onExchange={handleSectExchange}
                                     learnedBookIds={learnedSectBookIds}
                                     onClose={() => setters.setShowSect(false)}
                                 />

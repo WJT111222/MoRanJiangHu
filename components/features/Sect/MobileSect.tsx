@@ -9,6 +9,7 @@ interface Props {
     onOpenNpc?: (npc: any) => void;
     onLearnBook?: (book: any) => void;
     onClaimMonthlyStipend?: () => void;
+    onExchange?: (goodId: string, price: number) => void;
     learnedBookIds?: string[];
     env?: 环境信息结构;
 }
@@ -216,7 +217,7 @@ const 估算月俸数量 = (sectData: 详细门派结构): number => {
     return Math.max(0, base + contributionBonus + scaleBonus);
 };
 
-const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook, onClaimMonthlyStipend, learnedBookIds = [], env }) => {
+const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook, onClaimMonthlyStipend, onExchange, learnedBookIds = [], env }) => {
     const [activeTab, setActiveTab] = useState<Tab>('hall');
     const 文案 = useMemo(() => 获取组织显示文案(sectData), [sectData]);
     const 显示职位 = (rank?: string) => 文案.rankMap[String(rank || '').trim()] || rank || '无';
@@ -407,6 +408,7 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                         <div className="grid grid-cols-2 gap-3">
                             {sectData.兑换列表.map(good => {
                                 const discountedPrice = 计算折后贡献(good.兑换价格);
+                                const canExchange = 职位可达(good.要求职位) && sectData.玩家贡献 >= discountedPrice && good.库存 > 0;
                                 return (
                                     <div key={good.id} className="bg-black/40 border border-gray-800 rounded-xl p-3 space-y-2">
                                         <div className="text-sm text-gray-200 font-bold">{good.物品名称}</div>
@@ -415,6 +417,13 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
                                             <span className="text-wuxia-gold font-mono">{discountedPrice} 贡献</span>
                                             <span className="text-gray-500">库存 {good.库存}</span>
                                         </div>
+                                        <button
+                                            disabled={!canExchange}
+                                            onClick={() => { if (canExchange && onExchange) onExchange(good.id, discountedPrice); }}
+                                            className={`w-full rounded px-3 py-2 text-sm font-bold transition-colors ${canExchange ? 'border border-wuxia-gold bg-wuxia-gold/15 text-wuxia-gold hover:bg-wuxia-gold hover:text-black' : 'border border-gray-700 bg-gray-900 text-gray-300 cursor-not-allowed'}`}
+                                        >
+                                            {canExchange ? '可兑换' : !职位可达(good.要求职位) ? '身份不足' : '贡献不足'}
+                                        </button>
                                     </div>
                                 );
                             })}

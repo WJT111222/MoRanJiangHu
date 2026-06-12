@@ -652,8 +652,7 @@ export const 获取世界观货币摘要 = (
     profile?: ModeRuntimeProfile | null,
     mode: 货币显示模式 = 'wuxia'
 ): string => {
-    const [upper, middle, lower] = 获取世界观货币层级配置(profile, mode);
-    return `当前世界使用 ${upper.fullLabel}、${middle.fullLabel}、${lower.fullLabel} 三级货币，系统会按相邻汇率自动折算。`;
+    return 获取世界观货币汇率说明(profile, mode);
 };
 
 export const 获取世界观货币卡片信息 = (

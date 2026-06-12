@@ -369,7 +369,7 @@ const TurnItem: React.FC<Props> = ({
                         关闭
                     </button>
                 </div>
-                <pre className="max-h-[44vh] overflow-auto whitespace-pre-wrap break-words bg-white/90 p-4 font-mono text-[12px] leading-5 text-stone-950" style={{ fontSize: 紧凑等宽字号 }} data-raw-response-text="true">
+                <pre className="max-h-[44vh] overflow-auto whitespace-pre-wrap break-words bg-white/90 p-4 font-mono text-[12px] leading-[1.8] text-stone-950" style={{ fontSize: 紧凑等宽字号 }} data-raw-response-text="true">
                     {格式化日志原始片段(log)}
                 </pre>
             </div>
