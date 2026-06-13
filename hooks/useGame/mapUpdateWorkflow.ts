@@ -286,7 +286,8 @@ export const 构建地图层级替换结果 = (
             描述: 取文本(node?.描述),
             控制势力: 取文本(node?.控制势力),
             势力影响: 取文本(node?.势力影响),
-            势力标签: Array.isArray(node?.势力标签) ? node.势力标签.map(取文本).filter(Boolean) : []
+            势力标签: Array.isArray(node?.势力标签) ? node.势力标签.map(取文本).filter(Boolean) : [],
+            在场人物: Array.isArray(node?.在场人物) ? node.在场人物.map(取文本).filter(Boolean) : []
         }))
         .filter((node) => node.名称);
     if (!normalizedNodes.some((node) => node.层级 === '寰宇')) {
@@ -331,6 +332,7 @@ export const 构建地图层级替换结果 = (
         控制势力: node.控制势力,
         势力影响: node.势力影响,
         势力标签: node.势力标签,
+        在场人物: node.在场人物,
         归属: { 大地点: '', 中地点: '', 小地点: '' }
     }));
 };

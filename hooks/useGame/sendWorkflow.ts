@@ -1383,7 +1383,12 @@ export const 执行主剧情发送工作流 = async (
                             styleAssistantPrompt: [styleAssistantPrompt, realWorldModePrompt].filter(Boolean).join('\n\n'),
                             outputProtocolPrompt,
                             cotPseudoHistoryPrompt: cotPseudoPrompt,
-                            lengthRequirementPrompt: [lengthRequirementPrompt, retryFormatPrompt, protocolRetryPrompt].filter(Boolean).join('\n\n'),
+                            lengthRequirementPrompt: [lengthRequirementPrompt, retryFormatPrompt, protocolRetryPrompt, (() => {
+                                const pov = runtimeGameConfig.叙事人称;
+                                if (pov === '第一人称') return '【人称硬约束】本回合正文必须使用第一人称"我"指代主角，严禁使用"你/他/她"指代主角。';
+                                if (pov === '第三人称') return '【人称硬约束】本回合正文必须使用第三人称指代主角（用主角姓名或"他/她"），严禁使用"我/你"指代主角。';
+                                return '【人称硬约束】本回合正文必须使用第二人称"你"指代主角，严禁使用"我/他/她"或主角姓名指代主角。旁白中出现主角姓名作为叙述主语时，必须改为"你"。';
+                            })()].filter(Boolean).join('\n\n'),
                             disclaimerRequirementPrompt,
                             validateTagCompleteness: runtimeGameConfig.启用标签检测完整性 === true,
                             enableTagRepair: runtimeGameConfig.启用标签修复 !== false,

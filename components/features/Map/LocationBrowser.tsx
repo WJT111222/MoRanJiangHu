@@ -173,8 +173,7 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
             || envNames.some((name) => selectedNames.has(name))
             || breadcrumb.some((node) => node.ID === tree.当前节点?.ID)
             || selectedNode.ID === tree.当前节点?.父级ID;
-        const isLeafNode = selectedNode.子节点.length === 0;
-        if (!locationMatches && !isLeafNode) return people;
+        if (!locationMatches) return people;
 
         const appendUnique = (person: any) => {
             const name = String(person?.姓名 || person?.名称 || '').trim();
@@ -187,20 +186,8 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
             const hasPlayer = people.some((existing: any) => String(existing?.姓名 || existing?.名称 || '').trim() === safePlayerName);
             if (!hasPlayer) people.unshift({ 姓名: safePlayerName, 名称: safePlayerName, 是否玩家本人: true });
         }
-        if (isLeafNode) {
-            const heroine = socialList.find((npc: any) => {
-                const name = String(npc?.姓名 || npc?.名称 || '').trim();
-                if (!name || name === safePlayerName) return false;
-                return npc?.是否主要角色 === true && npc?.是否队友 === true && String(npc?.性别 || '').includes('女');
-            }) || socialList.find((npc: any) => {
-                const name = String(npc?.姓名 || npc?.名称 || '').trim();
-                if (!name || name === safePlayerName) return false;
-                return npc?.是否主要角色 === true && npc?.是否队友 === true;
-            });
-            if (heroine) appendUnique(heroine);
-        }
         return people;
-    }, [selectedNodeNpcs, playerName, selectedNode, tree.当前节点, breadcrumb, env, socialList]);
+    }, [selectedNodeNpcs, playerName, selectedNode, tree.当前节点, breadcrumb, env]);
 
     const rightPanelWidth = compact ? 'min-h-0' : 'w-[320px]';
 

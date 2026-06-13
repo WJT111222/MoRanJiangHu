@@ -860,7 +860,8 @@ const InputArea: React.FC<Props> = ({
                                 </button>
                             </div>
                         ) : (
-                            <div className="rounded-lg border border-wuxia-gold/25 bg-ink-black/60 p-3 space-y-2 max-h-[32svh] sm:max-h-[40vh] md:max-h-[58vh] overflow-y-auto no-scrollbar">
+                            <div className="flex gap-2">
+                            <div className="flex-1 min-w-0 rounded-lg border border-wuxia-gold/25 p-3 space-y-2 max-h-[32svh] sm:max-h-[40vh] md:max-h-[58vh] overflow-y-auto no-scrollbar">
                                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                                     <div className="text-wuxia-gold">{isOpeningQueue ? '开局初始化队列' : '独立更新阶段队列'}</div>
                                     <div className="text-gray-400">
@@ -886,133 +887,145 @@ const InputArea: React.FC<Props> = ({
                                         const hidesModel = 队列阶段不调用AI(stage.progress);
                                         const elapsedText = 格式化队列耗时(stage.progress?.elapsedMs);
                                         return (
-                                            <div key={stage.id} className="flex gap-2">
-                                                <div className={`rounded border border-gray-800/80 bg-neutral-950 p-2 ${(commandExpanded || rawExpanded) ? 'min-w-0 flex-1' : 'w-full'}`}>
-                                                    <div className="flex items-center justify-between gap-3">
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            <span className="text-gray-500 text-xs">{index + 1}.</span>
-                                                            {phase === 'start' ? (
-                                                                <RunningSpinner small />
-                                                            ) : (
-                                                                <span className={取阶段状态色(phase)}>●</span>
-                                                            )}
-                                                            <span className="text-sm text-gray-100">{stage.label}</span>
-                                                            {elapsedText && <span className="text-[11px] text-gray-500 font-mono">{elapsedText}</span>}
-                                                            {(() => {
-                                                                const id = stage.id.replace(/^opening-/, '').replace(/^story$/, 'main');
-                                                                const mode = stageStreamMode[id];
-                                                                return mode ? (
-                                                                    <span
-                                                                        className={`ml-1 inline-flex items-center rounded px-1 py-[1px] text-[10px] font-mono
-                                                                        ${mode === 'non-stream'
-                                                                            ? 'text-amber-500/80 bg-amber-500/10 [html[data-theme="day"]_&]:text-amber-800 [html[data-theme="day"]_&]:bg-amber-100'
-                                                                            : 'text-cyan-400/90 bg-cyan-500/10 [html[data-theme="day"]_&]:text-cyan-800 [html[data-theme="day"]_&]:bg-cyan-100'
-                                                                        }`}
-                                                                    >
-                                                                        {mode === 'non-stream' ? '[非流式]' : '[流式]'}
-                                                                    </span>
-                                                                ) : null;
-                                                            })()}
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            {isVariableStage && phase === 'start' && variableGenerationRunning && onCancelVariableGeneration && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={onCancelVariableGeneration}
-                                                                    className="text-xs px-2 py-1 border border-teal-400/40 text-teal-100 rounded hover:bg-teal-500/10"
+                                            <div key={stage.id} className="rounded border border-gray-800/80 bg-neutral-950 p-2">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <span className="text-gray-500 text-xs">{index + 1}.</span>
+                                                        {phase === 'start' ? (
+                                                            <RunningSpinner small />
+                                                        ) : (
+                                                            <span className={取阶段状态色(phase)}>●</span>
+                                                        )}
+                                                        <span className="text-sm text-gray-100">{stage.label}</span>
+                                                        {elapsedText && <span className="text-[11px] text-gray-500 font-mono">{elapsedText}</span>}
+                                                        {(() => {
+                                                            const id = stage.id.replace(/^opening-/, '').replace(/^story$/, 'main');
+                                                            const mode = stageStreamMode[id];
+                                                            return mode ? (
+                                                                <span
+                                                                    className={`ml-1 inline-flex items-center rounded px-1 py-[1px] text-[10px] font-mono
+                                                                    ${mode === 'non-stream'
+                                                                        ? 'text-amber-500/80 bg-amber-500/10 [html[data-theme="day"]_&]:text-amber-800 [html[data-theme="day"]_&]:bg-amber-100'
+                                                                        : 'text-cyan-400/90 bg-cyan-500/10 [html[data-theme="day"]_&]:text-cyan-800 [html[data-theme="day"]_&]:bg-cyan-100'
+                                                                    }`}
                                                                 >
-                                                                    取消生成
-                                                                </button>
-                                                            )}
-                                                            {isVariableStage && phase !== 'start' && !variableGenerationRunning && onRetryLatestVariableGeneration && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => { void handleRetryVariableGeneration(); }}
-                                                                    className="text-xs px-2 py-1 border border-cyan-400/40 text-cyan-100 rounded hover:bg-cyan-500/10"
-                                                                >
-                                                                    重新生成
-                                                                </button>
-                                                            )}
-                                                            {commandTexts.length > 0 && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setExpandedCommandStageId(commandExpanded ? null : stage.id);
-                                                                        if (!commandExpanded) setExpandedRawStageId(null);
-                                                                    }}
-                                                                    className="text-xs px-2 py-1 border border-gray-700 text-gray-300 rounded hover:border-wuxia-gold/40 hover:text-white"
-                                                                >
-                                                                    {commandExpanded ? '收起命令' : '查看命令'}
-                                                                </button>
-                                                            )}
-                                                            {rawText && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => { void 复制队列文本(fullRawText, `${stage.label}原始回复`); }}
-                                                                    className="text-xs px-2 py-1 border border-emerald-700/70 text-emerald-200 rounded hover:border-emerald-400/70 hover:text-white"
-                                                                >
-                                                                    复制原始回复
-                                                                </button>
-                                                            )}
-                                                            {rawText && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setExpandedRawStageId(rawExpanded ? null : stage.id);
-                                                                        if (!rawExpanded) setExpandedCommandStageId(null);
-                                                                    }}
-                                                                    className="text-xs px-2 py-1 border border-gray-700 text-gray-300 rounded hover:border-wuxia-gold/40 hover:text-white"
-                                                                >
-                                                                    {rawExpanded ? '收起原始回复' : '查看原始回复'}
-                                                                </button>
-                                                            )}
-                                                        </div>
+                                                                    {mode === 'non-stream' ? '[非流式]' : '[流式]'}
+                                                                </span>
+                                                            ) : null;
+                                                        })()}
                                                     </div>
-                                                    {progressText && phase === 'start' && (
-                                                        <pre className="mt-2 text-sm whitespace-pre-wrap text-gray-300 leading-relaxed max-h-24 sm:max-h-32 overflow-y-auto no-scrollbar">
-                                                            {progressText}
-                                                        </pre>
-                                                    )}
-                                                    {(phase === 'error' && stage.progress?.text) && (
-                                                        <pre className="mt-2 text-sm whitespace-pre-wrap text-red-300 leading-relaxed max-h-24 overflow-y-auto no-scrollbar">
-                                                            {stage.progress.text}
-                                                        </pre>
-                                                    )}
-                                                    {(stage.progress?.channelName || (!hidesModel && stage.progress?.modelName)) && (
-                                                        <div className="mt-1 flex flex-wrap gap-2 text-[11px] leading-5">
-                                                            {stage.progress?.channelName && (
-                                                                <span className="rounded border border-wuxia-cyan/25 bg-wuxia-cyan/10 px-2 py-0.5 text-wuxia-cyan">
-                                                                    渠道：{stage.progress.channelName}
-                                                                </span>
-                                                            )}
-                                                            {!hidesModel && stage.progress?.modelName && (
-                                                                <span className="rounded border border-wuxia-gold/25 bg-wuxia-gold/10 px-2 py-0.5 text-wuxia-gold">
-                                                                    模型：{stage.progress.modelName}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        {isVariableStage && phase === 'start' && variableGenerationRunning && onCancelVariableGeneration && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={onCancelVariableGeneration}
+                                                                className="text-xs px-2 py-1 border border-teal-400/40 text-teal-100 rounded hover:bg-teal-500/10"
+                                                            >
+                                                                取消生成
+                                                            </button>
+                                                        )}
+                                                        {phase !== 'start' && !variableGenerationRunning && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (isVariableStage && onRetryLatestVariableGeneration) {
+                                                                        void handleRetryVariableGeneration();
+                                                                    }
+                                                                }}
+                                                                className="text-xs px-2 py-1 border border-cyan-400/40 text-cyan-100 rounded hover:bg-cyan-500/10"
+                                                            >
+                                                                重新生成
+                                                            </button>
+                                                        )}
+                                                        {commandTexts.length > 0 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setExpandedCommandStageId(commandExpanded ? null : stage.id);
+                                                                    if (!commandExpanded) setExpandedRawStageId(null);
+                                                                }}
+                                                                className="text-xs px-2 py-1 border border-gray-700 text-gray-300 rounded hover:border-wuxia-gold/40 hover:text-white"
+                                                            >
+                                                                {commandExpanded ? '收起命令' : '查看命令'}
+                                                            </button>
+                                                        )}
+                                                        {rawText && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => { void 复制队列文本(fullRawText, `${stage.label}原始回复`); }}
+                                                                className="text-xs px-2 py-1 border border-emerald-700/70 text-emerald-200 rounded hover:border-emerald-400/70 hover:text-white"
+                                                            >
+                                                                复制原始回复
+                                                            </button>
+                                                        )}
+                                                        {rawText && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setExpandedRawStageId(rawExpanded ? null : stage.id);
+                                                                    if (!rawExpanded) setExpandedCommandStageId(null);
+                                                                }}
+                                                                className="text-xs px-2 py-1 border border-gray-700 text-gray-300 rounded hover:border-wuxia-gold/40 hover:text-white"
+                                                            >
+                                                                {rawExpanded ? '收起原始回复' : '查看原始回复'}
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                {commandExpanded && commandTexts.length > 0 && (
-                                                    <div className="w-80 shrink-0 rounded border border-wuxia-gold/20 bg-black/55 p-2 overflow-hidden">
-                                                        <div className="text-xs text-wuxia-gold/80 mb-1">本回合命令列表</div>
-                                                        <pre className="text-[11px] whitespace-pre-wrap text-sky-100 leading-relaxed max-h-48 overflow-y-auto no-scrollbar">
-                                                            {commandDisplayText}
-                                                        </pre>
-                                                    </div>
+                                                {progressText && phase === 'start' && (
+                                                    <pre className="mt-2 text-sm whitespace-pre-wrap text-gray-300 leading-relaxed max-h-24 sm:max-h-32 overflow-y-auto no-scrollbar">
+                                                        {progressText}
+                                                    </pre>
                                                 )}
-                                                {rawExpanded && rawText && (
-                                                    <div className="w-96 shrink-0 rounded border border-emerald-500/20 bg-black/60 p-2 overflow-hidden">
-                                                        <div className="text-xs text-emerald-400/80 mb-1">原始回复</div>
-                                                        <pre className="text-[11px] whitespace-pre-wrap text-emerald-200 leading-[1.8] max-h-48 overflow-y-auto no-scrollbar">
-                                                            {rawText}
-                                                        </pre>
+                                                {(phase === 'error' && stage.progress?.text) && (
+                                                    <pre className="mt-2 text-sm whitespace-pre-wrap text-red-300 leading-relaxed max-h-24 overflow-y-auto no-scrollbar">
+                                                        {stage.progress.text}
+                                                    </pre>
+                                                )}
+                                                {(stage.progress?.channelName || (!hidesModel && stage.progress?.modelName)) && (
+                                                    <div className="mt-1 flex flex-wrap gap-2 text-[11px] leading-5">
+                                                        {stage.progress?.channelName && (
+                                                            <span className="rounded border border-wuxia-cyan/25 bg-wuxia-cyan/10 px-2 py-0.5 text-wuxia-cyan">
+                                                                渠道：{stage.progress.channelName}
+                                                            </span>
+                                                        )}
+                                                        {!hidesModel && stage.progress?.modelName && (
+                                                            <span className="rounded border border-wuxia-gold/25 bg-wuxia-gold/10 px-2 py-0.5 text-wuxia-gold">
+                                                                模型：{stage.progress.modelName}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
                                         );
                                     })}
                                 </div>
+                            </div>
+                            {(expandedCommandStageId || expandedRawStageId) && (() => {
+                                const expandedId = expandedCommandStageId || expandedRawStageId;
+                                const stage = pipelineStages.find((s) => s.id === expandedId);
+                                if (!stage) return null;
+                                const isCommand = Boolean(expandedCommandStageId);
+                                const commandTexts = Array.isArray((stage.progress as any)?.commandTexts) ? (stage.progress as any).commandTexts : [];
+                                const rawText = stage.progress?.rawText || '';
+                                const commandDisplayText = commandTexts.join('\n');
+                                return (
+                                    <div className="w-80 shrink-0 rounded-lg border border-wuxia-gold/25 p-3 max-h-[32svh] sm:max-h-[40vh] md:max-h-[58vh] overflow-y-auto no-scrollbar space-y-2">
+                                        <div className="text-xs text-wuxia-gold font-bold mb-1">
+                                            {stage.label} — {isCommand ? '命令列表' : '原始回复'}
+                                        </div>
+                                        {isCommand ? (
+                                            <pre className="text-[11px] whitespace-pre-wrap text-sky-100 leading-relaxed">
+                                                {commandDisplayText}
+                                            </pre>
+                                        ) : (
+                                            <pre className="text-[11px] whitespace-pre-wrap text-emerald-200 leading-[1.8]">
+                                                {rawText}
+                                            </pre>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                             </div>
                         )}
                             </>

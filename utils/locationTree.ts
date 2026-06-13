@@ -11,6 +11,7 @@ export interface 地点树节点 {
     控制势力?: string;
     势力影响?: string;
     势力标签?: string[];
+    在场人物?: string[];
     子节点: 地点树节点[];
 }
 

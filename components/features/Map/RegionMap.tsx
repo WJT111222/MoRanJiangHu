@@ -532,7 +532,7 @@ const RegionMap: React.FC<Props> = ({ nodes, currentNodeId, currentLocationName,
                         pointerEvents="none" />
                     {roomCards.map((card, index) => {
                         const directNpcs = npcByNode.get(card.node.ID) || [];
-                        const fallbackNpcs = index === 0 ? [...(npcByNode.get('_unplaced') || []), ...viewNodeNpcs] : [];
+                        const fallbackNpcs = index === 0 ? (npcByNode.get('_unplaced') || []) : [];
                         const seen = new Set<string>();
                         const cardNpcList = [...directNpcs, ...fallbackNpcs].filter((npc: any) => {
                             const name = String(npc?.姓名 || npc?.名称 || '').trim();
