@@ -311,6 +311,13 @@
 - 优先使用 `node`、显式 UTF-8 文件读写，或其它能保留 Unicode 文本的命令。
 - 如果必须临时绕过 shell 编码问题，要一次性解决底层解码方式并把诀窍记录下来，不要反复描述同一个编码绕路。
 
+## PowerShell 管道输出规则
+
+- `powershell.exe -Command "..." | tail -N` 可能在命令成功执行后仍返回空输出。根因：PowerShell 的 stderr/stdout 缓冲与 bash 管道缓冲存在时序竞争——Gradle 将进度信息写入 stderr（`> Task :app:...`），当 PowerShell 在 stderr 缓冲区完全刷新到管道之前退出时，`tail` 读取到空内容。
+- **正确用法**：使用 `powershell.exe -Command "..." 2>&1` 而不加 `| tail` 来捕获完整输出。如果只需要最后几行，先让命令完成，输出自然可用。
+- **错误用法**：`powershell.exe -Command "..." 2>&1 | tail -10` —— 会导致静默返回空输出，看起来像命令卡住或失败了，实际上命令已成功。
+- 对于 Gradle 构建，构建可能已成功（APK 文件存在且时间戳正确），但管道返回空，导致误判为"超时"或"空输出"。
+
 ## 2026-05-17 地图重构与同步记忆
 
 - 原作者项目：`ypq123456789/MoRanJiangHu`。

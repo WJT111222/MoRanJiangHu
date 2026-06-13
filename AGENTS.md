@@ -112,6 +112,13 @@
 - Prefer `node`, explicit UTF-8 file reads/writes, or commands that preserve Unicode text.
 - If a shell workaround is needed, solve the underlying decoding issue once and record the fix, rather than repeatedly narrating the same encoding detour.
 
+## PowerShell Pipe Output Rule
+
+- `powershell.exe -Command "..." | tail -N` can return empty output even when the command succeeds. Root cause: PowerShell's stderr/stdout buffering has a race condition with bash pipe buffering — Gradle writes progress to stderr (`> Task :app:...`), and when PowerShell exits before stderr buffer fully flushes through the pipe, `tail` reads nothing.
+- **Correct pattern**: Use `powershell.exe -Command "..." 2>&1` without `| tail` to capture full output. If you only need the last N lines, let the command complete first, then the output is available.
+- **Incorrect pattern**: `powershell.exe -Command "..." 2>&1 | tail -10` — this causes silent empty output, making it appear the command hung or failed when it actually succeeded.
+- For Gradle builds specifically, the build may succeed (APK file exists with correct timestamp) but the pipe returns nothing, leading to false "timeout" or "empty output" diagnoses.
+
 ## Root-Cause Bugfix Rule
 
 - When the user asks to fix a problem, first consider whether the symptom is isolated or part of a larger workflow/data-integrity issue. If it is part of a larger issue, fix the whole chain, not only the visible symptom.

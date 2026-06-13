@@ -321,19 +321,24 @@ const MobileSocial: React.FC<Props> = ({
             const directSrc = 获取图片展示地址(source);
             if (directSrc) return source;
             const sourceId = typeof source.id === 'string' ? source.id.trim() : '';
-            if (sourceId && source.状态 === 'success') {
+            if (sourceId) {
                 const history = Array.isArray((npc as any)?.图片档案?.生图历史) ? (npc as any).图片档案.生图历史 : [];
                 const matchById = history.find((item: any) => item?.id === sourceId && 获取图片展示地址(item));
                 if (matchById) return matchById;
             }
         }
         const history = Array.isArray((npc as any)?.图片档案?.生图历史) ? (npc as any).图片档案.生图历史 : [];
-        return history.find((item: any) => (
+        const match = history.find((item: any) => (
             item?.状态 === 'success'
             && item?.构图 === '部位特写'
             && item?.部位 === part
             && 获取图片展示地址(item)
         ));
+        if (match) return match;
+        if (source && typeof source === 'object' && source.状态 === 'success') {
+            return source;
+        }
+        return undefined;
     };
     const 读取关系网 = (npc: NPC结构): Array<{ 对象姓名: string; 关系: string; 备注?: string }> => {
         if (!Array.isArray(npc?.关系网变量)) return [];

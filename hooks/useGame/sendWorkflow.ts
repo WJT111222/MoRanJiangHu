@@ -1465,9 +1465,6 @@ export const 执行主剧情发送工作流 = async (
 
         const socialBeforeMainCommands = deps.深拷贝(currentState.社交);
         const rawAiText = deps.获取原始AI消息(aiResult.rawText);
-        校验响应未命中女性姓名黑名单(aiData, rawAiText, "主剧情", currentState.社交);
-        校验响应未改写既有NPC姓名(aiData, currentState.社交, rawAiText, "主剧情");
-        校验响应未删除既有NPC(aiData, currentState.社交, rawAiText, "主剧情");
         let mainLengthShortage = 获取主剧情正文不足信息(aiData, runtimeGameConfig.字数要求);
         const shortBodyOnlyWarn = runtimeGameConfig.字数不足处理方式 === '仅提示';
         let shouldRegenerateForLength = Boolean(mainLengthShortage && !mainLengthShortage.withinTolerance && !shortBodyOnlyWarn);
