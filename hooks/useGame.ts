@@ -1139,7 +1139,7 @@ export const useGame = () => {
                 构建记忆总结用户提示词(task),
                 summaryApi,
                 undefined,
-                记忆总结非流式输出 ? undefined : undefined
+                记忆总结非流式输出 ? undefined : { stream: true }
             );
             set记忆总结草稿(清理记忆总结输出(raw));
             set记忆总结阶段('review');
@@ -1217,7 +1217,7 @@ export const useGame = () => {
                 构建NPC记忆总结用户提示词(currentTask),
                 summaryApi,
                 undefined,
-                记忆总结非流式输出 ? undefined : undefined
+                记忆总结非流式输出 ? undefined : { stream: true }
             );
             const cleaned = 清理记忆总结输出(raw);
             setNPC记忆总结草稿(cleaned || 构建NPC记忆总结回退文案(

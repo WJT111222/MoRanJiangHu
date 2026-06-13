@@ -224,7 +224,7 @@ export interface StoryRequestOptions {
     prefixMode?: boolean;
 }
 
-interface WorldStreamOptions {
+export interface WorldStreamOptions {
     stream?: boolean;
     onDelta?: (delta: string, accumulated: string) => void;
 }

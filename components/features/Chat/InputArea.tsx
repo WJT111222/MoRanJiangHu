@@ -937,7 +937,13 @@ const InputArea: React.FC<Props> = ({
                                                             const id = stage.id.replace(/^opening-/, '').replace(/^story$/, 'main');
                                                             const mode = stageStreamMode[id];
                                                             return mode ? (
-                                                                <span className={`text-[10px] font-mono ml-1 ${mode === 'non-stream' ? 'text-amber-500/70' : 'text-cyan-500/60'}`}>
+                                                                <span
+                                                                    className={`ml-1 inline-flex items-center rounded px-1 py-[1px] text-[10px] font-mono
+                                                                    ${mode === 'non-stream'
+                                                                        ? 'text-amber-500/80 bg-amber-500/10 [html[data-theme="day"]_&]:text-amber-800 [html[data-theme="day"]_&]:bg-amber-100'
+                                                                        : 'text-cyan-400/90 bg-cyan-500/10 [html[data-theme="day"]_&]:text-cyan-800 [html[data-theme="day"]_&]:bg-cyan-100'
+                                                                    }`}
+                                                                >
                                                                     {mode === 'non-stream' ? '[非流式]' : '[流式]'}
                                                                 </span>
                                                             ) : null;

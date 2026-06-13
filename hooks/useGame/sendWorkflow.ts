@@ -1972,7 +1972,15 @@ export const 执行主剧情发送工作流 = async (
                                 applyCommands: false,
                                 currentResponse: worldContextResponse,
                                 stateBase: stateSnapshot,
-                                signal: controller.signal
+                                signal: controller.signal,
+                                onStreamDelta: options?.onWorldEvolutionProgress
+                                    ? (_delta, accumulated) => {
+                                        options?.onWorldEvolutionProgress?.({
+                                            phase: "stream",
+                                            text: accumulated
+                                        });
+                                    }
+                                    : undefined
                             });
                             if (result.phase === "error") {
                                 const wrappedError = new Error(result.statusText || "动态世界更新失败");

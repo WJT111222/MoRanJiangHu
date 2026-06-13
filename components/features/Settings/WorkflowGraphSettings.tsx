@@ -782,6 +782,8 @@ const WorkflowGraphSettings: React.FC<{
                 <div className="mt-1.5 flex items-center gap-2">
                     <button
                         type="button"
+                        aria-label={`${stage.title}输出模式：${normalized.功能模型占位[stageNonStreamKeys[stage.id]!] === true ? '非流式' : '流式'}`}
+                        aria-pressed={normalized.功能模型占位[stageNonStreamKeys[stage.id]!] === true}
                         onClick={() => {
                             if (!onSave) return;
                             const key = stageNonStreamKeys[stage.id]!;
@@ -793,7 +795,8 @@ const WorkflowGraphSettings: React.FC<{
                         }}
                         className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${
                             normalized.功能模型占位[stageNonStreamKeys[stage.id]!] === true
-                                ? 'bg-amber-500/70' : 'bg-gray-600/60'
+                                ? 'bg-amber-500/70 [html[data-theme="day"]_&]:bg-amber-600'
+                                : 'bg-gray-600/60 [html[data-theme="day"]_&]:bg-gray-300'
                         } ${onSave ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                     >
                         <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${
@@ -801,7 +804,11 @@ const WorkflowGraphSettings: React.FC<{
                                 ? 'translate-x-[14px]' : 'translate-x-[2px]'
                         }`} />
                     </button>
-                    <span className={`text-[9px] ${normalized.功能模型占位[stageNonStreamKeys[stage.id]!] === true ? 'text-amber-300/90' : 'text-gray-500'}`}>
+                    <span className={`text-[9px] ${
+                        normalized.功能模型占位[stageNonStreamKeys[stage.id]!] === true
+                            ? 'text-amber-300/90 [html[data-theme="day"]_&]:text-amber-800'
+                            : 'text-gray-500 [html[data-theme="day"]_&]:text-gray-700'
+                    }`}>
                         {normalized.功能模型占位[stageNonStreamKeys[stage.id]!] === true ? '非流式' : '流式'}
                     </span>
                 </div>
