@@ -350,4 +350,69 @@ describe('storyResponseParser', () => {
         expect(parsed.logs.map(item => item.text).join('\n')).not.toContain('</judge>');
         expect(parsed.logs.map(item => item.text).join('\n')).not.toContain('判定值 22 / 难度 15');
     });
+
+    it('parses <角色名单> tag and passes declared names to dialogue validation', () => {
+        const parsed = parseStoryRawText([
+            '<角色名单>',
+            '芙莉莲',
+            '琪亚娜',
+            '伊莎贝尔',
+            '</角色名单>',
+            '<正文>',
+            '【芙莉莲】"魔法可不是万能的。"',
+            '【琪亚娜】"但至少能让我们走得更远。"',
+            '【伊莎贝尔】"你们俩别吵了，快看前面。"',
+            '【旁白】三人望向远处的浓雾。',
+            '</正文>',
+            '<短期记忆>芙莉莲和琪亚娜起了争执。</短期记忆>'
+        ].join('\n'));
+
+        expect(parsed.declaredSpeakers).toEqual(['芙莉莲', '琪亚娜', '伊莎贝尔']);
+        expect(parsed.logs).toHaveLength(4);
+        expect(parsed.logs[0].sender).toBe('芙莉莲');
+        expect(parsed.logs[1].sender).toBe('琪亚娜');
+        expect(parsed.logs[2].sender).toBe('伊莎贝尔');
+        expect(parsed.logs[3].sender).toBe('旁白');
+    });
+
+    it('repairs incomplete <角色名单> tag (missing closing tag)', () => {
+        const parsed = parseStoryRawText([
+            '<角色名单>',
+            '芙莉莲',
+            '琪亚娜',
+            '<正文>',
+            '【芙莉莲】"你好。"',
+            '</正文>',
+            '<短期记忆>test</短期记忆>'
+        ].join('\n'));
+
+        expect(parsed.declaredSpeakers).toEqual(['芙莉莲', '琪亚娜']);
+        expect(parsed.logs[0].sender).toBe('芙莉莲');
+    });
+
+    it('handles wrong closing tag with 兼容错误闭合', () => {
+        const parsed = parseStoryRawText([
+            '<角色名单>芙莉莲<角色名单>',
+            '<正文>',
+            '【芙莉莲】"测试。"',
+            '</正文>',
+            '<短期记忆>test</短期记忆>'
+        ].join('\n'));
+
+        expect(parsed.declaredSpeakers).toEqual(['芙莉莲']);
+        expect(parsed.logs[0].sender).toBe('芙莉莲');
+    });
+
+    it('recognizes English aliases for 角色名单', () => {
+        const parsed = parseStoryRawText([
+            '<rolelist>芙莉莲, 琪亚娜</rolelist>',
+            '<正文>',
+            '【芙莉莲】"Hi."',
+            '</正文>',
+            '<短期记忆>test</短期记忆>'
+        ].join('\n'));
+
+        expect(parsed.declaredSpeakers).toEqual(['芙莉莲', '琪亚娜']);
+        expect(parsed.logs[0].sender).toBe('芙莉莲');
+    });
 });

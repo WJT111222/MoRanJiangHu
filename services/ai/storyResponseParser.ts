@@ -27,7 +27,7 @@ export class StoryResponseParseError extends Error {
 }
 
 const 转义正则片段 = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const 协议标签列表 = ['thinking', '剧情规划', '变量规划', '正文', '短期记忆', '命令', '行动选项', '动态世界', 'judge'] as const;
+const 协议标签列表 = ['thinking', '角色名单', '剧情规划', '变量规划', '正文', '短期记忆', '命令', '行动选项', '动态世界', 'judge'] as const;
 const 协议标签集合 = new Set<string>(协议标签列表);
 const 协议固定必填标签 = ['正文', '短期记忆'] as const;
 const 默认解析选项: Required<StoryParseOptions> = {
@@ -55,6 +55,11 @@ const 协议标签别名映射: Record<string, 协议标签> = {
     thought: 'thinking',
     thoughts: 'thinking',
     cot: 'thinking',
+    角色名单: '角色名单',
+    rolelist: '角色名单',
+    characterlist: '角色名单',
+    speakers: '角色名单',
+    cast: '角色名单',
     剧情规划: '剧情规划',
     storyplan: '剧情规划',
     storyplanning: '剧情规划',
@@ -863,7 +868,30 @@ const 提取正文中的Judge区块 = (body: string): { cleanBody: string; judge
     };
 };
 
-const 解析正文日志 = (body: string): Array<{ sender: string; text: string }> => {
+const 解析角色名单标签 = (tagContent: string): Set<string> => {
+    const text = (tagContent || '').trim();
+    if (!text) return new Set();
+    const names = new Set<string>();
+    for (const rawLine of text.split('\n')) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        for (const rawName of line.split(/[,，、\s]+/)) {
+            const name = rawName.trim();
+            if (name && /^[\u4e00-\u9fa5]{2,6}$/u.test(name)) {
+                names.add(name);
+            }
+        }
+    }
+    return names;
+};
+
+const 提取残缺角色名单标签 = (text: string): string => {
+    if (!text) return '';
+    const match = text.match(/<角色名单>\s*([\s\S]*?)(?:<\/(?:角色名单|正文|短期记忆|thinking|命令|动态世界|变量规划|剧情规划|行动选项|judge)\s*>|<(?:角色名单|正文|短期记忆|thinking|命令|动态世界|变量规划|剧情规划|行动选项|judge)\s*>|$)/i);
+    return match?.[1]?.trim() || '';
+};
+
+const 解析正文日志 = (body: string, declaredNames?: Set<string>): Array<{ sender: string; text: string }> => {
     if (!body || !body.trim()) return [];
     const lines = body.replace(/\r\n/g, '\n').split('\n');
     const logs: Array<{ sender: string; text: string }> = [];
@@ -904,7 +932,7 @@ const 解析正文日志 = (body: string): Array<{ sender: string; text: string 
         if (match) {
             const sender = 规范化日志发送者(match[1]);
             const text = (match[2] || '').trim();
-            if (!是否可信正文标签发送者(sender)) {
+            if (!是否可信正文标签发送者(sender, { declaredNames })) {
                 写入旁白行(rawLine.trimEnd());
                 continue;
             }
@@ -1487,7 +1515,7 @@ export const 解析动态世界块 = (dynamicBlock: string): string[] => {
         .filter(Boolean);
 };
 
-const 解析标签协议响应 = (content: string, options?: Required<StoryParseOptions>): GameResponse | null => {
+const 解析标签协议响应 = (content: string, options?: Required<StoryParseOptions>, declaredNames?: Set<string>): GameResponse | null => {
     const text = (content || '').trim();
     if (!text) return null;
 
@@ -1531,7 +1559,7 @@ const 解析标签协议响应 = (content: string, options?: Required<StoryParse
         );
     }
 
-    let logs = 规范化对白日志(解析正文日志(bodyJudgeExtraction.cleanBody));
+    let logs = 规范化对白日志(解析正文日志(bodyJudgeExtraction.cleanBody, declaredNames));
     if (logs.length === 0) {
         const fallbackBody = titleSections.正文 || 提取候选正文文本(textWithoutThinking);
         const stripped = 提取正文中的Judge区块(清理正文初始化泄露内容(fallbackBody)).cleanBody
@@ -1683,6 +1711,13 @@ const 归一化JSON结构响应 = (raw: any): GameResponse => {
 export const parseStoryRawText = (content: string, options?: StoryParseOptions): GameResponse => {
     const parseOptions = 规范化解析选项(options || 默认解析选项);
     const rawText = typeof content === 'string' ? content : '';
+    const declaredNames = 解析角色名单标签(
+        提取首个标签内容(rawText, '角色名单', { 兼容错误闭合: true })
+        || 提取首个标签内容(rawText, 'rolelist')
+        || 提取首个标签内容(rawText, 'speakers')
+        || 提取首个标签内容(rawText, 'cast')
+        || 提取残缺角色名单标签(rawText)
+        || '');
     const normalizedText = parseOptions.enableTagRepair
         ? 修复思考区后半段标签协议文本(rawText)
         : rawText;
@@ -1696,8 +1731,11 @@ export const parseStoryRawText = (content: string, options?: StoryParseOptions):
         }
     }
 
-    const tagged = 解析标签协议响应(normalizedText, parseOptions);
+    const tagged = 解析标签协议响应(normalizedText, parseOptions, declaredNames);
+    const declaredSpeakerList = declaredNames.size > 0 ? [...declaredNames] : undefined;
+
     if (tagged && tagged.logs.some(log => typeof log?.text === 'string' && log.text.trim().length > 0)) {
+        if (declaredSpeakerList) tagged.declaredSpeakers = declaredSpeakerList;
         return tagged;
     }
 
@@ -1708,6 +1746,7 @@ export const parseStoryRawText = (content: string, options?: StoryParseOptions):
             typeof log?.text === 'string' && log.text.trim().length > 0
         ));
         if (hasRenderableLogs) {
+            if (declaredSpeakerList) normalized.declaredSpeakers = declaredSpeakerList;
             return normalized;
         }
         const hasThinking = Object.keys(normalized).some((key) => {
