@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { 校验主剧情正文最低字数, 获取主剧情正文不足信息, 统计正文字符数 } from '../hooks/useGame/sendWorkflow';
+import { 校验响应人称一致性, 校验主剧情正文最低字数, 获取主剧情正文不足信息, 统计正文字符数 } from '../hooks/useGame/sendWorkflow';
 import { 净化角色对白行, 评估润色长度结果, 检测文章优化协议确认污染, 解析正文日志文本 } from '../hooks/useGame/bodyPolish';
 import { 清理润色正文输出 } from '../services/ai/storyTasks';
 import { 构建主剧情请求参数, type 主剧情系统上下文 } from '../hooks/useGame/mainStoryRequest';
@@ -330,5 +330,73 @@ describe('主剧情正文字数校验', () => {
 
         expect(result.tavernPresetModeEnabled).toBe(true);
         expect(result.orderedMessages.some((message) => message.content.includes('2200字以上'))).toBe(true);
+    });
+});
+
+describe('主剧情叙事人称校验', () => {
+    const rawText = '<正文>测试正文</正文>';
+
+    it('第三人称旁白 + 角色对白含“你”时不报错', () => {
+        expect(() => 校验响应人称一致性({
+            角色: { 姓名: '沈砚' },
+            logs: [
+                { sender: '旁白', text: '林清月垂下眼，袖口的雨水顺着指尖滴落。' },
+                { sender: '林清月', text: '你没有要过她任何一丝一毫的回报。' }
+            ]
+        } as any, rawText, '第三人称')).not.toThrow();
+    });
+
+    it('第三人称旁白引号内含“你”时不报错', () => {
+        expect(() => 校验响应人称一致性({
+            角色: { 姓名: '沈砚' },
+            logs: [
+                { sender: '旁白', text: '林清月低声说：“你走进房间。你感到一阵寒意。”随后她把目光移向窗外。' }
+            ]
+        } as any, rawText, '第三人称')).not.toThrow();
+    });
+
+    it('玩家输入摘要、系统提示和任务提示含“你”时不报错', () => {
+        expect(() => 校验响应人称一致性({
+            角色: { 姓名: '沈砚' },
+            logs: [
+                {
+                    sender: '旁白',
+                    text: [
+                        '玩家输入摘要：你走进房间，询问林清月。',
+                        '系统提示：你感到一阵寒意时需要等待判定。',
+                        '任务提示：你决定继续向前会推进主线。',
+                        '林清月站在廊下，雨声遮住了她短促的呼吸。'
+                    ].join('\n')
+                }
+            ]
+        } as any, rawText, '第三人称')).not.toThrow();
+    });
+
+    it('第三人称正文不出现主角姓名、只用他她少年时不报错', () => {
+        expect(() => 校验响应人称一致性({
+            角色: { 姓名: '沈砚' },
+            logs: [
+                { sender: '旁白', text: '少年推开木门，望见廊下的灯影。他停了片刻，随后向她点头。' }
+            ]
+        } as any, rawText, '第三人称')).not.toThrow();
+    });
+
+    it('正文主体明显连续使用第二人称时会报错', () => {
+        expect(() => 校验响应人称一致性({
+            角色: { 姓名: '沈砚' },
+            logs: [
+                { sender: '旁白', text: '你走进房间。你感到寒意。你决定继续向前。' }
+            ]
+        } as any, rawText, '第三人称')).toThrow(/叙事人称不符/);
+    });
+
+    it('第一人称模式下，对话里出现“你”但旁白稳定用“我”时不报错', () => {
+        expect(() => 校验响应人称一致性({
+            角色: { 姓名: '沈砚' },
+            logs: [
+                { sender: '旁白', text: '我走进房间，听见窗外雨声渐急。我决定先把灯点亮。' },
+                { sender: '林清月', text: '你先别急，外面还有人。' }
+            ]
+        } as any, rawText, '第一人称')).not.toThrow();
     });
 });

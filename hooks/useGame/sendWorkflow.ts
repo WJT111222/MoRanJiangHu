@@ -220,34 +220,29 @@ export const 校验响应人称一致性 = (
     rawText: string,
     expectedPov: string
 ) => {
-    const bodyText = Array.isArray(response?.logs)
-        ? response.logs.map((log: any) => typeof log?.text === 'string' ? log.text : '').join('')
-        : '';
+    const bodyText = 构建叙事人称检测文本(response);
     if (!bodyText) return;
     const sample = bodyText.slice(0, 2000);
     const playerName = typeof response?.角色?.姓名 === 'string' ? response.角色.姓名.trim() : '';
+    const secondPersonNarrationCount = 统计明显第二人称叙述(sample);
     if (expectedPov === '第二人称') {
-        const hasYou = /你/.test(sample);
-        const hasHeShe = playerName && new RegExp(playerName).test(sample);
-        if (!hasYou && hasHeShe) {
+        const hasHeShe = playerName && new RegExp(转义正则片段(playerName)).test(sample);
+        if (secondPersonNarrationCount <= 0 && hasHeShe) {
             const detail = `叙事人称不符：设置了第二人称但正文使用了第三人称（出现主角姓名"${playerName}"而未出现"你"）。请用第二人称"你"重新生成正文。`;
             const error = new textAIService.StoryResponseParseError(detail, rawText, detail);
             (error as any).parseDetail = detail;
             throw error;
         }
     } else if (expectedPov === '第一人称') {
-        const hasI = /[\u4e00-\u9fff]我/.test(sample) || /^我/.test(sample);
-        const hasYou = /你/.test(sample);
-        if (!hasI && hasYou) {
+        const hasI = 统计明显第一人称叙述(sample) > 0;
+        if (!hasI && secondPersonNarrationCount >= 2) {
             const detail = '叙事人称不符：设置了第一人称但正文使用了第二人称。请用第一人称"我"重新生成正文。';
             const error = new textAIService.StoryResponseParseError(detail, rawText, detail);
             (error as any).parseDetail = detail;
             throw error;
         }
     } else if (expectedPov === '第三人称') {
-        const hasHeShe = playerName && new RegExp(playerName).test(sample);
-        const hasYou = /你/.test(sample);
-        if (!hasHeShe && hasYou) {
+        if (secondPersonNarrationCount >= 2) {
             const detail = `叙事人称不符：设置了第三人称但正文使用了第二人称。请用第三人称"${playerName || '他/她'}"重新生成正文。`;
             const error = new textAIService.StoryResponseParseError(detail, rawText, detail);
             (error as any).parseDetail = detail;
@@ -255,6 +250,50 @@ export const 校验响应人称一致性 = (
         }
     }
 };
+
+const 叙事人称元信息行正则 = /(?:玩家输入|玩家指令|当前指令|系统提示|任务提示|行动选项|选项|提示|总结|Step|已知事实|协议命中|当前地点|当前时间)/i;
+const 第二人称叙述动作正则 = /你\s*(?:走|来到|进入|推开|看见|望向|抬手|伸手|感到|觉得|意识到|决定|继续|停下|听见|发现|坐下|站起|转身|拿起|打开|闭上|回头|靠近|离开)/g;
+const 第一人称叙述动作正则 = /我\s*(?:走|来到|进入|推开|看见|望向|抬手|伸手|感到|觉得|意识到|决定|继续|停下|听见|发现|坐下|站起|转身|拿起|打开|闭上|回头|靠近|离开)/g;
+
+const 转义正则片段 = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const 移除引号内文本 = (value: string): string => {
+    let text = value || '';
+    const quoteRules = [
+        /“[^”]*”/g,
+        /「[^」]*」/g,
+        /『[^』]*』/g,
+        /"[^"]*"/g,
+        /'[^']*'/g
+    ];
+    for (const rule of quoteRules) {
+        text = text.replace(rule, '');
+    }
+    return text;
+};
+
+const 净化叙事人称检测文本 = (value: string): string => 移除引号内文本(value)
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => !叙事人称元信息行正则.test(line))
+    .join('\n');
+
+const 构建叙事人称检测文本 = (response: GameResponse): string => {
+    if (!Array.isArray(response?.logs)) return '';
+    return response.logs
+        .filter((log: any) => {
+            const sender = typeof log?.sender === 'string' ? log.sender.trim() : '';
+            return !sender || sender === '旁白';
+        })
+        .map((log: any) => typeof log?.text === 'string' ? 净化叙事人称检测文本(log.text) : '')
+        .filter(Boolean)
+        .join('\n');
+};
+
+const 统计明显第二人称叙述 = (value: string): number => (value.match(第二人称叙述动作正则) || []).length;
+const 统计明显第一人称叙述 = (value: string): number => (value.match(第一人称叙述动作正则) || []).length;
 
 const 规范化姓名键 = (value: unknown): string => (
     typeof value === 'string'
@@ -2551,6 +2590,13 @@ export const 执行主剧情发送工作流 = async (
             }
             const parseFailureGameConfig = 规范化游戏设置(currentState.gameConfig);
             const parseFailureApi = 获取主剧情接口配置(currentState.apiConfig);
+            const parseErrorTitle = /叙事人称不符/.test([
+                parseErrorRaw,
+                error?.parseDetail,
+                error?.message
+            ].filter(Boolean).join('\n'))
+                ? '叙事人称不符'
+                : '标签结构不完整';
             recordAiParseFailureDiagnostic({
                 stage: 'main_story',
                 error,
@@ -2583,7 +2629,7 @@ export const 执行主剧情发送工作流 = async (
                     parseErrorMessage: parseErrorRaw,
                     parseErrorDetail: parseErrorRaw,
                     parseErrorRawText,
-                    errorTitle: '标签结构不完整',
+                    errorTitle: parseErrorTitle,
                     recoveryHint: '可直接手动补全缺失标签后恢复，或尝试自动修复恢复；如果不想保留这版内容，也可以直接重ROLL。'
                 };
             }
@@ -2595,7 +2641,7 @@ export const 执行主剧情发送工作流 = async (
                     ? `${parseErrorRaw}\n\n当前已关闭“标签协议失败自动回炉”。最佳选择是直接重ROLL；若想保留这版内容，可点“查看/编辑原文”后修复缺失标签再重解析。`
                     : parseErrorRaw,
                 parseErrorRawText,
-                errorTitle: '标签结构不完整',
+                errorTitle: parseErrorTitle,
                 recoveryHint: '可直接手动补全缺失标签后恢复，或尝试自动修复恢复；如果不想保留这版内容，也可以直接重ROLL。'
             };
         }
