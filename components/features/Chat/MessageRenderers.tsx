@@ -371,10 +371,22 @@ const 取NPC稳定ID = (npc: any): string => (
 
 const 查找正文引用角色特质 = (
     name: string,
-    socialList?: NPC结构[]
+    socialList?: NPC结构[],
+    playerProfile?: 玩家资料
 ): Extract<档案引用目标, { kind: 'character_trait' }> | null => {
     const target = 规范化物品引用文本(name);
     if (!target) return null;
+    // 先搜索玩家自己的天赋/出身
+    if (playerProfile) {
+        const playerTalents = Array.isArray(playerProfile.天赋列表) ? playerProfile.天赋列表 : [];
+        const playerTalent = playerTalents.find((item: any) => 规范化物品引用文本(item?.名称) === target);
+        if (playerTalent) return { kind: 'character_trait', npc: playerProfile as any, entry: playerTalent, entryKind: 'talent' };
+        const playerBg = playerProfile.出身背景 && typeof playerProfile.出身背景 === 'object' ? playerProfile.出身背景 : null;
+        if (playerBg && 规范化物品引用文本(playerBg?.名称) === target) {
+            return { kind: 'character_trait', npc: playerProfile as any, entry: playerBg, entryKind: 'background' };
+        }
+    }
+    // 再搜索社交NPC列表
     const list = Array.isArray(socialList) ? socialList : [];
     for (const npc of list) {
         const talents = Array.isArray((npc as any)?.天赋列表) ? (npc as any).天赋列表 : [];
@@ -440,15 +452,17 @@ const ItemReferenceButton: React.FC<{
 
 const CharacterTraitReferenceButton: React.FC<{
     name: string;
-    npc: NPC结构;
+    npc: NPC结构 | 玩家资料;
     entry: any;
     entryKind: 'talent' | 'background';
     onOpenNpcDetail?: (npcId: string) => void;
-}> = ({ name, npc, entry, entryKind, onOpenNpcDetail }) => {
+    isPlayer?: boolean;
+}> = ({ name, npc, entry, entryKind, onOpenNpcDetail, isPlayer }) => {
     const entryName = typeof entry?.名称 === 'string' && entry.名称.trim() ? entry.名称.trim() : name;
     const npcName = typeof npc?.姓名 === 'string' && npc.姓名.trim() ? npc.姓名.trim() : '未知角色';
-    const npcRef = 取NPC稳定ID(npc) || npcName;
+    const npcRef = isPlayer ? '__player__' : (取NPC稳定ID(npc) || npcName);
     const label = entryKind === 'talent' ? '天赋' : '出身';
+    const displayLabel = isPlayer ? '主角' : npcName;
     const handleClick = () => {
         onOpenNpcDetail?.(npcRef);
     };
@@ -459,13 +473,13 @@ const CharacterTraitReferenceButton: React.FC<{
                 type="button"
                 onClick={handleClick}
                 className="inline-flex max-w-full items-center gap-1 rounded border border-violet-400/35 bg-violet-500/10 px-1.5 py-0.5 align-baseline text-[0.95em] font-bold leading-none text-violet-100 shadow-sm transition hover:-translate-y-px hover:border-violet-300/70 hover:bg-violet-500/18 hover:shadow-[0_0_12px_rgba(167,139,250,0.24)]"
-                title={`打开 ${npcName} 的${label}档案`}
+                title={`打开 ${displayLabel} 的${label}档案`}
             >
                 <span className="opacity-75">《</span>
                 <span className="truncate">{entryName}</span>
                 <span className="opacity-75">》</span>
             </button>
-            <span className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-50 hidden w-64 max-w-[72vw] -translate-x-1/2 rounded-lg border border-violet-400/35 bg-[#111020]/95 p-3 text-left text-xs leading-5 text-violet-50 shadow-2xl backdrop-blur group-hover/trait-ref:block group-focus-within/trait-ref:block">
+            <span className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-[9999] hidden w-64 max-w-[72vw] -translate-x-1/2 rounded-lg border border-violet-400/35 bg-[#111020]/95 p-3 text-left text-xs leading-5 text-violet-50 shadow-2xl backdrop-blur group-hover/trait-ref:block group-focus-within/trait-ref:block">
                 <span className="mb-2 block">
                     <span className="block truncate text-sm font-black text-violet-100">{entryName}</span>
                     <span className="mt-1 block text-[11px] text-gray-300">{npcName} · {label}</span>
@@ -481,7 +495,8 @@ const 渲染含档案引用文本 = (
     inventoryItems?: any[],
     onOpenInventoryItem?: (itemRef: string) => void,
     socialList?: NPC结构[],
-    onOpenNpcDetail?: (npcId: string) => void
+    onOpenNpcDetail?: (npcId: string) => void,
+    playerProfile?: 玩家资料
 ): React.ReactNode[] => {
     const source = String(text || '');
     const parts: React.ReactNode[] = [];
@@ -492,7 +507,7 @@ const 渲染含档案引用文本 = (
         const [full, open, rawName, close] = match;
         const isPaired = (open === '《' && close === '》') || (open === '【' && close === '】');
         const item = isPaired ? 查找正文引用物品(rawName, inventoryItems) : null;
-        const trait = item ? null : (isPaired ? 查找正文引用角色特质(rawName, socialList) : null);
+        const trait = item ? null : (isPaired ? 查找正文引用角色特质(rawName, socialList, playerProfile) : null);
         if (!item && !trait) continue;
         if (match.index > lastIndex) parts.push(source.slice(lastIndex, match.index));
         if (item) {
@@ -505,6 +520,7 @@ const 渲染含档案引用文本 = (
                 />
             );
         } else if (trait) {
+            const isPlayerTrait = playerProfile && trait.npc === playerProfile;
             parts.push(
                 <CharacterTraitReferenceButton
                     key={`trait-ref-${match.index}-${rawName}`}
@@ -513,6 +529,7 @@ const 渲染含档案引用文本 = (
                     entry={trait.entry}
                     entryKind={trait.entryKind}
                     onOpenNpcDetail={onOpenNpcDetail}
+                    isPlayer={isPlayerTrait}
                 />
             );
         }
@@ -552,16 +569,17 @@ export const NarratorRenderer: React.FC<{
     inventoryItems?: any[];
     onOpenInventoryItem?: (itemRef: string) => void;
     socialList?: NPC结构[];
+    playerProfile?: 玩家资料;
     onOpenNpcDetail?: (npcId: string) => void;
     onOpenRawResponse?: () => void;
-}> = ({ text, visualConfig, inventoryItems, onOpenInventoryItem, socialList, onOpenNpcDetail, onOpenRawResponse }) => {
+}> = ({ text, visualConfig, inventoryItems, onOpenInventoryItem, socialList, playerProfile, onOpenNpcDetail, onOpenRawResponse }) => {
     const style = 构建区域文字样式(visualConfig, '旁白');
     const displayText = useMemo(() => 格式化旁白断行(text).replace(/\n([”」』》）】])/g, '$1'), [text]);
     return (
         <div className="narrator-renderer w-full my-1 px-8 py-2 pr-12 bg-white/5 backdrop-blur-sm border-x-4 border-wuxia-gold/55 leading-relaxed relative overflow-hidden rounded-md shadow-lg transition-all duration-300" style={style}>
             <RawResponseDebugButton onOpen={onOpenRawResponse} className="absolute right-2 top-2 z-20" />
             <p className="relative z-10 whitespace-pre-wrap break-normal [word-break:normal] [overflow-wrap:break-word] [line-break:strict] tracking-wide" style={{ fontSize: 'inherit', lineHeight: 'inherit' }}>
-                {渲染含档案引用文本(displayText, inventoryItems, onOpenInventoryItem, socialList, onOpenNpcDetail)}
+                {渲染含档案引用文本(displayText, inventoryItems, onOpenInventoryItem, socialList, onOpenNpcDetail, playerProfile)}
             </p>
         </div>
     );
@@ -726,6 +744,8 @@ const 获取对白显示名称 = (sender: string, playerName?: string): string =
 type 玩家资料 = {
     姓名?: string;
     头像图片URL?: string;
+    天赋列表?: any[];
+    出身背景?: any;
 };
 
 const 获取匹配NPC = (sender: string, socialList?: NPC结构[]): NPC结构 | null => {
@@ -806,7 +826,7 @@ export const CharacterRenderer: React.FC<{
                     <RawResponseDebugButton onOpen={onOpenRawResponse} className="absolute right-2 top-2 z-20" />
                     <div className="absolute top-3.5 sm:top-4 -left-1.5 w-3 h-3 sm:w-4 sm:h-4 bg-[#fcfaf7] rotate-45 border-l border-b border-black/10 -z-10"></div>
                     <p className="font-medium relative z-10 tracking-wide whitespace-normal break-words leading-relaxed text-[#1a1a1a]" style={style}>
-                        {渲染含档案引用文本(displayText, inventoryItems, onOpenInventoryItem, socialList, onOpenNpcDetail)}
+                        {渲染含档案引用文本(displayText, inventoryItems, onOpenInventoryItem, socialList, onOpenNpcDetail, playerProfile)}
                     </p>
                 </div>
             </div>

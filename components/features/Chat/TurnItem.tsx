@@ -21,7 +21,7 @@ interface Props {
     collapseThinkingStream?: boolean;
     visualConfig?: 视觉设置结构;
     socialList?: NPC结构[];
-    playerProfile?: { 姓名?: string; 头像图片URL?: string };
+    playerProfile?: { 姓名?: string; 头像图片URL?: string; 天赋列表?: any[]; 出身背景?: any };
     onOpenNpcDetail?: (npcId: string) => void;
     inventoryItems?: any[];
     onOpenInventoryItem?: (itemRef: string) => void;
@@ -653,7 +653,7 @@ const TurnItem: React.FC<Props> = ({
                     if (是否奖励日志(rawSender, rawText)) {
                         renderedLog = <RewardRenderer text={rawText} visualConfig={visualConfig} onOpenRawResponse={openThisRawLog} />;
                     } else if (rawSender === '旁白' && !textStartsWithJudgment) {
-                        renderedLog = <NarratorRenderer text={rawText} visualConfig={visualConfig} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} socialList={socialList} onOpenNpcDetail={onOpenNpcDetail} onOpenRawResponse={openThisRawLog} />;
+                        renderedLog = <NarratorRenderer text={rawText} visualConfig={visualConfig} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} socialList={socialList} playerProfile={playerProfile} onOpenNpcDetail={onOpenNpcDetail} onOpenRawResponse={openThisRawLog} />;
                     } else if (senderJudgmentPrefix || textStartsWithJudgment) {
                         const prefix = senderJudgmentPrefix || textJudgmentPrefix || rawSender;
                         const isNsfw = prefix.includes('NSFW');

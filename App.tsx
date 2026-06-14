@@ -1135,8 +1135,13 @@ const App: React.FC = () => {
         [actions, state.apiConfig]
     );
     const playerProfile = React.useMemo(
-        () => ({ 姓名: state.角色?.姓名, 头像图片URL: 玩家头像地址 }),
-        [state.角色?.姓名, 玩家头像地址]
+        () => ({
+            姓名: state.角色?.姓名,
+            头像图片URL: 玩家头像地址,
+            天赋列表: Array.isArray(state.角色?.天赋列表) ? state.角色.天赋列表 : [],
+            出身背景: state.角色?.出身背景
+        }),
+        [state.角色?.姓名, 玩家头像地址, state.角色?.天赋列表, state.角色?.出身背景]
     );
     const fontFaceStyleText = React.useMemo(() => 构建字体注入样式文本(effectiveVisualConfig), [effectiveVisualConfig]);
     const uiTextStyleVars = React.useMemo(() => 构建UI文字CSS变量(effectiveVisualConfig), [effectiveVisualConfig]);
@@ -1868,6 +1873,10 @@ const App: React.FC = () => {
     const openNpcDetailFromChat = React.useCallback((npcId: string) => {
         if (!npcId) return;
         closeAllPanels();
+        if (npcId === '__player__') {
+            setShowCharacter(true);
+            return;
+        }
         setSelectedSocialNpcId(npcId);
         setters.setShowSocial(true);
     }, [closeAllPanels, setters]);

@@ -3751,7 +3751,7 @@ export const useGame = () => {
     });
 
     const restoreNpcVariableBackup = (backupSocialList: NPC结构[]) => {
-        const retained = 合并保留既有NPC列表(backupSocialList, 社交);
+        const retained = 合并保留既有NPC列表(backupSocialList, 社交, 角色?.姓名);
         const restored = 应用并同步社交列表(retained.列表, { 静默NPC总结提示: true });
         推送右下角提示({
             title: 'NPC 变量已恢复',

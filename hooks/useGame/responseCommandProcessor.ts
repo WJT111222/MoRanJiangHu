@@ -1411,7 +1411,7 @@ export const 执行响应命令处理 = (
             同步在场NPC当前位置(socialBuffer, envBuffer),
             { 合并同名: false }
         );
-        const retention = 合并保留既有NPC列表(socialBeforeCommands, socialBuffer);
+        const retention = 合并保留既有NPC列表(socialBeforeCommands, socialBuffer, charBuffer?.姓名);
         if (retention.恢复数量 > 0) {
             socialBuffer = deps.规范化社交列表(retention.列表, { 合并同名: false });
         }
@@ -1424,6 +1424,15 @@ export const 执行响应命令处理 = (
             { 合并同名: false }
         );
         storyBuffer = deps.规范化剧情状态(storyBuffer);
+
+        // 过滤与主角同名的NPC条目，防止主角被NPC化（tavern_commands分支也需要此防护）
+        const playerNormKeyTavern = typeof charBuffer?.姓名 === 'string' ? charBuffer.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
+        if (playerNormKeyTavern) {
+            socialBuffer = socialBuffer.filter((npc: any) => {
+                const npcName = typeof npc?.姓名 === 'string' ? npc.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
+                return !npcName || npcName !== playerNormKeyTavern;
+            });
+        }
 
         let finalState: 响应命令处理状态 = {
             角色: charBuffer,
@@ -1510,7 +1519,7 @@ export const 执行响应命令处理 = (
         ),
         { 合并同名: false }
     );
-    const socialRetention = 合并保留既有NPC列表(socialBeforeCommands, normalizedSocialBase);
+    const socialRetention = 合并保留既有NPC列表(socialBeforeCommands, normalizedSocialBase, charBuffer?.姓名);
     let normalizedSocial = socialRetention.恢复数量 > 0
         ? deps.规范化社交列表(socialRetention.列表, { 合并同名: false })
         : normalizedSocialBase;

@@ -13,7 +13,7 @@ interface Props {
     onPolishTurn?: (index: number) => Promise<string | null> | string | null;
     visualConfig?: 视觉设置结构;
     socialList?: NPC结构[];
-    playerProfile?: { 姓名?: string; 头像图片URL?: string };
+    playerProfile?: { 姓名?: string; 头像图片URL?: string; 天赋列表?: any[]; 出身背景?: any };
     onOpenNpcDetail?: (npcId: string) => void;
     inventoryItems?: any[];
     onOpenInventoryItem?: (itemRef: string) => void;

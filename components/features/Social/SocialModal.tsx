@@ -533,7 +533,7 @@ const SocialModal: React.FC<Props> = ({
             return (
                 <span className="group relative inline-flex">
                     <span className="cursor-help rounded border border-pink-500/30 px-1.5 py-0.5 text-[9px] text-pink-200/80">详情</span>
-                    <span className="pointer-events-none absolute left-0 top-full z-30 mt-1 hidden w-72 rounded border border-pink-800/50 bg-black/95 p-2 text-[11px] leading-relaxed text-pink-100 shadow-xl group-hover:block">
+                    <span className="pointer-events-none absolute left-0 top-full z-[100] mt-1 hidden w-72 rounded border border-pink-800/50 bg-black/95 p-2 text-[11px] leading-relaxed text-pink-100 shadow-xl group-hover:block">
                         {value}
                     </span>
                 </span>
@@ -663,17 +663,24 @@ const SocialModal: React.FC<Props> = ({
                                     {(() => {
                                         const rosterImage = 提取头像图片地址(npc) || 提取立绘图片地址(npc);
                                         return rosterImage ? (
-                                        <button
-                                            type="button"
-                                            className="block h-full w-full"
+                                        <div
+                                            role="button"
+                                            tabIndex={0}
+                                            className="block h-full w-full cursor-pointer"
                                             title="查看头像"
                                             onClick={(event) => {
                                                 event.stopPropagation();
                                                 打开图片查看器(rosterImage, `${npc.姓名} 头像`);
                                             }}
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter' || event.key === ' ') {
+                                                    event.stopPropagation();
+                                                    打开图片查看器(rosterImage, `${npc.姓名} 头像`);
+                                                }
+                                            }}
                                         >
                                             <img src={rosterImage} alt={npc.姓名} className={`w-full h-full object-cover ${npcDead ? 'grayscale opacity-60' : ''}`} />
-                                        </button>
+                                        </div>
                                         ) : (
                                         <div className={`w-full h-full flex items-center justify-center font-serif font-bold text-lg ${npcDead ? 'text-gray-500/60 grayscale' : npcIsFemale ? 'text-pink-500/50' : 'text-blue-500/50'}`}>
                                             {npc.姓名[0]}

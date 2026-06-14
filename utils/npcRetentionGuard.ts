@@ -30,7 +30,8 @@ const NPC互相匹配 = (left: any, right: any): boolean => {
 
 export const 合并保留既有NPC列表 = (
     previousList: any[],
-    nextList: any[]
+    nextList: any[],
+    playerName?: string
 ): { 列表: any[]; 恢复数量: number; 恢复名称: string[] } => {
     const previous = Array.isArray(previousList) ? previousList : [];
     const next = Array.isArray(nextList) ? nextList : [];
@@ -38,9 +39,15 @@ export const 合并保留既有NPC列表 = (
 
     const result = 深拷贝(next);
     const restoredNames: string[] = [];
+    const playerNormKey = playerName ? 规范化NPC键(playerName) : '';
 
     previous.forEach((npc, index) => {
         if (!npc || typeof npc !== 'object' || Array.isArray(npc)) return;
+        // 跳过与主角同名的NPC，防止主角被NPC化
+        if (playerNormKey) {
+            const npcKey = 规范化NPC键(npc?.姓名);
+            if (npcKey && npcKey === playerNormKey) return;
+        }
         const exists = result.some((candidate) => NPC互相匹配(npc, candidate));
         if (exists) return;
         const insertIndex = Math.max(0, Math.min(index, result.length));
