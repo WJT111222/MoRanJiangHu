@@ -109,6 +109,7 @@ type 会话生命周期依赖 = {
     设置同人女主剧情规划: (value: any) => void;
     设置开局配置: (value: OpeningConfig | undefined) => void;
     设置开局文章优化进度: (value: any) => void;
+    设置开局主剧情进度: (value: any) => void;
     设置开局变量生成进度: (value: any) => void;
     设置开局世界演变进度: (value: any) => void;
     设置开局规划进度: (value: any) => void;
@@ -296,6 +297,7 @@ export const 创建会话生命周期工作流 = (deps: 会话生命周期依赖
                 设置任务列表: deps.设置任务列表,
                 设置约定列表: deps.设置约定列表,
                 设置开局文章优化进度: deps.设置开局文章优化进度,
+                设置开局主剧情进度: deps.设置开局主剧情进度,
                 设置开局变量生成进度: deps.设置开局变量生成进度,
                 设置开局世界演变进度: deps.设置开局世界演变进度,
                 设置开局规划进度: deps.设置开局规划进度,
