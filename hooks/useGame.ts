@@ -2769,7 +2769,7 @@ export const useGame = () => {
         if (开局社交刚初始化Ref.current) { 开局社交刚初始化Ref.current = false; return; }
         const members = Array.isArray(玩家门派?.重要成员) ? 玩家门派.重要成员 : [];
         if (!玩家门派 || 玩家门派.ID === 'none' || 玩家门派.名称 === '无门无派' || members.length === 0) return;
-        const currentSocial = Array.isArray(社交) ? 社交 : [];
+        const currentSocial = Array.isArray(社交Ref.current) ? 社交Ref.current : [];
         const normalizedKey = (value: unknown) => (typeof value === 'string' ? value.trim().replace(/\s+/g, '').toLowerCase() : '');
         const known = new Set(currentSocial.flatMap((npc: any) => [npc?.id, npc?.ID, npc?.姓名, npc?.名称].map(normalizedKey)).filter(Boolean));
         const sectText = JSON.stringify(玩家门派 || {});
@@ -2793,7 +2793,7 @@ export const useGame = () => {
         设置社交(normalized);
         void performAutoSave({ social: normalized, history: 历史记录, force: true });
         触发新增NPC自动生图(missing);
-    }, [玩家门派, 社交, 历史记录]);
+    }, [玩家门派, 历史记录]);
 
     const 应用开场基态 = (openingBase: ReturnType<typeof 创建开场基础状态>) => {
         设置角色(规范化角色物品容器映射(openingBase.角色, {

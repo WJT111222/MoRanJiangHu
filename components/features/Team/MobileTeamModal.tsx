@@ -73,7 +73,10 @@ const MobileTeamModal: React.FC<Props> = ({ character, teammates, openingConfig,
         return (Array.isArray(teammates) ? teammates : [])
             .filter((n) => n?.是否队友 === true)
             .filter((n) => n?.是否玩家本人 !== true)
-            .filter((n) => String(n?.姓名 || '').trim() !== playerName)
+            .filter((n) => {
+                const name = String(n?.姓名 || '').trim();
+                return name && name !== playerName && name !== '主角';
+            })
             .filter((n) => {
                 const key = String(n?.id || n?.姓名 || '').trim();
                 if (!key) return true;

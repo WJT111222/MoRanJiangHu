@@ -1,12 +1,14 @@
 {
-  "versionCode": 484,
-  "versionName": "1.0.484",
+  "versionCode": 485,
+  "versionName": "1.0.485",
   "releaseChannel": "stable",
-  "releasePublishedAt": "2026-06-14T20:03:00+08:00",
+  "releasePublishedAt": "2026-06-14T20:50:00+08:00",
   "releaseNotes": [
-    "优化开局内存占用：开局社交列表不再重复规范化，门派成员JSON序列化移到循环外，减少开局时的内存峰值。",
+    "紧急修复React无限循环：门派同门同步useEffect依赖社交状态导致setState触发重渲染死循环，改用ref读取当前社交列表。",
+    "修复团队视图中多余的主角NPC：团队成员过滤增加\"主角\"名称拦截。",
+    "诊断上报优先使用主站域名，减少backup域名不可用时的上报失败。",
     "官网：https://msjh.bacon159.pp.ua/",
-    "同步更新 Web、APK 与更新清单到 v1.0.484。"
+    "同步更新 Web、APK 与更新清单到 v1.0.485。"
   ],
   "releaseHistory": [
     {

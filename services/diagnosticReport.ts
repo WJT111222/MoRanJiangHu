@@ -60,19 +60,19 @@ export const getDiagnosticReportQuota = (): { used: number; remaining: number; l
 };
 
 const buildApiBaseUrl = (): string => {
-    if (typeof window === 'undefined') return RELEASE_INFO.websiteUrl || 'https://msjh.bacon.de5.net';
+    if (typeof window === 'undefined') return RELEASE_INFO.websiteUrl || 'https://msjh.bacon159.pp.ua';
     const protocol = window.location.protocol;
     if ((protocol === 'http:' || protocol === 'https:') && !isNativeCapacitorEnvironment()) {
         return window.location.origin;
     }
-    return RELEASE_INFO.websiteUrl || 'https://msjh.bacon.de5.net';
+    return RELEASE_INFO.websiteUrl || 'https://msjh.bacon159.pp.ua';
 };
 
 const buildDiagnosticReportEndpoints = (): string[] => {
     const bases = [
         buildApiBaseUrl(),
-        RELEASE_INFO.backupWebsiteUrl,
-        RELEASE_INFO.websiteUrl
+        RELEASE_INFO.websiteUrl,
+        RELEASE_INFO.backupWebsiteUrl
     ]
         .map((value) => (typeof value === 'string' ? value.trim() : ''))
         .filter(Boolean);
