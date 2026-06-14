@@ -688,19 +688,21 @@ export const useGame = () => {
         }
     };
 
+    /** 过滤社交列表中与主角同名的NPC条目 */
+    const 应用同名NPC过滤 = (list: NPC结构[], playerName?: string): NPC结构[] => {
+        const key = typeof playerName === 'string' ? playerName.trim().replace(/\s+/g, '').toLowerCase() : '';
+        if (!key) return list;
+        return list.filter((npc: any) => {
+            const npcName = typeof npc?.姓名 === 'string' ? npc.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
+            return !npcName || npcName !== key;
+        });
+    };
+
     const 应用并同步社交列表 = (
         nextSocial: NPC结构[],
         options?: { 静默NPC总结提示?: boolean }
     ): NPC结构[] => {
-        let normalized = 规范化社交列表安全(nextSocial, { 合并同名: false });
-        // 过滤与主角同名的NPC条目，防止主角被NPC化
-        const playerNameKey = typeof 角色?.姓名 === 'string' ? 角色.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
-        if (playerNameKey) {
-            normalized = normalized.filter((npc: any) => {
-                const npcName = typeof npc?.姓名 === 'string' ? npc.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
-                return !npcName || npcName !== playerNameKey;
-            });
-        }
+        const normalized = 应用同名NPC过滤(规范化社交列表安全(nextSocial, { 合并同名: false }), 角色?.姓名);
         设置社交(normalized);
         刷新NPC记忆总结队列(normalized, { 静默: options?.静默NPC总结提示 === true });
         void performAutoSave({ social: normalized, history: 历史记录, force: true });
@@ -783,7 +785,7 @@ export const useGame = () => {
         const snapshotEnv = 规范化环境信息(深拷贝(snapshot.回档前状态.环境));
         设置角色(规范化角色物品容器映射(深拷贝(snapshot.回档前状态.角色), { 当前时间: snapshotEnv }));
         设置环境(snapshotEnv);
-        设置社交(规范化社交列表(深拷贝(snapshot.回档前状态.社交)));
+        设置社交(应用同名NPC过滤(规范化社交列表(深拷贝(snapshot.回档前状态.社交)), 角色?.姓名));
         设置世界(规范化世界状态(深拷贝(snapshot.回档前状态.世界)));
         设置战斗(深拷贝(snapshot.回档前状态.战斗));
         设置玩家门派(深拷贝(snapshot.回档前状态.玩家门派));
@@ -2777,7 +2779,15 @@ export const useGame = () => {
                 return keys.length > 0 && keys.every((key) => !known.has(key));
             });
         if (missing.length === 0) return;
-        const normalized = 规范化社交列表安全([...currentSocial, ...missing], { 合并同名: false });
+        let normalized = 规范化社交列表安全([...currentSocial, ...missing], { 合并同名: false });
+        // 过滤与主角同名的NPC条目，防止主角被NPC化
+        const playerNameKeySect = typeof 角色?.姓名 === 'string' ? 角色.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
+        if (playerNameKeySect) {
+            normalized = normalized.filter((npc: any) => {
+                const npcName = typeof npc?.姓名 === 'string' ? npc.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
+                return !npcName || npcName !== playerNameKeySect;
+            });
+        }
         设置社交(normalized);
         void performAutoSave({ social: normalized, history: 历史记录, force: true });
         触发新增NPC自动生图(missing);
@@ -2790,7 +2800,7 @@ export const useGame = () => {
         }));
         设置环境(规范化环境信息(openingBase.环境));
         设置游戏初始时间(openingBase.游戏初始时间 || '');
-        设置社交(规范化社交列表(openingBase.社交));
+        设置社交(应用同名NPC过滤(规范化社交列表(openingBase.社交), 角色?.姓名));
         设置世界(openingBase.世界);
         设置战斗(openingBase.战斗);
         设置玩家门派(openingBase.玩家门派);
