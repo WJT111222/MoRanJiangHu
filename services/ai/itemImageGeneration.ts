@@ -424,6 +424,7 @@ const 物品是否现代药剂 = (item: any): boolean => {
         Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
     ].map((value) => 读取文本(value)).join(' ');
     return /稳定剂|镇定剂|精神稳定|精神防护|药剂|针剂|注射剂|安瓿|药水|试剂|血清|解药|医疗喷雾|medical vial|ampoule|serum/i.test(text)
+        || /病毒|原液|样本|培养液|病原体|生物制剂|毒素提取/i.test(text)
         || (/消耗品/.test(text) && /精神|恐怖|污染|防护|稳定|镇定|医疗|药/.test(text));
 };
 
@@ -488,6 +489,8 @@ const 物品名称转英文描述 = (name: string): string => {
         '香烟': 'paper cigarette pack with visible cigarettes, cardboard box, crumpled soft pack or opened hard pack, tobacco product prop, no pouch',
         '基础精神稳定剂': 'small unlabelled amber glass medicine vial or ampoule kit, calming stabilizer serum, plain blank cap, transparent brown glass, small protective medicine case, no book, no label, no text',
         '精神稳定剂': 'small unlabelled amber glass medicine vial or ampoule kit, calming stabilizer serum, plain blank cap, transparent brown glass, small protective medicine case, no book, no label, no text',
+        'T病毒原液': 'small sealed laboratory glass vial containing a small amount of translucent greenish liquid, biohazard sample container, medical specimen vial with rubber stopper, no label, no text',
+        'T病毒': 'small sealed laboratory glass vial containing translucent greenish liquid, biohazard sample, medical specimen container, no label',
         '旧军装': 'worn modern military uniform, faded cloth jacket and trousers, fabric patches, frayed seams, soft garment only, no armor plates',
         '军装': 'modern military uniform, cloth jacket and trousers, soft textile garment, no armor plates',
         '作训服': 'modern combat training uniform, cloth shirt and trousers, fabric folds, no armor plates',
@@ -627,6 +630,7 @@ const 物品名称转英文描述 = (name: string): string => {
     if (/香烟|烟盒|半包烟|受潮.*烟|烟草/.test(name)) return 'opened damp paper cigarette pack, crumpled stained cardboard cigarette box, visible bent cigarettes, tobacco paper and water damage, not a pouch or bag';
     if (/袋|囊|包/.test(name)) return 'cloth pouch or bag';
     if (/丹|药|散|丸|膏/.test(name)) return 'ancient medicinal item, herbal powder or pills stored in a folded paper packet, cloth sachet, or small ceramic medicine vial';
+    if (/病毒|原液|血清|样本|培养液|病原体|生物制剂/.test(name)) return 'small sealed laboratory glass vial or ampoule containing translucent liquid, medical specimen sample container, biohazard research sample, no label, no text';
     if (/冰莲|雪莲|莲|花|草|参|芝|根|藤|果|叶/.test(name)) return 'botanical medicinal herb specimen, natural plant or flower form, organic petals leaves roots or stems';
     if (/软甲|内甲|宝甲|甲衣|护身甲|护心甲|胸甲|背甲|护甲|铠甲|甲胄|皮甲|锁子甲|链甲|鳞甲/.test(name)) return 'wearable torso armor vest, protective garment shape, arm openings, shoulder straps, chest and back panels, waist hem';
     if (物品名称是否柔性服装(name)) return 'soft cloth martial arts garment, folded fabric clothing';
