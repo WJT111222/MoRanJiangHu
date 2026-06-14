@@ -1340,6 +1340,14 @@ export const 请求模型文本 = async (
         prefixMode?: boolean;
     }
 ): Promise<string> => {
+    // 检测不支持 OpenAI 兼容端点的 Gemini 模型
+    const modelId = (apiConfig.model || '').toLowerCase();
+    if (/deep-research|thinking/.test(modelId) && /gemini|generativelanguage/.test((apiConfig.baseUrl || '').toLowerCase())) {
+        throw new Error(
+            `模型 ${apiConfig.model} 仅支持 Gemini Interactions API，不支持 OpenAI 兼容端点。` +
+            `请在设置中切换到其他 Gemini 模型（如 gemini-2.0-flash、gemini-2.5-pro）或使用第三方 OpenAI 兼容供应商。`
+        );
+    }
     const protocol = 解析请求协议类型(apiConfig);
     const resolvedTemperature = 计算请求温度(apiConfig, options.temperature);
     const requestedResponseFormat = options.responseFormat;

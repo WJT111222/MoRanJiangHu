@@ -742,6 +742,12 @@ const ApiSettings: React.FC<Props> = ({ settings, onSave }) => {
                             <div className="text-gray-500">参考：{当前模型推荐.sourceLabel}（{当前模型推荐.updatedAt}）</div>
                         </div>
                     )}
+                    {/deep-research/i.test(主剧情解析模型) && /gemini|generativelanguage/i.test(主剧情BaseUrl) && (
+                        <div className="rounded-md border border-red-500/40 bg-red-950/20 p-3 text-[11px] leading-5 text-red-200">
+                            <div className="font-bold">⚠️ 此模型不兼容</div>
+                            <div>Deep Research 模型仅支持 Gemini Interactions API，不支持 OpenAI 兼容端点。请切换到其他 Gemini 模型（如 gemini-2.5-pro、gemini-2.0-flash）。</div>
+                        </div>
+                    )}
                 </div>
             </div>
 
