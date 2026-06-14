@@ -448,6 +448,7 @@ export const useGame = () => {
     const [NPC记忆总结草稿, setNPC记忆总结草稿] = useState('');
     const [NPC记忆总结错误, setNPC记忆总结错误] = useState('');
     const 自动记忆总结暂停Ref = useRef(false);
+    const 开局社交刚初始化Ref = useRef(false);
     const 上下文快照缓存Ref = useRef<{
         value: 上下文快照;
         refs: unknown[];
@@ -2716,8 +2717,7 @@ export const useGame = () => {
         });
     }
 
-    const 构建门派同门社交档案 = (member: any, index: number) => {
-        const sectText = JSON.stringify(玩家门派 || {});
+    const 构建门派同门社交档案 = (member: any, index: number, sectText: string) => {
         const semantic = String((玩家门派 as any)?.组织语义 || (玩家门派 as any)?.组织类型 || (玩家门派 as any)?.题材组织类型 || '').trim();
         const isInfiniteSect = semantic === '轮回小队' || /主神|轮回|奖励点|支线剧情|基因锁|主神空间|恐怖片|轮回者/u.test(sectText);
         const isApocalypseSect = !isInfiniteSect && /末日|丧尸|营地|避难|安全点|据点|车队|搜救|后勤|巡逻|物资|燃油|口粮|弹药|尸群/u.test(sectText);
@@ -2766,14 +2766,16 @@ export const useGame = () => {
     };
 
     useEffect(() => {
+        if (开局社交刚初始化Ref.current) { 开局社交刚初始化Ref.current = false; return; }
         const members = Array.isArray(玩家门派?.重要成员) ? 玩家门派.重要成员 : [];
         if (!玩家门派 || 玩家门派.ID === 'none' || 玩家门派.名称 === '无门无派' || members.length === 0) return;
         const currentSocial = Array.isArray(社交) ? 社交 : [];
         const normalizedKey = (value: unknown) => (typeof value === 'string' ? value.trim().replace(/\s+/g, '').toLowerCase() : '');
         const known = new Set(currentSocial.flatMap((npc: any) => [npc?.id, npc?.ID, npc?.姓名, npc?.名称].map(normalizedKey)).filter(Boolean));
+        const sectText = JSON.stringify(玩家门派 || {});
         const missing = members
             .filter((member: any) => member?.是否玩家本人 !== true)
-            .map((member: any, index: number) => 构建门派同门社交档案(member, index))
+            .map((member: any, index: number) => 构建门派同门社交档案(member, index, sectText))
             .filter((npc: any) => {
                 const keys = [npc?.id, npc?.姓名].map(normalizedKey).filter(Boolean);
                 return keys.length > 0 && keys.every((key) => !known.has(key));
@@ -2800,6 +2802,7 @@ export const useGame = () => {
         }));
         设置环境(规范化环境信息(openingBase.环境));
         设置游戏初始时间(openingBase.游戏初始时间 || '');
+        开局社交刚初始化Ref.current = true;
         设置社交(应用同名NPC过滤(规范化社交列表(openingBase.社交), 角色?.姓名));
         设置世界(openingBase.世界);
         设置战斗(openingBase.战斗);
