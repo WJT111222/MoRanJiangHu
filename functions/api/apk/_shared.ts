@@ -173,6 +173,25 @@ export const buildR2ApkResponse = async (
 export const readManifestPayload = async (env: any): Promise<{ payload: any; sourceHeaders: Headers; etag?: string } | null> => {
     const prefix = readReleaseObjectPrefix(env);
     const key = normalizeObjectKey(`${prefix}/latest.json`);
+
+    // Prefer hi168 S3: the publish-release-s3.mjs script writes latest.json there,
+    // so reading from S3 avoids having to duplicate the manifest into R2.
+    try {
+        const manifestUrl = await buildSignedObjectUrl(env, key, 300);
+        const upstream = await fetch(manifestUrl, { headers: { Accept: 'application/json' } });
+        if (upstream.ok) {
+            return {
+                payload: await upstream.json(),
+                sourceHeaders: upstream.headers,
+                etag: upstream.headers.get('ETag') || undefined
+            };
+        }
+        console.warn(`APK manifest S3 fetch returned ${upstream.status}, falling back to R2`);
+    } catch (s3Error) {
+        console.warn('APK manifest S3 fetch failed, falling back to R2:', s3Error);
+    }
+
+    // Fallback: read from R2 (legacy channel, may contain stale data)
     const r2Object = env?.CNB_SYNC_R2 ? await env.CNB_SYNC_R2.get(key) : null;
     if (r2Object) {
         const headers = new Headers();
@@ -185,14 +204,5 @@ export const readManifestPayload = async (env: any): Promise<{ payload: any; sou
         };
     }
 
-    const manifestUrl = await buildSignedObjectUrl(env, key, 300);
-    const upstream = await fetch(manifestUrl, { headers: { Accept: 'application/json' } });
-    if (!upstream.ok) {
-        throw new Error(`APK manifest fetch failed: ${upstream.status}`);
-    }
-    return {
-        payload: await upstream.json(),
-        sourceHeaders: upstream.headers,
-        etag: upstream.headers.get('ETag') || undefined
-    };
+    return null;
 };
