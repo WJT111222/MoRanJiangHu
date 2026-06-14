@@ -325,7 +325,6 @@ const AuctionHouseModal: React.FC<Props> = ({
                         <div className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-wuxia-gold/15 bg-[#11100d] text-xs ${isMobile ? 'px-3 py-2.5' : 'px-4 py-3'}`}>
                             <span className="font-semibold tracking-[0.18em] text-wuxia-gold/85">{货币卡片.title}</span>
                             <span className="text-wuxia-gold/70">{货币卡片.exchangeHint}</span>
-                            <span className="font-mono text-gray-200">{格式化金钱折算(money, 货币格式化选项)}</span>
                         </div>
                         <div className={`grid min-w-0 gap-3 ${isNarrowPanel ? '' : '2xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.72fr)]'}`}>
                             <div>

@@ -136,12 +136,22 @@ const TeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClo
         return '';
     };
 
-    const EquipItem: React.FC<{ label: string; value?: string; highlight?: boolean }> = ({ label, value, highlight }) => (
-        <div className={`flex justify-between items-center text-sm border-b border-wuxia-gold/10 py-2.5 last:border-0 hover:bg-wuxia-gold/5 px-2 -mx-2 rounded transition-colors ${highlight ? 'hover:bg-pink-900/10' : ''}`}>
-            <span className={`text-gray-400 font-serif ${highlight ? 'text-pink-400/80 tracking-widest' : ''}`}>{label}</span>
-            <span className={`${value && value !== '无' ? 'text-gray-200 font-serif' : 'text-gray-600 italic'}`}>{value || '无'}</span>
-        </div>
-    );
+    const 解析装备名称 = (raw?: string, items?: any[]): string => {
+        const v = (raw || '').trim();
+        if (!v || v === '无') return v || '无';
+        if (!/^Item\d+$/i.test(v) || !Array.isArray(items)) return v;
+        const found = items.find((it: any) => it?.ID === v || it?.id === v);
+        return found?.名称 || found?.name || v;
+    };
+    const EquipItem: React.FC<{ label: string; value?: string; highlight?: boolean }> = ({ label, value, highlight }) => {
+        const displayValue = 解析装备名称(value, (character as any).物品列表);
+        return (
+            <div className={`flex justify-between items-center text-sm border-b border-wuxia-gold/10 py-2.5 last:border-0 hover:bg-wuxia-gold/5 px-2 -mx-2 rounded transition-colors ${highlight ? 'hover:bg-pink-900/10' : ''}`}>
+                <span className={`text-gray-400 font-serif ${highlight ? 'text-pink-400/80 tracking-widest' : ''}`}>{label}</span>
+                <span className={`${displayValue && displayValue !== '无' ? 'text-gray-200 font-serif' : 'text-gray-600 italic'}`}>{displayValue || '无'}</span>
+            </div>
+        );
+    };
 
     const renderPlayerDetail = () => {
         const hp = 读取资源展示(character, 资源文案.气血当前字段, 资源文案.气血最大字段, { allowBodyParts: true });

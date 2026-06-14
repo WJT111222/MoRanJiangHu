@@ -488,6 +488,58 @@ const 拆分旁白中的裸名引号对白 = (log: GameLog): GameLog[] => {
     return result.length > 1 ? 合并相邻同发送者(result) : [log];
 };
 
+const 行中引号对白正则 = /[""「『]([^""」』\n]{1,500})[」』""]/g;
+const 引号后说话人正则 = /^(.{1,20}?)(?:说|说道|道|问|问道|喊|喊道|喝|喝道|答|答道|回|回道|唤|唤道|骂|骂道|笑|笑道|叹|叹道|吩咐|提醒|解释|应|应道|接|接道|开口|继续|补充|又道|冷哼|冷笑道|轻声道|低声|高声|厉声|沉声|柔声|淡淡地|淡淡道)(?:\s*[：:，,]\s*|\s+)/;
+const 引号前说话人正则 = /(?:说|说道|道|问|问道|喊|喊道|喝|喝道|答|答道|回|回道|唤|唤道|骂|骂道|笑|笑道|叹|叹道|吩咐|提醒|解释|应|应道|接|接道|开口|继续|补充|又道|冷哼)\s*[：:，,]\s*$/;
+
+const 拆分旁白行中引号对白 = (log: GameLog): GameLog[] => {
+    const source = typeof log?.text === 'string' ? log.text : '';
+    if (!source || source.includes('\n')) return [log];
+    const rawSource = 读取日志原始片段(log);
+    const parts: GameLog[] = [];
+    let lastIndex = 0;
+    let hasDialogue = false;
+    let match: RegExpExecArray | null;
+    行中引号对白正则.lastIndex = 0;
+    while ((match = 行中引号对白正则.exec(source)) !== null) {
+        const speech = (match[1] || '').trim();
+        if (!speech || 拟声词正则.test(speech)) continue;
+        const matchEnd = match.index + match[0].length;
+        const afterText = source.slice(matchEnd).trim();
+        const speakerMatch = afterText.match(引号后说话人正则);
+        let speakerName = '';
+        if (speakerMatch) {
+            const candidate = 清理说话人(speakerMatch[1]);
+            if (candidate && !非单一说话人正则.test(candidate) && !泛称说话人正则.test(candidate)) {
+                speakerName = candidate;
+            }
+        }
+        const before = source.slice(lastIndex, match.index).trim();
+        if (before) {
+            const beforeNarration = 引号前说话人正则.test(before)
+                ? before.replace(引号前说话人正则, '').trim()
+                : before;
+            if (beforeNarration) parts.push(附加原始片段({ sender: '旁白', text: beforeNarration }, rawSource));
+        }
+        hasDialogue = true;
+        if (speakerName) {
+            parts.push(附加原始片段({ sender: speakerName, text: speech }, rawSource));
+            const restAfterSpeaker = afterText.slice(speakerMatch[0].length).trim();
+            if (restAfterSpeaker) parts.push(附加原始片段({ sender: '旁白', text: restAfterSpeaker }, rawSource));
+            lastIndex = source.length;
+            break;
+        }
+        parts.push(附加原始片段({ sender: '旁白', text: speech }, rawSource));
+        lastIndex = matchEnd;
+    }
+    if (!hasDialogue) return [log];
+    if (lastIndex < source.length) {
+        const after = source.slice(lastIndex).trim();
+        if (after) parts.push(附加原始片段({ sender: '旁白', text: after }, rawSource));
+    }
+    return parts.length > 1 ? 合并相邻同发送者(parts) : [log];
+};
+
 const 解码轻量HTML实体 = (value: string): string => (
     (value || '')
         .replace(/&lt;/g, '<')
@@ -550,7 +602,8 @@ export const 规范化可渲染对白日志 = (logs: GameLog[] | undefined): Gam
         if (!text) return [];
         if (sender === '旁白') {
             return 拆分旁白中的显式方括号对白(附加原始片段({ sender, text }, rawSource))
-                .flatMap(item => item.sender === '旁白' ? 拆分旁白夹杂无标签对白(item) : [item]);
+                .flatMap(item => item.sender === '旁白' ? 拆分旁白夹杂无标签对白(item) : [item])
+                .flatMap(item => item.sender === '旁白' ? 拆分旁白行中引号对白(item) : [item]);
         }
         if (sender === '奖励') return [附加原始片段({ sender, text }, rawSource)];
         if (/^(【)?(?:判定|NSFW判定|先机|瞄准|接战|对撞|对抗|防御|化解|伤害|态势|反击|反馈|消耗|洞察|衰退)(】)?$/.test(sender)) {
@@ -602,7 +655,8 @@ export const 规范化对白日志 = (
             const log = 附加原始片段({ sender, text }, rawSource);
             if (sender !== '旁白') return [log];
             return 拆分旁白中的显式方括号对白(log)
-                .flatMap(item => item.sender === '旁白' ? 拆分旁白夹杂无标签对白(item) : [item]);
+                .flatMap(item => item.sender === '旁白' ? 拆分旁白夹杂无标签对白(item) : [item])
+                .flatMap(item => item.sender === '旁白' ? 拆分旁白行中引号对白(item) : [item]);
         });
     return 合并相邻同发送者(normalized);
 };

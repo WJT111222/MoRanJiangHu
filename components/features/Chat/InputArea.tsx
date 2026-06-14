@@ -170,6 +170,7 @@ interface Props {
     options?: unknown[]; // Quick actions from the last turn
     externalDraft?: { text: string; token: number } | null;
     mainStoryModelInfo?: { channelName?: string; modelName?: string };
+    openingMainStoryProgress?: QueueProgressPayload | null;
     openingPolishProgress?: PolishProgress | null;
     openingWorldEvolutionProgress?: WorldEvolutionProgress | null;
     openingPlanningProgress?: PlanningProgress | null;
@@ -198,6 +199,7 @@ const InputArea: React.FC<Props> = ({
     options = [],
     externalDraft = null,
     mainStoryModelInfo = undefined,
+    openingMainStoryProgress = null,
     openingPolishProgress = null,
     openingWorldEvolutionProgress = null,
     openingPlanningProgress = null,
@@ -697,7 +699,7 @@ const InputArea: React.FC<Props> = ({
             ? { phase: undefined, text: '等待独立阶段完成后写入存档。', channelName: '本地状态处理', modelName: '不调用 AI' }
             : { phase: 'done', text: '开局独立阶段已结束，当前状态可落盘。', channelName: '本地状态处理', modelName: '不调用 AI' });
     const openingLocalProgress = { phase: 'done', text: '已完成开局建档与玩家设定。', channelName: '本地输入', modelName: '不调用 AI' };
-    const openingStoryProgress = {
+    const openingStoryProgress = openingMainStoryProgress || {
         phase: 'done',
         text: '主剧情已生成，后续为独立初始化阶段。',
         channelName: mainStoryModelInfo?.channelName || '未配置渠道',
@@ -924,7 +926,7 @@ const InputArea: React.FC<Props> = ({
                                                                 取消生成
                                                             </button>
                                                         )}
-                                                        {phase !== 'start' && !variableGenerationRunning && stage.id !== 'opening-input' && stage.id !== 'final-apply' && (
+                                                        {phase !== 'start' && !variableGenerationRunning && stage.id !== 'opening-input' && stage.id !== 'opening-save' && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {

@@ -663,12 +663,7 @@ const BattleModal: React.FC<Props> = ({ character, battle, teammates = [], conte
                                 </div>
                             </section>
                         </div>
-                        {敌方列表.length === 0 ? (
-                            <div className="h-full rounded-2xl border border-dashed border-wuxia-gold/20 bg-black/20 flex flex-col items-center justify-center text-wuxia-gold/40 gap-4 font-serif">
-                                <IconYinYang size={64} className="opacity-30 drop-shadow-lg" />
-                                <span className="text-xl tracking-widest">四海升平，并无强压</span>
-                            </div>
-                        ) : (
+                        {敌方列表.length > 0 && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-max">
                                 {敌方列表.map((enemy, idx) => {
                                     const hpCur = Math.max(0, enemy?.当前血量 || 0);

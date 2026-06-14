@@ -198,6 +198,7 @@ type 开场剧情生成依赖 = {
     设置任务列表: (value: any[]) => void;
     设置约定列表: (value: any[]) => void;
     设置开局文章优化进度: (value: any) => void;
+    设置开局主剧情进度: (value: any) => void;
     设置开局变量生成进度: (value: any) => void;
     设置开局世界演变进度: (value: any) => void;
     设置开局规划进度: (value: any) => void;
@@ -1137,6 +1138,14 @@ export const 执行开场剧情生成工作流 = async (
             outputTokens: deps.估算AI输出Token(deps.获取原始AI消息(aiResult.rawText), apiForOpeningRequest?.model)
         }]);
         if (openingStreamHeartbeat) clearInterval(openingStreamHeartbeat);
+
+        deps.设置开局主剧情进度({
+            phase: 'done',
+            text: '主剧情已生成，后续为独立初始化阶段。',
+            rawText: typeof aiResult.rawText === 'string' ? aiResult.rawText : '',
+            channelName: apiForOpeningRequest?.供应商 || '',
+            modelName: apiForOpeningRequest?.model || ''
+        });
 
         const commandBaseState = options?.命令基态 || {
             角色: contextData.角色 || deps.角色,
@@ -2184,6 +2193,11 @@ export const 执行开场剧情生成工作流 = async (
         }
     } catch (e: any) {
         if (openingStreamHeartbeat) clearInterval(openingStreamHeartbeat);
+        deps.设置开局主剧情进度({
+            phase: 'error',
+            text: e?.message || '主剧情生成失败。',
+            rawText: typeof e?.rawText === 'string' ? e.rawText : ''
+        });
         if (e?.name === 'AbortError') {
             deps.设置历史记录(initialHistory);
             throw e;

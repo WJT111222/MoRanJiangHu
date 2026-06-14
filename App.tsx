@@ -3197,6 +3197,7 @@ const App: React.FC = () => {
                                      openingPlanningProgress={meta.openingPlanningProgress}
                                      openingVariableGenerationProgress={meta.openingVariableGenerationProgress}
                                      openingPolishProgress={meta.openingPolishProgress}
+                                     openingMainStoryProgress={meta.openingMainStoryProgress}
                                      openingMapUpdateProgress={meta.openingMapUpdateProgress}
                                      mainStoryModelInfo={mainStoryApiInfo}
                                      externalDraft={chatDraftRequest}

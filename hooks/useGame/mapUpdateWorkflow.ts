@@ -337,6 +337,35 @@ export const 构建地图层级替换结果 = (
     }));
 };
 
+const 地图层级顺序表 = ['寰宇', '大地点', '中地点', '小地点', '区地点', '子地点'] as const;
+
+export const 校验地图在场人物唯一性 = (layers: Array<{ 名称: string; 层级: string; 父级ID: string; 在场人物?: string[] }>): string[] => {
+    const errors: string[] = [];
+    const childMap = new Map<string, string[]>();
+    layers.forEach(node => {
+        const parentId = node.父级ID || '';
+        if (!childMap.has(parentId)) childMap.set(parentId, []);
+        childMap.get(parentId)!.push(node.名称);
+    });
+    const isLeaf = (name: string): boolean => !childMap.has(name) || childMap.get(name)!.length === 0;
+    const leafNodes = layers.filter(node => isLeaf(node.名称));
+    const characterLocations = new Map<string, string[]>();
+    leafNodes.forEach(node => {
+        (node.在场人物 || []).forEach(name => {
+            const key = name.trim();
+            if (!key) return;
+            if (!characterLocations.has(key)) characterLocations.set(key, []);
+            characterLocations.get(key)!.push(node.名称);
+        });
+    });
+    characterLocations.forEach((locations, name) => {
+        if (locations.length > 1) {
+            errors.push(`角色「${name}」同时出现在多个叶子地点：${locations.join('、')}，同一角色只能出现在一个最细地点。`);
+        }
+    });
+    return errors;
+};
+
 const 提取命令块 = (rawText: string): string => {
     const source = (rawText || '').trim();
     const withoutThinking = source
@@ -402,6 +431,13 @@ export const 解析地图自动更新命令 = (rawText: string, currentWorld?: a
         try {
             const rawNodes = 解析地图重生成节点(rawText);
             const newLayers = 构建地图层级替换结果(rawNodes, currentWorld);
+            const 在场人物冲突 = 校验地图在场人物唯一性(newLayers);
+            if (在场人物冲突.length > 0) {
+                const message = `地图在场人物校验失败：${在场人物冲突.join('；')}。请修正后重新生成，同一角色只能出现在一个最细叶子地点节点中。`;
+                const error = new Error(message);
+                (error as any).parseDetail = message;
+                throw error;
+            }
             if (newLayers.length > 0) {
                 return [{
                     action: 'set',
@@ -473,6 +509,14 @@ export const 生成地图更新 = async (
     if (params.mode === 'memory_regenerate') {
         const rawNodes = 解析地图重生成节点(rawText);
         const newLayers = 构建地图层级替换结果(rawNodes, world);
+        const 在场人物冲突 = 校验地图在场人物唯一性(newLayers);
+        if (在场人物冲突.length > 0) {
+            return {
+                ok: false,
+                phase: 'error',
+                message: `地图在场人物校验失败：${在场人物冲突.join('；')}。请修正后重新生成，同一角色只能出现在一个最细叶子地点节点中。`
+            };
+        }
         return {
             ok: true,
             phase: newLayers.length > 0 ? 'done' : 'skipped',

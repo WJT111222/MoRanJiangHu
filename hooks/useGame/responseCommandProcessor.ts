@@ -1248,12 +1248,14 @@ const 净化新增社交命令 = (
     cmd: any,
     currentSocial: any[],
     responseFactText: string,
-    dialogueSenderKeys: Set<string>
+    dialogueSenderKeys: Set<string>,
+    playerName?: string
 ): any | null => {
     const nextName = 提取新增社交命令姓名(cmd);
     if (!nextName) return cmd;
     if (是否保留栏目式社交姓名(nextName)) return null;
     const nextKey = 归一化文本键(nextName);
+    if (playerName && nextKey === 归一化文本键(playerName)) return null;
     const existing = (Array.isArray(currentSocial) ? currentSocial : []).some((npc: any) => (
         [npc?.id, ...读取NPC名称列表(npc)]
             .map(归一化文本键)
@@ -1315,7 +1317,8 @@ export const 执行响应命令处理 = (
                 ),
                 socialBuffer,
                 responseFactText,
-                dialogueSenderKeys
+                dialogueSenderKeys,
+                charBuffer?.姓名
             );
             if (!safeCmd) return;
             if (!heroinePlanEnabled && 是否女主规划命令(safeCmd.key)) return;

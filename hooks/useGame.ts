@@ -511,6 +511,7 @@ export const useGame = () => {
     const [聊天区强制置底令牌, set聊天区强制置底令牌] = useState(0);
     const [变量生成中, set变量生成中] = useState(false);
     const [后台队列处理中, set后台队列处理中] = useState(false);
+    const [开局主剧情进度, set开局主剧情进度] = useState<开局独立阶段进度 | null>(null);
     const [开局文章优化进度, set开局文章优化进度] = useState<开局独立阶段进度 | null>(null);
     const [开局变量生成进度, set开局变量生成进度] = useState<开局独立阶段进度 | null>(null);
     const [开局世界演变进度, set开局世界演变进度] = useState<开局独立阶段进度 | null>(null);
@@ -3283,6 +3284,7 @@ export const useGame = () => {
         isStreaming: boolean = true,
         options?: 发送选项
     ): Promise<发送结果> => {
+        set开局主剧情进度(null);
         set开局文章优化进度(null);
         set开局变量生成进度(null);
         set开局世界演变进度(null);
@@ -3623,6 +3625,7 @@ export const useGame = () => {
         设置同人剧情规划,
         设置同人女主剧情规划,
         设置开局配置,
+        设置开局主剧情进度: set开局主剧情进度,
         设置开局文章优化进度: set开局文章优化进度,
         设置开局变量生成进度: set开局变量生成进度,
         设置开局世界演变进度: set开局世界演变进度,
@@ -3918,6 +3921,7 @@ export const useGame = () => {
             sceneImageQueue: 场景生图任务队列,
             variableGenerationRunning: 变量生成中,
             postStoryQueueRunning: 后台队列处理中,
+            openingMainStoryProgress: 开局主剧情进度,
             openingPolishProgress: 开局文章优化进度,
             openingWorldEvolutionProgress: 开局世界演变进度,
             openingPlanningProgress: 开局规划进度,

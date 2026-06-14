@@ -644,6 +644,23 @@ export const 执行变量模型校准工作流 = async (
             throw error;
         }
 
+        const playerName = typeof params.baseState?.角色?.姓名 === 'string' ? params.baseState.角色.姓名.trim() : '';
+        if (playerName) {
+            const normalizeKey = (v: unknown): string => typeof v === 'string' ? v.trim().replace(/\s+/g, '').toLowerCase() : '';
+            const playerKey = normalizeKey(playerName);
+            const protagonistAsNpc = dedupedCommands.filter((cmd: any) => {
+                if (cmd.type !== 'push' || cmd.path !== '社交') return false;
+                const npcName = typeof cmd.value?.姓名 === 'string' ? cmd.value.姓名.trim() : '';
+                return npcName && normalizeKey(npcName) === playerKey;
+            });
+            if (protagonistAsNpc.length > 0) {
+                const message = `变量生成试图将主角「${playerName}」作为 NPC 加入社交列表，这是禁止的。社交列表只存储 NPC 和配角，不包含主角。请重新生成变量命令，移除所有与主角同名的社交条目。`;
+                const error = new Error(message);
+                (error as any).parseDetail = message;
+                throw error;
+            }
+        }
+
         const renameIssues = 提取变量命令NPC姓名改写(dedupedCommands, params.baseState.社交);
         if (renameIssues.length > 0) {
             const message = `变量生成试图改写已生成 NPC 姓名：${renameIssues.join('；')}。前端不会修改既有变量，请重新生成变量命令并保留已有 NPC 姓名。`;
