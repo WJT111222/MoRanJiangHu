@@ -1,16 +1,27 @@
 {
-  "versionCode": 491,
-  "versionName": "1.0.491",
+  "versionCode": 492,
+  "versionName": "1.0.492",
   "releaseChannel": "stable",
-  "releasePublishedAt": "2026-06-15T21:40:15+08:00",
+  "releasePublishedAt": "2026-06-15T22:18:55+08:00",
   "releaseNotes": [
-    "修复香闺秘档图片预取策略：桌面端社交面板改为聚焦当前NPC+相邻NPC的图片预取，避免全部NPC图片耗尽预取上限导致私密部位图片无法加载；提高Web端图片预取上限从24到48。",
-    "修复香闺秘档部位数据标准化时图片URL被错误丢弃的问题，确保远程图片地址在本地路径失效时可作为兜底。",
+    "紧急修复v1.0.491导致的社交面板页面崩溃：变量声明顺序错误导致ReferenceError。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/",
-    "同步更新 Web、APK 与更新清单到 v1.0.491。"
+    "同步更新 Web、APK 与更新清单到 v1.0.492。"
   ],
   "releaseHistory": [
+    {
+      "versionName": "1.0.491",
+      "versionCode": 491,
+      "publishedAt": "2026-06-15T21:40:15+08:00",
+      "changes": [
+        "修复香闺密档图片预取策略：桌面端社交面板改为聚焦当前NPC+相邻NPC。",
+        "提高Web端图片预取上限从24到48。",
+        "修复香闺秘档部位数据标准化时图片URL被错误丢弃。",
+        "官网：https://msjh.bacon159.pp.ua/",
+        "同步更新 Web、APK 与更新清单到 v1.0.491。"
+      ]
+    },
     {
       "versionName": "1.0.490",
       "versionCode": 490,
@@ -842,11 +853,10 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "修复香闺秘档图片预取策略：桌面端社交面板改为聚焦当前NPC+相邻NPC的图片预取，避免全部NPC图片耗尽预取上限导致私密部位图片无法加载；提高Web端图片预取上限从24到48。",
-    "修复香闺秘档部位数据标准化时图片URL被错误丢弃的问题，确保远程图片地址在本地路径失效时可作为兜底。",
+    "紧急修复v1.0.491导致的社交面板页面崩溃：变量声明顺序错误导致ReferenceError。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/",
-    "同步更新 Web、APK 与更新清单到 v1.0.491。"
+    "同步更新 Web、APK 与更新清单到 v1.0.492。"
   ],
-  "notes": "修复香闺秘档图片预取策略：桌面端社交面板改为聚焦当前NPC+相邻NPC的图片预取，避免全部NPC图片耗尽预取上限导致私密部位图片无法加载；提高Web端图片预取上限从24到48。\n修复香闺秘档部位数据标准化时图片URL被错误丢弃的问题，确保远程图片地址在本地路径失效时可作为兜底。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/\n同步更新 Web、APK 与更新清单到 v1.0.491。"
+  "notes": "紧急修复v1.0.491导致的社交面板页面崩溃：变量声明顺序错误导致ReferenceError。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/\n同步更新 Web、APK 与更新清单到 v1.0.492。"
 }
