@@ -7,6 +7,7 @@ interface Props {
     sectData: 详细门派结构;
     onClose: () => void;
     onOpenNpc?: (npc: any) => void;
+    onOpenPlayer?: () => void;
     onLearnBook?: (book: any) => void;
     onClaimMonthlyStipend?: () => void;
     onExchange?: (goodId: string, price: number) => void;
@@ -226,7 +227,7 @@ const 估算月俸数量 = (sectData: 详细门派结构): number => {
     return Math.max(0, base + contributionBonus + scaleBonus);
 };
 
-const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook, onClaimMonthlyStipend, onExchange, learnedBookIds = [], env, socialList }) => {
+const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onOpenPlayer, onLearnBook, onClaimMonthlyStipend, onExchange, learnedBookIds = [], env, socialList }) => {
     const [activeTab, setActiveTab] = useState<Tab>('hall');
     const 文案 = useMemo(() => 获取组织显示文案(sectData), [sectData]);
     const 显示职位 = (rank?: string) => 文案.rankMap[String(rank || '').trim()] || rank || '无';
@@ -253,6 +254,16 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
     const 月俸可领取 = Boolean(sectData.月俸规则) && 本月月俸可领取(sectData, env);
     const 月俸数量 = 估算月俸数量(sectData);
     const 实际轮回者人数 = Math.max(1, Array.isArray(sectData.重要成员) ? sectData.重要成员.length : 0);
+    const 是主角成员 = (member: any): boolean => Boolean(
+        member?.是否玩家本人 === true
+        || String(member?.id || '').includes('sect_member_player_')
+    );
+    const 展示成员列表 = useMemo(() => {
+        const list = Array.isArray(sectData.重要成员) ? sectData.重要成员 : [];
+        const player = list.find(m => 是主角成员(m));
+        const others = list.filter(m => !是主角成员(m));
+        return player ? [player, ...others] : list;
+    }, [sectData.重要成员]);
     const 展示人数 = 文案.isInfinite
         ? (Number(sectData.弟子总数 || 0) > 12 ? 实际轮回者人数 : Math.max(实际轮回者人数, Number(sectData.弟子总数 || 0) || 0))
         : (sectData.弟子总数 || 0);
@@ -376,7 +387,7 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
 
                             <div className="bg-black/40 border border-gray-800 rounded-xl p-4">
                                 <div className="text-[10px] text-wuxia-gold/70 tracking-[0.3em] mb-2">{文案.principle}</div>
-                                <p className="text-sm text-gray-300 font-serif leading-relaxed">“{sectData.简介}”</p>
+                                <p className="text-sm text-gray-300 font-serif leading-relaxed">"{sectData.简介}"</p>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {sectData.门规.map((rule, i) => (
                                         <span key={i} className="text-[10px] bg-red-950/30 text-red-300 border border-red-900/50 px-2 py-1 rounded">
@@ -483,19 +494,36 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onLearnBook
 
                     {activeTab === 'members' && (
                         <div className="space-y-3">
-                            {sectData.重要成员.map(mem => (
-                                <button key={mem.id} type="button" onClick={() => onOpenNpc?.(mem)} className="w-full text-left bg-black/40 border border-gray-800 rounded-xl p-4 flex items-start gap-3 hover:border-wuxia-gold/40">
+                            {展示成员列表.map(mem => {
+                                const isPlayer = 是主角成员(mem);
+                                return (
+                                <button
+                                    key={mem.id}
+                                    type="button"
+                                    onClick={() => (isPlayer ? onOpenPlayer?.() : onOpenNpc?.(mem))}
+                                    className={`w-full text-left rounded-xl p-4 flex items-start gap-3 relative overflow-hidden transition-colors ${
+                                        isPlayer
+                                            ? 'bg-wuxia-gold/10 border-2 border-wuxia-gold/50 hover:bg-wuxia-gold/20'
+                                            : 'bg-black/40 border border-gray-800 hover:border-wuxia-gold/40'
+                                    }`}
+                                >
+                                    {isPlayer && (
+                                        <span className="absolute right-3 top-3 z-20 rounded-full bg-wuxia-gold px-2 py-0.5 text-[10px] font-bold text-black shadow-[0_0_10px_rgba(230,200,110,0.4)]">
+                                            我（主角）
+                                        </span>
+                                    )}
                                     <MemberAvatar member={mem} socialList={socialList} />
                                     <div className="flex-1">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-gray-200 font-bold">{mem.姓名}</span>
+                                            <span className={`font-bold ${isPlayer ? 'text-wuxia-gold' : 'text-gray-200'}`}>{mem.姓名}</span>
                                             <span className="text-[9px] text-wuxia-gold bg-wuxia-gold/10 px-2 py-0.5 rounded border border-wuxia-gold/20">{mem.身份}</span>
                                         </div>
                                         <div className="text-[10px] text-gray-500 mt-1">{mem.性别} · {mem.年龄}岁 · {mem.境界}</div>
-                                        <p className="text-[11px] text-gray-400 mt-2">“{mem.简介}”</p>
+                                        <p className="text-[11px] text-gray-400 mt-2">"{mem.简介}"</p>
                                     </div>
                                 </button>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

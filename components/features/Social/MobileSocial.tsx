@@ -232,6 +232,32 @@ const MobileSocial: React.FC<Props> = ({
     const 展示女性扩展 = 当前角色是女性 && !当前角色是扶她 && Boolean(currentNPC?.是否主要角色);
     const 展示女性私密档案 = 展示女性扩展 && nsfwEnabled;
     const 展示男性私密档案 = 当前角色是男性 && Boolean(currentNPC?.是否主要角色) && nsfwEnabled && femboyNsfwEnabled;
+
+    // [DEBUG] 私密部位图片调试日志
+    useEffect(() => {
+        if (!currentNPC) return;
+        const npcName = currentNPC?.姓名 || 'unknown';
+        const archive = (currentNPC as any)?.图片档案;
+        const secretArchive = archive?.香闺秘档部位档案;
+        const history = archive?.生图历史;
+        console.group(`[私密图调试-移动端] NPC: ${npcName}`);
+        console.log('条件状态:', {
+            nsfwEnabled, femboyNsfwEnabled, 当前角色是女性, 当前角色是男性, 当前角色是扶她,
+            是否主要角色: currentNPC?.是否主要角色, 展示女性扩展, 展示女性私密档案, 展示男性私密档案, 性别: currentNPC?.性别,
+        });
+        console.log('香闺秘档部位档案:', secretArchive || '不存在');
+        if (secretArchive) {
+            (['胸部', '小穴', '屁穴', '肉棒'] as 香闺秘档部位类型[]).forEach(part => {
+                const entry = secretArchive[part];
+                console.log(`  [${part}]:`, entry ? { 状态: entry?.状态, 图片URL: entry?.图片URL?.slice(0, 80), 获取图片展示地址: 获取图片展示地址(entry) || '空' } : '无记录');
+            });
+        }
+        if (Array.isArray(history)) {
+            const secret = history.filter((h: any) => ['部位特写', '胸部', '小穴', '屁穴', '肉棒'].includes(h?.构图) || ['胸部', '小穴', '屁穴', '肉棒'].includes(h?.部位));
+            console.log(`生图历史(私密): ${secret.length} 条`, secret.map((h: any) => ({ 部位: h?.部位, 状态: h?.状态, url: 获取图片展示地址(h) || '空' })));
+        }
+        console.groupEnd();
+    }, [currentNPC?.id, nsfwEnabled, femboyNsfwEnabled]);
     const 取首个非空文本 = (...values: unknown[]): string => {
         for (const value of values) {
             if (typeof value !== 'string') continue;
@@ -275,8 +301,8 @@ const MobileSocial: React.FC<Props> = ({
         const text = 取首个非空文本(value);
         if (!text) return '';
         return text
-            .replace(/^[\s"'“”‘’【】\[\]（）()]*[^：:]{1,18}[：:]\s*/u, '')
-            .replace(/(?:胸部|小穴|屁穴|肉棒)?\s*(?:拥有|带有|具备)?\s*[“"']?[^，。；;：:]{1,18}[”"']?\s*名器标签[，。；;]?\s*/gu, '')
+            .replace(/^[\s"'""''【】\[\]（）()]*[^：:]{1,18}[：:]\s*/u, '')
+            .replace(/(?:胸部|小穴|屁穴|肉棒)?\s*(?:拥有|带有|具备)?\s*[""']?[^，。；;：:]{1,18}[""']?\s*名器标签[，。；;]?\s*/gu, '')
             .replace(/名器标签[：:]\s*[^，。；;]+[，。；;]?\s*/gu, '')
             .trim();
     };
@@ -949,12 +975,12 @@ const MobileSocial: React.FC<Props> = ({
                                     `p-4` 控整个详情区四周内边距。
                                     `gap-4` 控这一层所有直属子元素之间的默认上下间距。
                                     这里会影响：
-                                    - “展开背景卷轴”按钮
+                                    - "展开背景卷轴"按钮
                                     - 下方主信息卡
                                     - 后续的人设档案、技艺状态等模块
 
                                     如果你想统一缩小整列模块之间的距离，可以改这里的 `gap-4`。
-                                    但如果你只想改“展开背景卷轴”按钮和下面信息栏上边框的距离，
+                                    但如果你只想改"展开背景卷轴"按钮和下面信息栏上边框的距离，
                                     优先改下面按钮上的 `mb-2`，会更精准，不会影响后面其他模块。 */
                                 <div className="p-2 flex flex-col gap-[0.6rem] pb-12">
                                 {/* 背景卷轴展开/收起按钮：
@@ -985,11 +1011,11 @@ const MobileSocial: React.FC<Props> = ({
                                 )}
 
                                 {/* 主信息卡 / 信息栏大框：
-                                    这块就是“展开背景卷轴”按钮正下方的大信息栏。
+                                    这块就是"展开背景卷轴"按钮正下方的大信息栏。
                                     它和上面按钮的距离，优先由上面按钮的 `mb-2` 控制；
                                     同时也会受父级纵向容器 `gap-4` 影响。
 
-                                    如果你看到“怎么改 mb-2 还是感觉有点空”，
+                                    如果你看到"怎么改 mb-2 还是感觉有点空"，
                                     再回头检查上面的 `gap-4`。 */}
                                 {/* Dossier Hero Card */}
                                 <div className="relative overflow-hidden rounded-[1.7rem] border border-wuxia-gold/20 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_34%),linear-gradient(180deg,rgba(31,22,15,0.96),rgba(13,10,8,0.98))] p-4 shadow-[0_14px_34px_rgba(0,0,0,0.5)] origin-top animate-fadeIn">
@@ -1035,7 +1061,7 @@ const MobileSocial: React.FC<Props> = ({
                                                 )}
                                             </div>
                                             {/* 左侧立绘下方的三颗操作按钮：
-                                                这里控制的是“召回到场 / 设为重要 / 忘却此人”这整组按钮。
+                                                这里控制的是"召回到场 / 设为重要 / 忘却此人"这整组按钮。
                                                 `space-y-2` 控制按钮与按钮之间的垂直间距。
                                                 如果想让三颗按钮挨得更近，改小为 `space-y-1.5` 或 `space-y-1`。
                                                 如果想让按钮之间更松一点，就改大。 */}
@@ -1044,7 +1070,7 @@ const MobileSocial: React.FC<Props> = ({
                                                     功能：切换 NPC 是否在场。
                                                     `h-[3rem]` 控按钮高度。
                                                     `rounded-[1.35rem]` 控胶囊圆角大小。
-                                                    `px-4` 控左右内边距，也会影响按钮看起来“宽不宽松”。
+                                                    `px-4` 控左右内边距，也会影响按钮看起来"宽不宽松"。
                                                     `text-sm` 控文字字号。
                                                     `gap-2` 控图标和文字之间的距离。
                                                     `w-full` 让按钮横向占满这一列宽度。
@@ -1075,7 +1101,7 @@ const MobileSocial: React.FC<Props> = ({
                                                     {在场切换文案}
                                                 </button>
                                                 {/* 重要角色按钮：
-                                                    功能：把当前 NPC 标记为“重要角色”或取消重要标记。
+                                                    功能：把当前 NPC 标记为"重要角色"或取消重要标记。
                                                     尺寸参数和上一颗按钮基本一致：
                                                     `h-[3rem]` 高度
                                                     `rounded-[1.35rem]` 圆角
@@ -1148,7 +1174,7 @@ const MobileSocial: React.FC<Props> = ({
                                                 )}
                                                 {/* 删除角色按钮：
                                                     功能：删除当前 NPC。
-                                                    当 NPC 已经被标记为“重要角色”时，这颗按钮会禁用。
+                                                    当 NPC 已经被标记为"重要角色"时，这颗按钮会禁用。
 
                                                     外形控制点：
                                                     `h-[3rem]` 控高度
@@ -1163,7 +1189,7 @@ const MobileSocial: React.FC<Props> = ({
                                                     - 重要角色：灰色禁用态
                                                     - 可删除：默认暗色，按下时变红
 
-                                                    如果你想让这颗按钮更像“危险操作”，
+                                                    如果你想让这颗按钮更像"危险操作"，
                                                     可以增强 `active:border-red-500`、`active:text-red-400`、`active:bg-red-500/10`
                                                     这些红色反馈，或者直接给默认态加一点偏红边框。 */}
                                                 <button
@@ -1475,6 +1501,34 @@ const MobileSocial: React.FC<Props> = ({
                                     </div>
                                 </div>
 
+                                {/* [DEBUG] 私密部位图片调试面板 */}
+                                {currentNPC && (
+                                    <details className="rounded-lg border border-yellow-600/40 bg-yellow-950/20 p-3 text-[10px] font-mono text-yellow-200/80">
+                                        <summary className="cursor-pointer text-yellow-400 font-bold text-xs mb-2">🔍 私密图调试 — {currentNPC.姓名}</summary>
+                                        <div className="space-y-1 mt-2">
+                                            <div>nsfwEnabled: <b className={nsfwEnabled ? 'text-green-400' : 'text-red-400'}>{String(nsfwEnabled)}</b> | femboyNsfwEnabled: <b className={femboyNsfwEnabled ? 'text-green-400' : 'text-red-400'}>{String(femboyNsfwEnabled)}</b></div>
+                                            <div>性别: <b>{currentNPC.性别}</b> | 主要角色: <b className={currentNPC?.是否主要角色 ? 'text-green-400' : 'text-red-400'}>{String(currentNPC?.是否主要角色)}</b></div>
+                                            <div>女性: <b className={当前角色是女性 ? 'text-green-400' : 'text-gray-500'}>{String(当前角色是女性)}</b> | 男性: <b className={当前角色是男性 ? 'text-green-400' : 'text-gray-500'}>{String(当前角色是男性)}</b> | 扶她: <b className={当前角色是扶她 ? 'text-green-400' : 'text-gray-500'}>{String(当前角色是扶她)}</b></div>
+                                            <div>女性扩展: <b className={展示女性扩展 ? 'text-green-400' : 'text-red-400'}>{String(展示女性扩展)}</b> | 女性私密: <b className={展示女性私密档案 ? 'text-green-400' : 'text-red-400'}>{String(展示女性私密档案)}</b> | 男性私密: <b className={展示男性私密档案 ? 'text-green-400' : 'text-red-400'}>{String(展示男性私密档案)}</b></div>
+                                            <div className="border-t border-yellow-600/30 pt-1 mt-1">
+                                                {(['胸部', '小穴', '屁穴', '肉棒'] as 香闺秘档部位类型[]).map(part => {
+                                                    const result = 读取香闺秘档图片结果(currentNPC, part);
+                                                    const url = 获取图片展示地址(result);
+                                                    const raw = (currentNPC as any)?.图片档案?.香闺秘档部位档案?.[part];
+                                                    return (
+                                                        <div key={part} className="flex items-center gap-2 py-0.5">
+                                                            <span className="text-yellow-400 w-10">{part}:</span>
+                                                            <span className={url ? 'text-green-400' : 'text-red-400'}>{url ? '有图' : '无图'}</span>
+                                                            {raw && <span className="text-gray-500">状态={raw?.状态 || '?'}</span>}
+                                                            {raw?.图片URL && <span className="text-gray-600 truncate max-w-[120px]" title={raw.图片URL}>{raw.图片URL.slice(0, 35)}...</span>}
+                                                            {!raw && <span className="text-gray-600">无记录</span>}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </details>
+                                )}
                                 {/* Female Expansions */}
                                 {展示女性扩展 ? (
                                     <div className="space-y-4 animate-fadeIn">
@@ -1490,7 +1544,7 @@ const MobileSocial: React.FC<Props> = ({
                                             
                                             <div className="relative z-10">
                                                 <div className="mb-3 pl-2.5 border-l-2 border-pink-500/30">
-                                                    <p className="text-gray-200 font-serif leading-relaxed italic text-[11px]">“{读取外貌(currentNPC) || '暂无外貌描写'}”</p>
+                                                    <p className="text-gray-200 font-serif leading-relaxed italic text-[11px]">"{读取外貌(currentNPC) || '暂无外貌描写'}"</p>
                                                 </div>
                                                 <div className="flex flex-col gap-1.5 text-[10px] text-gray-400 bg-black/40 p-2.5 rounded-lg border border-white/5">
                                                     <div className="grid grid-cols-2 gap-1.5">

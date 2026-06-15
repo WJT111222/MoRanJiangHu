@@ -42,7 +42,9 @@ const LocationTreeItem: React.FC<{
     playerAncestorIds: Set<string>;
     depth: number;
     onSelect: (node: 地点树节点) => void;
-}> = ({ node, selectedId, playerLocationId, playerAncestorIds, depth, onSelect }) => {
+    socialList?: any[];
+    playerName?: string;
+}> = ({ node, selectedId, playerLocationId, playerAncestorIds, depth, onSelect, socialList = [], playerName = '' }) => {
     if (depth > 30) return null;
     if (!是否索引可见节点(node)) return null;
     const inPlayerPath = playerAncestorIds.has(node.ID);
@@ -55,10 +57,24 @@ const LocationTreeItem: React.FC<{
     const visibleChildren = node.子节点.filter(c => c.ID !== node.ID && 是否索引可见节点(c));
     const hasChildren = visibleChildren.length > 0;
 
+    // 叶子节点：计算在场NPC
+    const leafNpcs = useMemo(() => {
+        if (hasChildren || socialList.length === 0) return [];
+        const matched = socialList.filter((npc: any) => NPC位置命中名称(npc, node.名称));
+        const safePlayerName = playerName.trim();
+        if (safePlayerName) {
+            const hasPlayer = matched.some((npc: any) => String(npc?.姓名 || npc?.名称 || '').trim() === safePlayerName);
+            if (!hasPlayer && isPlayerLocation) {
+                matched.unshift({ 姓名: safePlayerName, 名称: safePlayerName, 是否玩家本人: true });
+            }
+        }
+        return matched;
+    }, [hasChildren, socialList, node.名称, playerName, isPlayerLocation]);
+
     return (
         <div>
             <div
-                className={`flex items-center gap-1.5 py-1.5 px-2 rounded cursor-pointer transition-colors text-sm
+                className={`flex items-center gap-1.5 py-1.5 px-2 rounded cursor-pointer transition-colors text-base
                     ${isSelected ? 'bg-wuxia-gold/10 border border-wuxia-gold/30 text-wuxia-gold' : isPlayerLocation ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300' : 'hover:bg-white/5 text-gray-300'}
                 `}
                 style={{ paddingLeft: `${2 + depth * 12}px` }}
@@ -69,7 +85,7 @@ const LocationTreeItem: React.FC<{
                 {hasChildren ? (
                     <button
                         type="button"
-                        className="text-[10px] text-gray-500 w-3 shrink-0 hover:text-gray-300"
+                        className="text-sm text-gray-500 w-3 shrink-0 hover:text-gray-300"
                         onClick={(event) => {
                             event.stopPropagation();
                             setExpanded(!expanded);
@@ -82,14 +98,34 @@ const LocationTreeItem: React.FC<{
                     <span className="w-3 shrink-0" />
                 )}
                 <span className="truncate">{node.名称}</span>
-                {isPlayerLocation && <span className="text-[8px] text-emerald-400 ml-1 shrink-0">●</span>}
-                {node.控制势力 && <span className="hidden min-[420px]:inline text-[9px] text-amber-300/80 ml-1 shrink truncate max-w-[80px]">{node.控制势力}</span>}
-                <span className="text-[10px] text-gray-500 ml-auto shrink-0">{层级标签[node.层级]}</span>
+                {isPlayerLocation && <span className="text-sm text-emerald-400 ml-1 shrink-0">●</span>}
+                {node.控制势力 && <span className="hidden min-[420px]:inline text-sm text-amber-300/80 ml-1 shrink truncate max-w-[80px]">{node.控制势力}</span>}
+                {leafNpcs.length > 0 && (
+                    <span className="ml-auto flex items-center gap-0.5 shrink-0 max-w-[120px] overflow-hidden">
+                        {leafNpcs.slice(0, 3).map((npc: any, i: number) => {
+                            const npcColors = ['#d49090','#90b4d4','#90d490','#d4c490','#b490d4','#90d4c4'];
+                            const c = npc?.是否玩家本人 ? '#f0d76a' : npcColors[Math.abs((npc?.姓名 || npc?.名称 || '').length) % npcColors.length];
+                            return (
+                                <span key={i} className="text-xs px-1 py-0.5 rounded font-bold truncate"
+                                    style={{ background: c, color: '#2a1000', maxWidth: '50px' }}>
+                                    {String(npc?.姓名 || npc?.名称 || '?').slice(0, 3)}
+                                </span>
+                            );
+                        })}
+                        {leafNpcs.length > 3 && <span className="text-xs text-gray-500">+{leafNpcs.length - 3}</span>}
+                    </span>
+                )}
+                {!hasChildren && leafNpcs.length === 0 && (
+                    <span className="text-xs text-gray-500 ml-auto shrink-0">{层级标签[node.层级]}</span>
+                )}
+                {hasChildren && (
+                    <span className="text-xs text-gray-500 ml-auto shrink-0">{层级标签[node.层级]}</span>
+                )}
             </div>
             {expanded && hasChildren && (
                 <div>
                     {visibleChildren.map(child => (
-                        <LocationTreeItem key={child.ID} node={child} selectedId={selectedId} playerLocationId={playerLocationId} playerAncestorIds={playerAncestorIds} depth={depth + 1} onSelect={onSelect} />
+                        <LocationTreeItem key={child.ID} node={child} selectedId={selectedId} playerLocationId={playerLocationId} playerAncestorIds={playerAncestorIds} depth={depth + 1} onSelect={onSelect} socialList={socialList} playerName={playerName} />
                     ))}
                 </div>
             )}
@@ -207,7 +243,7 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
                             ←
                         </button>
                     )}
-                    <div className={`flex items-center gap-1 flex-wrap min-w-0 flex-1 leading-tight ${breadcrumb.length > 5 ? 'text-[10px]' : 'text-xs'}`}>
+                    <div className={`flex items-center gap-1 flex-wrap min-w-0 flex-1 leading-tight ${breadcrumb.length > 5 ? 'text-xs' : 'text-sm'}`}>
                         {breadcrumb.map((node, i) => (
                             <React.Fragment key={node.ID}>
                                 {i > 0 && <span className="text-gray-600 shrink-0">/</span>}
@@ -231,7 +267,7 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
                                 setRegenerating(true);
                                 try { await onRegenerateMap(); } finally { setRegenerating(false); }
                             }}
-                            className="shrink-0 rounded-full border border-wuxia-gold/30 bg-wuxia-gold/5 px-3 py-1 text-[10px] text-wuxia-gold hover:bg-wuxia-gold/15 transition-colors disabled:opacity-50 whitespace-nowrap"
+                            className="shrink-0 rounded-full border border-wuxia-gold/30 bg-wuxia-gold/5 px-3 py-1 text-sm text-wuxia-gold hover:bg-wuxia-gold/15 transition-colors disabled:opacity-50 whitespace-nowrap"
                         >
                             {regenerating ? '解析中…' : '回忆解析'}
                         </button>
@@ -272,18 +308,18 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
                 {/* 框一：地点索引 — 最长 */}
                 <div className="flex flex-col overflow-hidden rounded-2xl border border-wuxia-gold/20 bg-[#0a0d14] min-h-0">
                     <div className="border-b border-wuxia-gold/10 bg-black/40 px-4 py-3 shrink-0">
-                        <h3 className="text-xs font-bold tracking-[0.2em] text-gray-400 uppercase">地点索引</h3>
+                        <h3 className="text-sm font-bold tracking-[0.2em] text-gray-400 uppercase">地点索引</h3>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
                         {tree.根节点 ? (
-                            <LocationTreeItem node={tree.根节点} selectedId={selectedNode?.ID || ''} playerLocationId={tree.当前节点?.ID || ''} playerAncestorIds={playerAncestorIds} depth={0} onSelect={setSelectedNode} />
+                            <LocationTreeItem node={tree.根节点} selectedId={selectedNode?.ID || ''} playerLocationId={tree.当前节点?.ID || ''} playerAncestorIds={playerAncestorIds} depth={0} onSelect={setSelectedNode} socialList={socialList} playerName={playerName} />
                         ) : (
-                            <div className="p-4 text-xs text-gray-500 text-center space-y-2">
+                            <div className="p-4 text-sm text-gray-500 text-center space-y-2">
                                 <div>暂无地点数据</div>
-                                <div className="text-[10px] text-gray-600">层级：{layerCount} | 节点：{tree.节点映射.size} | 根：{tree.根节点 ? '有' : '无'}</div>
+                                <div className="text-xs text-gray-600">层级：{layerCount} | 节点：{tree.节点映射.size} | 根：{tree.根节点 ? '有' : '无'}</div>
                                 {onRegenerateMap && (
                                     <button disabled={regenerating} onClick={async () => { setRegenerating(true); try { await onRegenerateMap(); } finally { setRegenerating(false); } }}
-                                        className="mt-2 px-3 py-1 rounded border border-wuxia-gold/30 bg-wuxia-gold/5 text-[10px] text-wuxia-gold hover:bg-wuxia-gold/10 transition-colors disabled:opacity-50">
+                                        className="mt-2 px-3 py-1 rounded border border-wuxia-gold/30 bg-wuxia-gold/5 text-xs text-wuxia-gold hover:bg-wuxia-gold/10 transition-colors disabled:opacity-50">
                                         {regenerating ? '解析中…' : '回忆解析'}
                                     </button>
                                 )}
@@ -295,30 +331,30 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
                 {/* 框二：区域介绍 — 中等 */}
                 <div className="flex flex-col overflow-hidden rounded-2xl border border-wuxia-gold/20 bg-[#0a0d14]">
                     <div className="border-b border-wuxia-gold/10 bg-black/40 px-4 py-3 shrink-0">
-                        <h3 className="text-xs font-bold tracking-[0.2em] text-gray-400 uppercase">区域介绍</h3>
+                        <h3 className="text-sm font-bold tracking-[0.2em] text-gray-400 uppercase">区域介绍</h3>
                     </div>
                     <div className="p-3 overflow-y-auto custom-scrollbar" style={{ maxHeight: '180px' }}>
                         {selectedNode ? (
                             <>
-                                <div className="text-[10px] tracking-widest text-gray-500 mb-1">{层级标签[selectedNode.层级]} · {selectedNode.子节点.length} 个子区域</div>
+                                <div className="text-xs tracking-widest text-gray-500 mb-1">{层级标签[selectedNode.层级]} · {selectedNode.子节点.length} 个子区域</div>
                                 <div className="text-sm font-bold text-gray-200 mb-1">{selectedNode.名称}</div>
                                 {(selectedNode.控制势力 || selectedNode.势力影响 || (selectedNode.势力标签 && selectedNode.势力标签.length > 0)) && (
-                                    <div className="mb-2 rounded border border-amber-400/20 bg-amber-400/5 px-2 py-1.5 text-[11px] text-amber-100/90">
+                                    <div className="mb-2 rounded border border-amber-400/20 bg-amber-400/5 px-2 py-1.5 text-sm text-amber-100/90">
                                         {selectedNode.控制势力 && <div><span className="text-amber-300">主导势力：</span>{selectedNode.控制势力}</div>}
                                         {selectedNode.势力影响 && <div className="mt-0.5"><span className="text-amber-300">势力分布：</span>{selectedNode.势力影响}</div>}
                                         {selectedNode.势力标签 && selectedNode.势力标签.length > 0 && (
                                             <div className="mt-1 flex flex-wrap gap-1">
                                                 {selectedNode.势力标签.map((tag) => (
-                                                    <span key={tag} className="rounded border border-amber-300/20 bg-black/30 px-1.5 py-0.5 text-[10px] text-amber-200/80">{tag}</span>
+                                                    <span key={tag} className="rounded border border-amber-300/20 bg-black/30 px-1.5 py-0.5 text-xs text-amber-200/80">{tag}</span>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
                                 )}
                                 {selectedNode.描述 ? (
-                                    <div className="text-xs text-gray-400 leading-relaxed">{selectedNode.描述}</div>
+                                    <div className="text-sm text-gray-400 leading-relaxed">{selectedNode.描述}</div>
                                 ) : (
-                                    <div className="text-xs text-gray-600">暂无描述</div>
+                                    <div className="text-sm text-gray-600">暂无描述</div>
                                 )}
                                 {onInsertCommand && (
                                     <div className="mt-3 flex flex-wrap gap-2 border-t border-white/5 pt-2">
@@ -328,7 +364,7 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
                                                 const name = String((selectedNode as any).名称 || selectedNode.鍚嶇О || '').trim();
                                                 if (name) onInsertCommand(`前往【${name}】`);
                                             }}
-                                            className="rounded-lg border border-wuxia-gold/30 bg-wuxia-gold/10 px-3 py-1.5 text-[11px] font-bold text-wuxia-gold hover:bg-wuxia-gold/20"
+                                            className="rounded-lg border border-wuxia-gold/30 bg-wuxia-gold/10 px-3 py-1.5 text-sm font-bold text-wuxia-gold hover:bg-wuxia-gold/20"
                                         >
                                             前往此地
                                         </button>
@@ -339,32 +375,15 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
                                                 const desc = String((selectedNode as any).描述 || selectedNode.鎻忚堪 || '').trim();
                                                 if (name) onInsertCommand(`查看【${name}】详情${desc ? `：${desc}` : ''}`);
                                             }}
-                                            className="rounded-lg border border-gray-700 bg-black/40 px-3 py-1.5 text-[11px] text-gray-300 hover:border-gray-500 hover:text-white"
+                                            className="rounded-lg border border-gray-700 bg-black/40 px-3 py-1.5 text-sm text-gray-300 hover:border-gray-500 hover:text-white"
                                         >
                                             查看详情
                                         </button>
                                     </div>
                                 )}
-                                {selectedNodePeople.length > 0 && (
-                                    <div className="mt-2 pt-2 border-t border-white/5">
-                                        <div className="text-[10px] text-gray-500 mb-1.5">在场角色</div>
-                                        <div className="flex flex-wrap gap-1">
-                                            {selectedNodePeople.map((npc: any, i: number) => {
-                                                const npcColors = ['#d49090','#90b4d4','#90d490','#d4c490','#b490d4','#90d4c4'];
-                                                const c = npc?.是否玩家本人 ? '#f0d76a' : npcColors[Math.abs((npc?.姓名 || npc?.名称 || '').length) % npcColors.length];
-                                                return (
-                                                    <span key={i} className="text-[10px] px-1.5 py-0.5 rounded font-bold"
-                                                        style={{ background: c, color: '#2a1000' }}>
-                                                        {npc?.姓名 || npc?.名称 || '?'}
-                                                    </span>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
                             </>
                         ) : (
-                            <div className="text-xs text-gray-600">点击地点查看详情</div>
+                            <div className="text-sm text-gray-600">点击地点查看详情</div>
                         )}
                     </div>
                 </div>
@@ -372,17 +391,17 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
                 {/* 框三：解析日志 — 最矮，固定高度 */}
                 <div className="flex flex-col overflow-hidden rounded-2xl border border-wuxia-gold/20 bg-[#0a0d14]">
                     <div className="border-b border-wuxia-gold/10 bg-black/40 px-4 py-3 shrink-0">
-                        <h3 className="text-xs font-bold tracking-[0.2em] text-gray-400 uppercase">
+                        <h3 className="text-sm font-bold tracking-[0.2em] text-gray-400 uppercase">
                             回忆解析日志
-                            {regenerating && <span className="ml-2 text-wuxia-gold animate-pulse text-[10px]">● 流式输出中…</span>}
-                            {!regenerating && rawResponse && <span className="ml-2 text-emerald-400 text-[10px]">● 解析完成</span>}
+                            {regenerating && <span className="ml-2 text-wuxia-gold animate-pulse text-xs">● 流式输出中…</span>}
+                            {!regenerating && rawResponse && <span className="ml-2 text-emerald-400 text-xs">● 解析完成</span>}
                         </h3>
                     </div>
                     <div className="overflow-y-auto p-3 custom-scrollbar" style={{ height: compact ? '100px' : '150px' }}>
                         {rawResponse ? (
-                            <pre className="whitespace-pre-wrap break-words text-[10px] leading-relaxed text-gray-400 font-mono">{rawResponse}</pre>
+                            <pre className="whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-400 font-mono">{rawResponse}</pre>
                         ) : (
-                            <div className="text-xs text-gray-600">点击“回忆解析”后，AI 会从回忆库重建地图，过程将在此流式显示。</div>
+                            <div className="text-sm text-gray-600">点击"回忆解析"后，AI 会从回忆库重建地图，过程将在此流式显示。</div>
                         )}
                     </div>
                 </div>

@@ -180,7 +180,7 @@ const 旧存档谱系迁移提示条: React.FC<{
                             <span className="rounded-full border border-white/20 px-2 py-0.5 text-[10px] opacity-90">{status.stage === 'scanning' ? '扫描中' : status.stage === 'running' ? '转换中' : status.stage === 'completed' ? '已完成' : '需重试'}</span>
                         </div>
                         <div className="mt-1 opacity-90" style={{ fontSize: 'var(--ui-compact-font-size, 14px)', lineHeight: '1.55' }}>
-                            旧存档会保留原文件，只补上时间树谱系信息。可以关闭提示继续使用；未完成部分下次进入会继续转换，也可在“重入江湖”页面查看进度。
+                            旧存档会保留原文件，只补上时间树谱系信息。可以关闭提示继续使用；未完成部分下次进入会继续转换，也可在"重入江湖"页面查看进度。
                         </div>
                         <div className="mt-3 space-y-1.5">
                             <div className="flex items-center justify-between text-[11px] opacity-85">
@@ -454,7 +454,7 @@ class ModalErrorBoundary extends React.Component<
                     <div className="mt-4 text-xs leading-5 text-red-200/70">
                         {isLazyImportError
                             ? '检测到页面资源已经更新，但当前页面还停留在旧版本。点击下面按钮刷新后，通常就能直接恢复。'
-                            : '这次错误已写入运行日志。可打开“设置 → 运行日志”查看详情、复制诊断或点击“上报日志”提交给维护人员。'}
+                            : '这次错误已写入运行日志。可打开"设置 → 运行日志"查看详情、复制诊断或点击"上报日志"提交给维护人员。'}
                     </div>
                     {isLazyImportError && (
                         <button
@@ -662,7 +662,7 @@ const App: React.FC = () => {
             最近运行报错提示时间Ref.current = now;
             actions.pushNotification({
                 title: '运行报错已记录',
-                message: '可打开“设置 → 运行日志”查看详情、复制诊断或点击“上报日志”提交给维护人员。',
+                message: '可打开"设置 → 运行日志"查看详情、复制诊断或点击"上报日志"提交给维护人员。',
                 tone: 'error'
             });
         });
@@ -1881,6 +1881,12 @@ const App: React.FC = () => {
         setters.setShowSocial(true);
     }, [closeAllPanels, setters]);
     const openNpcDetailFromRecord = React.useCallback((record: any) => {
+        // 主角兜底：如果 record 是主角成员记录，走主角面板而非社交列表
+        if (record?.是否玩家本人 === true || String(record?.id || '').includes('sect_member_player_')) {
+            closeAllPanels();
+            setShowCharacter(true);
+            return;
+        }
         const candidateTexts = [
             record?.id,
             record?.ID,
@@ -2537,7 +2543,7 @@ const App: React.FC = () => {
         if (!独立接口已配置) {
             const accepted = await requestConfirm({
                 title: '先配置小说分解独立 API',
-                message: '小说分解现在从首页独立打开。\n\n使用前请先在“设置 -> 小说分解接口”中启用并填写独立模型、API 地址和密钥。\n\n是否现在前往设置？',
+                message: '小说分解现在从首页独立打开。\n\n使用前请先在"设置 -> 小说分解接口"中启用并填写独立模型、API 地址和密钥。\n\n是否现在前往设置？',
                 confirmText: '前往设置',
                 cancelText: '取消'
             });
@@ -2640,7 +2646,7 @@ const App: React.FC = () => {
             if (!接口配置是否可用(promptApi)) {
                 const accepted = await requestConfirm({
                     title: 'NovelAI 缺少词组转化器',
-                    message: 'NovelAI 模式必须绑定可用的词组转化器接口。是否立即跳转到“文生图”设置页？',
+                    message: 'NovelAI 模式必须绑定可用的词组转化器接口。是否立即跳转到"文生图"设置页？',
                     confirmText: '前往设置',
                     cancelText: '稍后再说'
                 });
@@ -3689,7 +3695,7 @@ const App: React.FC = () => {
                         )}
                         {appUpdateProgress.stage === 'completed' && (
                             <div className="mt-3 text-xs leading-5 text-emerald-300/90">
-                                如果系统安装界面没有自动弹出，请检查“允许安装未知应用”权限后再试一次。
+                                如果系统安装界面没有自动弹出，请检查"允许安装未知应用"权限后再试一次。
                             </div>
                         )}
                         {appUpdateProgress.stage === 'error' && (
@@ -4244,6 +4250,7 @@ const App: React.FC = () => {
                                     sectData={state.玩家门派}
                                     env={state.环境}
                                     onOpenNpc={openNpcDetailFromRecord}
+                                    onOpenPlayer={openCharacter}
                                     onLearnBook={handleLearnSectBook}
                                     onClaimMonthlyStipend={handleClaimMonthlyStipend}
                                     onExchange={handleSectExchange}
@@ -4256,6 +4263,7 @@ const App: React.FC = () => {
                                     sectData={state.玩家门派}
                                     env={state.环境}
                                     onOpenNpc={openNpcDetailFromRecord}
+                                    onOpenPlayer={openCharacter}
                                     onLearnBook={handleLearnSectBook}
                                     onClaimMonthlyStipend={handleClaimMonthlyStipend}
                                     onExchange={handleSectExchange}

@@ -428,7 +428,7 @@ const RegionMap: React.FC<Props> = ({ nodes, currentNodeId, currentLocationName,
         });
     }, [isTown, isRoom, socialList, nodes, env, currentLocationName, viewLocationName, viewPathNames]);
 
-    // NPC分配到具体建筑/房间：优先按当前位置路径命中节点；只写“在场”的 NPC 放到当前具体地点。
+    // NPC分配到具体建筑/房间：优先按当前位置路径命中节点；只写"在场"的 NPC 放到当前具体地点。
     const npcByNode = useMemo(() => {
         const map = new Map<string, any[]>();
         if ((!isTown && !isRoom) || npcAtLocation.length === 0) return map;
@@ -784,24 +784,24 @@ const RegionMap: React.FC<Props> = ({ nodes, currentNodeId, currentLocationName,
                     −
                 </button>
                 <button onClick={handleLocateCurrent}
-                    className={`w-7 h-7 rounded-full border text-xs flex items-center justify-center transition-colors ${isSpace ? 'border-sky-700/40 bg-slate-900/80 text-sky-300 hover:bg-sky-900/50' : 'border-amber-800/30 bg-[#faf6ed]/90 text-amber-900 hover:bg-amber-100'}`} title={`定位到${currentLocationName || '当前位置'}`}>
+                    className={`w-7 h-7 rounded-full border text-sm flex items-center justify-center transition-colors ${isSpace ? 'border-sky-700/40 bg-slate-900/80 text-sky-300 hover:bg-sky-900/50' : 'border-amber-800/30 bg-[#faf6ed]/90 text-amber-900 hover:bg-amber-100'}`} title={`定位到${currentLocationName || '当前位置'}`}>
                     ⊙
                 </button>
                 <button onClick={() => { setMapZoom(1); setMapPan({ x: 0, y: 0 }); setMapFocusPoint(null); }}
-                    className={`w-7 h-7 rounded-full border text-xs flex items-center justify-center transition-colors ${isSpace ? 'border-sky-700/40 bg-slate-900/80 text-sky-300 hover:bg-sky-900/50' : 'border-amber-800/30 bg-[#faf6ed]/90 text-amber-900 hover:bg-amber-100'}`} title="重置缩放">
+                    className={`w-7 h-7 rounded-full border text-sm flex items-center justify-center transition-colors ${isSpace ? 'border-sky-700/40 bg-slate-900/80 text-sky-300 hover:bg-sky-900/50' : 'border-amber-800/30 bg-[#faf6ed]/90 text-amber-900 hover:bg-amber-100'}`} title="重置缩放">
                     ⌂
                 </button>
                 <button onClick={() => setDragMode(!dragMode)}
-                    className={`w-7 h-7 rounded-full border text-[10px] flex items-center justify-center transition-colors ${dragMode ? (isSpace ? 'border-sky-400 bg-sky-900/60 text-sky-200' : 'border-amber-600 bg-amber-100 text-amber-800') : (isSpace ? 'border-sky-700/40 bg-slate-900/80 text-sky-300 hover:bg-sky-900/50' : 'border-amber-800/30 bg-[#faf6ed]/90 text-amber-900 hover:bg-amber-100')}`} title={dragMode ? '拖拽中(点击关闭)' : '拖拽地图'}>
+                    className={`w-7 h-7 rounded-full border text-xs flex items-center justify-center transition-colors ${dragMode ? (isSpace ? 'border-sky-400 bg-sky-900/60 text-sky-200' : 'border-amber-600 bg-amber-100 text-amber-800') : (isSpace ? 'border-sky-700/40 bg-slate-900/80 text-sky-300 hover:bg-sky-900/50' : 'border-amber-800/30 bg-[#faf6ed]/90 text-amber-900 hover:bg-amber-100')}`} title={dragMode ? '拖拽中(点击关闭)' : '拖拽地图'}>
                     ✥
                 </button>
-                <div className={`text-[9px] text-center font-mono ${isSpace ? 'text-sky-400/60' : 'text-amber-900/50'}`}>{mapZoom.toFixed(1)}x</div>
+                <div className={`text-xs text-center font-mono ${isSpace ? 'text-sky-400/60' : 'text-amber-900/50'}`}>{mapZoom.toFixed(1)}x</div>
             </div>
 
             {/* 图例 */}
             <div className={`absolute left-3 bottom-3 z-10 rounded-lg border px-3 py-2 ${isSpace ? 'border-sky-700/30 bg-slate-900/85' : 'border-amber-800/20 bg-[#faf6ed]/85'}`}>
-                <div className={`mb-1 text-[10px] font-bold tracking-[0.18em] ${isSpace ? 'text-sky-400/70' : 'text-amber-900/60'}`}>图例</div>
-                <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] ${isSpace ? 'text-sky-400/50' : 'text-amber-900/50'}`}>
+                <div className={`mb-1 text-xs font-bold tracking-[0.18em] ${isSpace ? 'text-sky-400/70' : 'text-amber-900/60'}`}>图例</div>
+                <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-sm ${isSpace ? 'text-sky-400/50' : 'text-amber-900/50'}`}>
                     {isRoom
                         ? null
                         : isSpace
