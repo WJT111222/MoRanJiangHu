@@ -5,7 +5,7 @@ import { 获取文生图接口配置, 接口配置是否可用 } from '../../uti
 import { 合并物品图片档案 } from '../../utils/itemImage';
 import { 默认NSFWComfyUI工作流JSON } from '../../data/defaultComfyWorkflow';
 import { 查找结构化物品 } from '../../data/structuredItemLibrary';
-import { generateImageByPrompt, persistImageAssetLocally, 全局无文字正向提示词 } from './image';
+import { generateImageByPrompt, persistImageAssetLocally, 全局无文字正向提示词, 全局无文字负面提示词 } from './image';
 import { recordDiagnosticLog } from '../diagnosticLog';
 
 type 物品生图来源位置 = '背包' | '拍卖行';
@@ -712,6 +712,7 @@ export const 构建物品负面提示词 = (item: any): string => {
     const isModernMedicine = !isCigarette && !isAncientMedicine && 物品是否现代药剂(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
     return [
+        全局无文字负面提示词,
         isLivingMount ? 'rider, saddle covering the body, harness covering the body, cart, carriage, vehicle, boat' : isLivingAnimal ? 'person, human handler, leash held by person, cage, carrier bag, framed portrait, stuffed display, taxidermy scene' : 'person, human, face, hand, foot, feet, body part, skin, portrait, headshot, framed portrait, photo frame, picture frame',
         isLivingMount ? 'toy horse, plastic horse, resin figurine, statue, sculpture, ceramic, porcelain, model horse, miniature, collectible figurine, carousel horse, rocking horse, fake animal, mannequin, doll, glossy plastic, product prop, studio toy photography' : isLivingAnimal ? 'plush toy, stuffed animal, toy fox, toy cat, toy dog, plush doll, resin figurine, statue, sculpture, ceramic animal, porcelain animal, taxidermy mount, fake animal, mannequin, glossy plastic pet toy, chibi animal illustration' : '',
         isLivingMount || isLivingAnimal ? '' : 'toy, plastic figurine, resin model, statue, sculpture, mannequin',

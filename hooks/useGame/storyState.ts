@@ -713,7 +713,7 @@ const 创建开局主线任务 = (sect: 详细门派结构, openingConfig?: Open
     const location = topic === '无限流' ? '主神空间' : (organizationName || (topic === '末日丧尸' ? '临时落脚点' : topic === '现代都市' ? '当前城市' : topic === '仙侠' ? '当前落脚处' : '当前落脚处'));
     if (topic === '无限流') {
         return {
-            标题: '确认主神首轮任务',
+            标题: '主神任务倒计时',
             描述: `${publisher}的光球在头顶闪烁，屏幕上跳出本轮任务的标题、存活时限和失败惩罚。主角必须在倒计时归零前弄清楚：任务目标到底是什么、当前环境中最致命的威胁在哪里、队友各自擅长什么、以及如果局势失控该往哪撤。`,
             类型: '主线',
             发布人: publisher,
@@ -820,8 +820,6 @@ const 创建开局主线任务 = (sect: 详细门派结构, openingConfig?: Open
 const 确保开局主线任务 = (tasks: 任务结构[], sect: 详细门派结构, openingConfig?: OpeningConfig): 任务结构[] => {
     const safeTasks = Array.isArray(tasks) ? tasks : [];
     if (safeTasks.some((task) => 取文本(task?.类型) === '主线')) return safeTasks;
-    // 无限流不使用硬编码模板，由AI根据剧情自动生成个性化主线任务
-    if (是无限流题材(openingConfig)) return safeTasks;
     return [创建开局主线任务(sect, openingConfig), ...safeTasks];
 };
 
