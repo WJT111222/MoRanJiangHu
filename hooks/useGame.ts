@@ -186,6 +186,75 @@ type 回合快照结构 = {
     回档前历史: 聊天记录结构[];
 };
 
+const 游戏初始时间占位值 = '1:01:01:00:00';
+
+const 游戏时间排序值 = (raw?: string | null): number | null => {
+    const canonical = normalizeCanonicalGameTime((raw || '').trim());
+    if (!canonical || canonical === 游戏初始时间占位值) return null;
+    const match = canonical.match(/^(\d{1,6}):(\d{2}):(\d{2}):(\d{2}):(\d{2})$/);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const hour = Number(match[4]);
+    const minute = Number(match[5]);
+    if (![year, month, day, hour, minute].every(Number.isFinite)) return null;
+    const dayValue = (Math.trunc(year) * 12 + Math.max(0, Math.trunc(month) - 1)) * 31 + Math.max(0, Math.trunc(day) - 1);
+    return ((dayValue * 24) + Math.trunc(hour)) * 60 + Math.trunc(minute);
+};
+
+const 读取可信游戏时间 = (value?: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const canonical = normalizeCanonicalGameTime(value.trim());
+    if (!canonical || canonical === 游戏初始时间占位值) return null;
+    return canonical;
+};
+
+const 选取最早游戏时间 = (values: unknown[]): string | null => {
+    return values
+        .map((value, index) => {
+            const time = 读取可信游戏时间(value);
+            const sort = 游戏时间排序值(time);
+            return time && sort != null ? { time, sort, index } : null;
+        })
+        .filter((item): item is { time: string; sort: number; index: number } => Boolean(item))
+        .sort((a, b) => (a.sort - b.sort) || (a.index - b.index))[0]?.time || null;
+};
+
+export const 从历史与回忆恢复游戏初始时间 = (
+    历史记录?: 聊天记录结构[],
+    记忆系统?: 记忆系统结构
+): string | null => {
+    const 历史候选 = (Array.isArray(历史记录) ? 历史记录 : [])
+        .map((item: any) => item?.gameTime);
+    const 回忆档案 = Array.isArray(记忆系统?.回忆档案) ? 记忆系统.回忆档案 : [];
+    const 开局回忆 = 回忆档案.filter((item: any) => item?.回合 === 1 || item?.名称 === '【回忆001】');
+    const 回忆候选来源 = 开局回忆.length > 0 ? 开局回忆 : 回忆档案;
+    const 回忆候选 = 回忆候选来源.flatMap((item: any) => [
+        item?.记录时间,
+        item?.时间戳,
+        item?.gameTime,
+        item?.游戏时间
+    ]);
+    return 选取最早游戏时间([...历史候选, ...回忆候选]);
+};
+
+export const 补全缺失游戏初始时间 = (
+    游戏初始时间?: string,
+    历史记录?: 聊天记录结构[],
+    记忆系统?: 记忆系统结构
+): string | null => {
+    if (typeof 游戏初始时间 === 'string' && 游戏初始时间.trim()) return null;
+    return 从历史与回忆恢复游戏初始时间(历史记录, 记忆系统);
+};
+
+export type 游戏初始时间修复结果 = {
+    ok: boolean;
+    message: string;
+    value?: string;
+};
+
+
 type 最近开局配置结构 = {
     worldConfig: WorldGenConfig;
     charData: 角色数据结构;
@@ -838,27 +907,10 @@ export const useGame = () => {
     }, [环境?.时间, 环境?.节日, festivals, 设置环境]);
 
     useEffect(() => {
-        if (游戏初始时间) return;
-        const 占位开局时间 = '1:01:01:00:00';
-        const 规范化可用起始时间 = (value?: string | null): string | null => {
-            const canonical = normalizeCanonicalGameTime((value || '').trim());
-            if (!canonical || canonical === 占位开局时间) return null;
-            return canonical;
-        };
-
-        const currentTime = 规范化可用起始时间(环境时间转标准串(环境));
-        if (currentTime) {
-            设置游戏初始时间(currentTime);
-            return;
-        }
-
-        const 回忆档案 = Array.isArray(记忆系统?.回忆档案) ? 记忆系统.回忆档案 : [];
-        const 开局回忆 = 回忆档案.find((item) => item?.回合 === 1 || item?.名称 === '【回忆001】') || 回忆档案[0];
-        const 回忆开局时间 = 规范化可用起始时间(开局回忆?.记录时间)
-            || 规范化可用起始时间(开局回忆?.时间戳);
-        if (!回忆开局时间) return;
-        设置游戏初始时间(回忆开局时间);
-    }, [环境, 游戏初始时间, 记忆系统, 设置游戏初始时间]);
+        const recoveredInitialTime = 补全缺失游戏初始时间(游戏初始时间, 历史记录, 记忆系统);
+        if (!recoveredInitialTime) return;
+        设置游戏初始时间(recoveredInitialTime);
+    }, [历史记录, 游戏初始时间, 记忆系统, 设置游戏初始时间]);
 
     const 获取原始AI消息 = (rawText: string): string => (typeof rawText === 'string' ? rawText : '');
     const 计算回复耗时秒 = (startedAt: number, endedAt: number = Date.now()): number => {
@@ -3898,6 +3950,19 @@ export const useGame = () => {
 
     const 最新AI回合可继续变量生成 = 最新AI消息可继续变量生成(历史记录);
 
+    const 修正游戏初始时间 = (nextTime: string): 游戏初始时间修复结果 => {
+        const canonical = normalizeCanonicalGameTime((nextTime || '').trim());
+        if (!canonical) {
+            return { ok: false, message: '游戏初始时间格式无效。' };
+        }
+        设置游戏初始时间(canonical);
+        return {
+            ok: true,
+            message: '已修正历程起始时间，请手动保存进度。',
+            value: canonical
+        };
+    };
+
     return {
         state: gameState,
         meta: {
@@ -3961,6 +4026,7 @@ export const useGame = () => {
             saveWorldbooks, saveWorldbookPresetGroups,
             updatePrompts, updateFestivals,
             handleSaveGame, handleLoadGame, performAutoSave,
+            修正游戏初始时间,
             updateHistoryItem,
             updateMemorySystem,
             createNpcManually,

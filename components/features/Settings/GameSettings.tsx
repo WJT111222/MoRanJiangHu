@@ -2,15 +2,51 @@ import React, { useEffect, useRef, useState } from 'react';
 import { 游戏设置结构 } from '../../../types';
 import GameButton from '../../ui/GameButton';
 import ToggleSwitch from '../../ui/ToggleSwitch';
+import { normalizeCanonicalGameTime } from '../../../hooks/useGame/timeUtils';
 
 interface Props {
     settings: 游戏设置结构;
     onSave: (settings: 游戏设置结构) => void;
+    gameInitialTime?: string;
+    currentGameTime?: string;
+    journeyDayCount?: number;
+    onRepairGameInitialTime?: (nextTime: string) => 游戏初始时间修复结果 | Promise<游戏初始时间修复结果>;
+    requestConfirm?: (options: { title?: string; message: string; confirmText?: string; cancelText?: string; danger?: boolean }) => Promise<boolean>;
 }
 
-const GameSettings: React.FC<Props> = ({ settings, onSave }) => {
+type 游戏初始时间修复结果 = { ok: boolean; message: string; value?: string };
+
+export const 提交游戏初始时间修复 = async (params: {
+    input: string;
+    currentInitialTime?: string;
+    currentGameTime?: string;
+    onRepair?: (nextTime: string) => 游戏初始时间修复结果 | Promise<游戏初始时间修复结果>;
+    confirm?: (message: string) => boolean | Promise<boolean>;
+}): Promise<游戏初始时间修复结果> => {
+    const canonical = normalizeCanonicalGameTime((params.input || '').trim());
+    if (!canonical) {
+        return { ok: false, message: '请输入合法的游戏时间格式，例如 2026:12:21:21:25。' };
+    }
+    if (!params.onRepair) {
+        return { ok: false, message: '当前修复入口尚未就绪。' };
+    }
+    const oldTime = params.currentInitialTime?.trim() || '未知';
+    const currentTime = params.currentGameTime?.trim() || '未知';
+    const confirmed = params.confirm
+        ? await params.confirm(`将历程起始时间从「${oldTime}」改为「${canonical}」。\n\n此操作只影响右上角历程天数计算，不会改变当前游戏时间（${currentTime}）。\n\n确定应用修正吗？`)
+        : true;
+    if (!confirmed) {
+        return { ok: false, message: '已取消修正。' };
+    }
+    return params.onRepair(canonical);
+};
+
+const GameSettings: React.FC<Props> = ({ settings, onSave, gameInitialTime, currentGameTime, journeyDayCount, onRepairGameInitialTime, requestConfirm }) => {
     const [form, setForm] = useState<游戏设置结构>(settings);
     const [wordCountDraft, setWordCountDraft] = useState(() => String(settings.字数要求 ?? ''));
+    const [initialTimeDraft, setInitialTimeDraft] = useState('');
+    const [repairMessage, setRepairMessage] = useState<{ tone: 'success' | 'error' | 'info'; text: string } | null>(null);
+    const [repairBusy, setRepairBusy] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [openMenu, setOpenMenu] = useState<'perspective' | 'style' | 'ntl' | 'mainStoryMode' | 'shortBodyHandling' | null>(null);
     const rootRef = useRef<HTMLDivElement | null>(null);
@@ -106,6 +142,44 @@ const GameSettings: React.FC<Props> = ({ settings, onSave }) => {
             : (Number.isFinite(Number(form.字数要求)) ? Math.max(50, Math.floor(Number(form.字数要求))) : 1500);
         setWordCountDraft(String(nextValue));
         实时应用更新({ 字数要求: nextValue });
+    };
+
+    const handleRepairInitialTime = async () => {
+        if (repairBusy) return;
+        setRepairBusy(true);
+        setRepairMessage(null);
+        try {
+            const result = await 提交游戏初始时间修复({
+                input: initialTimeDraft,
+                currentInitialTime: gameInitialTime,
+                currentGameTime,
+                onRepair: onRepairGameInitialTime,
+                confirm: async (message) => {
+                    if (requestConfirm) {
+                        return requestConfirm({
+                            title: '修正历程起始时间',
+                            message,
+                            confirmText: '应用修正',
+                            cancelText: '取消'
+                        });
+                    }
+                    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+                        return window.confirm(message);
+                    }
+                    return true;
+                }
+            });
+            if (result.ok) {
+                setInitialTimeDraft('');
+                setRepairMessage({ tone: 'success', text: result.message || '已修正历程起始时间，请手动保存进度。' });
+            } else {
+                setRepairMessage({ tone: result.message === '已取消修正。' ? 'info' : 'error', text: result.message });
+            }
+        } catch (error: any) {
+            setRepairMessage({ tone: 'error', text: error?.message || '修正失败，请稍后重试。' });
+        } finally {
+            setRepairBusy(false);
+        }
     };
 
     const 渲染内置下拉 = (params: {
@@ -381,6 +455,70 @@ const GameSettings: React.FC<Props> = ({ settings, onSave }) => {
                         ariaLabel="切换研发诊断模式"
                     />
                 </div>
+            </div>
+
+            <div className="space-y-4 rounded-md border border-amber-500/30 bg-amber-950/15 p-4">
+                <div>
+                    <div className="text-sm text-wuxia-cyan font-bold">高级存档修复</div>
+                    <div className="text-xs text-gray-400 mt-1">
+                        此功能用于修复旧存档历程天数异常。修改后会影响右上角历程天数计算，不会改变当前游戏时间。应用后请手动保存进度。
+                    </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded border border-wuxia-gold/10 bg-black/25 p-3">
+                        <div className="text-[11px] text-gray-500">当前游戏初始时间</div>
+                        <div className="mt-1 break-all font-mono text-sm text-gray-100">{gameInitialTime?.trim() || '未知'}</div>
+                    </div>
+                    <div className="rounded border border-wuxia-gold/10 bg-black/25 p-3">
+                        <div className="text-[11px] text-gray-500">当前环境时间</div>
+                        <div className="mt-1 break-all font-mono text-sm text-gray-100">{currentGameTime?.trim() || '未知'}</div>
+                    </div>
+                    <div className="rounded border border-wuxia-gold/10 bg-black/25 p-3">
+                        <div className="text-[11px] text-gray-500">当前历程天数</div>
+                        <div className="mt-1 font-mono text-sm text-gray-100">第 {Number.isFinite(journeyDayCount) ? journeyDayCount : 1} 天</div>
+                    </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                    <label className="block space-y-1">
+                        <span className="text-xs text-gray-300">新的游戏初始时间</span>
+                        <input
+                            type="text"
+                            value={initialTimeDraft}
+                            onChange={(event) => {
+                                setInitialTimeDraft(event.target.value);
+                                if (repairMessage?.tone === 'error') setRepairMessage(null);
+                            }}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                    event.preventDefault();
+                                    void handleRepairInitialTime();
+                                }
+                            }}
+                            className="w-full rounded-md border border-amber-500/30 bg-black/50 p-3 font-mono text-sm text-white outline-none transition-all focus:border-wuxia-gold"
+                            placeholder="2026:12:21:21:25"
+                        />
+                    </label>
+                    <GameButton
+                        type="button"
+                        variant="secondary"
+                        disabled={repairBusy || !initialTimeDraft.trim()}
+                        onClick={() => { void handleRepairInitialTime(); }}
+                        className="w-full md:w-auto disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {repairBusy ? '应用中' : '应用修正'}
+                    </GameButton>
+                </div>
+                {repairMessage && (
+                    <div className={`rounded border px-3 py-2 text-xs ${
+                        repairMessage.tone === 'success'
+                            ? 'border-green-500/30 bg-green-500/10 text-green-300'
+                            : repairMessage.tone === 'info'
+                                ? 'border-gray-500/30 bg-gray-500/10 text-gray-300'
+                                : 'border-red-500/35 bg-red-500/10 text-red-300'
+                    }`}>
+                        {repairMessage.text}
+                    </div>
+                )}
             </div>
 
             <div className="space-y-3 rounded-md border border-wuxia-gold/20 bg-black/30 p-4">

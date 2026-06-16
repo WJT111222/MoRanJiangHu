@@ -31,6 +31,26 @@ const deps = {
 };
 
 describe('responseCommandProcessor dialogue social sync', () => {
+    it('allows normal environment time progress but ignores game initial time commands', () => {
+        const state = 构建基础状态() as 响应命令处理状态 & { 游戏初始时间?: string };
+        state.环境 = { 时间: '1:01:02:08:00' } as any;
+        state.游戏初始时间 = '1:01:01:08:00';
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '日头渐高，行程继续。' }
+            ],
+            tavern_commands: [
+                { action: 'set', key: '环境.时间', value: '1:01:03:09:00' },
+                { action: 'set', key: '游戏初始时间', value: '1:01:03:09:00' }
+            ]
+        } as any, state, deps, undefined, { applyState: false }) as any;
+
+        expect(result.环境.时间).toBe('1:01:03:09:00');
+        expect(result.游戏初始时间).toBeUndefined();
+        expect(state.游戏初始时间).toBe('1:01:01:08:00');
+    });
+
     it('does not promote new dialogue speakers into long-term social records without stronger structured evidence', () => {
         const state = 构建基础状态();
         const result = 执行响应命令处理({

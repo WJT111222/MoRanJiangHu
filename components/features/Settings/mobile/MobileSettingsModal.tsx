@@ -37,6 +37,7 @@ const VariableManager = React.lazy(() => lazyImportWithReload('mobile-settings-v
 
 type SettingsTab = 'api' | 'workflow_graph' | 'image_generation' | 'recall' | 'memory_summary_model' | 'memory_refine_model' | 'map_model' | 'polish' | 'world_evolution' | 'variable_model' | 'planning_model' | 'independent_api_gpt' | 'novel_decomposition' | 'novel_decomposition_runtime' | 'prompt' | 'storage' | 'theme' | 'visual' | 'world' | 'game' | 'reality' | 'tavern_preset' | 'memory' | 'history' | 'context' | 'logs' | 'music' | 'npc_management' | 'variable_manager';
 type RuntimeStateSections = Record<'角色' | '环境' | '社交' | '世界' | '战斗' | '剧情' | '女主剧情规划' | '玩家门派' | '任务列表' | '约定列表' | '记忆系统', unknown>;
+type 游戏初始时间修复结果 = { ok: boolean; message: string; value?: string };
 
 type ContextSection = {
     id: string;
@@ -74,6 +75,9 @@ interface Props {
     memorySystem?: 记忆系统结构;
     socialList: NPC结构[];
     runtimeState: RuntimeStateSections;
+    gameInitialTime?: string;
+    currentGameTime?: string;
+    journeyDayCount?: number;
     currentStory?: 剧情系统结构;
     openingConfig?: OpeningConfig;
     contextSnapshot?: ContextSnapshot;
@@ -92,6 +96,7 @@ interface Props {
     onUploadNpcImage: (npcId: string, slot: '头像' | '立绘' | '背景' | '胸部' | '小穴' | '屁穴' | '肉棒', payload: { dataUrl: string; fileName?: string }) => Promise<unknown> | unknown;
     onReplaceVariableSection: (section: keyof RuntimeStateSections, value: unknown) => void;
     onApplyVariableCommand: (command: TavernCommand) => void;
+    onRepairGameInitialTime?: (nextTime: string) => 游戏初始时间修复结果 | Promise<游戏初始时间修复结果>;
     onUpdatePrompts: (prompts: 提示词结构[]) => void;
     onUpdateFestivals: (festivals: 节日结构[]) => void;
     onThemeChange: (theme: ThemePreset) => void;
@@ -103,8 +108,8 @@ interface Props {
 
 const MobileSettingsModal: React.FC<Props> = ({
     activeTab, onTabChange, onClose,
-    apiConfig, visualConfig, gameConfig, memoryConfig, prompts, festivals, currentTheme, history, memorySystem, socialList, runtimeState, currentStory, openingConfig, contextSnapshot,
-    onSaveApi, onSaveVisual, onSaveGame, onSaveMemory, onDeleteMemory, onRefineMemories, onRegenerateMapFromMemory, onCreateNpc, onSaveNpc, onDeleteNpc, onRestoreNpcBackup, onStartNpcMemorySummary, onUploadNpcImage, onReplaceVariableSection, onApplyVariableCommand, onUpdatePrompts, onUpdateFestivals, onThemeChange,
+    apiConfig, visualConfig, gameConfig, memoryConfig, prompts, festivals, currentTheme, history, memorySystem, socialList, runtimeState, gameInitialTime, currentGameTime, journeyDayCount, currentStory, openingConfig, contextSnapshot,
+    onSaveApi, onSaveVisual, onSaveGame, onSaveMemory, onDeleteMemory, onRefineMemories, onRegenerateMapFromMemory, onCreateNpc, onSaveNpc, onDeleteNpc, onRestoreNpcBackup, onStartNpcMemorySummary, onUploadNpcImage, onReplaceVariableSection, onApplyVariableCommand, onRepairGameInitialTime, onUpdatePrompts, onUpdateFestivals, onThemeChange,
     onReturnToHome, isHome, returnHomeSaving = false, requestConfirm
 }) => {
     const tabItems = [
@@ -226,7 +231,7 @@ const MobileSettingsModal: React.FC<Props> = ({
                 </div>
             );
         }
-        if (activeTab === 'game' && gameConfig && onSaveGame) return <GameSettings settings={gameConfig} onSave={onSaveGame} />;
+        if (activeTab === 'game' && gameConfig && onSaveGame) return <GameSettings settings={gameConfig} onSave={onSaveGame} gameInitialTime={gameInitialTime} currentGameTime={currentGameTime} journeyDayCount={journeyDayCount} onRepairGameInitialTime={onRepairGameInitialTime} requestConfirm={requestConfirm} />;
         if (activeTab === 'reality' && gameConfig && onSaveGame) return <RealitySettings settings={gameConfig} onSave={onSaveGame} />;
         if (activeTab === 'tavern_preset' && gameConfig && onSaveGame) return <TavernPresetSettings settings={gameConfig} onSave={onSaveGame} />;
         if (activeTab === 'memory' && memoryConfig && onSaveMemory) return <MemorySettings settings={memoryConfig} onSave={onSaveMemory} />;

@@ -11,7 +11,7 @@ import InAppConfirmModal, { ConfirmOptions } from './components/ui/InAppConfirmM
 import ReleaseNotesModal from './components/ui/ReleaseNotesModal';
 import { useGame } from './hooks/useGame';
 import { use图片资源回源预取 } from './hooks/useImageAssetPrefetch';
-import { 环境时间转标准串 } from './hooks/useGame/timeUtils';
+import { normalizeCanonicalGameTime, 环境时间转标准串 } from './hooks/useGame/timeUtils';
 import { 获取主剧情接口配置, 获取文生图接口配置, 获取生图词组转化器接口配置, 获取记忆精炼接口配置, 接口配置是否可用 } from './utils/apiConfig';
 import { 请求模型文本 } from './services/ai/chatCompletionClient';
 import { 记忆精炼系统提示词 } from './prompts/runtime/memoryRefine';
@@ -34,6 +34,7 @@ import { 读取拍卖行状态, 保存拍卖行状态, 清理并补货, 投放�
 import { 获取货币显示模式, 规范化角色金钱 } from './utils/currencyDisplay';
 import { 获取题材界面文案 } from './utils/resourceLabels';
 import { 获取题材顶部时间显示格式 } from './utils/modeRuntimeProfile';
+import { 计算游戏历程天数 } from './utils/gameTimeJourney';
 import { 整理世界状态客户可见大事 } from './hooks/useGame/worldEvolutionUtils';
 import { 分配角色属性点, type 可分配六维属性键 } from './utils/characterAttributePoints';
 import { getDiagnosticLogs, recordDiagnosticLog, subscribeDiagnosticLogs } from './services/diagnosticLog';
@@ -53,6 +54,20 @@ const DESKTOP_DETAIL_RIGHT_GAP = 12;
 const ITEM_AUTO_IMAGE_RETRY_INTERVAL = 10 * 60 * 1000;
 const ITEM_AUTO_IMAGE_AFTER_CHARACTER_SCENE_IDLE_DELAY = 2500;
 const ITEM_AUTO_IMAGE_RECENT_SUCCESS_TTL = 10 * 60 * 1000;
+
+const 解析标准游戏时间片段 = (raw?: string | null): { year: number; month: number; day: number; hour: number; minute: number } | null => {
+    const canonical = normalizeCanonicalGameTime((raw || '').trim());
+    if (!canonical) return null;
+    const match = canonical.match(/^(\d{1,6}):(\d{2}):(\d{2}):(\d{2}):(\d{2})$/);
+    if (!match) return null;
+    return {
+        year: Number(match[1]),
+        month: Number(match[2]),
+        day: Number(match[3]),
+        hour: Number(match[4]),
+        minute: Number(match[5])
+    };
+};
 const ITEM_AUTO_IMAGE_BACKEND_FAILURE_COOLDOWN_MS = 15 * 60 * 1000;
 const DIAGNOSTIC_ERROR_TOAST_COOLDOWN_MS = 90 * 1000;
 const getDesktopDetailDefaultWidth = (_panelId: string | null): number => {
@@ -1100,6 +1115,12 @@ const App: React.FC = () => {
         () => 环境时间转标准串(state.环境) || state.环境?.时间 || '未知时间',
         [state.环境]
     );
+    const currentJourneyDayCount = React.useMemo(() => (
+        计算游戏历程天数(
+            解析标准游戏时间片段(currentEnvTime),
+            解析标准游戏时间片段(state.游戏初始时间)
+        )
+    ), [currentEnvTime, state.游戏初始时间]);
     const effectiveVisualConfig = React.useMemo(() => {
         if (!isMobile || !state.visualConfig) return state.visualConfig;
         const mobileRenderLayers = Math.max(
@@ -3558,6 +3579,9 @@ const App: React.FC = () => {
                             memorySystem={state.记忆系统}
                             socialList={state.社交}
                             runtimeState={runtimeStateSections}
+                            gameInitialTime={state.游戏初始时间}
+                            currentGameTime={currentEnvTime}
+                            journeyDayCount={currentJourneyDayCount}
                             currentStory={state.剧情}
                             openingConfig={state.开局配置}
                             contextSnapshot={contextSnapshot}
@@ -3576,6 +3600,7 @@ const App: React.FC = () => {
                             onUploadNpcImage={actions.uploadNpcImageToSlot}
                             onReplaceVariableSection={actions.updateRuntimeVariableSection}
                             onApplyVariableCommand={actions.applyRuntimeVariableCommand}
+                            onRepairGameInitialTime={actions.修正游戏初始时间}
                             onUpdatePrompts={actions.updatePrompts}
                             onUpdateFestivals={actions.updateFestivals}
                             onThemeChange={setters.setCurrentTheme}
@@ -3600,6 +3625,9 @@ const App: React.FC = () => {
                             memorySystem={state.记忆系统}
                             socialList={state.社交}
                             runtimeState={runtimeStateSections}
+                            gameInitialTime={state.游戏初始时间}
+                            currentGameTime={currentEnvTime}
+                            journeyDayCount={currentJourneyDayCount}
                             currentStory={state.剧情}
                             openingConfig={state.开局配置}
                             contextSnapshot={contextSnapshot}
@@ -3618,6 +3646,7 @@ const App: React.FC = () => {
                             onUploadNpcImage={actions.uploadNpcImageToSlot}
                             onReplaceVariableSection={actions.updateRuntimeVariableSection}
                             onApplyVariableCommand={actions.applyRuntimeVariableCommand}
+                            onRepairGameInitialTime={actions.修正游戏初始时间}
                             onUpdatePrompts={actions.updatePrompts}
                             onUpdateFestivals={actions.updateFestivals}
                             onThemeChange={setters.setCurrentTheme}
