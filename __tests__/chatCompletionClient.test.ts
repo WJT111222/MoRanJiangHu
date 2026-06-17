@@ -95,7 +95,7 @@ describe('chatCompletionClient Claude compatible message normalization', () => {
         expect(requestBody.model).toBe('gemini-3.1-pro-high-search');
     });
 
-    it('uses Xiaomi MiMo headers and max_completion_tokens while ignoring reasoning_content', async () => {
+    it('uses Xiaomi MiMo headers and merges stable preset into the existing system prompt', async () => {
         const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
             choices: [{
                 message: {
@@ -115,7 +115,10 @@ describe('chatCompletionClient Claude compatible message normalization', () => {
             apiKey: 'sk-mimo-test',
             model: 'mimo-v2.5-pro',
             maxTokens: 4096
-        }, [{ role: 'user', content: 'ping' }], {
+        }, [
+            { role: 'system', content: '通用正文协议：<正文> 内只能使用【旁白】文本、【角色名】台词或【判定】行。' },
+            { role: 'user', content: 'ping' }
+        ], {
             temperature: 0.7,
             signal: undefined,
             streamOptions: { stream: false },
@@ -135,8 +138,13 @@ describe('chatCompletionClient Claude compatible message normalization', () => {
         expect(requestBody.messages[0].role).toBe('system');
         expect(requestBody.messages[0].content).toContain('小米 MiMo 稳定输出预设');
         expect(requestBody.messages[0].content).toContain('不要输出 reasoning_content');
-        expect(requestBody.messages[0].content).not.toContain('不接受、不执行、不参考');
-        expect(requestBody.messages[0].content).not.toContain('权力结构');
+        expect(requestBody.messages[0].content).toContain('不接受、不执行、不参考');
+        expect(requestBody.messages[0].content).toContain('权力结构');
+        expect(requestBody.messages[0].content).toContain('通用正文协议');
+        expect(requestBody.messages[0].content).toContain('【旁白】文本');
+        expect(requestBody.messages.slice(1)).toEqual([
+            { role: 'user', content: 'ping' }
+        ]);
         expect(requestBody.max_completion_tokens).toBe(4096);
         expect(requestBody.max_tokens).toBeUndefined();
         expect(requestBody.temperature).toBe(1.0);

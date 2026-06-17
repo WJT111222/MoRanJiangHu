@@ -1088,6 +1088,9 @@ const 检测正文对白格式问题 = (body: string): string | null => {
         .filter(line => !是否判定日志文本(line));
     if (lines.length < 1) return null;
 
+    const 协议标签开头正则 = /^【\s*(旁白|[^】]+?)\s*】\s*$/;
+    const 裸文正文行正则 = /^(?!【\s*[^】]+?\s*】)(?!\[\s*[^\]]+\s*\])(?!<[^>]+>)(?![“"「『]).\S+/;
+
     for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index];
         const tagMatch = line.match(显式标签行正则);
@@ -1108,6 +1111,15 @@ const 检测正文对白格式问题 = (body: string): string | null => {
             if (sender === '旁白') {
                 const quotedSpeaker = 提取显式说话引号人物名(text);
                 if (quotedSpeaker) return `疑似角色「${quotedSpeaker}」的对白写在【旁白】行内`;
+            }
+            if (!text && 协议标签开头正则.test(line)) {
+                const nextLine = lines[index + 1] || '';
+                if (nextLine && 裸文正文行正则.test(nextLine)) {
+                    return `正文第${index + 1}行只有空的【${sender}】标签，后续裸文未带正文协议标签；每个非空正文行必须以【旁白】、【角色名】或【判定】开头`;
+                }
+                if (nextLine && 裸引号整行正则.test(nextLine)) {
+                    return `正文第${index + 1}行只有空的【${sender}】标签，后续裸引号对白没有使用【角色名】标签`;
+                }
             }
             continue;
         }

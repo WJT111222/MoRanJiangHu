@@ -1375,10 +1375,18 @@ const 请求OpenAI家族文本 = async (
     let usePrefixMode = requestOptions?.prefixMode === true && protocol === 'deepseek';
     let requestMessages = messages;
     if (是否小米MiMo接口配置(apiConfig)) {
-        requestMessages = [
-            { role: 'system', content: 小米MiMo稳定输出预设 },
-            ...requestMessages
-        ];
+        const firstSystemIndex = requestMessages.findIndex(message => message.role === 'system' && message.content.trim().length > 0);
+        if (firstSystemIndex >= 0) {
+            requestMessages = requestMessages.map((message, index) => index === firstSystemIndex
+                ? { ...message, content: `${小米MiMo稳定输出预设}\n\n${message.content}`.trim() }
+                : message
+            );
+        } else {
+            requestMessages = [
+                { role: 'system', content: 小米MiMo稳定输出预设 },
+                ...requestMessages
+            ];
+        }
     }
 
     for (let pass = 0; pass < 3; pass++) {

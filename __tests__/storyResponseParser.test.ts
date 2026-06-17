@@ -134,6 +134,22 @@ describe('storyResponseParser', () => {
         }]);
     });
 
+    it('rejects an empty body protocol tag followed by bare Xiaomi MiMo prose', () => {
+        expect(() => parseStoryRawText([
+            '<正文>',
+            '【旁白】',
+            '冷白光从头顶泻下来，不刺眼，却无处不在。',
+            '',
+            '杨培强睁开眼。',
+            '',
+            '"你倒是起得早。"',
+            '',
+            '声音从走廊方向传过来。',
+            '</正文>',
+            '<短期记忆>杨培强在主神空间醒来。</短期记忆>'
+        ].join('\n'), { validateDialogueFormat: true })).toThrow(/正文协议|裸文|裸引号|【旁白】/);
+    });
+
     it('keeps bracketed action and narrative phrase tags as narration instead of speakers', () => {
         const parsed = parseStoryRawText([
             '<正文>',
