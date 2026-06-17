@@ -28,7 +28,7 @@ type 背景开局货币快照 = 背景初始物品快照 & {
     最大数量?: number;
 };
 
-export type 接口供应商类型 = 'gemini' | 'claude' | 'openai' | 'deepseek' | 'zhipu' | 'openai_compatible';
+export type 接口供应商类型 = 'gemini' | 'claude' | 'openai' | 'deepseek' | 'zhipu' | 'mimo_api' | 'mimo_token_plan' | 'openai_compatible';
 
 export type OpenAI兼容方案类型 = 'custom' | 'siliconflow' | 'together' | 'groq';
 

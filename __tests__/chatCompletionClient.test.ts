@@ -95,6 +95,112 @@ describe('chatCompletionClient Claude compatible message normalization', () => {
         expect(requestBody.model).toBe('gemini-3.1-pro-high-search');
     });
 
+    it('uses Xiaomi MiMo headers and max_completion_tokens while ignoring reasoning_content', async () => {
+        const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+            choices: [{
+                message: {
+                    reasoning_content: '内部推理不应进入正文',
+                    content: '小米正文正常返回'
+                }
+            }]
+        }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+        }));
+
+        const result = await 请求模型文本({
+            ...baseConfig,
+            供应商: 'mimo_api',
+            baseUrl: 'https://api.xiaomimimo.com/v1',
+            apiKey: 'sk-mimo-test',
+            model: 'mimo-v2.5-pro',
+            maxTokens: 4096
+        }, [{ role: 'user', content: 'ping' }], {
+            temperature: 0.7,
+            signal: undefined,
+            streamOptions: { stream: false },
+            errorDetailLimit: 500
+        });
+
+        expect(result).toBe('小米正文正常返回');
+        expect(fetchMock).toHaveBeenCalled();
+        expect(String(fetchMock.mock.calls[0][0])).toBe('https://api.xiaomimimo.com/v1/chat/completions');
+
+        const requestOptions = fetchMock.mock.calls[0][1] as RequestInit;
+        const headers = requestOptions.headers as Record<string, string>;
+        expect(headers['api-key']).toBe('sk-mimo-test');
+        expect(headers.Authorization).toBeUndefined();
+
+        const requestBody = JSON.parse(String(requestOptions.body));
+        expect(requestBody.max_completion_tokens).toBe(4096);
+        expect(requestBody.max_tokens).toBeUndefined();
+        expect(requestBody.thinking).toEqual({ type: 'disabled' });
+    });
+
+    it('keeps Xiaomi MiMo two-turn chat history usable without leaking reasoning content', async () => {
+        const fetchMock = vi.spyOn(globalThis, 'fetch')
+            .mockResolvedValueOnce(new Response(JSON.stringify({
+                choices: [{
+                    message: {
+                        reasoning_content: '第一回合思考',
+                        content: '第一回合正文'
+                    }
+                }]
+            }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' }
+            }))
+            .mockResolvedValueOnce(new Response(JSON.stringify({
+                choices: [{
+                    message: {
+                        reasoning_content: '第二回合思考',
+                        content: '第二回合正文'
+                    }
+                }]
+            }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' }
+            }));
+
+        const mimoConfig: 当前可用接口结构 = {
+            ...baseConfig,
+            供应商: 'mimo_token_plan',
+            baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1',
+            apiKey: 'tp-mimo-test',
+            model: 'mimo-v2.5-pro'
+        };
+
+        const first = await 请求模型文本(mimoConfig, [{ role: 'user', content: '第一回合' }], {
+            temperature: 0.7,
+            signal: undefined,
+            streamOptions: { stream: false },
+            errorDetailLimit: 500
+        });
+        const second = await 请求模型文本(mimoConfig, [
+            { role: 'user', content: '第一回合' },
+            { role: 'assistant', content: first },
+            { role: 'user', content: '第二回合' }
+        ], {
+            temperature: 0.7,
+            signal: undefined,
+            streamOptions: { stream: false },
+            errorDetailLimit: 500
+        });
+
+        expect(first).toBe('第一回合正文');
+        expect(second).toBe('第二回合正文');
+        expect(first).not.toContain('思考');
+        expect(second).not.toContain('思考');
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+
+        const secondBody = JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body));
+        expect(secondBody.messages).toEqual([
+            { role: 'user', content: '第一回合' },
+            { role: 'assistant', content: '第一回合正文' },
+            { role: 'user', content: '第二回合' }
+        ]);
+    });
+
     it('routes Gemini Deep Research models through the Interactions API', async () => {
         const fetchMock = vi.spyOn(globalThis, 'fetch')
             .mockResolvedValueOnce(new Response(JSON.stringify({

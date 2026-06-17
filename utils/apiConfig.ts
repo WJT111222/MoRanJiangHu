@@ -32,6 +32,8 @@ export const 供应商标签: Record<接口供应商类型, string> = {
     openai: 'OpenAI',
     deepseek: 'DeepSeek',
     zhipu: '智谱',
+    mimo_api: '小米 MiMo API',
+    mimo_token_plan: '小米 MiMo Token Plan',
     openai_compatible: 'OpenAI自定义'
 };
 
@@ -882,6 +884,14 @@ const 供应商默认值: Record<接口供应商类型, { baseUrl: string; model
         baseUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
         model: 'glm-4-flash'
     },
+    mimo_api: {
+        baseUrl: 'https://api.xiaomimimo.com/v1',
+        model: 'mimo-v2.5-pro'
+    },
+    mimo_token_plan: {
+        baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1',
+        model: 'mimo-v2.5-pro'
+    },
     openai_compatible: {
         baseUrl: '',
         model: 'gpt-4o-mini'
@@ -1217,6 +1227,8 @@ const 选取有效预设ID = <T extends { id: string }>(list: T[], candidate: un
 export const 推断供应商 = (baseUrlRaw: unknown): 接口供应商类型 => {
     const baseUrl = 读取字符串(baseUrlRaw).toLowerCase();
     if (!baseUrl) return 'openai';
+    if (baseUrl.includes('token-plan-cn.xiaomimimo.com')) return 'mimo_token_plan';
+    if (baseUrl.includes('xiaomimimo.com')) return 'mimo_api';
     if (baseUrl.includes('generativelanguage.googleapis.com') || baseUrl.includes('googleapis.com')) return 'gemini';
     if (baseUrl.includes('deepseek')) return 'deepseek';
     if (baseUrl.includes('bigmodel.cn') || baseUrl.includes('open.bigmodel.cn')) return 'zhipu';
@@ -1229,7 +1241,7 @@ export const 推断供应商 = (baseUrlRaw: unknown): 接口供应商类型 => {
 };
 
 const 标准化供应商 = (value: unknown, fallback: 接口供应商类型): 接口供应商类型 => {
-    if (value === 'gemini' || value === 'claude' || value === 'openai' || value === 'deepseek' || value === 'zhipu' || value === 'openai_compatible') {
+    if (value === 'gemini' || value === 'claude' || value === 'openai' || value === 'deepseek' || value === 'zhipu' || value === 'mimo_api' || value === 'mimo_token_plan' || value === 'openai_compatible') {
         return value;
     }
     return fallback;

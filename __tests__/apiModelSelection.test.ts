@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { 选择最佳可用模型 } from '../components/features/Settings/ApiSettings';
-import { 创建接口配置模板, 获取剧情回忆接口配置, 规范化接口设置 } from '../utils/apiConfig';
+import { 创建接口配置模板, 获取剧情回忆接口配置, 规范化接口设置, 推断供应商, 供应商标签 } from '../utils/apiConfig';
 
 describe('接口模型自动选择', () => {
     it('优先选择同渠道返回列表中版本号更大的高能力模型', () => {
@@ -30,6 +30,29 @@ describe('接口模型自动选择', () => {
             'gpt-5-mini',
             'gpt-5'
         ])).toBe('gpt-5');
+    });
+});
+
+describe('小米 MiMo 接口配置', () => {
+    it('提供 API 和 Token Plan 两种内置供应商模板', () => {
+        const apiConfig = 创建接口配置模板('mimo_api');
+        const tokenPlanConfig = 创建接口配置模板('mimo_token_plan');
+
+        expect(供应商标签.mimo_api).toBe('小米 MiMo API');
+        expect(供应商标签.mimo_token_plan).toBe('小米 MiMo Token Plan');
+        expect(apiConfig.供应商).toBe('mimo_api');
+        expect(apiConfig.baseUrl).toBe('https://api.xiaomimimo.com/v1');
+        expect(apiConfig.model).toBe('mimo-v2.5-pro');
+        expect(tokenPlanConfig.供应商).toBe('mimo_token_plan');
+        expect(tokenPlanConfig.baseUrl).toBe('https://token-plan-cn.xiaomimimo.com/v1');
+        expect(tokenPlanConfig.model).toBe('mimo-v2.5-pro');
+    });
+
+    it('根据小米官方和 Token Plan 地址自动推断供应商', () => {
+        expect(推断供应商('https://api.xiaomimimo.com/v1')).toBe('mimo_api');
+        expect(推断供应商('https://api.xiaomimimo.com/anthropic')).toBe('mimo_api');
+        expect(推断供应商('https://token-plan-cn.xiaomimimo.com/v1')).toBe('mimo_token_plan');
+        expect(推断供应商('https://token-plan-cn.xiaomimimo.com/anthropic')).toBe('mimo_token_plan');
     });
 });
 

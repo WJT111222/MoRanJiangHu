@@ -33,7 +33,7 @@ type 模型输出推荐项 = {
     updatedAt: string;
 };
 
-const providerOptions: 接口供应商类型[] = ['openai_compatible', 'openai', 'gemini', 'claude', 'deepseek', 'zhipu'];
+const providerOptions: 接口供应商类型[] = ['openai_compatible', 'openai', 'gemini', 'claude', 'deepseek', 'zhipu', 'mimo_api', 'mimo_token_plan'];
 
 const 最大输出档位预设: Array<{ id: 最大输出档位; label: string; value?: number }> = [
     { id: '8k', label: '8K', value: 8_192 },
@@ -273,10 +273,13 @@ const ApiSettings: React.FC<Props> = ({ settings, onSave }) => {
                 `${base}/models`
             ]));
             for (const url of candidateUrls) {
+                const isMimo = activeConfig?.供应商 === 'mimo_api'
+                    || activeConfig?.供应商 === 'mimo_token_plan'
+                    || baseUrlForRequest.toLowerCase().includes('xiaomimimo.com');
                 const res = await fetch(url, {
-                    headers: {
-                        Authorization: `Bearer ${apiKeyForRequest}`
-                    }
+                    headers: isMimo
+                        ? { 'api-key': apiKeyForRequest }
+                        : { Authorization: `Bearer ${apiKeyForRequest}` }
                 });
                 if (!res.ok) continue;
                 const data = await res.json();
@@ -469,7 +472,7 @@ const ApiSettings: React.FC<Props> = ({ settings, onSave }) => {
             </div>
 
             <div className="space-y-4 rounded-md border border-wuxia-gold/20 bg-black/30 p-4">
-                <div className="text-xs text-gray-400">当前支持：Gemini / Claude / OpenAI / DeepSeek / 智谱 / OpenAI 兼容接口。文本请求统一按 Chat Completions 方式发起。</div>
+                <div className="text-xs text-gray-400">当前支持：Gemini / Claude / OpenAI / DeepSeek / 智谱 / 小米 MiMo / OpenAI 兼容接口。文本请求统一按 Chat Completions 方式发起。</div>
                 <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-wuxia-cyan">新建配置 - 供应商</label>
@@ -558,7 +561,7 @@ const ApiSettings: React.FC<Props> = ({ settings, onSave }) => {
                                     type="password"
                                     value={activeConfig.apiKey}
                                     onChange={(e) => updateActiveConfig({ apiKey: e.target.value })}
-                                    placeholder="sk-..."
+                                    placeholder={activeConfig.供应商 === 'mimo_token_plan' ? 'tp-...' : 'sk-...'}
                                     className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 text-white outline-none transition-all focus:border-wuxia-gold"
                                 />
                             </div>
