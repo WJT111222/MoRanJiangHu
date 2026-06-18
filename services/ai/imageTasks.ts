@@ -146,12 +146,134 @@ const 合并负面提示词片段 = (...parts: Array<string | undefined>): strin
 };
 
 const blob转DataUrl = async (blob: Blob): Promise<string> => {
+    if (typeof FileReader === 'undefined' && typeof blob.arrayBuffer === 'function') {
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        return uint8数组转DataUrl(bytes, blob.type || 'image/png');
+    }
     return await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onerror = () => reject(reader.error || new Error('读取图片数据失败'));
         reader.onloadend = () => resolve(String(reader.result || ''));
         reader.readAsDataURL(blob);
     });
+};
+
+const 构建临时图片下载代理地址 = (imageUrl: string): string => {
+    const base = buildSyncApiUrl('/api/image-backend/fetch-image');
+    const separator = base.includes('?') ? '&' : '?';
+    return `${base}${separator}url=${encodeURIComponent(imageUrl)}`;
+};
+
+// ─── 远程图片生成 RPM 限流器 ─────────────────────────────────────────
+// 防止 NPC / 物品 / 场景 / 秘档等多条生图链路疯狂并发打爆上游 API。
+// 只对非 ComfyUI 的远程 HTTP 后端生效；ComfyUI / SD-WebUI 本地后端不限。
+// 两个维度：同时并发上限 + 滑动窗口每分钟请求上限。
+
+const 远程图片生成并发上限 = 2;
+const 远程图片生成每分钟请求上限 = 6;
+
+const 远程图片生成时间戳窗口: number[] = [];
+let 远程图片生成当前并发 = 0;
+const 远程图片生成并发等待队列: Array<{ resolve: () => void; reject: (reason?: any) => void; signal?: AbortSignal }> = [];
+
+const 远程图片生成等待 = (ms: number, signal?: AbortSignal): Promise<void> => {
+    if (!signal) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+    return new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+            signal.removeEventListener('abort', onAbort);
+            resolve();
+        }, ms);
+        const onAbort = () => {
+            clearTimeout(timer);
+            signal.removeEventListener('abort', onAbort);
+            reject(new DOMException('Aborted', 'AbortError'));
+        };
+        if (signal.aborted) { onAbort(); return; }
+        signal.addEventListener('abort', onAbort);
+    });
+};
+
+const 远程图片生成释放并发位 = () => {
+    远程图片生成当前并发 -= 1;
+    if (远程图片生成当前并发 < 0) 远程图片生成当前并发 = 0;
+    while (远程图片生成并发等待队列.length > 0 && 远程图片生成当前并发 < 远程图片生成并发上限) {
+        const next = 远程图片生成并发等待队列.shift();
+        if (!next) break;
+        远程图片生成当前并发 += 1;
+        // 如果等待期间已经被 abort，直接 reject
+        if (next.signal?.aborted) {
+            next.reject(new DOMException('Aborted', 'AbortError'));
+            远程图片生成当前并发 -= 1;
+            continue;
+        }
+        next.resolve();
+    }
+};
+
+/**
+ * 在发起远程图片 HTTP 请求之前获取限流令牌。
+ * 同时满足两个条件才放行：并发数未超限 + 滑动窗口 RPM 未超限。
+ * 请求完成后必须调用返回的 release 函数释放并发位。
+ */
+const 获取远程图片生成限流令牌 = async (signal?: AbortSignal): Promise<{ release: () => void }> => {
+    // 检查是否已经被 abort
+    if (signal?.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+    }
+
+    // 1) 滑动窗口 RPM 检查：清理过期时间戳并等待直到有配额
+    const now = Date.now();
+    const windowStart = now - 60_000;
+    while (远程图片生成时间戳窗口.length > 0 && 远程图片生成时间戳窗口[0] < windowStart) {
+        远程图片生成时间戳窗口.shift();
+    }
+    if (远程图片生成时间戳窗口.length >= 远程图片生成每分钟请求上限) {
+        const earliest = 远程图片生成时间戳窗口[0];
+        const waitMs = Math.max(1, earliest + 60_000 - now);
+        await 远程图片生成等待(waitMs, signal);
+        // 等待后重新清理窗口
+        const afterWait = Date.now();
+        const afterWindowStart = afterWait - 60_000;
+        while (远程图片生成时间戳窗口.length > 0 && 远程图片生成时间戳窗口[0] < afterWindowStart) {
+            远程图片生成时间戳窗口.shift();
+        }
+    }
+
+    // 2) 并发检查：如果当前并发已满，排队等待
+    if (远程图片生成当前并发 >= 远程图片生成并发上限) {
+        await new Promise<void>((resolve, reject) => {
+            远程图片生成并发等待队列.push({ resolve, reject, signal });
+        });
+    } else {
+        远程图片生成当前并发 += 1;
+    }
+
+    // 再次检查 abort（可能在排队期间被取消）
+    if (signal?.aborted) {
+        远程图片生成释放并发位();
+        throw new DOMException('Aborted', 'AbortError');
+    }
+
+    // 记录本次请求时间戳
+    远程图片生成时间戳窗口.push(Date.now());
+
+    let released = false;
+    return {
+        release: () => {
+            if (released) return;
+            released = true;
+            远程图片生成释放并发位();
+        }
+    };
+};
+
+/** 重置限流器状态（仅用于单元测试） */
+export const __测试__重置远程图片限流器 = () => {
+    远程图片生成时间戳窗口.length = 0;
+    远程图片生成当前并发 = 0;
+    远程图片生成并发等待队列.length = 0;
 };
 
 const 清理末尾斜杠 = (baseUrl: string): string => baseUrl.replace(/\/+$/, '');
@@ -3758,8 +3880,8 @@ const 提取图片生成结果 = (payload: any): 图片生成结果 | null => {
             const b64 = typeof value.b64_json === 'string'
                 ? value.b64_json.trim()
                 : (typeof value.base64 === 'string' ? value.base64.trim() : (typeof value.image_base64 === 'string' ? value.image_base64.trim() : (typeof value.image === 'string' ? value.image.trim() : '')));
-            if (url) return { 图片URL: url };
             if (b64) return { 图片URL: `data:image/png;base64,${b64.replace(/\s+/g, '')}` };
+            if (url) return { 图片URL: url };
             if (path) return { 本地路径: path };
         }
         return null;
@@ -4382,6 +4504,10 @@ export const generateImageByPrompt = async (
         };
     }
 
+    // 远程 HTTP 图片后端（openai / novelai / sd_webui 等）必须经过 RPM 限流器
+    const rateLimitToken = await 获取远程图片生成限流令牌(signal);
+    try {
+
     let requestBody: Record<string, unknown>;
     if (backendType === 'sd_webui') {
         const sdSampler = 规范化SD采样器与调度器(options?.PNG参数);
@@ -4424,7 +4550,6 @@ export const generateImageByPrompt = async (
             if (isPucodingImageEndpoint) {
                 requestBody.response_format = 'b64_json';
             } else {
-                requestBody.response_format = 'b64_json';
                 requestBody.moderation = 'auto';
             }
         }
@@ -4510,6 +4635,9 @@ export const generateImageByPrompt = async (
         最终正向提示词: normalizedPrompt,
         最终负向提示词: negativePromptText
     };
+    } finally {
+        rateLimitToken.release();
+    }
 };
 
 export const persistImageAssetLocally = async (
@@ -4600,15 +4728,17 @@ export const persistImageAssetLocally = async (
         };
     }
 
+    const shouldUseTemporaryImageProxy = /^http:\/\//i.test(imageUrl);
+    const proxyUrl = 构建临时图片下载代理地址(imageUrl);
     let response: Response;
     try {
-        response = await fetch(imageUrl);
+        response = await fetch(shouldUseTemporaryImageProxy ? proxyUrl : imageUrl);
     } catch (error: any) {
-        if (/^http:\/\//i.test(imageUrl)) {
-            const raw = error?.message || String(error || '网络异常');
-            throw new Error(`图片已经生成，但返回的是 HTTP 临时图片地址，当前页面无法直接保存或访问它。请改用支持 data/base64 返回的图片接口，或让服务端改为 HTTPS/可下载的稳定图片地址。原始错误：${raw}`);
+        if (!shouldUseTemporaryImageProxy && /^https:\/\//i.test(imageUrl)) {
+            response = await fetch(proxyUrl);
+        } else {
+            throw error;
         }
-        throw error;
     }
     if (!response.ok) {
         const detail = await response.text().catch(() => '');

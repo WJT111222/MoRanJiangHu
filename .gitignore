@@ -101,6 +101,9 @@ lerna-debug.log*
 *.pem
 *.key
 
+# Local prompt-injection / jailbreak sample kept only for local reference, never committed
+/xiaomi.json
+
 # Local test and debug artifacts
 /.local-debug/
 /.playwright-cli/

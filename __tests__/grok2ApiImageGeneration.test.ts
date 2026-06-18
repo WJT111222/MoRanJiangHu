@@ -11,13 +11,13 @@ afterEach(() => {
 });
 
 describe('Grok2Api image generation compatibility', () => {
-    it('requests base64 payloads for GPT image models to avoid unstable temporary HTTP links', async () => {
+    it('does not force base64 response_format for regular GPT image compatible providers', async () => {
         let requestBody: any = null;
         vi.stubGlobal('fetch', vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
             requestBody = JSON.parse(String(init?.body || '{}'));
             return new Response(JSON.stringify({
                 data: [
-                    { b64_json: 'aGVsbG8=' }
+                    { url: 'https://image.example/gpt-result.png' }
                 ]
             }), {
                 status: 200,
@@ -38,18 +38,61 @@ describe('Grok2Api image generation compatibility', () => {
             图片响应格式: 'url'
         } as any);
 
-        expect(requestBody.response_format).toBe('b64_json');
+        expect(requestBody).not.toHaveProperty('response_format');
+        expect(requestBody.moderation).toBe('auto');
+        expect(result.图片URL).toBe('https://image.example/gpt-result.png');
+    });
+
+    it('prefers base64 data when an image response also contains a temporary URL', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+            data: [
+                {
+                    url: 'http://temporary.example/generated.png',
+                    b64_json: 'aGVsbG8='
+                }
+            ]
+        }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+        })));
+
+        const result = await generateImageByPrompt('测试双格式返回', {
+            id: 'gpt-image',
+            名称: 'GPT Image',
+            供应商: 'openai_compatible',
+            协议覆盖: 'auto',
+            baseUrl: 'https://image.example',
+            apiKey: 'test-key',
+            model: 'gpt-image-2',
+            图片后端类型: 'openai',
+            图片接口路径: '/v1/images/generations',
+            图片响应格式: 'url'
+        } as any);
+
         expect(result.图片URL).toBe('data:image/png;base64,aGVsbG8=');
     });
 
-    it('explains GPT image local persistence failures caused by HTTP temporary image links', async () => {
-        vi.stubGlobal('fetch', vi.fn(async () => {
-            throw new TypeError('Failed to fetch');
-        }));
+    it('downloads HTTP temporary image links through the same-origin image backend proxy before saving', async () => {
+        const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+        const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+            const url = String(input);
+            const requestedUrl = new URL(url, 'https://msjh.example');
+            expect(requestedUrl.pathname).toBe('/api/image-backend/fetch-image');
+            expect(requestedUrl.searchParams.get('url')).toBe('http://70.39.197.55:3000/generated/test.png');
+            return new Response(pngBytes, {
+                status: 200,
+                headers: { 'content-type': 'image/png' }
+            });
+        });
+        vi.stubGlobal('fetch', fetchMock);
 
-        await expect(persistImageAssetLocally({
+        const result = await persistImageAssetLocally({
             图片URL: 'http://70.39.197.55:3000/generated/test.png'
-        })).rejects.toThrow(/图片已经生成，但返回的是 HTTP 临时图片地址/);
+        });
+
+        expect(result.本地路径).toBe('wuxia-asset://saved-image');
+        expect(result.图片URL).toBeUndefined();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
     it('sends OpenAI-compatible image payload fields accepted by Grok2Api', async () => {
