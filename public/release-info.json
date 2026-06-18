@@ -1,17 +1,32 @@
 {
-  "versionCode": 501,
-  "versionName": "1.0.501",
+  "versionCode": 502,
+  "versionName": "1.0.502",
   "releaseChannel": "stable",
-  "releasePublishedAt": "2026-06-18T12:10:00+08:00",
+  "releasePublishedAt": "2026-06-18T13:06:42+08:00",
   "releaseNotes": [
-    "修复 GPT 图片接口兼容性：不再强制 base64 返回格式，优先使用 base64 数据，临时 HTTP 图片链接改走同源代理下载保存，不再报错。",
-    "新增图片生成 RPM 限流：远程图片后端同时最多 2 个并发、每分钟最多 6 次请求，防止 NPC/物品/场景/秘档等多条生图链路疯狂并发打爆上游 API。",
-    "新增同源图片下载代理（/api/image-backend/fetch-image），自动拦截私有网段地址，安全可靠地中转 HTTP 临时图片。",
+    "修复仙侠模式包下 AI 生成世界观/境界体系跑偏的问题，仙侠开局会稳定使用炼气、筑基、金丹、元婴等修真体系。",
+    "修复变量生成和 NPC 保存时男娘/扶她角色性别被误改的问题。",
+    "修复设置-NPC 中手动编辑角色背景和天赋后保存被默认值覆盖的问题。",
+    "修复 APK 检查更新偶尔读取到旧版本清单的问题。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/",
-    "同步更新 Web、APK 与更新清单到 v1.0.501。"
+    "同步更新 Web、APK 与更新清单到 v1.0.502。"
   ],
   "releaseHistory": [
+    {
+      "versionName": "1.0.502",
+      "versionCode": 502,
+      "publishedAt": "2026-06-18T13:06:42+08:00",
+      "changes": [
+        "修复仙侠模式包下 AI 生成世界观/境界体系跑偏的问题，仙侠开局会稳定使用炼气、筑基、金丹、元婴等修真体系。",
+        "修复变量生成和 NPC 保存时男娘/扶她角色性别被误改的问题。",
+        "修复设置-NPC 中手动编辑角色背景和天赋后保存被默认值覆盖的问题。",
+        "修复 APK 检查更新偶尔读取到旧版本清单的问题。",
+        "官网：https://msjh.bacon159.pp.ua/",
+        "备用站：https://msjh.bacon.de5.net/",
+        "同步更新 Web、APK 与更新清单到 v1.0.502。"
+      ]
+    },
     {
       "versionName": "1.0.501",
       "versionCode": 501,
@@ -932,12 +947,13 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "修复 GPT 图片接口兼容性：不再强制 base64 返回格式，优先使用 base64 数据，临时 HTTP 图片链接改走同源代理下载保存，不再报错。",
-    "新增图片生成 RPM 限流：远程图片后端同时最多 2 个并发、每分钟最多 6 次请求，防止 NPC/物品/场景/秘档等多条生图链路疯狂并发打爆上游 API。",
-    "新增同源图片下载代理（/api/image-backend/fetch-image），自动拦截私有网段地址，安全可靠地中转 HTTP 临时图片。",
+    "修复仙侠模式包下 AI 生成世界观/境界体系跑偏的问题，仙侠开局会稳定使用炼气、筑基、金丹、元婴等修真体系。",
+    "修复变量生成和 NPC 保存时男娘/扶她角色性别被误改的问题。",
+    "修复设置-NPC 中手动编辑角色背景和天赋后保存被默认值覆盖的问题。",
+    "修复 APK 检查更新偶尔读取到旧版本清单的问题。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/",
-    "同步更新 Web、APK 与更新清单到 v1.0.501。"
+    "同步更新 Web、APK 与更新清单到 v1.0.502。"
   ],
-  "notes": "修复 GPT 图片接口兼容性：不再强制 base64 返回格式，优先使用 base64 数据，临时 HTTP 图片链接改走同源代理下载保存，不再报错。\n新增图片生成 RPM 限流：远程图片后端同时最多 2 个并发、每分钟最多 6 次请求，防止 NPC/物品/场景/秘档等多条生图链路疯狂并发打爆上游 API。\n新增同源图片下载代理（/api/image-backend/fetch-image），自动拦截私有网段地址，安全可靠地中转 HTTP 临时图片。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/\n同步更新 Web、APK 与更新清单到 v1.0.501。"
+  "notes": "修复仙侠模式包下 AI 生成世界观/境界体系跑偏的问题，仙侠开局会稳定使用炼气、筑基、金丹、元婴等修真体系。\n修复变量生成和 NPC 保存时男娘/扶她角色性别被误改的问题。\n修复设置-NPC 中手动编辑角色背景和天赋后保存被默认值覆盖的问题。\n修复 APK 检查更新偶尔读取到旧版本清单的问题。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/\n同步更新 Web、APK 与更新清单到 v1.0.502。"
 }

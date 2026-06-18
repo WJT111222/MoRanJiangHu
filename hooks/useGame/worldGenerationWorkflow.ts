@@ -274,7 +274,8 @@ export const 执行世界生成工作流 = async (
     deps.清空重Roll快照();
     deps.重置自动存档状态();
 
-    let openingBase = deps.创建开场基础状态(charData, worldConfig, openingConfig);
+    const effectiveOpeningConfig = normalizedOpeningConfig || openingConfig;
+    let openingBase = deps.创建开场基础状态(charData, worldConfig, effectiveOpeningConfig);
     let clearedOpeningBase = options?.清空前端变量
         ? deps.构建前端清空开场状态(openingBase)
         : null;
@@ -314,7 +315,7 @@ export const 执行世界生成工作流 = async (
         : null;
     try {
         const worldPromptSeed = 按功能开关过滤提示词内容(
-            构建世界观种子提示词(worldConfig, charData, openingConfig),
+            构建世界观种子提示词(worldConfig, charData, effectiveOpeningConfig),
             normalizedGameConfig
         );
         const difficulty = worldConfig.difficulty || 'normal';
@@ -327,14 +328,14 @@ export const 执行世界生成工作流 = async (
             : '';
         const manualRealmPromptIsModePackageFragment = 是否模式包能力片段(normalizedManualRealmPrompt);
         const useManualWorldPrompt = normalizedManualWorldPrompt.length > 0 && !manualWorldPromptIsModePackageFragment;
-        const isXianxiaOpening = openingConfig?.题材模式 === '仙侠';
+        const isXianxiaOpening = effectiveOpeningConfig?.题材模式 === '仙侠';
         const normalizedWorldExtraRequirement = [
             typeof worldConfig.worldExtraRequirement === 'string' ? worldConfig.worldExtraRequirement.trim() : '',
             manualWorldPromptIsModePackageFragment ? normalizedManualWorldPrompt : '',
             manualRealmPromptIsModePackageFragment ? normalizedManualRealmPrompt : ''
         ].filter(Boolean).join('\n\n');
         const useWorldRefinement = !useManualWorldPrompt && normalizedWorldExtraRequirement.length > 0;
-        const initialFandomBundle = 构建同人运行时提示词包({ openingConfig });
+        const initialFandomBundle = 构建同人运行时提示词包({ openingConfig: effectiveOpeningConfig });
         const fandomEnabled = initialFandomBundle.enabled;
         let realmPromptContent = 启用修炼体系
             ? (fandomEnabled ? '' : (initialFandomBundle.境界母板补丁 || 核心_境界体系.内容))
@@ -343,7 +344,7 @@ export const 执行世界生成工作流 = async (
             启用修炼体系,
             手动境界提示词: manualRealmPromptIsModePackageFragment ? '' : normalizedManualRealmPrompt,
             是仙侠题材: isXianxiaOpening,
-            题材模式: openingConfig?.题材模式,
+            题材模式: effectiveOpeningConfig?.题材模式,
             启用同人境界: fandomEnabled
         });
 
@@ -382,7 +383,7 @@ export const 执行世界生成工作流 = async (
             if (openingStreaming) {
                 开局流式历史更新器?.更新('【生成中】加载题材专属境界体系...', { immediate: true });
             }
-            realmPromptContent = 构建题材默认境界体系提示词(openingConfig?.题材模式) || 核心_境界体系.内容;
+            realmPromptContent = 构建题材默认境界体系提示词(effectiveOpeningConfig?.题材模式) || 核心_境界体系.内容;
         } else if (realmPromptSource === 'fandom') {
             if (openingStreaming) {
                 开局流式历史更新器?.更新('【生成中】同人境界体系生成...', { immediate: true });
@@ -397,7 +398,7 @@ export const 执行世界生成工作流 = async (
 
             realmPromptContent = await 执行带超时('同人境界体系生成', 境界阶段超时毫秒, (signal, 标记活动) => textAIService.generateFandomRealmData(
                 {
-                    openingConfig
+                    openingConfig: effectiveOpeningConfig
                 },
                 currentApi,
                 openingRequestStreaming
@@ -440,10 +441,10 @@ export const 执行世界生成工作流 = async (
             difficulty,
             enabledDifficultyPrompts,
             normalizedWorldExtraRequirement,
-            openingConfig
+            effectiveOpeningConfig
         ), normalizedGameConfig);
         const fandomPromptBundle = 构建同人运行时提示词包({
-            openingConfig,
+            openingConfig: effectiveOpeningConfig,
             realmPrompt: realmPromptContent
         });
         const worldGenerationExtraPrompt = 按功能开关过滤提示词内容([
@@ -458,6 +459,9 @@ export const 执行世界生成工作流 = async (
                     '- 生成 world_prompt 时只提炼概述级境界与力量边界，不得把完整映射、阶段推进表或大境突破表原样抄回世界观正文。',
                     realmPromptContent
                 ].join('\n')
+                : '',
+            isXianxiaOpening
+                ? '【仙侠境界污染防护】\n- 当前存档固定使用炼气、筑基、金丹、元婴、化神等修真境界口径；不得使用斗气/斗者/斗师/斗王/斗皇/斗宗/斗尊等斗气体系术语作为境界、势力等级或成长主轴。\n- 如果玩家草稿、模式包片段或外部资料里出现斗气体系词汇，只能视为禁止项或反例，不得混入 world_prompt。'
                 : '',
             normalizedWorldExtraRequirement ? `【玩家世界观草稿与细化要求】\n${normalizedWorldExtraRequirement}\n- 必须优先保留玩家已写明的事实、地名、势力、时代、规则和禁忌。\n- 生成时只补全缺口、细化因果、补齐长期运行结构，不得推翻、绕开或替换玩家草稿。` : '',
             获取繁体输出指令(normalizedGameConfig)
@@ -512,7 +516,7 @@ export const 执行世界生成工作流 = async (
                 worldGenerationCotPseudoPrompt,
                 {
                     启用修炼体系,
-                    openingConfig,
+                    openingConfig: effectiveOpeningConfig,
                     signal
                 }
             ), { idleTimeout: openingRequestStreaming });
@@ -570,7 +574,7 @@ export const 执行世界生成工作流 = async (
             {
                 命令基态: deps.创建开场命令基态(openingBase),
                 开局额外要求: normalizedOpeningExtraPrompt,
-                开局配置: openingConfig
+                开局配置: effectiveOpeningConfig
             }
         );
         deps.setLoading(false);

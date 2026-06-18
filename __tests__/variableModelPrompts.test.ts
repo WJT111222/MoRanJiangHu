@@ -26,6 +26,8 @@ describe('variableModel prompts', () => {
         const systemPrompt = 构建变量模型职责提示词();
 
         expect(systemPrompt).toContain('其中 `性别` 必须优先由你根据正文和档案证据判断并显式写入');
+        expect(systemPrompt).toContain('合法明确性别包含 `男/女/男娘/扶她`');
+        expect(systemPrompt).toContain('不得把 `男娘`、`扶她` 或带有稳定对应设定的角色改写成 `女`');
         expect(systemPrompt).toContain('只有当正文、变量规划、已有社交档案和本回合命令合起来仍不足以判断时');
         expect(systemPrompt).toContain('你可以把这些配置当作最后一层弱先验来帮助裁决');
     });

@@ -118,4 +118,50 @@ describe('APK latest manifest proxy', () => {
             globalThis.fetch = originalFetch;
         }
     });
+
+    it('uses the newer R2 manifest when the S3 manifest is stale', async () => {
+        const s3Payload = {
+            latest: {
+                versionName: '1.0.500',
+                versionCode: 500,
+                preferredApkProvider: 'r2',
+                apkUrls: []
+            },
+            history: []
+        };
+
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = vi.fn(async (url: string) => {
+            if (typeof url === 'string' && url.includes('s3.hi168.com')) {
+                return new Response(JSON.stringify(s3Payload), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json', ETag: '"stale-s3-etag"' }
+                });
+            }
+            return new Response('not found', { status: 404 });
+        });
+
+        try {
+            const response = await onRequestGet({
+                request: buildRequest(),
+                env: buildEnv({
+                    latest: {
+                        versionName: '1.0.501',
+                        versionCode: 501,
+                        preferredApkProvider: 'hi168',
+                        r2ApkUrl: '',
+                        apkUrls: []
+                    },
+                    history: []
+                })
+            } as any);
+
+            expect(response.status).toBe(200);
+            const payload = await response.json();
+            expect(payload.latest.versionName).toBe('1.0.501');
+            expect(payload.latest.versionCode).toBe(501);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
 });

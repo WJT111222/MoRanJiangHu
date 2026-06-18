@@ -90,6 +90,9 @@ export const 构建开局世界观生成提示词预览 = ({
                 realmPromptContent
             ].join('\n')
             : '',
+        isXianxiaOpening
+            ? '【仙侠境界污染防护】\n- 当前存档固定使用炼气、筑基、金丹、元婴、化神等修真境界口径；不得使用斗气/斗者/斗师/斗王/斗皇/斗宗/斗尊等斗气体系术语作为境界、势力等级或成长主轴。\n- 如果玩家草稿、模式包片段或外部资料里出现斗气体系词汇，只能视为禁止项或反例，不得混入 world_prompt。'
+            : '',
         normalizedWorldExtraRequirement ? `【玩家世界观草稿与细化要求】\n${normalizedWorldExtraRequirement}\n- 必须优先保留玩家已写明的事实、地名、势力、时代、规则和禁忌。\n- 生成时只补全缺口、细化因果、补齐长期运行结构，不得推翻、绕开或替换玩家草稿。` : '',
         获取繁体输出指令(normalizedGameConfig)
     ]

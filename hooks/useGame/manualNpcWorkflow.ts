@@ -34,6 +34,15 @@ const 取NPC匹配键集合 = (npc: any): Set<string> => new Set(
         .filter(Boolean)
 );
 
+const 规范化NPC性别 = (value: unknown): '男' | '女' | '男娘' | '扶她' => {
+    const text = typeof value === 'string' ? value.trim() : '';
+    if (text.includes('扶她')) return '扶她';
+    if (text.includes('男娘')) return '男娘';
+    if (/^(男|男性|男子|男修|男性修士)$/u.test(text)) return '男';
+    if (/^(女|女性|女子|女修|女性修士)$/u.test(text)) return '女';
+    return '女';
+};
+
 const 门派成员匹配NPC = (member: any, npc: any, memberIndex: number, sectId?: string): boolean => {
     if (!member || !npc) return false;
     const npcKeys = 取NPC匹配键集合(npc);
@@ -133,7 +142,7 @@ export const 创建手动NPC工作流 = (deps: 手动NPC工作流依赖) => {
         const rawNpc: NPC结构 = {
             id: seed?.id || 生成手动NPCID(),
             姓名: seed?.姓名 || '未命名NPC',
-            性别: seed?.性别 === '男' ? '男' : '女',
+            性别: 规范化NPC性别(seed?.性别),
             年龄: Number(seed?.年龄) || 18,
             生日: seed?.生日 || '',
             境界: seed?.境界 || '未知',
@@ -189,6 +198,8 @@ export const 创建手动NPC工作流 = (deps: 手动NPC工作流依赖) => {
             初夜描述: seed?.初夜描述 || '',
             记忆: Array.isArray(seed?.记忆) ? seed.记忆 : [],
             总结记忆: Array.isArray(seed?.总结记忆) ? seed.总结记忆 : [],
+            天赋列表: Array.isArray(seed?.天赋列表) ? seed.天赋列表 : [],
+            出身背景: seed?.出身背景 && typeof seed.出身背景 === 'object' && !Array.isArray(seed.出身背景) ? seed.出身背景 : undefined,
             图片档案: seed?.图片档案 || {},
             最近生图结果: seed?.最近生图结果
         };
