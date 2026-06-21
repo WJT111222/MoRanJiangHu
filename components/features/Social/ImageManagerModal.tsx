@@ -28,6 +28,7 @@ import { 获取本地图片图床迁移状态, 订阅本地图片图床迁移状
 import ImageMigrationStatusPanel from './ImageMigrationStatusPanel';
 import { NPC是否男性或男娘 } from '../../../utils/npcGenderFlags';
 import { 构建角色锚点绑定选项, 主角角色锚点绑定ID } from '../../../utils/characterAnchorOptions';
+import { 解析模型规则编辑选中ID } from '../../../utils/modelRuleEditorSelection';
 
 type 物品历史展示记录 = 物品生图结果 & {
     id: string;
@@ -864,9 +865,14 @@ const ImageManagerModal: React.FC<Props> = ({
     );
     React.useEffect(() => {
         const matched = 获取命中模型词组转化器预设(presetConfig, activeRuleSection);
-        if (!matched?.id || modelTransformerPresetEditorId === matched.id) return;
-        setModelTransformerPresetEditorId(matched.id);
-    }, [activeRuleSection, modelTransformerPresetEditorId, presetConfig]);
+        const nextId = 解析模型规则编辑选中ID({
+            当前编辑ID: modelTransformerPresetEditorId,
+            可选规则ID列表: editorModelTransformerPresets.map((item) => item.id),
+            默认规则ID: matched?.id
+        });
+        if (nextId === modelTransformerPresetEditorId) return;
+        setModelTransformerPresetEditorId(nextId);
+    }, [activeRuleSection, editorModelTransformerPresets, modelTransformerPresetEditorId, presetConfig]);
     const 当前生效NPC预设ID = activeModelTransformerPreset?.NPC词组转化器提示词预设ID || presetFeature?.当前NPC词组转化器提示词预设ID || '';
     const 当前生效场景预设ID = activeModelTransformerPreset?.场景词组转化器提示词预设ID || presetFeature?.当前场景词组转化器提示词预设ID || '';
     const 当前生效场景判定预设ID = activeModelTransformerPreset?.场景判定提示词预设ID || presetFeature?.当前场景判定提示词预设ID || '';
@@ -894,10 +900,12 @@ const ImageManagerModal: React.FC<Props> = ({
     }, [artistPresetScope, editorArtistPresetId, editorScopedArtistPresets, presetFeature?.当前NPC画师串预设ID, presetFeature?.当前场景画师串预设ID]);
 
     React.useEffect(() => {
-        if (modelTransformerPresetEditorId && editorModelTransformerPresets.some((item) => item.id === modelTransformerPresetEditorId)) {
-            return;
-        }
-        setModelTransformerPresetEditorId(editorModelTransformerPresets[0]?.id || '');
+        const nextId = 解析模型规则编辑选中ID({
+            当前编辑ID: modelTransformerPresetEditorId,
+            可选规则ID列表: editorModelTransformerPresets.map((item) => item.id)
+        });
+        if (nextId === modelTransformerPresetEditorId) return;
+        setModelTransformerPresetEditorId(nextId);
     }, [editorModelTransformerPresets, modelTransformerPresetEditorId]);
 
     React.useEffect(() => {

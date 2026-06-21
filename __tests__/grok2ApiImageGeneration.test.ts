@@ -95,6 +95,27 @@ describe('Grok2Api image generation compatibility', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
+    it('downloads local ComfyUI HTTP image links directly instead of sending them to the public proxy', async () => {
+        const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+        const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+            const url = String(input);
+            expect(url).toBe('http://127.0.0.1:8188/view?filename=ok.png&type=output');
+            return new Response(pngBytes, {
+                status: 200,
+                headers: { 'content-type': 'image/png' }
+            });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const result = await persistImageAssetLocally({
+            图片URL: 'http://127.0.0.1:8188/view?filename=ok.png&type=output'
+        });
+
+        expect(result.本地路径).toBe('wuxia-asset://saved-image');
+        expect(result.图片URL).toBeUndefined();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
     it('sends OpenAI-compatible image payload fields accepted by Grok2Api', async () => {
         let requestedUrl = '';
         let requestBody: any = null;

@@ -78,6 +78,26 @@ import { 生成地图更新 } from './mapUpdateWorkflow';
 const 开局规划分析请求超时毫秒 = 90000;
 const 开场剧情慢首包提示毫秒 = 30000;
 const 开场剧情首次流式响应超时毫秒 = 240000;
+
+export const 安全触发开局主角自动生图 = async (
+    trigger: ((player: 角色数据结构) => void | Promise<unknown>) | undefined,
+    player: 角色数据结构,
+    label: string = '主角开局生图触发'
+): Promise<boolean> => {
+    if (typeof trigger !== 'function') return false;
+    try {
+        await trigger(player);
+        return true;
+    } catch (error: any) {
+        recordDiagnosticLog('warn', [`${label}失败`, {
+            stage: 'opening_player_auto_image',
+            message: error?.message || '',
+            stack: typeof error?.stack === 'string' ? error.stack : undefined
+        }]);
+        console.warn(`${label}失败，已保持开局流程继续`, error);
+        return false;
+    }
+};
 const 开场剧情流式空闲超时毫秒 = 90000;
 const 开场剧情默认最大输出Token = 32768;
 
@@ -259,7 +279,7 @@ type 开场剧情生成依赖 = {
         options?: { manual?: boolean; playerInput?: string; signal?: AbortSignal; allowExpansionForLength?: boolean; minLength?: number; onDelta?: (delta: string, accumulated: string) => void }
     ) => Promise<{ applied: boolean; response: GameResponse; error?: string; rawText?: string }>;
     触发新增NPC自动生图: (npcs: any[]) => void;
-    触发主角自动生图?: (player: 角色数据结构) => void;
+    触发主角自动生图?: (player: 角色数据结构) => void | Promise<unknown>;
     触发场景自动生图: (params: {
         response: GameResponse;
         bodyText?: string;
@@ -1257,12 +1277,7 @@ export const 执行开场剧情生成工作流 = async (
             if (主角开局生图已触发) return;
             主角开局生图已触发 = true;
             const trigger = deps.触发主角自动生图;
-            if (typeof trigger !== 'function') return;
-            try {
-                trigger(simulatedOpeningState.角色 || commandBaseState.角色);
-            } catch (error) {
-                console.warn('主角开局生图触发失败，已保持开局流程继续', error);
-            }
+            void 安全触发开局主角自动生图(trigger, simulatedOpeningState.角色 || commandBaseState.角色, '主角开局生图触发');
         };
         let openingWorldInitUpdates: string[] = [];
 
@@ -2191,11 +2206,7 @@ export const 执行开场剧情生成工作流 = async (
             memory: openingMemoryAfterWrite,
             openingConfig: options?.开局配置
         });
-        try {
-            deps.触发主角自动生图(openingStateAfterCommands.角色);
-        } catch (error) {
-            console.warn('主角开局最终生图补发失败，已保持开局流程继续', error);
-        }
+        void 安全触发开局主角自动生图(deps.触发主角自动生图, openingStateAfterCommands.角色, '主角开局最终生图补发');
     } catch (e: any) {
         if (openingStreamHeartbeat) clearInterval(openingStreamHeartbeat);
         deps.设置开局主剧情进度({

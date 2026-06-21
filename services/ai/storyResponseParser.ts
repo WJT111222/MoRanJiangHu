@@ -1279,23 +1279,21 @@ const 解析命令值 = (rawValue: string | undefined): any => {
     return text;
 };
 
-type 标准命令结构 = { action: 'add' | 'set' | 'push' | 'delete'; key: string; value: any };
+type 标准命令结构 = { action: 'add' | 'set' | 'push' | 'delete' | 'sub'; key: string; value: any };
 
 const 标准化命令对象列表 = (raw: any): 标准命令结构[] => {
     if (!raw || typeof raw !== 'object') return [];
     const 合法动作集合 = new Set(['add', 'set', 'push', 'delete', 'sub']);
 
-    const 归一化动作 = (actionRaw: string): 'add' | 'set' | 'push' | 'delete' => (
-        (actionRaw === 'sub' ? 'add' : actionRaw) as 'add' | 'set' | 'push' | 'delete'
+    const 归一化动作 = (actionRaw: string): 'add' | 'set' | 'push' | 'delete' | 'sub' => (
+        actionRaw as 'add' | 'set' | 'push' | 'delete' | 'sub'
     );
 
     const 构建命令 = (actionRaw: string, keyRaw: any, valueRaw: any): 标准命令结构 | null => {
         const key = typeof keyRaw === 'string' ? keyRaw.trim() : '';
         if (!key) return null;
         const normalizedAction = 归一化动作(actionRaw);
-        const normalizedValue = actionRaw === 'sub' && typeof valueRaw === 'number'
-            ? -valueRaw
-            : (valueRaw === undefined ? null : valueRaw);
+        const normalizedValue = valueRaw === undefined ? null : valueRaw;
         return {
             action: normalizedAction,
             key,
@@ -1381,7 +1379,7 @@ const 预处理命令文本 = (input: string): string => {
     );
 };
 
-export const 解析命令块 = (commandBlock: string): Array<{ action: 'add' | 'set' | 'push' | 'delete'; key: string; value: any }> => {
+export const 解析命令块 = (commandBlock: string): Array<{ action: 'add' | 'set' | 'push' | 'delete' | 'sub'; key: string; value: any }> => {
     const raw = 清理命令包裹文本(commandBlock);
     if (!raw) return [];
     if (raw === '无' || raw.toLowerCase() === 'none') return [];
@@ -1406,7 +1404,7 @@ export const 解析命令块 = (commandBlock: string): Array<{ action: 'add' | '
         .map(line => line.trim())
         .filter(Boolean)
         .filter(line => !line.startsWith('```'));
-    const commands: Array<{ action: 'add' | 'set' | 'push' | 'delete'; key: string; value: any }> = [];
+    const commands: Array<{ action: 'add' | 'set' | 'push' | 'delete' | 'sub'; key: string; value: any }> = [];
     const 计算括号平衡 = (source: string): number => {
         let balance = 0;
         let inString = false;
@@ -1483,7 +1481,7 @@ export const 解析命令块 = (commandBlock: string): Array<{ action: 'add' | '
         if (!match) continue;
         const actionRaw = 归一化命令动作(match[1]);
         if (!actionRaw) continue;
-        const action = (actionRaw === 'sub' ? 'add' : actionRaw) as 'add' | 'set' | 'push' | 'delete';
+        const action = actionRaw as 'add' | 'set' | 'push' | 'delete' | 'sub';
         const key = (match[2] || '').trim();
         if (!key) continue;
         const multiLineValue = actionRaw === 'delete'
@@ -1491,9 +1489,6 @@ export const 解析命令块 = (commandBlock: string): Array<{ action: 'add' | '
             : 收集多行命令值(lines, i, (match[3] || '').trim());
         i = multiLineValue.consumedUntil;
         let value = actionRaw === 'delete' ? null : 解析命令值(清理命令尾部分隔符(multiLineValue.valueText));
-        if (actionRaw === 'sub' && typeof value === 'number') {
-            value = -value;
-        }
         commands.push({ action, key, value });
     }
 

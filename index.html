@@ -47,6 +47,11 @@
         return false;
       }
 
+      function isRecoverableNetworkRejection(reason) {
+        var text = stringify(reason);
+        return /NetworkError when attempting to fetch resource|Failed to fetch|Load failed|The Internet connection appears to be offline|Network request failed/i.test(text);
+      }
+
       function showOverlay() {
         if (!document.body) return;
         if (!overlay) {
@@ -89,6 +94,11 @@
       });
 
       window.addEventListener('unhandledrejection', function (event) {
+        if (isRecoverableNetworkRejection(event.reason)) {
+          push('warn', ['preboot recoverable network rejection', event.reason]);
+          if (event && typeof event.preventDefault === 'function') event.preventDefault();
+          return;
+        }
         push('error', ['preboot unhandledrejection', event.reason]);
         showOverlay();
       });

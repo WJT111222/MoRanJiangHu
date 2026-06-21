@@ -1,5 +1,6 @@
 import type { 存档结构 } from '../types';
-import { 读取存档列表, 计算存档摘要短哈希 } from './dbService';
+import { isNativeCapacitorEnvironment } from '../utils/nativeRuntime';
+import { 读取存档列表, 读取存档摘要列表, 读取存档, 计算存档摘要短哈希, type 存档摘要结构 } from './dbService';
 import { recordDiagnosticLog } from './diagnosticLog';
 
 const AI_PARSE_FAILURE_STORAGE_KEY = 'moranjianghu.diagnostic.aiParseFailures.v1';
@@ -11,6 +12,7 @@ const MAX_OBJECT_KEYS = 160;
 const MAX_GENERAL_STRING_CHARS = 12_000;
 const MAX_RAW_JSON_STRING_CHARS = 80_000;
 const MAX_SNAPSHOT_JSON_CHARS = 520_000;
+const NATIVE_SAVE_SNAPSHOT_SUMMARY_LIMIT = 24;
 
 export type AiParseFailureDiagnostic = {
     id: string;
@@ -247,6 +249,35 @@ const sanitizeSave = (save: 存档结构) => ({
     gameSettings: sanitizeValue(save.游戏设置, '游戏设置')
 });
 
+const selectDiagnosticSaveCandidates = <T extends { id?: unknown; 类型?: unknown; 时间戳?: unknown }>(saves: T[]): T[] => {
+    const sorted = [...saves].sort((a, b) => Number(b?.时间戳 || 0) - Number(a?.时间戳 || 0));
+    const selected: T[] = [];
+    const pushUnique = (save?: T) => {
+        if (!save) return;
+        if (selected.some((item) => item.id === save.id)) return;
+        selected.push(save);
+    };
+    pushUnique(sorted[0]);
+    pushUnique(sorted.find((save) => save.类型 === 'auto'));
+    pushUnique(sorted.find((save) => save.类型 !== 'auto'));
+    return selected;
+};
+
+const readNativeDiagnosticSaveCandidates = async (): Promise<{
+    summaries: 存档摘要结构[];
+    selected: 存档结构[];
+}> => {
+    const summaries = await 读取存档摘要列表({ limit: NATIVE_SAVE_SNAPSHOT_SUMMARY_LIMIT });
+    const selectedSummaries = selectDiagnosticSaveCandidates(summaries);
+    const selected = await Promise.all(selectedSummaries.map(async (summary) => {
+        const id = Number(summary.id);
+        if (!Number.isFinite(id)) return summary as unknown as 存档结构;
+        const fullSave = await 读取存档(id).catch(() => null);
+        return (fullSave || summary) as unknown as 存档结构;
+    }));
+    return { summaries, selected };
+};
+
 const shrinkSnapshotIfNeeded = (snapshot: SanitizedSaveSnapshot): SanitizedSaveSnapshot => {
     const text = JSON.stringify(snapshot);
     if (text.length <= MAX_SNAPSHOT_JSON_CHARS) return snapshot;
@@ -270,16 +301,25 @@ const shrinkSnapshotIfNeeded = (snapshot: SanitizedSaveSnapshot): SanitizedSaveS
 };
 
 export const buildDiagnosticSaveSnapshot = async (): Promise<SanitizedSaveSnapshot> => {
+    if (isNativeCapacitorEnvironment()) {
+        const { summaries, selected } = await readNativeDiagnosticSaveCandidates();
+        const snapshot: SanitizedSaveSnapshot = {
+            capturedAt: new Date().toISOString(),
+            totalSaves: summaries.length,
+            selectedReason: 'native recent summaries + latest overall + latest auto + latest manual',
+            notes: [
+                '移动端诊断快照只读取最近存档摘要，并按需回读少量候选存档，避免一次性加载全部完整存档导致卡死或崩溃。',
+                '存档快照已递归脱敏 API Key、secret、token、password 与图片 dataURL。',
+                '历史记录只保留尾部，rawJson 会保留头尾并按预算截断。',
+                '如果错误发生在存档写入前，请优先查看 recentAiParseFailures 中的原始 AI 回复。'
+            ],
+            saves: selected.map((save) => sanitizeSave(save))
+        };
+        return shrinkSnapshotIfNeeded(snapshot);
+    }
+
     const saves = await 读取存档列表();
-    const selected: 存档结构[] = [];
-    const pushUnique = (save?: 存档结构) => {
-        if (!save) return;
-        if (selected.some((item) => item.id === save.id)) return;
-        selected.push(save);
-    };
-    pushUnique(saves[0]);
-    pushUnique(saves.find((save) => save.类型 === 'auto'));
-    pushUnique(saves.find((save) => save.类型 !== 'auto'));
+    const selected = selectDiagnosticSaveCandidates(saves);
 
     const snapshot: SanitizedSaveSnapshot = {
         capturedAt: new Date().toISOString(),

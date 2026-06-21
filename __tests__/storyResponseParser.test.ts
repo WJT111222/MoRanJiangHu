@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseStoryRawText, StoryResponseParseError } from '../services/ai/storyResponseParser';
+import { parseStoryRawText, StoryResponseParseError, 解析命令块 } from '../services/ai/storyResponseParser';
 import { 规范化可渲染对白日志 } from '../utils/dialogueLogNormalizer';
 
 describe('storyResponseParser', () => {
@@ -251,6 +251,18 @@ describe('storyResponseParser', () => {
             expect(parseError.parseDetail || '').toMatch(/顶层标签顺序错误|正文/);
             expect(parseError.protocolIssues || []).toContain('顶层标签顺序错误：<短期记忆> 出现在 <正文> 之前');
         }
+    });
+
+    it('keeps sub commands as sub actions for inventory deduction', () => {
+        const commands = 解析命令块([
+            '<命令>',
+            'sub 角色.物品列表[0].堆叠数量 = 1',
+            '</命令>'
+        ].join('\n'));
+
+        expect(commands).toEqual([
+            { action: 'sub', key: '角色.物品列表[0].堆叠数量', value: 1 }
+        ]);
     });
 
     it('rejects isolated punctuation lines during strict parsing', () => {

@@ -9,6 +9,8 @@ vi.mock('../services/appUpdate', () => ({
 
 vi.mock('../services/dbService', () => ({
     读取存档列表: vi.fn(async () => []),
+    读取存档摘要列表: vi.fn(async () => []),
+    读取存档: vi.fn(async () => null),
     计算存档摘要短哈希: vi.fn(() => 'hash-test')
 }));
 
@@ -114,7 +116,7 @@ describe('diagnosticReport', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         const dbService = await import('../services/dbService');
-        vi.mocked(dbService.读取存档列表).mockResolvedValue([{
+        const debugSave = {
             id: 7,
             类型: 'auto',
             时间戳: Date.parse('2026-05-17T08:55:00+08:00'),
@@ -145,7 +147,10 @@ describe('diagnosticReport', () => {
             游戏设置: {
                 启用标签检测完整性: true
             }
-        } as any]);
+        } as any;
+        vi.mocked(dbService.读取存档列表).mockResolvedValue([debugSave]);
+        vi.mocked(dbService.读取存档摘要列表).mockResolvedValue([debugSave]);
+        vi.mocked(dbService.读取存档).mockResolvedValue(debugSave);
 
         const { recordAiParseFailureDiagnostic } = await import('../services/diagnosticContext');
         recordAiParseFailureDiagnostic({
@@ -206,5 +211,45 @@ describe('diagnosticReport', () => {
         expect(JSON.stringify(requestBody)).not.toContain(imageDataUrl);
         expect(JSON.stringify(requestBody)).toContain('[已脱敏敏感字段]');
         expect(JSON.stringify(requestBody)).toContain('[已脱敏图片dataURL');
+    });
+
+    it('uses paged save summaries instead of the full save list for native diagnostic snapshots', async () => {
+        const dbService = await import('../services/dbService');
+        const latestAuto = {
+            id: 13,
+            类型: 'auto',
+            时间戳: Date.parse('2026-06-18T10:50:00+08:00'),
+            元数据: { 现实保存时间ISO: '2026-06-18T02:50:00.000Z' },
+            角色数据: { 姓名: '移动端测试角色' },
+            环境信息: { 时间: '元年:01:02:10:50', 大地点: '中原' }
+        } as any;
+        const latestManual = {
+            id: 12,
+            类型: 'manual',
+            时间戳: Date.parse('2026-06-18T10:45:00+08:00'),
+            元数据: { 现实保存时间ISO: '2026-06-18T02:45:00.000Z' },
+            角色数据: { 姓名: '移动端测试角色' },
+            环境信息: { 时间: '元年:01:02:10:45', 大地点: '中原' }
+        } as any;
+        vi.mocked(dbService.读取存档摘要列表).mockResolvedValue([latestAuto, latestManual]);
+        vi.mocked(dbService.读取存档).mockImplementation(async (id: number) => (
+            id === latestAuto.id ? latestAuto : latestManual
+        ));
+        vi.mocked(dbService.读取存档列表).mockResolvedValue(new Array(500).fill(null).map((_, index) => ({
+            id: index + 1,
+            类型: 'manual',
+            时间戳: index + 1
+        })) as any);
+
+        const { buildDiagnosticSaveSnapshot } = await import('../services/diagnosticContext');
+        const snapshot = await buildDiagnosticSaveSnapshot();
+
+        expect(dbService.读取存档列表).not.toHaveBeenCalled();
+        expect(dbService.读取存档摘要列表).toHaveBeenCalledWith({ limit: 24 });
+        expect(dbService.读取存档).toHaveBeenCalledTimes(2);
+        expect(snapshot.totalSaves).toBe(2);
+        expect(snapshot.saves).toHaveLength(2);
+        expect((snapshot.saves[0] as any).summary.id).toBe(latestAuto.id);
+        expect(snapshot.notes.join('\n')).toContain('移动端');
     });
 });

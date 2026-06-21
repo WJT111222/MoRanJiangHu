@@ -432,4 +432,58 @@ describe('NPC old save compatibility', () => {
         expect(afterAnusFromStaleSnapshot.香闺秘档部位档案?.小穴?.图片URL).toBe('wuxia-asset://img_vulva');
         expect(afterAnusFromStaleSnapshot.香闺秘档部位档案?.屁穴?.图片URL).toBe('wuxia-asset://img_anus');
     });
+
+    it('restores female major NPC secret part archive from successful history during normalization', () => {
+        const chestRecord = {
+            id: 'npc_secret_chest',
+            部位: '胸部',
+            构图: '部位特写',
+            状态: 'success',
+            图片URL: 'wuxia-asset://img_chest',
+            生成时间: 100
+        };
+        const vulvaRecord = {
+            id: 'npc_secret_vulva',
+            部位: '小穴',
+            构图: '部位特写',
+            状态: 'success',
+            图片URL: 'wuxia-asset://img_vulva',
+            生成时间: 200
+        };
+        const anusRecord = {
+            id: 'npc_secret_anus',
+            部位: '屁穴',
+            构图: '部位特写',
+            状态: 'success',
+            图片URL: 'wuxia-asset://img_anus',
+            生成时间: 300
+        };
+
+        const [npc] = 规范化社交列表([
+            {
+                id: 'npc_secret_female_major',
+                姓名: '俞月荷',
+                性别: '女',
+                是否主要角色: true,
+                图片档案: {
+                    生图历史: [anusRecord, vulvaRecord, chestRecord],
+                    香闺秘档部位档案: {
+                        胸部: {
+                            id: 'npc_secret_chest_pending',
+                            部位: '胸部',
+                            构图: '部位特写',
+                            状态: 'pending',
+                            生图词组: 'old pending prompt',
+                            生成时间: 50
+                        },
+                        屁穴: anusRecord
+                    }
+                }
+            }
+        ], { 合并同名: false });
+
+        expect(npc.图片档案?.香闺秘档部位档案?.胸部?.图片URL).toBe('wuxia-asset://img_chest');
+        expect(npc.图片档案?.香闺秘档部位档案?.小穴?.图片URL).toBe('wuxia-asset://img_vulva');
+        expect(npc.图片档案?.香闺秘档部位档案?.屁穴?.图片URL).toBe('wuxia-asset://img_anus');
+    });
 });

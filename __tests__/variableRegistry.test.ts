@@ -75,6 +75,43 @@ describe('variableRegistry', () => {
         expect(prompt).toContain('- 社交[0].记忆');
     });
 
+    it('maps common inventory shorthand paths to the real player inventory', () => {
+        expect(校验变量命令是否登记({
+            action: 'push',
+            key: '背包',
+            value: { 名称: '回气丹', 堆叠数量: 1 }
+        }, {
+            ...baseState,
+            角色: {
+                ...baseState.角色,
+                物品列表: []
+            }
+        }).normalizedKey).toBe('gameState.角色.物品列表');
+
+        const result = applyStateCommand(
+            { ...baseState.角色, 物品列表: [] } as any,
+            baseState.环境 as any,
+            baseState.社交 as any,
+            baseState.世界 as any,
+            baseState.战斗 as any,
+            baseState.剧情 as any,
+            baseState.剧情规划 as any,
+            undefined,
+            undefined,
+            undefined,
+            baseState.玩家门派 as any,
+            baseState.任务列表 as any,
+            baseState.约定列表 as any,
+            '物品列表',
+            { 名称: '聚气散', 堆叠数量: 2 },
+            'push'
+        );
+
+        expect(result.char.物品列表).toEqual([
+            expect.objectContaining({ 名称: '聚气散', 堆叠数量: 2 })
+        ]);
+    });
+
     it('keeps story planning roots registered as editable runtime sections', () => {
         const prompt = 构建变量路径登记提示(baseState);
 

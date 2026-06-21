@@ -4,6 +4,7 @@ import { GitHubSyncButton } from '../features/Auth/GitHubSyncButton';
 import { RELEASE_INFO } from '../../data/releaseInfo';
 import { checkForAppUpdate, downloadLatestApkPackage, openExternalUrl } from '../../services/appUpdate';
 import { fetchOnlinePresencePublicStats, type OnlinePresencePublicStats } from '../../services/onlinePresence';
+import type { RuntimeReleaseInfo } from '../../services/runtimeReleaseInfo';
 import { 读取云端游玩会话 } from '../../services/cloudPlayService';
 import { isNativeCapacitorEnvironment, setNativeSystemBarsHidden } from '../../utils/nativeRuntime';
 import { 接口设置结构, ThemePreset } from '../../types';
@@ -77,6 +78,7 @@ interface Props {
     onThemeChange: (theme: ThemePreset) => void;
     hasSave: boolean;
     apiConfig?: 接口设置结构;
+    releaseInfo?: RuntimeReleaseInfo;
 }
 
 const actionButtonStyle: React.CSSProperties = {
@@ -604,7 +606,8 @@ const LandingPage: React.FC<Props> = ({
     currentTheme,
     onThemeChange,
     hasSave,
-    apiConfig
+    apiConfig,
+    releaseInfo = RELEASE_INFO
 }) => {
     const isNativeApp = React.useMemo(() => isNativeCapacitorEnvironment(), []);
     const [isCheckingUpdate, setIsCheckingUpdate] = React.useState(false);
@@ -777,7 +780,7 @@ const LandingPage: React.FC<Props> = ({
                                 lineHeight: 'var(--ui-等宽信息-line-height, 1.45)'
                             }}
                         >
-                            VER {RELEASE_INFO.versionName} · APK {RELEASE_INFO.versionCode}
+                            VER {releaseInfo.versionName} · APK {releaseInfo.versionCode}
                         </div>
 
                         <div className="landing-subtitle-row flex w-full max-w-full min-w-0 items-center justify-center gap-3 opacity-90 sm:gap-6">
@@ -840,14 +843,14 @@ const LandingPage: React.FC<Props> = ({
                             <div>
                                 <div className="text-sm font-serif tracking-[0.24em] text-wuxia-gold">发布信息</div>
                                 <div className="mt-1 text-xs text-gray-400">
-                                    Web / APK 当前统一版本 v{RELEASE_INFO.versionName}
+                                    Web / APK 当前统一版本 v{releaseInfo.versionName}
                                 </div>
                                 <div className="mt-1 text-[11px] font-mono tracking-[0.08em] text-gray-500">
-                                    发布时间 {格式化发布时间(RELEASE_INFO.releasePublishedAt)}
+                                    发布时间 {格式化发布时间(releaseInfo.releasePublishedAt)}
                                 </div>
                             </div>
                             <div className="text-xs font-mono tracking-[0.18em] text-gray-500">
-                                APK CODE {RELEASE_INFO.versionCode}
+                                APK CODE {releaseInfo.versionCode}
                             </div>
                         </div>
 

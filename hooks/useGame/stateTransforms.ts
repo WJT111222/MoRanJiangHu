@@ -2790,6 +2790,35 @@ const 标准化香闺秘档部位档案 = (raw: any): any | undefined => {
     };
 };
 
+const 香闺秘档部位列表 = ['胸部', '小穴', '屁穴', '肉棒'] as const;
+type 香闺秘档部位键 = typeof 香闺秘档部位列表[number];
+
+const NPC图片记录可作香闺秘档部位图 = (record: any, part: 香闺秘档部位键): boolean => {
+    if (!record || typeof record !== 'object') return false;
+    if (record?.部位 !== part) return false;
+    if (record?.状态 !== 'success') return false;
+    if (!图片资源记录含可恢复地址(record)) return false;
+    const composition = 规范化文本(record?.构图);
+    const id = 规范化文本(record?.id);
+    return composition === '部位特写'
+        || NPC私密图片构图集合.has(composition)
+        || /^npc_secret_/i.test(id);
+};
+
+const 从历史回填NPC香闺秘档部位档案 = (rawArchive: any, history: any[]): any | undefined => {
+    const current = 标准化香闺秘档部位档案(rawArchive) || {};
+    const next: any = { ...current };
+    let changed = false;
+    香闺秘档部位列表.forEach((part) => {
+        if (图片资源记录含可恢复地址(next?.[part])) return;
+        const fallback = history.find((record) => NPC图片记录可作香闺秘档部位图(record, part));
+        if (!fallback) return;
+        next[part] = fallback;
+        changed = true;
+    });
+    return changed ? 标准化香闺秘档部位档案(next) : 标准化香闺秘档部位档案(current);
+};
+
 const 标准化NPC图片记录 = (raw: any): any | undefined => {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
     const normalizedAsset = 压缩图片资源字段(raw);
@@ -2926,10 +2955,11 @@ const 合并NPC图片档案对象 = (leftRaw: any, rightRaw: any): any | undefin
     const 已选立绘图片ID = mergedHistory.some((item) => item?.id === 原始已选立绘图片ID && NPC图片记录可作立绘(item))
         ? 原始已选立绘图片ID
         : '';
-    const 香闺秘档部位档案 = 标准化香闺秘档部位档案({
+    const rawSecretArchive = 标准化香闺秘档部位档案({
         ...(leftSource?.香闺秘档部位档案 && typeof leftSource.香闺秘档部位档案 === 'object' ? leftSource.香闺秘档部位档案 : {}),
         ...(rightSource?.香闺秘档部位档案 && typeof rightSource.香闺秘档部位档案 === 'object' ? rightSource.香闺秘档部位档案 : {})
     });
+    const 香闺秘档部位档案 = 从历史回填NPC香闺秘档部位档案(rawSecretArchive, mergedHistory);
     if (!recent && mergedHistory.length <= 0 && !香闺秘档部位档案 && !已选头像图片ID && !已选立绘图片ID && !已选背景图片ID) {
         return undefined;
     }

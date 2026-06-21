@@ -30,6 +30,7 @@ import { 小说拆分后台调度服务 } from './services/novelDecompositionSch
 import { checkForAppUpdate, downloadLatestApkPackage, subscribeAppUpdateProgress, type AppUpdateProgressState } from './services/appUpdate';
 import { APK仅手动更新已启用 } from './utils/appUpdatePreferences';
 import { RELEASE_INFO } from './data/releaseInfo';
+import { fetchRuntimeReleaseInfo, type RuntimeReleaseInfo } from './services/runtimeReleaseInfo';
 import { 读取拍卖行状态, 保存拍卖行状态, 清理并补货, 投放事件拍卖品, 构建拍卖行存储作用域, 上架背包物品, 创建交易记录, 结算玩家寄售, 从势力互动投放拍卖品, type 拍卖行状态 } from './services/auctionHouse';
 import { 获取货币显示模式, 规范化角色金钱 } from './utils/currencyDisplay';
 import { 获取题材界面文案 } from './utils/resourceLabels';
@@ -539,6 +540,7 @@ const App: React.FC = () => {
     const [suppressReleaseNotesForToday, setSuppressReleaseNotesForToday] = React.useState(false);
     const [returnHomeSaving, setReturnHomeSaving] = React.useState(false);
     const [appUpdateProgress, setAppUpdateProgress] = React.useState<AppUpdateProgressState | null>(null);
+    const [runtimeReleaseInfo, setRuntimeReleaseInfo] = React.useState<RuntimeReleaseInfo>(RELEASE_INFO as RuntimeReleaseInfo);
     const [legacyImageMigrationStatus, setLegacyImageMigrationStatus] = React.useState(() => 获取本地图片图床迁移状态());
     const [legacyImageMigrationNoticeClosed, setLegacyImageMigrationNoticeClosed] = React.useState(false);
     const [legacySaveLineageMigrationStatus, setLegacySaveLineageMigrationStatus] = React.useState(() => 读取旧存档谱系迁移状态());
@@ -620,6 +622,15 @@ const App: React.FC = () => {
     }, [state.gameConfig]);
 
     React.useEffect(() => subscribeAppUpdateProgress(setAppUpdateProgress), []);
+    React.useEffect(() => {
+        let cancelled = false;
+        void fetchRuntimeReleaseInfo().then((info) => {
+            if (!cancelled) setRuntimeReleaseInfo(info);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
     React.useEffect(() => startOnlinePresenceHeartbeat(), []);
     React.useEffect(() => {
         const handleImageError = (event: Event) => {
@@ -3009,6 +3020,7 @@ const App: React.FC = () => {
                     onThemeChange={setters.setCurrentTheme}
                     hasSave={state.hasSave}
                     apiConfig={state.apiConfig}
+                    releaseInfo={runtimeReleaseInfo}
                 />
             )}
 
@@ -3499,8 +3511,8 @@ const App: React.FC = () => {
                             </div>
 
                             <div className="shrink-0 text-wuxia-gold font-bold ml-2 z-20 bg-ink-black/90 px-2 flex items-center h-full border-l border-gray-800 text-transparent relative">
-                                <span className="absolute inset-0 flex items-center px-2 text-wuxia-gold">【V{RELEASE_INFO.versionName}】</span>
-                                【V{RELEASE_INFO.versionName}】
+                                <span className="absolute inset-0 flex items-center px-2 text-wuxia-gold">【V{runtimeReleaseInfo.versionName}】</span>
+                                【V{runtimeReleaseInfo.versionName}】
                             </div>
                         </div>
                     )}
@@ -3749,6 +3761,7 @@ const App: React.FC = () => {
                 onClose={closeReleaseNotes}
                 onPrimaryAction={handleReleaseNotesPrimaryAction}
                 onOpenGithub={handleReleaseNotesOpenGithub}
+                releaseInfo={runtimeReleaseInfo}
             />
 
             <InAppConfirmModal

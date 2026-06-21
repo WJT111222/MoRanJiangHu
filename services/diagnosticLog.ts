@@ -17,6 +17,10 @@ type PrebootLogEntry = {
     values?: unknown[];
 };
 
+const isRecoverableNetworkRejection = (reason: unknown): boolean => (
+    /NetworkError when attempting to fetch resource|Failed to fetch|Load failed|The Internet connection appears to be offline|Network request failed/i.test(stringifyValue(reason))
+);
+
 declare global {
     interface Window {
         __MORAN_PREBOOT_LOGS__?: PrebootLogEntry[];
@@ -200,6 +204,11 @@ export const installDiagnosticLogCapture = () => {
             ]);
         });
         window.addEventListener('unhandledrejection', event => {
+            if (isRecoverableNetworkRejection(event.reason)) {
+                recordDiagnosticLog('warn', ['recoverable unhandledrejection', event.reason]);
+                event.preventDefault();
+                return;
+            }
             recordDiagnosticLog('error', ['unhandledrejection', event.reason]);
         });
     }

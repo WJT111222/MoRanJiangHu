@@ -106,4 +106,31 @@ describe('运行时变量管理', () => {
         expect(getState().同人女主剧情规划).toBeUndefined();
         expect(performAutoSave).not.toHaveBeenCalled();
     });
+
+    it('运行时变量命令会把背包数量减少同步到真实物品列表', async () => {
+        const { deps, getState, performAutoSave } = 创建依赖();
+        getState().角色 = {
+            姓名: '杨培强',
+            物品列表: [
+                { ID: 'item_pill', 名称: '回气丹', 堆叠数量: 3, 是否可堆叠: true }
+            ]
+        };
+        const workflow = 创建运行时变量工作流(deps);
+
+        await workflow.applyRuntimeVariableCommand({
+            action: 'sub',
+            key: '角色.物品列表[0].堆叠数量',
+            value: 1
+        } as any);
+
+        expect(getState().角色.物品列表[0].堆叠数量).toBe(2);
+        expect(performAutoSave).toHaveBeenCalledWith(expect.objectContaining({
+            char: expect.objectContaining({
+                物品列表: expect.arrayContaining([
+                    expect.objectContaining({ 名称: '回气丹', 堆叠数量: 2 })
+                ])
+            }),
+            force: true
+        }));
+    });
 });

@@ -2,7 +2,7 @@ import type { 生图任务来源类型, 角色数据结构 } from '../../types';
 import type { 当前可用接口结构 } from '../../utils/apiConfig';
 import { 获取图片展示地址, 图片资源记录含可恢复地址 } from '../../utils/imageAssets';
 import { 主角角色锚点标识 } from './imagePresetWorkflow';
-import { 合并NPC图片档案 } from './npcImageStateWorkflow';
+import { 合并NPC图片档案, 标准化香闺秘档部位档案, 标准化香闺秘档部位结果 } from './npcImageStateWorkflow';
 
 type 主角生图选项 = {
     构图?: '头像' | '半身' | '立绘';
@@ -204,6 +204,78 @@ export const 创建主角图片工作流 = (deps: 主角图片工作流依赖) =
         });
     };
 
+    const 写入主角香闺秘档部位结果 = (part: string, updater: (current: any) => any): boolean => {
+        let changed = false;
+        更新角色并自动存档((prev) => {
+            const archive = (prev as any)?.图片档案 && typeof (prev as any).图片档案 === 'object'
+                ? (prev as any).图片档案
+                : {};
+            const currentSecretArchive = 标准化香闺秘档部位档案(archive?.香闺秘档部位档案) || {};
+            const nextPartResult = 标准化香闺秘档部位结果(updater((currentSecretArchive as any)?.[part]), part as any);
+            const nextSecretArchive = 标准化香闺秘档部位档案({
+                ...currentSecretArchive,
+                [part]: nextPartResult
+            });
+            changed = true;
+            return {
+                ...prev,
+                图片档案: {
+                    ...archive,
+                    香闺秘档部位档案: nextSecretArchive
+                }
+            };
+        });
+        return changed;
+    };
+
+    const 写入主角香闺秘档部位记录 = (part: string, record: any, options?: { 同步最近结果?: boolean }): boolean => {
+        if (!record || typeof record !== 'object') return false;
+        const shouldUpdateRecent = options?.同步最近结果 !== false;
+        let changed = false;
+        更新角色并自动存档((prev) => {
+            const archive = (prev as any)?.图片档案 && typeof (prev as any).图片档案 === 'object'
+                ? (prev as any).图片档案
+                : {};
+            const currentRecent = archive?.最近生图结果 || (prev as any)?.最近生图结果;
+            const currentHistory = Array.isArray(archive?.生图历史)
+                ? archive.生图历史.filter((item: any) => item && typeof item === 'object')
+                : (currentRecent ? [currentRecent] : []);
+            const currentSecretArchive = 标准化香闺秘档部位档案(archive?.香闺秘档部位档案) || {};
+            const nextRecord = {
+                ...record,
+                id: typeof record?.id === 'string' && record.id.trim()
+                    ? record.id.trim()
+                    : `player_secret_${part}_${Date.now()}`,
+                部位: part,
+                构图: '部位特写' as const,
+                状态: record?.状态 || 'success'
+            };
+            const nextPartResult = 标准化香闺秘档部位结果({
+                ...((currentSecretArchive as any)?.[part] || {}),
+                ...nextRecord
+            }, part as any);
+            const nextHistory = [nextRecord, ...currentHistory.filter((item: any) => item?.id !== nextRecord.id)]
+                .sort((a: any, b: any) => Number(b?.生成时间 || 0) - Number(a?.生成时间 || 0));
+            const nextRecent = shouldUpdateRecent ? nextRecord : currentRecent;
+            const nextSecretArchive = 标准化香闺秘档部位档案({
+                ...currentSecretArchive,
+                [part]: nextPartResult
+            });
+            changed = true;
+            return {
+                ...prev,
+                图片档案: {
+                    ...archive,
+                    最近生图结果: nextRecent,
+                    生图历史: nextHistory,
+                    香闺秘档部位档案: nextSecretArchive
+                },
+                最近生图结果: nextRecent
+            };
+        });
+        return changed;
+    };
+
     const generatePlayerImage = async (
         options?: 主角生图选项,
         meta?: { source?: 生图任务来源类型; showToast?: boolean; playerSnapshot?: 角色数据结构 }
@@ -401,34 +473,11 @@ export const 创建主角图片工作流 = (deps: 主角图片工作流依赖) =
                     获取社交列表: () => [],
                     获取NPC唯一标识: () => '__player__',
                     设置NPC生图任务队列: () => {},
+                    更新NPC香闺秘档部位结果: (_npcKey: string, targetPart: string, updater: (current: any) => any) => (
+                        写入主角香闺秘档部位结果(targetPart, updater)
+                    ),
                     写入NPC香闺秘档部位记录: (_npcKey: string, _part: string, record: any) => {
-                        deps.设置角色((prev) => {
-                            const prevArchive = (prev as any)?.图片档案 && typeof (prev as any).图片档案 === 'object'
-                                ? (prev as any).图片档案
-                                : {};
-                            const prevSecret = prevArchive.香闺秘档部位档案 && typeof prevArchive.香闺秘档部位档案 === 'object'
-                                ? prevArchive.香闺秘档部位档案
-                                : {};
-                            const nextRecord = {
-                                ...record,
-                                部位: part,
-                                构图: '部位特写' as const,
-                                状态: record?.状态 || 'success'
-                            };
-                            const history = Array.isArray(prevArchive.生图历史)
-                                ? prevArchive.生图历史.filter((item: any) => item && item.id !== nextRecord.id)
-                                : [];
-                            return {
-                                ...prev,
-                                图片档案: {
-                                    ...prevArchive,
-                                    最近生图结果: prevArchive.最近生图结果,
-                                    生图历史: [nextRecord, ...history],
-                                    香闺秘档部位档案: { ...prevSecret, [part]: nextRecord }
-                                }
-                            };
-                        });
-                        return true;
+                        return 写入主角香闺秘档部位记录(_part || part, record, { 同步最近结果: false });
                     }
                 }
             );

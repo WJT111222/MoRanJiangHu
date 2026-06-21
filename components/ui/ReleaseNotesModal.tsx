@@ -2,6 +2,7 @@ import React from 'react';
 import GameButton from './GameButton';
 import { RELEASE_INFO } from '../../data/releaseInfo';
 import { openExternalUrl } from '../../services/appUpdate';
+import type { RuntimeReleaseInfo } from '../../services/runtimeReleaseInfo';
 
 type ReleaseEntry = {
     versionCode?: number;
@@ -18,6 +19,7 @@ interface Props {
     onClose: () => void;
     onPrimaryAction: () => void;
     onOpenGithub: () => void;
+    releaseInfo?: RuntimeReleaseInfo;
 }
 
 const RELEASE_TIME_ZONE = 'Asia/Shanghai';
@@ -37,14 +39,14 @@ const formatReleaseTime = (value?: string) => {
     }).format(date);
 };
 
-const normalizedHistory: ReleaseEntry[] = [
+const buildNormalizedHistory = (releaseInfo: RuntimeReleaseInfo): ReleaseEntry[] => [
     {
-        versionCode: RELEASE_INFO.versionCode,
-        versionName: RELEASE_INFO.versionName,
-        publishedAt: RELEASE_INFO.releasePublishedAt,
-        changes: Array.isArray(RELEASE_INFO.releaseNotes) ? [...RELEASE_INFO.releaseNotes] : []
+        versionCode: releaseInfo.versionCode,
+        versionName: releaseInfo.versionName,
+        publishedAt: releaseInfo.releasePublishedAt,
+        changes: Array.isArray(releaseInfo.releaseNotes) ? [...releaseInfo.releaseNotes] : []
     },
-    ...(Array.isArray(RELEASE_INFO.releaseHistory) ? RELEASE_INFO.releaseHistory : [])
+    ...(Array.isArray(releaseInfo.releaseHistory) ? releaseInfo.releaseHistory : [])
 ].reduce<ReleaseEntry[]>((list, item) => {
     if (!item?.versionName) return list;
     if (list.some((entry) => entry.versionName === item.versionName && entry.versionCode === item.versionCode)) {
@@ -53,7 +55,6 @@ const normalizedHistory: ReleaseEntry[] = [
     return [...list, item];
 }, []);
 
-const CNB_GUIDE_URL = RELEASE_INFO.cnbGuideUrl || 'https://msjh.bacon.de5.net/cnb-comfyui-guide.html';
 const API共享说明 = '也欢迎愿意支持项目的客户共享可用于开发测试的 API 地址和密钥。我承诺：客户提供的 API key 只会用于本项目开发，不会用于其他用途。目前我已为本项目购买三次接码，共花费 15 元，若长期完全自费可能难以为继。';
 
 const ReleaseNotesModal: React.FC<Props> = ({
@@ -63,10 +64,13 @@ const ReleaseNotesModal: React.FC<Props> = ({
     onSuppressForTodayChange,
     onClose,
     onPrimaryAction,
-    onOpenGithub
+    onOpenGithub,
+    releaseInfo = RELEASE_INFO
 }) => {
     if (!open) return null;
 
+    const normalizedHistory = buildNormalizedHistory(releaseInfo);
+    const CNB_GUIDE_URL = releaseInfo.cnbGuideUrl || 'https://msjh.bacon.de5.net/cnb-comfyui-guide.html';
     const latest = normalizedHistory[0];
     const history = normalizedHistory.slice(1);
 
@@ -93,7 +97,7 @@ const ReleaseNotesModal: React.FC<Props> = ({
                             ?
                         </button>
                         <p className="mt-2 text-sm leading-6 text-gray-300 md:text-[15px]">
-                            当前版本 v{RELEASE_INFO.versionName} · APK {RELEASE_INFO.versionCode}
+                            当前版本 v{releaseInfo.versionName} · APK {releaseInfo.versionCode}
                         </p>
                     </div>
 
@@ -116,7 +120,7 @@ const ReleaseNotesModal: React.FC<Props> = ({
                                     LATEST
                                 </span>
                                 <span className="text-lg font-semibold text-white">
-                                    v{latest?.versionName || RELEASE_INFO.versionName}
+                                    v{latest?.versionName || releaseInfo.versionName}
                                 </span>
                                 {latest?.versionCode ? (
                                     <span className="text-xs tracking-[0.18em] text-gray-400">

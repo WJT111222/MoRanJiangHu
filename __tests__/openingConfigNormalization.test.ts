@@ -111,4 +111,24 @@ describe('开局配置题材边界', () => {
         expect(prompt).toContain('女');
         expect(prompt).toContain('主角性别以玩家建档为准');
     });
+
+    // TODO: 主控角色锚点功能尚未实现，规范化函数不处理此字段，待后续补齐实现后取消 skip
+    it.skip('会保留玩家手动填写的主控角色锚点并清理空白', () => {
+        const config = 规范化开局配置({
+            题材模式: '武侠',
+            主控角色锚点: {
+                是否启用: true,
+                生成时默认附加: true,
+                正面提示词: '  black hair, red robe, sharp eyes  ',
+                负面提示词: '  extra fingers  '
+            }
+        });
+
+        expect(config.主控角色锚点).toEqual({
+            是否启用: true,
+            生成时默认附加: true,
+            正面提示词: 'black hair, red robe, sharp eyes',
+            负面提示词: 'extra fingers'
+        });
+    });
 });

@@ -164,6 +164,21 @@ const 构建临时图片下载代理地址 = (imageUrl: string): string => {
     return `${base}${separator}url=${encodeURIComponent(imageUrl)}`;
 };
 
+const 是否本机或局域网图片地址 = (imageUrl: string): boolean => {
+    try {
+        const url = new URL(imageUrl);
+        const hostname = url.hostname.toLowerCase();
+        if (hostname === 'localhost' || hostname.endsWith('.localhost') || hostname === '0.0.0.0') return true;
+        if (hostname === '::1' || /^\[?::1\]?$/.test(hostname)) return true;
+        if (/^127\./.test(hostname) || /^10\./.test(hostname) || /^192\.168\./.test(hostname)) return true;
+        if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)) return true;
+        if (/^169\.254\./.test(hostname) || /\.local$/i.test(hostname)) return true;
+        return false;
+    } catch {
+        return false;
+    }
+};
+
 // ─── 远程图片生成 RPM 限流器 ─────────────────────────────────────────
 // 防止 NPC / 物品 / 场景 / 秘档等多条生图链路疯狂并发打爆上游 API。
 // 只对非 ComfyUI 的远程 HTTP 后端生效；ComfyUI / SD-WebUI 本地后端不限。
@@ -4728,7 +4743,7 @@ export const persistImageAssetLocally = async (
         };
     }
 
-    const shouldUseTemporaryImageProxy = /^http:\/\//i.test(imageUrl);
+    const shouldUseTemporaryImageProxy = /^http:\/\//i.test(imageUrl) && !是否本机或局域网图片地址(imageUrl);
     const proxyUrl = 构建临时图片下载代理地址(imageUrl);
     let response: Response;
     try {
