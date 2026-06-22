@@ -253,7 +253,7 @@ const MobileSect: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onOpenPlaye
     const 职位可达 = (requiredRank?: string) => (当前职位步骤?.lvl || 0) >= 取职位等级(requiredRank || 文案.rankLadder[0]?.rank);
     const 月俸可领取 = Boolean(sectData.月俸规则) && 本月月俸可领取(sectData, env);
     const 月俸数量 = 估算月俸数量(sectData);
-    const 实际轮回者人数 = Math.max(1, Array.isArray(sectData.重要成员) ? sectData.重要成员.length : 0);
+    const 实际轮回者人数 = Math.max(0, Array.isArray(sectData.重要成员) ? sectData.重要成员.length : 0);
     const 是主角成员 = (member: any): boolean => Boolean(
         member?.是否玩家本人 === true
         || String(member?.id || '').includes('sect_member_player_')

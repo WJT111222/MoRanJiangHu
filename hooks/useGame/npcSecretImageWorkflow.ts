@@ -252,11 +252,12 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
         进度文本: shouldUsePromptTransformer ? `正在整理${part}特写资料并生成生图词组。` : `已跳过词组转化器，正在直接整理${part}特写资料。`
     }));
 
-    deps.更新NPC香闺秘档部位结果(npcKey, part, () => ({
+    deps.更新NPC香闺秘档部位结果(npcKey, part, (currentResult) => ({
+        // [修复] 保留当前已有的 图片URL/本地路径，避免 pending 占位覆盖已存在的 success 图。
+        // 旧图作为兜底显示，新图生成中由任务队列展示进度，成功后由 写入NPC香闺秘档部位记录 覆盖。
+        ...currentResult,
         id: recordId,
         部位: part,
-        图片URL: undefined,
-        本地路径: undefined,
         生图词组: '',
         原始描述: JSON.stringify(baseData ?? {}, null, 2),
         使用模型: modelName,

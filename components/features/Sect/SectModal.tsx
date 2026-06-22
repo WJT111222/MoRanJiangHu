@@ -330,7 +330,8 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onOpenPlayer
         });
         return playerMember ? [playerMember, ...others] : others;
     }, [playerMember, playerNameKey, sectData.重要成员]);
-    const 实际轮回者人数 = Math.max(1, 文案.isInfinite ? 展示成员列表.length : (Array.isArray(sectData.重要成员) ? sectData.重要成员.length : 0));
+    // [修复] 轮回者人数基于原始 重要成员 数量（同步角色与门派状态 已确保主角在内）。
+    const 实际轮回者人数 = Array.isArray(sectData.重要成员) ? sectData.重要成员.filter((m: any) => m && typeof m === 'object').length : 0;
     const 展示人数 = 文案.isInfinite
         ? (Number(sectData.弟子总数 || 0) > 12 ? 实际轮回者人数 : Math.max(实际轮回者人数, Number(sectData.弟子总数 || 0) || 0))
         : (sectData.弟子总数 || 0);
@@ -688,8 +689,8 @@ const SectModal: React.FC<Props> = ({ sectData, onClose, onOpenNpc, onOpenPlayer
                                                     <span>{mem.年龄}岁</span>
                                                     <span className="text-wuxia-cyan">{mem.境界}</span>
                                                 </div>
-                                                <p className="text-sm text-gray-200 font-serif border-t border-gray-800/50 pt-2">
-                                                    "{mem.简介}"
+                                                <p className={`text-sm font-serif border-t border-gray-800/50 pt-2 ${mem.简介 ? 'text-gray-200' : 'text-gray-600 italic'}`}>
+                                                    "{mem.简介 || '暂无详细档案'}"
                                                 </p>
                                             </div>
                                         </div>

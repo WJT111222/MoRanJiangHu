@@ -112,7 +112,7 @@ class ComfyUI后端不可用错误 extends Error {
 }
 
 export const 全局无文字负面提示词 = 'text, typography, letters, words, numbers, caption, label, labels, plaque, sign, inscription, readable inscription, pseudo text, fake text, gibberish text, Chinese characters, English letters, carved words, engraved words, engraved Chinese characters, vertical calligraphy, calligraphy, glyphs, runes, ideograms, seal, stamp, watermark, signature, username, logo, artist name, web address, url, copyright, subtitle, subtitles, title, poster text, comic text, manga text, dialogue text, speech bubble, dialogue box, word balloon, UI overlay, interface text, date stamp, QR code, barcode, poster layout, magazine cover, comic page, comic panel, manga panel, callout, text box, white oval bubble, black outline bubble, overlay, title card, credits, framed text, floating label, name tag, brand mark, emblem';
-export const 全局无文字正向提示词 = 'plain single image, clean composition, uncluttered visual presentation, natural subject focus, clear silhouette, blank unlabeled surfaces, label-free visual design, logo-free visual design, inscription-free object surfaces';
+export const 全局无文字正向提示词 = 'clean composition, clear subject focus, blank unlabeled surfaces, label-free visual design, logo-free visual design';
 const 自动去水印负面提示词 = 全局无文字负面提示词;
 const 默认中国人物正向提示词 = 'Chinese person, East Asian facial features, Chinese facial structure, black or dark brown hair, dark brown eyes';
 const 默认中国人物负向提示词 = 'Caucasian face, European face, Western face, blonde hair, blue eyes, foreigner, white person, Nordic features';
@@ -1584,7 +1584,9 @@ const 构建后置正向提示词 = (
     return 合并正向提示词片段(
         单人角色构图增强,
         全局无文字正向提示词,
-        options?.后端类型 === 'comfyui' && options?.构图 !== '部位特写' ? ZImageTurbo叙事构图增强提示词 : '',
+        // [修复] ZImageTurbo 叙事增强只在场景构图注入：对头像/半身/立绘会注入"preserve fixed character features"
+        // 等叙事指令，导致模型重复画脸、出现大头像背景。单人角色构图不需要叙事空间指令。
+        options?.构图 === '场景' && options?.后端类型 === 'comfyui' ? ZImageTurbo叙事构图增强提示词 : '',
         场景类型增强,
         options?.构图 === '部位特写' ? NSFW部位特写画质增强提示词 : '',
         options?.构图 === '部位特写' ? 部位特写单图正向提示词 : ''
@@ -2989,14 +2991,21 @@ export const buildNpcDirectImagePrompt = (
 ): { 原始描述: string; 生图词组: string } => {
     const source = (npcData && typeof npcData === 'object') ? npcData as Record<string, unknown> : {};
     const isNovelAI = options?.后端类型 === 'novelai';
+    // [修复] 只保留可直接视觉化的字段，移除 身份/境界/简介/核心性格特征/性格 等纯语义中文字段。
+    // 这些字段含"主神空间/轮回者/无限流"等世界观词，SDXL/Flux 会把它们当文字画到图上。
+    // 性别翻译成英文 tag，年龄保留数字。
+    const 翻译性别 = (raw: string): string => {
+        const v = raw.trim();
+        if (v === '女') return 'female';
+        if (v === '男') return 'male';
+        if (v === '男娘') return 'femboy';
+        if (v === '扶她') return 'futanari';
+        return '';
+    };
+    const 年龄文本 = 读取NPC字段文本(source, '年龄');
     const fragments = [
-        读取NPC字段文本(source, '性别'),
-        读取NPC字段文本(source, '年龄') ? `${读取NPC字段文本(source, '年龄')}岁` : '',
-        读取NPC字段文本(source, '身份'),
-        读取NPC字段文本(source, '境界'),
-        读取NPC字段文本(source, '简介'),
-        读取NPC字段文本(source, '核心性格特征'),
-        读取NPC字段文本(source, '性格'),
+        翻译性别(读取NPC字段文本(source, '性别')),
+        年龄文本 && /^\d+$/.test(年龄文本) ? `${年龄文本} years old` : '',
         读取NPC字段文本(source, '外貌'),
         读取NPC字段文本(source, '身材'),
         读取NPC字段文本(source, '衣着')
@@ -3025,11 +3034,15 @@ export const buildNpcDirectImagePrompt = (
             fragments.push(characterCountTag, 'portrait, upper body, face focus');
         }
     } else {
-        if (options?.构图 === '立绘') fragments.push('全身角色，站姿，角色主体');
+        // [修复] 非 NovelAI 也用英文构图描述，避免中文进入 prompt 被画成文字
+        if (options?.构图 === '立绘') fragments.push('full body, standing, character focus');
+        else if (options?.构图 === '半身') fragments.push('upper body portrait, face focus');
+        else fragments.push('portrait, face focus');
     }
     if ((options?.额外要求 || '').trim()) fragments.push((options?.额外要求 || '').trim());
 
-    const 原始词组 = fragments.filter(Boolean).join(isNovelAI ? ', ' : '，');
+    // [修复] 统一用英文逗号连接，避免中文逗号被模型当作要画的内容
+    const 原始词组 = fragments.filter(Boolean).join(', ');
     const 生图词组 = isNovelAI ? 保守补全NAI权重语法(原始词组) : 原始词组;
     return {
         原始描述: JSON.stringify(source ?? {}, null, 2),
@@ -3396,7 +3409,17 @@ const 清洗最终主体提示词 = (rawText: string, options?: { isNovelAI?: bo
     );
     const cleaned = 规范化Artist标签大小写(清理生图词组输出(withoutResidualTags));
     if (!cleaned) return '';
-    return options?.isNovelAI ? 保守补全NAI权重语法(cleaned) : cleaned;
+    // [修复] 非 NovelAI 路径剥离 CJK 字符段：词组转化器偶尔漏出中文短语（如"主神空间""轮回者"），
+    // SDXL/Flux 会把这些中文当文字画到图上。NovelAI 路径保留 CJK（NAI 模型支持中文 tag）。
+    if (!options?.isNovelAI) {
+        const 剥离CJK = cleaned
+            .split(/[,，;；]/)
+            .map((item) => item.trim())
+            .filter((item) => item && !/[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/.test(item))
+            .join(', ');
+        return 剥离CJK.trim() || cleaned;
+    }
+    return 保守补全NAI权重语法(cleaned);
 };
 
 const 解析标签属性 = (raw: string): Record<string, string> => {

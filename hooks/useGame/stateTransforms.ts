@@ -2759,6 +2759,10 @@ const 标准化香闺秘档部位结果 = (raw: any, part: '胸部' | '小穴' |
     const id = typeof raw?.id === 'string' && raw.id.trim().length > 0
         ? raw.id.trim()
         : `npc_secret_${part}_${生成时间}`;
+    // [修复] pending 占位记录不应持久化到部位档案：生图任务进度由任务队列维护，
+    // 部位档案只应保留最终结果。无 URL/本地路径的 pending 占位被中断后会永久残留，
+    // 导致 UI 端"部位档案存在但获取图片展示地址返回空"，并覆盖之前已有的 success 记录。
+    if (状态 === 'pending' && !图片URL && !本地路径) return undefined;
     if (!图片URL && !本地路径 && !生图词组 && !原始描述 && !错误信息) return undefined;
     return {
         id,
