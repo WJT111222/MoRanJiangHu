@@ -2383,6 +2383,10 @@ export const useGame = () => {
     const 触发对白NPC头像补全 = (npcListRaw: any[]) => {
         const config = 读取文生图功能配置();
         if (!config.总开关 || !config.NPC开关) return;
+        if (全部NPC头像补全进行中Ref.current) {
+            输出NPC自动生图调试('跳过：全部 NPC 头像补全仍在进行中（对白NPC头像补全等待）');
+            return;
+        }
         const npcList = (Array.isArray(npcListRaw) ? npcListRaw : [])
             .filter((npc: any) => npc?.对白登场 === true || npc?.自动补全头像 === true);
         if (npcList.length === 0) return;
@@ -2502,6 +2506,10 @@ export const useGame = () => {
             if (!自动补图已启用) continue;
 
             if (!NPC是否已有成功构图(npc, ['头像'])) {
+                if (全部NPC头像补全进行中Ref.current) {
+                    输出NPC自动生图调试('跳过主要角色头像补全：全部 NPC 头像补全仍在进行中', { npcId });
+                    continue;
+                }
                 try {
                     await 执行NPC自动构图任务(npc, '头像');
                 } catch (error) {
@@ -2510,6 +2518,10 @@ export const useGame = () => {
             }
 
             if ((NPC是否女性(npc) || (男娘NSFW内容已启用() && NPC是否男性或男娘(npc))) && !NPC是否已有成功构图(npc, ['半身', '立绘'])) {
+                if (全部NPC头像补全进行中Ref.current) {
+                    输出NPC自动生图调试('跳过主要角色展示图补全：全部 NPC 头像补全仍在进行中', { npcId });
+                    continue;
+                }
                 try {
                     await 执行NPC自动构图任务(npc, '半身');
                 } catch (error) {
@@ -2585,6 +2597,10 @@ export const useGame = () => {
         NPC性别补正生图签名Ref.current = signature;
 
         const timerId = window.setTimeout(() => {
+            if (全部NPC头像补全进行中Ref.current) {
+                输出NPC自动生图调试('跳过 NPC 性别补正生图：全部 NPC 头像补全仍在进行中');
+                return;
+            }
             candidateList.forEach((npc: any) => {
                 const 构图列表 = 读取NPC需性别补正构图列表(npc);
                 console.info('[npc.image.gender-refresh.trigger]', {

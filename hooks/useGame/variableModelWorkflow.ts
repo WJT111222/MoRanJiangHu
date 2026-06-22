@@ -465,6 +465,80 @@ const 构建社交档案完整性审计提示 = (
     ].join('\n');
 };
 
+const 构建主角私密档案审计提示 = (baseState: 变量模型基态): string => {
+    const role = (baseState as any)?.角色;
+    if (!role || typeof role !== 'object') return '';
+    const gender = 读取文本(role?.性别);
+    if (!gender || gender === '男') return '';
+
+    const missingFields: string[] = [];
+    const checkField = (key: string, label: string) => {
+        if (文本疑似占位(role?.[key])) missingFields.push(label);
+    };
+
+    if (gender === '女') {
+        checkField('胸部描述', '胸部描述');
+        checkField('小穴描述', '小穴描述');
+        checkField('屁穴描述', '屁穴描述');
+    } else if (gender === '男娘') {
+        checkField('肉棒描述', '肉棒描述');
+        checkField('屁穴描述', '屁穴描述');
+    } else if (gender === '扶她') {
+        checkField('胸部描述', '胸部描述');
+        checkField('小穴描述', '小穴描述');
+        checkField('屁穴描述', '屁穴描述');
+        checkField('肉棒描述', '肉棒描述');
+    } else {
+        return '';
+    }
+    checkField('性癖', '性癖');
+    checkField('敏感点', '敏感点');
+
+    if (missingFields.length === 0) return '';
+
+    return [
+        '【当前主角私密档案审计】',
+        `- 主角性别为「${gender}」，当前以下私密档案字段仍为占位或缺失：${missingFields.join('、')}。`,
+        '- 根据变量模型职责第 11.1 条，主角若是女性、男娘或扶她，必须维护完整的私密档案字段。',
+        '- 描述标准与 NPC 一致：必须详细写明真实常态，不得使用"普通/正常/略/未知/待补充"等泛化占位词。',
+        '- 胸部描述、小穴描述、屁穴描述需包含名器名称或"无对应名器"结论，并在名器档案中同步维护结构化效果。',
+        '- 本回合请以当前正文、变量规划、角色设定和世界观为依据，在本回合的 `<命令>` 中补齐上述缺失字段。',
+    ].join('\n');
+};
+
+const 构建环境天气审计提示 = (baseState: 变量模型基态): string => {
+    const env = (baseState as any)?.环境;
+    if (!env || typeof env !== 'object') return '';
+
+    const weather = env?.天气;
+    const currentWeather = typeof weather?.天气 === 'string' ? weather.天气.trim() : '';
+    const weatherEndDate = typeof weather?.结束日期 === 'string' ? weather.结束日期.trim() : '';
+
+    const isMissing = !currentWeather || currentWeather === '未知' || currentWeather === '无';
+    const hasNoEndDate = currentWeather && currentWeather !== '未知' && currentWeather !== '无' && !weatherEndDate;
+
+    if (!isMissing && !hasNoEndDate) return '';
+
+    const lines: string[] = [
+        '【当前环境天气审计】',
+    ];
+    if (isMissing) {
+        lines.push(
+            '- 当前 `环境.天气.天气` 为空或「未知/无」，缺少有效的天气描述。',
+            '- 天气缺失会导致顶栏天象变更面板空白、场景生图缺天气标签、世界叙事失去环境锚点。',
+            '- 请根据本回合正文/变量规划的地点、季节、时间、事件氛围，在本回合 `<命令>` 中补全 `环境.天气`：至少写入 `天气` 字段（如「晴」「阴」「小雨」「大雪」「雾霾」「雷暴」等具体天气），并设定合理的 `结束日期`。',
+            '- 若正文没有明确天气描写，可根据地点气候带、季节和当前事件氛围合理推断一个稳定常态天气。',
+        );
+    } else if (hasNoEndDate) {
+        lines.push(
+            '- 当前天气为「' + currentWeather + '」，但 环境.天气.结束日期 为空。',
+            '- 请根据天气类型、季节和剧情节奏设定合理的结束日期（例如小雨可能持续半天、暴雪可能持续数日）。',
+        );
+    }
+
+    return lines.join('\n');
+};
+
 const 名器世界书触发词 = [
     '名器',
     '名器录',
@@ -577,6 +651,8 @@ export const 执行变量模型校准工作流 = async (
     const playerXianxiaAuditPrompt = params.openingConfig?.题材模式 === '仙侠' && 缺少仙侠字段((params.baseState as any)?.角色)
         ? '【当前主角仙侠字段审计】\n- 当前存档为仙侠模式，角色档案需要补齐/修正：灵根、灵根资质、当前灵力、最大灵力、当前神识、最大神识、丹田状态、道基状态、心魔值、功德、业力。'
         : '';
+    const playerPrivateArchiveAuditPrompt = 构建主角私密档案审计提示(params.baseState);
+    const weatherAuditPrompt = 构建环境天气审计提示(params.baseState);
     const variableRegistryPrompt = 构建变量路径登记提示(params.baseState as any);
     const femaleNameCandidatePrompt = 构建女性姓名候选提示词({
         usedNames: 收集女性姓名候选已用名(params.baseState),
@@ -595,6 +671,8 @@ export const 执行变量模型校准工作流 = async (
     const mergedExtraPrompt = [
         runtimeExtraPrompt,
         playerXianxiaAuditPrompt,
+        playerPrivateArchiveAuditPrompt,
+        weatherAuditPrompt,
         按功能开关过滤提示词内容(构建世界书注入文本({
             books: Array.isArray(params.worldbooks) ? params.worldbooks : [],
             scopes: ['variable_calibration'],
