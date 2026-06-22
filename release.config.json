@@ -1,17 +1,15 @@
 {
-  "versionCode": 512,
-  "versionName": "1.0.512",
+  "versionCode": 513,
+  "versionName": "1.0.513",
   "releaseChannel": "stable",
-  "releasePublishedAt": "2026-06-22T22:22:27+08:00",
+  "releasePublishedAt": "2026-06-22T23:02:35+08:00",
   "releaseNotes": [
-    "修复新开档第一回合对话框美化不显示的问题：文章优化阶段补充原始AI回复中的角色名到已声明集合，避免开局社交列表为空时NPC对话被误判为旁白。",
-    "修复火山引擎Ark接口（ark.cn-beijing.volces.com/api/coding/v3）无法使用的问题：端点路径识别新增Ark Coding模式，正确拼接为/chat/completions。",
-    "新增APK下载测速探针：下载前自动HEAD探测各下载源延迟，优先使用最快的渠道。",
-    "新增下载速度监控：限速时自动取消并切换到备用下载源，避免卡在慢速渠道。",
-    "APK轻量化：移除3个非必需Capacitor插件（browser/clipboard/filesystem），启用R8代码压缩。",
+    "修复所有角色对话框美化不显示的问题：正文规范化阶段的说话人验证现在会记住已确认的角色名，避免二次验证时误杀导致对话被转为旁白。",
+    "新增新游戏向导势力配置：可指定势力数量（3-15个）和自定义预设势力（名称、简介、等级），AI会优先使用预设势力。",
+    "新增APK下载渠道显示：下载进度中会显示当前使用的下载渠道（R2/S3/CDN）。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/",
-    "同步更新 Web、APK 与更新清单到 v1.0.512。"
+    "同步更新 Web、APK 与更新清单到 v1.0.513。"
   ],
   "releaseHistory": [
     {

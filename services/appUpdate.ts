@@ -341,10 +341,19 @@ const installUpdateInNativeApp = async (manifest: UpdateManifest) => {
     // 测速探针：HEAD 请求测量各 provider 延迟，按延迟排序
     const targetUrls = await probeAndSortUrlsByLatency(rawUrls);
 
+    // 从 URL 提取渠道名称
+    const getChannelLabel = (url: string): string => {
+        const lower = url.toLowerCase();
+        if (lower.includes('provider=r2') || lower.includes('download.bacon.de5.net')) return 'R2';
+        if (lower.includes('provider=hi168') || lower.includes('s3.hi168.com')) return 'S3';
+        if (lower.includes('/api/apk/')) return 'CDN';
+        return '备用';
+    };
+
     emitAppUpdateProgress({
         visible: true,
         stage: 'preparing',
-        message: '正在准备下载更新包...',
+        message: `正在准备下载更新包（渠道：${getChannelLabel(targetUrls[0])}）...`,
         versionName
     });
 
@@ -352,11 +361,12 @@ const installUpdateInNativeApp = async (manifest: UpdateManifest) => {
         let lastError: unknown = null;
         for (let index = 0; index < targetUrls.length; index += 1) {
             const targetUrl = targetUrls[index];
+            const channelLabel = getChannelLabel(targetUrl);
             if (index > 0) {
                 emitAppUpdateProgress({
                     visible: true,
                     stage: 'preparing',
-                    message: '当前下载源速度过慢或不可用，正在切换到备用下载源...',
+                    message: `当前下载源速度过慢或不可用，正在切换到 ${channelLabel} 渠道...`,
                     versionName
                 });
             }

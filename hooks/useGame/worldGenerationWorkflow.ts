@@ -332,7 +332,15 @@ export const 执行世界生成工作流 = async (
         const normalizedWorldExtraRequirement = [
             typeof worldConfig.worldExtraRequirement === 'string' ? worldConfig.worldExtraRequirement.trim() : '',
             manualWorldPromptIsModePackageFragment ? normalizedManualWorldPrompt : '',
-            manualRealmPromptIsModePackageFragment ? normalizedManualRealmPrompt : ''
+            manualRealmPromptIsModePackageFragment ? normalizedManualRealmPrompt : '',
+            // 势力数量约束
+            typeof worldConfig.factionCount === 'number' && worldConfig.factionCount >= 3 && worldConfig.factionCount <= 15
+                ? `【势力数量要求】本次开局必须生成恰好 ${worldConfig.factionCount} 个势力组织，不多不少。`
+                : '',
+            // 自定义势力预设
+            typeof worldConfig.customFactions === 'string' && worldConfig.customFactions.trim()
+                ? `【预设势力】以下势力由玩家预设，必须优先使用，不得替换或忽略：\n${worldConfig.customFactions.trim()}`
+                : ''
         ].filter(Boolean).join('\n\n');
         const useWorldRefinement = !useManualWorldPrompt && normalizedWorldExtraRequirement.length > 0;
         const initialFandomBundle = 构建同人运行时提示词包({ openingConfig: effectiveOpeningConfig });

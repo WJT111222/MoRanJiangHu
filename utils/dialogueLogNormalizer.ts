@@ -38,13 +38,17 @@ const 合并原始片段 = (left?: string, right?: string): string => {
     return Array.from(new Set(parts)).join('\n');
 };
 
-const 清理说话人 = (value: string): string => {
+const 清理说话人 = (value: string, confirmedSpeakers?: Set<string>): string => {
     let text = (value || '')
         .replace(/[（(][^）)]{1,16}[）)]/g, '')
-        .replace(/[【】\[\]「」『』“”"']/g, '')
+        .replace(/[【】\[\]「」『』””'']/g, '')
         .trim();
     const special = 规范化正文发送者名(text);
     if (special === '奖励') return special;
+
+    // [修复] 如果原始 sender 已在确认名单中，直接通过，避免二次验证误杀
+    const normalizedOriginal = 规范化正文发送者名(text);
+    if (confirmedSpeakers?.has(normalizedOriginal)) return normalizedOriginal;
 
     text = text.split(/[，,、；;。！？!?\s]/).filter(Boolean).pop() || text;
     for (let i = 0; i < 3; i += 1) {
@@ -588,17 +592,26 @@ const 拆分XML标签对白 = (log: GameLog): GameLog[] => {
 };
 
 export const 规范化可渲染对白日志 = (logs: GameLog[] | undefined): GameLog[] => {
+    // [修复] 先扫描所有日志，提取已确认的说话人名字作为白名单，
+    // 避免清理说话人二次验证时误杀已通过初次解析的角色名
+    const confirmedSpeakers = new Set<string>();
+    for (const log of logs || []) {
+        const s = 规范化正文发送者名(log?.sender || '');
+        if (s && s !== '旁白' && s !== '奖励' && !是否判定日志文本(s)) {
+            confirmedSpeakers.add(s);
+        }
+    }
     const normalized = 保护引号换行日志(logs).flatMap((item) => {
         const rawSender = (item?.sender || '旁白').trim() || '旁白';
         const rawText = typeof item?.text === 'string' ? item.text.trim() : String(item?.text ?? '').trim();
         const rawSource = 读取日志原始片段(item);
-        const text = 拆分过长旁白段落(rawSender === '旁白' ? '旁白' : 清理说话人(rawSender) || '旁白', rawText);
+        const text = 拆分过长旁白段落(rawSender === '旁白' ? '旁白' : 清理说话人(rawSender, confirmedSpeakers) || '旁白', rawText);
         if (是否Judge残留文本(text)) return [];
         if (是否判定日志文本(rawSender) || 是否判定日志文本(text)) {
             if (是否判定日志文本(rawSender) && !完整判定文本特征正则.test(text)) return [];
             return [附加原始片段({ sender: rawSender, text }, rawSource)];
         }
-        const sender = 清理说话人(rawSender) || '旁白';
+        const sender = 清理说话人(rawSender, confirmedSpeakers) || '旁白';
         if (!text) return [];
         if (sender === '旁白') {
             return 拆分旁白中的显式方括号对白(附加原始片段({ sender, text }, rawSource))
@@ -644,6 +657,12 @@ export const 规范化对白日志 = (
     options?: NormalizeOptions
 ): GameLog[] => {
     const knownSpeakers = Array.from(new Set((options?.knownSpeakers || []).map(item => (item || '').trim()).filter(Boolean)));
+    // [修复] 构建已确认说话人白名单
+    const confirmedSpeakers = new Set<string>(knownSpeakers);
+    for (const log of logs || []) {
+        const s = 规范化正文发送者名(log?.sender || '');
+        if (s && s !== '旁白' && s !== '奖励') confirmedSpeakers.add(s);
+    }
     const normalized = 保护引号换行日志(logs)
         .flatMap((item) => {
             const rawSender = (item?.sender || '旁白').trim() || '旁白';
@@ -651,7 +670,7 @@ export const 规范化对白日志 = (
             const text = 拆分过长旁白段落(rawSender, typeof item?.text === 'string' ? item.text : String(item?.text ?? ''));
             if (是否判定日志文本(rawSender) || 是否判定日志文本(text)) return [附加原始片段({ sender: rawSender, text }, rawSource)];
             if (rawSender === '奖励') return [附加原始片段({ sender: rawSender, text }, rawSource)];
-            const sender = rawSender === '旁白' ? '旁白' : (清理说话人(rawSender) || '旁白');
+            const sender = rawSender === '旁白' ? '旁白' : (清理说话人(rawSender, confirmedSpeakers) || '旁白');
             const log = 附加原始片段({ sender, text }, rawSource);
             if (sender !== '旁白') return [log];
             return 拆分旁白中的显式方括号对白(log)

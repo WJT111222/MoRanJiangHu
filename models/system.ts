@@ -773,6 +773,8 @@ export interface WorldGenConfig {
     modeRuntimeProfile?: ModeRuntimeProfile;
     realmDiyDraft?: RealmDiyDraft;
     mapDiyDraft?: WorldMapDiyDraft;
+    factionCount?: number;
+    customFactions?: string;
 }
 
 export interface RealmDiyRow {

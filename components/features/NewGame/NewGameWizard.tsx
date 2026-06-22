@@ -2200,6 +2200,32 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                                                 onChange={(sectDensity) => setWorldConfig({ ...worldConfig, sectDensity })}
                                             />
                                         </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm text-wuxia-cyan font-bold">势力数量（留空由密度决定）</label>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="range"
+                                                    min={3}
+                                                    max={15}
+                                                    step={1}
+                                                    value={worldConfig.factionCount ?? 8}
+                                                    onChange={(e) => setWorldConfig({ ...worldConfig, factionCount: Number(e.target.value) })}
+                                                    className="flex-1 accent-wuxia-gold"
+                                                />
+                                                <span className="text-wuxia-gold font-bold w-8 text-center">{worldConfig.factionCount ?? '自动'}</span>
+                                            </div>
+                                            <div className="text-[11px] text-gray-500 leading-5">拖动选择 3-15 个势力，或保持默认由 AI 根据题材和密度自行决定。</div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm text-wuxia-cyan font-bold">自定义势力（可选）</label>
+                                            <textarea
+                                                value={worldConfig.customFactions || ''}
+                                                onChange={(e) => setWorldConfig({ ...worldConfig, customFactions: e.target.value })}
+                                                placeholder={'可预设势力名称、简介和等级，每行一个，例如：\n天机阁 - 江湖情报组织，等级7，掌控天下消息\n药王谷 - 医道世家，等级5，擅长炼丹解毒'}
+                                                className="w-full h-24 bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-3 text-white outline-none rounded-md transition-all resize-none font-serif"
+                                            />
+                                            <div className="text-[11px] text-gray-500 leading-5">AI 会优先使用这些势力，只在基础上补齐数量和细节。</div>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-2">
