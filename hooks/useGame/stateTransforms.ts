@@ -1309,7 +1309,12 @@ const 合并角色图片档案对象 = (leftRaw: any, rightRaw: any): any | unde
     const 已选立绘图片ID = mergedHistory.some((item) => item?.id === 原始已选立绘图片ID && 角色图片记录可作立绘(item))
         ? 原始已选立绘图片ID
         : (mergedHistory.find(角色图片记录可作立绘)?.id || undefined);
-    if (!recent && mergedHistory.length <= 0 && !已选头像图片ID && !已选立绘图片ID && !已选背景图片ID) {
+    const rawSecretArchive = 标准化香闺秘档部位档案({
+        ...(leftSource?.香闺秘档部位档案 && typeof leftSource.香闺秘档部位档案 === 'object' ? leftSource.香闺秘档部位档案 : {}),
+        ...(rightSource?.香闺秘档部位档案 && typeof rightSource.香闺秘档部位档案 === 'object' ? rightSource.香闺秘档部位档案 : {})
+    });
+    const 香闺秘档部位档案 = 从历史回填NPC香闺秘档部位档案(rawSecretArchive, mergedHistory);
+    if (!recent && mergedHistory.length <= 0 && !香闺秘档部位档案 && !已选头像图片ID && !已选立绘图片ID && !已选背景图片ID) {
         return undefined;
     }
     return {
@@ -1317,7 +1322,8 @@ const 合并角色图片档案对象 = (leftRaw: any, rightRaw: any): any | unde
         ...(mergedHistory.length > 0 ? { 生图历史: mergedHistory } : {}),
         ...(已选头像图片ID ? { 已选头像图片ID } : {}),
         ...(已选立绘图片ID ? { 已选立绘图片ID } : {}),
-        ...(已选背景图片ID ? { 已选背景图片ID } : {})
+        ...(已选背景图片ID ? { 已选背景图片ID } : {}),
+        ...(香闺秘档部位档案 ? { 香闺秘档部位档案 } : {})
     };
 };
 
