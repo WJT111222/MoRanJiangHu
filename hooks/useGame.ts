@@ -498,12 +498,14 @@ export const useGame = () => {
     const 社交Ref = useRef<any[]>(Array.isArray(社交) ? 社交 : []);
     // [致命修复] 包装 设置社交：同步更新 社交Ref.current，避免异步 useEffect 延迟
     // 导致 图片档案工作流 读取到旧的社交列表，丢失已写入的香闺秘档部位档案。
+    // 关键：必须在调用 设置社交 之前同步更新 社交Ref.current，
+    // 否则连续的异步写入（如香闺秘档3部位顺序生成）会读到旧 ref，后写覆盖先写。
     const 同步设置社交 = (updater: any) => {
-        设置社交((prev: any[]) => {
-            const next = typeof updater === 'function' ? updater(prev) : updater;
-            社交Ref.current = Array.isArray(next) ? next : [];
-            return next;
-        });
+        const prev = 社交Ref.current;
+        const next = typeof updater === 'function' ? updater(prev) : updater;
+        const nextList = Array.isArray(next) ? next : [];
+        社交Ref.current = nextList;
+        设置社交(nextList);
     };
     const visualConfigRef = useRef(visualConfig);
     const imageManagerConfigRef = useRef<图片管理设置结构>(imageManagerConfig || 默认图片管理设置);
@@ -784,7 +786,7 @@ export const useGame = () => {
         options?: { 静默NPC总结提示?: boolean }
     ): NPC结构[] => {
         const normalized = 应用同名NPC过滤(规范化社交列表安全(nextSocial, { 合并同名: false }), 角色?.姓名);
-        设置社交(normalized);
+        同步设置社交(normalized);
         刷新NPC记忆总结队列(normalized, { 静默: options?.静默NPC总结提示 === true });
         void performAutoSave({ social: normalized, history: 历史记录, force: true });
         return normalized;
@@ -866,7 +868,7 @@ export const useGame = () => {
         const snapshotEnv = 规范化环境信息(深拷贝(snapshot.回档前状态.环境));
         设置角色(规范化角色物品容器映射(深拷贝(snapshot.回档前状态.角色), { 当前时间: snapshotEnv }));
         设置环境(snapshotEnv);
-        设置社交(应用同名NPC过滤(规范化社交列表(深拷贝(snapshot.回档前状态.社交)), 角色?.姓名));
+        同步设置社交(应用同名NPC过滤(规范化社交列表(深拷贝(snapshot.回档前状态.社交)), 角色?.姓名));
         设置世界(规范化世界状态(深拷贝(snapshot.回档前状态.世界)));
         设置战斗(深拷贝(snapshot.回档前状态.战斗));
         设置玩家门派(深拷贝(snapshot.回档前状态.玩家门派));
@@ -2855,7 +2857,7 @@ export const useGame = () => {
                 return !npcName || npcName !== playerNameKeySect;
             });
         }
-        设置社交(normalized);
+        同步设置社交(normalized);
         void performAutoSave({ social: normalized, history: 历史记录, force: true });
         触发新增NPC自动生图(missing);
     }, [玩家门派, 历史记录]);
@@ -2868,7 +2870,7 @@ export const useGame = () => {
         设置环境(规范化环境信息(openingBase.环境));
         设置游戏初始时间(openingBase.游戏初始时间 || '');
         开局社交刚初始化Ref.current = true;
-        设置社交(应用同名NPC过滤(规范化社交列表(openingBase.社交), 角色?.姓名));
+        同步设置社交(应用同名NPC过滤(规范化社交列表(openingBase.社交), 角色?.姓名));
         设置世界(openingBase.世界);
         设置战斗(openingBase.战斗);
         设置玩家门派(openingBase.玩家门派);
