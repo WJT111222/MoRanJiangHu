@@ -293,9 +293,33 @@ const resolveNativeApkDownloadUrls = (manifest: UpdateManifest): string[] => {
         });
 };
 
+/** 对每个 URL 发送 HEAD 请求测量延迟，返回按延迟排序的 URL 列表（最快在前）。 */
+const probeAndSortUrlsByLatency = async (urls: string[], timeoutMs = 5000): Promise<string[]> => {
+    if (urls.length <= 1) return urls;
+
+    const probeOne = async (url: string): Promise<{ url: string; latencyMs: number }> => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        const start = Date.now();
+        try {
+            await fetch(url, { method: 'HEAD', signal: controller.signal, cache: 'no-store' });
+            return { url, latencyMs: Date.now() - start };
+        } catch {
+            return { url, latencyMs: Infinity };
+        } finally {
+            clearTimeout(timer);
+        }
+    };
+
+    const results = await Promise.all(urls.map(probeOne));
+    return results
+        .sort((a, b) => a.latencyMs - b.latencyMs)
+        .map((item) => item.url);
+};
+
 const installUpdateInNativeApp = async (manifest: UpdateManifest) => {
-    const targetUrls = resolveNativeApkDownloadUrls(manifest);
-    if (targetUrls.length === 0) {
+    const rawUrls = resolveNativeApkDownloadUrls(manifest);
+    if (rawUrls.length === 0) {
         throw new Error('缺少 APK 下载地址。');
     }
 
@@ -306,6 +330,16 @@ const installUpdateInNativeApp = async (manifest: UpdateManifest) => {
             ...progress
         });
     });
+
+    emitAppUpdateProgress({
+        visible: true,
+        stage: 'preparing',
+        message: '正在测速选择最佳下载源...',
+        versionName
+    });
+
+    // 测速探针：HEAD 请求测量各 provider 延迟，按延迟排序
+    const targetUrls = await probeAndSortUrlsByLatency(rawUrls);
 
     emitAppUpdateProgress({
         visible: true,
@@ -322,7 +356,7 @@ const installUpdateInNativeApp = async (manifest: UpdateManifest) => {
                 emitAppUpdateProgress({
                     visible: true,
                     stage: 'preparing',
-                    message: '主下载地址不可用，正在尝试备用下载地址...',
+                    message: '当前下载源速度过慢或不可用，正在切换到备用下载源...',
                     versionName
                 });
             }

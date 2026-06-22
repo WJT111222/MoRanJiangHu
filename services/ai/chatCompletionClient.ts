@@ -325,6 +325,7 @@ const 响应格式疑似不受支持 = (baseUrlRaw: string, modelRaw: string): b
 
     if (lowerUrl.includes('doubao') || lowerUrl.includes('volcengine')) return true;
     if (lowerUrl.includes('volc') || lowerUrl.includes('bytedance')) return true;
+    if (lowerUrl.includes('ark.cn') || lowerUrl.includes('volces.com')) return true;
     if (lowerUrl.includes('dashscope') && !lowerModel.includes('qwen-max')) return true;
     return false;
 };
@@ -1327,6 +1328,13 @@ const 构建OpenAI端点 = (
     const looksLikeQianfanCoding = lowerBase.includes('qianfan.baidubce.com')
         && /\/v2\/coding(?:\/chat\/completions)?$/i.test(base);
     if (looksLikeQianfanCoding) {
+        return /\/chat\/completions$/i.test(base) ? base : `${base}/chat/completions`;
+    }
+
+    // 火山引擎 Ark 接口：/api/coding/v3 已包含版本路径，只需追加 /chat/completions
+    const looksLikeVolcArkCoding = (lowerBase.includes('volces.com') || lowerBase.includes('ark.cn'))
+        && /\/api\/coding\/v\d+(?:\/chat\/completions)?$/i.test(base);
+    if (looksLikeVolcArkCoding) {
         return /\/chat\/completions$/i.test(base) ? base : `${base}/chat/completions`;
     }
 

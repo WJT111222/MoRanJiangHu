@@ -172,6 +172,11 @@ public class ApkUpdaterPlugin extends Plugin {
         }
     }
 
+    // 速度监控常量：连续低于此速度超过阈值秒数则判定为限速，自动取消切换到下一个 provider
+    private static final long MIN_SPEED_BYTES_PER_SEC = 30L * 1024L; // 30 KB/s
+    private static final long SPEED_CHECK_INTERVAL_MS = 5000L;       // 每 5 秒检查一次
+    private static final int  MAX_SLOW_CHECKS = 3;                   // 连续 3 次低于阈值（即 15 秒）则取消
+
     private File downloadApk(String urlString, String versionName, String expectedSha256, Long expectedSize) throws Exception {
         HttpURLConnection connection = null;
         InputStream inputStream = null;
@@ -201,6 +206,11 @@ public class ApkUpdaterPlugin extends Plugin {
             long downloadedBytes = 0L;
             long lastReportedAt = 0L;
 
+            // 速度监控状态
+            long speedWindowStart = System.currentTimeMillis();
+            long speedWindowStartBytes = 0L;
+            int  slowCheckCount = 0;
+
             inputStream = new BufferedInputStream(connection.getInputStream(), 262144);
             outputStream = new FileOutputStream(apkFile, false);
             BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(outputStream, 262144);
@@ -212,9 +222,38 @@ public class ApkUpdaterPlugin extends Plugin {
                 downloadedBytes += bytesRead;
 
                 long now = System.currentTimeMillis();
+
+                // 进度上报
                 if (now - lastReportedAt >= 800L || (totalBytes > 0L && downloadedBytes >= totalBytes)) {
                     notifyUpdateProgress("downloading", "正在下载更新包...", downloadedBytes, totalBytes, apkFile.getAbsolutePath(), versionName);
                     lastReportedAt = now;
+                }
+
+                // 速度监控：每隔 SPEED_CHECK_INTERVAL_MS 检查一次平均速度
+                long elapsed = now - speedWindowStart;
+                if (elapsed >= SPEED_CHECK_INTERVAL_MS) {
+                    long bytesInWindow = downloadedBytes - speedWindowStartBytes;
+                    long speedBps = bytesInWindow * 1000L / elapsed; // bytes/sec
+
+                    if (speedBps < MIN_SPEED_BYTES_PER_SEC) {
+                        slowCheckCount++;
+                        if (slowCheckCount >= MAX_SLOW_CHECKS) {
+                            // 连续限速，取消下载，抛出可识别的限速错误
+                            bufferedOutputStream.flush();
+                            if (apkFile.exists() && !apkFile.delete()) {
+                                apkFile.deleteOnExit();
+                            }
+                            throw new SlowDownloadException(
+                                "下载速度过慢（" + (speedBps / 1024L) + " KB/s），自动切换下载源。"
+                            );
+                        }
+                    } else {
+                        slowCheckCount = 0; // 速度恢复，重置计数
+                    }
+
+                    // 滑动窗口：重置为当前时刻
+                    speedWindowStart = now;
+                    speedWindowStartBytes = downloadedBytes;
                 }
             }
             bufferedOutputStream.flush();
@@ -335,5 +374,12 @@ public class ApkUpdaterPlugin extends Plugin {
             builder.append(String.format("%02x", item));
         }
         return builder.toString();
+    }
+
+    /** 下载速度过慢时抛出，前端可识别此错误并自动切换到下一个下载源。 */
+    static class SlowDownloadException extends Exception {
+        SlowDownloadException(String message) {
+            super(message);
+        }
     }
 }

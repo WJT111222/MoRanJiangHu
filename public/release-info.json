@@ -1,14 +1,17 @@
 {
-  "versionCode": 511,
-  "versionName": "1.0.511",
+  "versionCode": 512,
+  "versionName": "1.0.512",
   "releaseChannel": "stable",
-  "releasePublishedAt": "2026-06-22T21:36:18+08:00",
+  "releasePublishedAt": "2026-06-22T22:22:27+08:00",
   "releaseNotes": [
-    "修复主角图片档案合并时香闺秘档部位档案被遗漏的问题：主角合并函数补上与 NPC 合并函数相同的部位档案处理，避免主角私密部位图在数据刷新时丢失。",
-    "修复轻量视图覆盖完整存档导致存档历史记录被截断的致命问题：校正存档谱系时检测并拒绝用轻量视图覆盖完整存档。",
+    "修复新开档第一回合对话框美化不显示的问题：文章优化阶段补充原始AI回复中的角色名到已声明集合，避免开局社交列表为空时NPC对话被误判为旁白。",
+    "修复火山引擎Ark接口（ark.cn-beijing.volces.com/api/coding/v3）无法使用的问题：端点路径识别新增Ark Coding模式，正确拼接为/chat/completions。",
+    "新增APK下载测速探针：下载前自动HEAD探测各下载源延迟，优先使用最快的渠道。",
+    "新增下载速度监控：限速时自动取消并切换到备用下载源，避免卡在慢速渠道。",
+    "APK轻量化：移除3个非必需Capacitor插件（browser/clipboard/filesystem），启用R8代码压缩。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/",
-    "同步更新 Web、APK 与更新清单到 v1.0.511。"
+    "同步更新 Web、APK 与更新清单到 v1.0.512。"
   ],
   "releaseHistory": [
     {

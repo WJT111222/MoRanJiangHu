@@ -398,6 +398,16 @@ export const 执行正文润色 = async (
             typeof npc?.姓名 === 'string' ? npc.姓名.trim() : ''
         ).filter(Boolean)
     ]);
+    // [修复] 开局第一回合 deps.社交 为空，补充原始 AI 回复中已识别的说话人名字，
+    // 确保润色后的正文不会因社交列表未初始化而丢失对话框
+    if (Array.isArray(baseResponse.logs)) {
+        for (const log of baseResponse.logs) {
+            const sender = 规范化正文发送者(log?.sender || '');
+            if (sender && sender !== '旁白' && sender !== '奖励' && !是否判定正文发送者(sender)) {
+                declaredNames.add(sender);
+            }
+        }
+    }
     const polishFormatSection = (() => {
         const coreFormatPrompt = deps.prompts.find((item) => item.id === 'core_format');
         const content = typeof coreFormatPrompt?.内容 === 'string' ? coreFormatPrompt.内容 : '';
