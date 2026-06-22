@@ -311,11 +311,28 @@ const SocialModal: React.FC<Props> = ({
             .filter((item) => item.部位 && item.名称);
     };
     const 读取香闺秘档图片结果 = (npc: NPC结构, part: 香闺秘档部位类型) => {
-        const source = (npc as any)?.图片档案?.香闺秘档部位档案?.[part];
+        const archive = (npc as any)?.图片档案?.香闺秘档部位档案;
+        const source = archive?.[part];
         const sourceDisplayUrl = source && typeof source === 'object' ? 获取图片展示地址(source) : '';
-        // [显示端调试] 记录读取时 ref 能否解析为可展示地址
-        if (source && !sourceDisplayUrl) {
-            console.warn(`[香闺秘档·显示端] ${npc?.姓名 || '?'} 的 ${part} 有部位档案但获取图片展示地址返回空`, {
+        // [显示端调试] 记录读取时的完整状态
+        if (!archive) {
+            console.log(`[香闺秘档调试] 显示端: ${npc?.姓名 || '?'} 无部位档案`, {
+                hasImageArchive: Boolean((npc as any)?.图片档案),
+                archiveKeys: (npc as any)?.图片档案 ? Object.keys((npc as any).图片档案) : [],
+                historyCount: Array.isArray((npc as any)?.图片档案?.生图历史) ? (npc as any).图片档案.生图历史.length : 0
+            });
+        } else if (!source) {
+            console.log(`[香闺秘档调试] 显示端: ${npc?.姓名 || '?'} 的 ${part} 无记录`, {
+                availableParts: Object.keys(archive),
+                allParts: ['胸部', '小穴', '屁穴', '肉棒'].map(p => ({
+                    part: p,
+                    exists: Boolean(archive[p]),
+                    status: archive[p]?.状态,
+                    hasUrl: Boolean(archive[p]?.图片URL || archive[p]?.本地路径)
+                }))
+            });
+        } else if (source && !sourceDisplayUrl) {
+            console.warn(`[香闺秘档调试] 显示端: ${npc?.姓名 || '?'} 的 ${part} 有档案但无法展示`, {
                 hasLocalPath: Boolean(source?.本地路径),
                 localPathPrefix: typeof source?.本地路径 === 'string' ? source.本地路径.slice(0, 60) : '',
                 hasImageUrl: Boolean(source?.图片URL),

@@ -2827,9 +2827,31 @@ const 从历史回填NPC香闺秘档部位档案 = (rawArchive: any, history: an
     香闺秘档部位列表.forEach((part) => {
         if (图片资源记录含可恢复地址(next?.[part])) return;
         const fallback = history.find((record) => NPC图片记录可作香闺秘档部位图(record, part));
-        if (!fallback) return;
+        if (!fallback) {
+            // [调试] 回填失败：历史中没有匹配记录
+            const partRecords = history.filter(r => r?.部位 === part);
+            if (partRecords.length > 0) {
+                console.log(`[香闺秘档调试] 回填失败: ${part} 历史中有${partRecords.length}条记录但都不满足条件`, {
+                    records: partRecords.map(r => ({
+                        id: r?.id,
+                        状态: r?.状态,
+                        构图: r?.构图,
+                        hasImageUrl: Boolean(r?.图片URL),
+                        hasLocalPath: Boolean(r?.本地路径),
+                        可作部位图: NPC图片记录可作香闺秘档部位图(r, part)
+                    }))
+                });
+            }
+            return;
+        }
         next[part] = fallback;
         changed = true;
+        console.log(`[香闺秘档调试] 回填成功: ${part}`, {
+            id: fallback?.id,
+            状态: fallback?.状态,
+            hasImageUrl: Boolean(fallback?.图片URL),
+            hasLocalPath: Boolean(fallback?.本地路径)
+        });
     });
     return changed ? 标准化香闺秘档部位档案(next) : 标准化香闺秘档部位档案(current);
 };
@@ -2984,6 +3006,34 @@ const 合并NPC图片档案对象 = (leftRaw: any, rightRaw: any): any | undefin
     }, {});
     const rawSecretArchive = 标准化香闺秘档部位档案(mergedSecretArchive);
     const 香闺秘档部位档案 = 从历史回填NPC香闺秘档部位档案(rawSecretArchive, mergedHistory);
+    // [调试] 记录合并过程
+    const leftParts = Object.keys(leftSecretArchive || {});
+    const rightParts = Object.keys(rightSecretArchive || {});
+    const mergedParts = Object.keys(mergedSecretArchive || {});
+    const rawParts = Object.keys(rawSecretArchive || {});
+    const finalParts = Object.keys(香闺秘档部位档案 || {});
+    if (leftParts.length > 0 || rightParts.length > 0 || mergedParts.length > 0) {
+        console.log('[香闺秘档调试] 合并NPC图片档案对象', {
+            leftParts,
+            rightParts,
+            mergedParts,
+            rawParts,
+            finalParts,
+            historyCount: mergedHistory.length
+        });
+        // 如果合并后部位减少，详细记录丢失的部位
+        const lostParts = mergedParts.filter(p => !finalParts.includes(p));
+        if (lostParts.length > 0) {
+            console.warn('[香闺秘档调试] 合并后丢失部位!', {
+                lostParts,
+                mergedDetail: lostParts.map(p => ({
+                    part: p,
+                    raw: mergedSecretArchive[p],
+                    normalized: rawSecretArchive?.[p]
+                }))
+            });
+        }
+    }
     if (!recent && mergedHistory.length <= 0 && !香闺秘档部位档案 && !已选头像图片ID && !已选立绘图片ID && !已选背景图片ID) {
         return undefined;
     }

@@ -775,11 +775,59 @@ const CharacterModal: React.FC<Props> = ({
                                         </div>
                                     </div>
 
+                                    {/* 初夜记录 */}
+                                    {(character as any)?.初夜夺取者 && (
+                                        <div className="mt-4 mb-4 p-4 bg-gradient-to-r from-pink-950/80 to-black border border-pink-500/40 rounded-lg relative overflow-hidden">
+                                            <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-wuxia-gold/5 blur-xl"></div>
+                                            <div className="relative z-10 flex flex-col">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="w-1.5 h-1.5 rotate-45 bg-wuxia-gold/80"></div>
+                                                    <div className="text-[10px] text-pink-300/80 tracking-widest uppercase">铭心刻骨 · 初夜</div>
+                                                </div>
+                                                <div className="font-serif text-pink-100 text-sm flex items-end gap-2 flex-wrap">
+                                                    {(character as any)?.初夜时间 && (
+                                                        <span className="text-wuxia-gold/80 text-xs font-mono bg-wuxia-gold/10 px-1 rounded border border-wuxia-gold/20 mr-1">{(character as any).初夜时间}</span>
+                                                    )}
+                                                    <span>交给</span>
+                                                    <span className="text-wuxia-gold font-bold text-lg drop-shadow-[0_0_5px_rgba(212,175,55,0.5)]">{(character as any).初夜夺取者}</span>
+                                                    {(character as any)?.初夜描述 && (
+                                                        <span title={(character as any).初夜描述} className="cursor-help rounded border border-pink-500/30 px-1.5 py-0.5 text-[10px] text-pink-200/80">详情</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 首次亲密记录 */}
+                                    {Array.isArray((character as any)?.首次亲密记录) && (character as any).首次亲密记录.length > 0 && (
+                                        <div className="mt-4 mb-4 space-y-2">
+                                            <div className="text-[10px] text-pink-500/60 uppercase tracking-widest flex items-center gap-2">
+                                                <span className="h-px flex-1 bg-pink-900/30"></span>
+                                                首次亲密记录
+                                                <span className="h-px flex-1 bg-pink-900/30"></span>
+                                            </div>
+                                            {(character as any).首次亲密记录.map((rec: any, idx: number) => (
+                                                <div key={idx} className="bg-black/40 p-3 rounded border border-pink-900/20 text-xs hover:border-pink-900/40 transition-colors">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-pink-400 font-bold">{rec?.类型 || '亲密'}</span>
+                                                        <span className="text-wuxia-gold/60 font-mono text-[10px]">{rec?.时间 || ''}</span>
+                                                        {rec?.对象 && <span className="text-pink-200/80">对象：{rec.对象}</span>}
+                                                    </div>
+                                                    {rec?.描述 && <div className="text-pink-100/80 font-serif leading-relaxed">{rec.描述}</div>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
                                     <div className="mt-4 grid grid-cols-3 gap-3">
                                         {主角香闺部位列表.map((item) => {
                                             const partArchive = archive?.香闺秘档部位档案?.[item.key as keyof typeof archive.香闺秘档部位档案];
                                             const imageUrl = partArchive ? 获取图片展示地址(partArchive as any) : '';
                                             const hasImage = Boolean(imageUrl);
+                                            // 名器档案
+                                            const 名器 = Array.isArray((character as any)?.名器档案)
+                                                ? (character as any).名器档案.find((m: any) => m?.部位 === item.key)
+                                                : undefined;
 
                                             return (
                                                 <div key={item.key} className="overflow-hidden rounded-xl border border-pink-500/15 bg-black/35">
@@ -792,6 +840,20 @@ const CharacterModal: React.FC<Props> = ({
                                                         <div className="absolute left-2 top-2 rounded-full border border-pink-400/25 bg-black/65 px-2 py-0.5 text-[10px] text-pink-300">{item.label}</div>
                                                     </div>
                                                     <div className="p-2.5">
+                                                        {/* 名器标签 */}
+                                                        {名器 && 名器.名称 && 名器.名称 !== '无名器' && 名器.名称 !== '无对应名器' && (
+                                                            <div className="mb-1.5 flex items-center gap-1 flex-wrap">
+                                                                <span className="text-[9px] px-1 py-0.5 rounded border border-pink-500/30 bg-pink-500/10 text-pink-300">{名器.名称}</span>
+                                                                {名器.品质 && 名器.品质 !== '无' && (
+                                                                    <span className={`text-[8px] px-1 py-0.5 rounded border ${
+                                                                        名器.品质 === '传说' ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-300' :
+                                                                        名器.品质 === '极品' ? 'border-purple-500/40 bg-purple-500/10 text-purple-300' :
+                                                                        名器.品质 === '稀有' ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' :
+                                                                        'border-gray-600/40 bg-gray-600/10 text-gray-400'
+                                                                    }`}>{名器.品质}</span>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                         <div className="line-clamp-3 text-[11px] leading-5 text-gray-400">{item.text}</div>
                                                         <button
                                                             type="button"
@@ -806,6 +868,7 @@ const CharacterModal: React.FC<Props> = ({
                                         })}
                                     </div>
 
+                                    {/* 性癖 & 敏感点 */}
                                     {((character as any)?.性癖 || (character as any)?.敏感点) && (
                                         <div className="mt-4 flex flex-wrap gap-2">
                                             {(character as any)?.性癖 && (
@@ -814,6 +877,54 @@ const CharacterModal: React.FC<Props> = ({
                                             {(character as any)?.敏感点 && (
                                                 <span className="rounded-full border border-pink-500/20 bg-pink-500/8 px-2.5 py-1 text-[10px] text-pink-200/80">敏感点：{(character as any).敏感点}</span>
                                             )}
+                                        </div>
+                                    )}
+
+                                    {/* 子宫档案（女性/扶她主角） */}
+                                    {!主角是男性纯 && (character as any)?.子宫 && (
+                                        <div className="mt-4 bg-gradient-to-br from-pink-950/20 to-black/80 border border-pink-900/30 rounded-lg p-4 relative overflow-hidden">
+                                            <div className="absolute -top-6 -right-6 w-24 h-24 bg-pink-600/5 rounded-full filter blur-xl"></div>
+                                            <div className="flex items-center justify-between mb-3 relative z-10">
+                                                <h5 className="text-xs text-pink-400/90 font-bold uppercase tracking-[0.2em] flex items-center gap-1.5">
+                                                    <span className="w-1 h-3 bg-pink-500/70 rounded-full"></span>
+                                                    子宫档案
+                                                </h5>
+                                                <span className="text-[10px] bg-black/60 border border-pink-900/50 px-1.5 py-0.5 rounded text-pink-300 font-mono shadow-inner tracking-wider">
+                                                    STATUS: {(character as any).子宫?.状态 || 'UNKNOWN'}
+                                                </span>
+                                            </div>
+
+                                            <div className="mb-4 text-xs text-gray-400/80 flex items-center gap-2 bg-black/40 p-2 rounded border border-white/5 relative z-10">
+                                                <span className="shrink-0 text-pink-500/50">宫口状态</span>
+                                                <span className="text-pink-200 font-serif">{(character as any).子宫?.宫口状态 || '紧闭'}</span>
+                                            </div>
+
+                                            <div className="relative z-10">
+                                                <h6 className="text-[9px] text-pink-500/60 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                                    <span className="h-px flex-1 bg-pink-900/30"></span>
+                                                    内射记录
+                                                    <span className="h-px flex-1 bg-pink-900/30"></span>
+                                                </h6>
+                                                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                                                    {Array.isArray((character as any).子宫?.内射记录) && (character as any).子宫.内射记录.length > 0 ? (
+                                                        (character as any).子宫.内射记录.map((rec: any, idx: number) => (
+                                                            <div key={idx} className="bg-black/60 p-2.5 rounded border border-pink-900/20 text-xs hover:border-pink-900/40 transition-colors">
+                                                                <div className="text-wuxia-gold/80 font-mono text-[10px] mb-1">[{rec?.日期 || ''}]</div>
+                                                                <div className="text-pink-100/90 font-serif leading-relaxed mb-1.5">{rec?.描述 || ''}</div>
+                                                                {rec?.怀孕判定日 && (
+                                                                    <div className="text-[9px] text-pink-400/60 flex items-center gap-1 pt-1 border-t border-pink-900/20">
+                                                                        孕检期: {rec.怀孕判定日}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="flex flex-col items-center justify-center py-4 bg-black/20 rounded border border-dashed border-white/5">
+                                                            <span className="text-[10px] text-gray-600 font-mono tracking-widest">NO RECORDS</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </section>

@@ -3,6 +3,7 @@ import { 游戏物品 } from './item';
 import { 功法结构 } from './kungfu';
 import type { NPC图片档案 } from './imageGeneration';
 import { 天赋结构, 背景结构 } from '../types';
+import type { 子宫档案, 首次亲密记录, 名器档案条目 } from './social';
 
 // 角色相关定义 - 解耦自 types.ts
 
@@ -161,4 +162,12 @@ export interface 角色数据结构 {
     扶她设定?: string;
     性癖?: string;
     敏感点?: string;
+
+    // --- NSFW 档案记录（与 NPC 一致） ---
+    初夜夺取者?: string;
+    初夜时间?: string;
+    初夜描述?: string;
+    首次亲密记录?: 首次亲密记录[];
+    名器档案?: 名器档案条目[];
+    子宫?: 子宫档案;
 }
