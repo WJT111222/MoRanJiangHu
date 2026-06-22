@@ -496,6 +496,15 @@ export const useGame = () => {
     const [最近开局配置, 设置最近开局配置] = useState<最近开局配置结构 | null>(null);
     const apiConfigRef = useRef(apiConfig);
     const 社交Ref = useRef<any[]>(Array.isArray(社交) ? 社交 : []);
+    // [致命修复] 包装 设置社交：同步更新 社交Ref.current，避免异步 useEffect 延迟
+    // 导致 图片档案工作流 读取到旧的社交列表，丢失已写入的香闺秘档部位档案。
+    const 同步设置社交 = (updater: any) => {
+        设置社交((prev: any[]) => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            社交Ref.current = Array.isArray(next) ? next : [];
+            return next;
+        });
+    };
     const visualConfigRef = useRef(visualConfig);
     const imageManagerConfigRef = useRef<图片管理设置结构>(imageManagerConfig || 默认图片管理设置);
     const [世界演变更新中, set世界演变更新中] = useState(false);
@@ -1669,7 +1678,7 @@ export const useGame = () => {
         清除NPC背景图片,
         保存NPC图片本地副本
     } = 创建NPC图片状态工作流({
-        设置社交,
+        设置社交: 同步设置社交,
         规范化社交列表: 规范化社交列表安全,
         执行社交自动存档: (socialSnapshot) => {
             void performAutoSave({ social: socialSnapshot, history: 历史记录 });
