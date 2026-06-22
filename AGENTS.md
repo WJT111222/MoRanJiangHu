@@ -41,7 +41,9 @@
 - Whenever publishing a new version, verify every public release entrypoint before ending the task.
 - Before the final public deploy/upload step for a release, refresh `releasePublishedAt` to the actual current local time, then run `npm run release:sync` again before building, uploading, deploying, or verifying. The displayed release time must represent the real final publish time, not the earlier version-bump or preparation time.
 - External release commands such as R2 upload, Wrangler deploy, APK download verification, and HTTPS endpoint checks must always be run with explicit timeouts. If a wrapper command can hang after partial success, split it into smaller upload/deploy/verify steps and confirm each public artifact independently instead of waiting indefinitely.
-- Cloudflare/Wrangler CLI commands on this machine should be tried with proxy environment variables cleared first, for example `env HTTP_PROXY="" HTTPS_PROXY="" ALL_PROXY="" npm run worker:deploy` on POSIX shells or the PowerShell equivalent that sets `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` to empty before running the command. This avoids Wrangler upload/deploy commands hanging behind the local proxy.
+- Cloudflare/Wrangler 部署命令（`wrangler deploy`、Worker 部署）应清除代理环境变量后执行，避免部署卡住。
+- Cloudflare/Wrangler R2 上传命令（`release:r2`、`wrangler r2 object put`）在本机**保留代理反而更快**，实测带代理秒完成，清空代理反而超时。R2 上传不要清空代理。
+- 总结：Worker 部署清代理，R2 上传留代理。
 - Required checks include the website URL in `release.config.json`, the APK download URL, the update manifest URL, and any documented backup domains or guide URLs that are part of the release surface.
 - Current domain memory: the primary website domain is `https://msjh.bacon159.pp.ua/`; the backup website domain is `https://msjh.bacon.de5.net/`.
 - For the current project, always confirm whether both the primary domain `https://msjh.bacon159.pp.ua/` and the backup domain `https://msjh.bacon.de5.net/` have been deployed with the same release version as the APK/update manifest.

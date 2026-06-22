@@ -41,7 +41,9 @@
 - 每次发布新版本，结束任务前必须验证所有公开发布入口。
 - 在最终公开部署或上传前，必须把 `releasePublishedAt` 刷新为当前真实本地时间，然后重新运行 `npm run release:sync`，再构建、上传、部署或验证。展示的发布时间必须代表真正最终发布时刻，不能使用前面版本准备时的时间。
 - R2 上传、Wrangler 部署、APK 下载验证、HTTPS 端点检查等外部命令必须带明确超时。如果包装命令可能在部分成功后卡住，要拆成上传、部署、验证等更小步骤，并逐一确认公开产物。
-- 本机执行 Cloudflare/Wrangler 命令时，优先清空代理环境变量后再试。例如 POSIX shell 使用 `env HTTP_PROXY="" HTTPS_PROXY="" ALL_PROXY="" npm run worker:deploy`，PowerShell 使用等价方式把 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY` 设为空后再执行。这样可以避免 Wrangler 上传或部署命令被本地代理卡住。
+- Cloudflare/Wrangler 部署命令（`wrangler deploy`、Worker 部署）应清除代理环境变量后执行，避免部署卡住。
+- Cloudflare/Wrangler R2 上传命令（`release:r2`、`wrangler r2 object put`）在本机**保留代理反而更快**，实测带代理秒完成，清空代理反而超时。R2 上传不要清空代理。
+- 总结：Worker 部署清代理，R2 上传留代理。
 - 必须检查 `release.config.json` 中的网站 URL、APK 下载 URL、更新 manifest URL，以及所有文档中列出的备份域名或指南 URL。
 - 当前域名记忆：主站是 `https://msjh.bacon159.pp.ua/`；备站是 `https://msjh.bacon.de5.net/`。
 - 对当前项目，每次都要确认主站 `https://msjh.bacon159.pp.ua/` 和备站 `https://msjh.bacon.de5.net/` 是否部署了与 APK/update manifest 相同的版本。
