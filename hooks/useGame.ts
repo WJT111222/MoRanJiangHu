@@ -1727,7 +1727,11 @@ export const useGame = () => {
                 ? feature.自动场景生图构图要求
                 : '纯场景',
             场景横竖屏,
-            场景尺寸
+           场景尺寸,
+            用头像: feature?.自动生图子类型启用头像 !== false,
+            用立绘: feature?.自动生图子类型启用立绘 !== false,
+            用半身: feature?.自动生图子类型启用半身 !== false,
+            用私密部位: feature?.自动生图子类型启用私密部位 !== false
         } as const;
     };
 

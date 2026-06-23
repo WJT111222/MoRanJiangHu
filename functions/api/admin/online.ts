@@ -374,7 +374,7 @@ const buildPublicStatsPayload = async (env: any, nowMs: number) => {
         const lastSeenMs = Date.parse(item.lastSeenAt || '');
         return Number.isFinite(lastSeenMs) && nowMs - lastSeenMs <= ttlMs;
     });
-    const users = aggregateUsersByIp(sessions, nowMs, ttlMs);
+    const users = aggregateUsersByIdentity(sessions, nowMs, ttlMs);
     const onlineUsers = users.filter((item) => item.online);
     const loggedInPlayers24h = aggregateLoggedInPlayers24h(sessions, nowMs, ttlMs);
     return {
@@ -568,6 +568,7 @@ const upsertSessionHeartbeat = async (request: Request, env: any, body: any): Pr
     const stub = getDO(env);
     if (stub) {
         try {
+            const cf = (request as any).cf || {};
             const doResp = await stub.fetch(
                 new Request('http://do/heartbeat', {
                     method: 'POST',
@@ -583,7 +584,14 @@ const upsertSessionHeartbeat = async (request: Request, env: any, body: any): Pr
                         versionName: body?.versionName,
                         versionCode: body?.versionCode,
                         platform: body?.platform,
-                        imageStats: body?.imageStats
+                        imageStats: body?.imageStats,
+                        clientIp: getClientIp(request),
+                        clientCountry: readString(cf.country),
+                        clientRegion: readString(cf.region) || readString(cf.regionCode),
+                        clientCity: readString(cf.city),
+                        clientTimezone: readString(cf.timezone),
+                        clientColo: readString(cf.colo),
+                        clientUserAgent: readString(request.headers.get('User-Agent')).slice(0, 240)
                     })
                 })
             );
@@ -713,11 +721,13 @@ const handleOnlineWebSocket = (request: Request, env: any): Response => {
     });
 };
 
-const aggregateUsersByIp = (sessions: OnlineSessionRecord[], nowMs: number, ttlMs: number): OnlineUserRecord[] => {
+const aggregateUsersByIdentity = (sessions: OnlineSessionRecord[], nowMs: number, ttlMs: number): OnlineUserRecord[] => {
     const users = new Map<string, OnlineUserRecord>();
     sessions.forEach((session) => {
         const ip = readString(session.ip) || 'unknown';
-        const id = ip;
+        const userId = sanitizeUserField((session as any).userId);
+        const sessionId = sanitizeSessionId(session.id) || sanitizeSessionId((session as any).sessionId);
+        const id = userId || sessionId || ip;
         const lastSeenMs = Date.parse(session.lastSeenAt || '');
         const firstSeenMs = Date.parse(session.firstSeenAt || session.lastSeenAt || '');
         const online = Number.isFinite(lastSeenMs) && nowMs - lastSeenMs <= ttlMs;
@@ -889,7 +899,7 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
         const lastSeenMs = Date.parse(item.lastSeenAt || '');
         return Number.isFinite(lastSeenMs) && nowMs - lastSeenMs <= ttlMs;
     });
-    const users = aggregateUsersByIp(sessions, nowMs, ttlMs);
+    const users = aggregateUsersByIdentity(sessions, nowMs, ttlMs);
     const onlineUsers = users.filter((item) => item.online);
     const cloudPlayUsers = await readCloudPlayUsers(env);
 

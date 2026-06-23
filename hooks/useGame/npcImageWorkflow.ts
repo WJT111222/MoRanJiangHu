@@ -9,6 +9,10 @@ type 图片功能配置 = {
     NPC开关: boolean;
     使用词组转化器: boolean;
     NPC画风: 当前可用接口结构['画风'];
+   用头像?: boolean;
+   用立绘?: boolean;
+   用半身?: boolean;
+   用私密部位?: boolean;
 };
 
 type 画师串预设摘要 = {
@@ -343,6 +347,13 @@ export const 执行NPC生图工作流 = async (
     const imageFeature = deps.读取文生图功能配置();
     const taskSource: 生图任务来源类型 = options?.source || 'auto';
     const 可绕过自动开关 = options?.force === true;
+    // 自动生图子类型勾选：auto度但对应子类型未勾选时直接跳过（手动 force 不受限）
+    if (!可绕过自动开关 && taskSource === 'auto') {
+        const 目标构图 = options?.构图 || '头像';
+        if (目标构图 === '头像' && imageFeature.启用头像 === false) return;
+        if (目标构图 === '立绘' && imageFeature.启用立绘 === false) return;
+        if (目标构图 === '半身' && imageFeature.启用半身 === false) return;
+    }
     const backendType = imageApi?.图片后端类型;
     const wantsPromptTransformer = backendType === 'novelai' || imageFeature.使用词组转化器 !== false;
     const promptApi = wantsPromptTransformer ? deps.获取生图词组转化器接口配置(deps.apiConfig) : null;

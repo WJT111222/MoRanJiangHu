@@ -402,6 +402,10 @@ export interface 功能模型占位配置结构 {
     物品生图启用: boolean;
     NPC生图性别筛选: 生图筛选性别类型;
     NPC生图重要性筛选: 生图筛选重要性类型;
+    自动生图子类型启用头像?: boolean;
+    自动生图子类型启用立绘?: boolean;
+    自动生图子类型启用半身?: boolean;
+    自动生图子类型启用私密部位?: boolean;
     生图配置档列表?: 生图配置档结构[];
     当前NPC生图配置档ID?: string;
     当前场景生图配置档ID?: string;

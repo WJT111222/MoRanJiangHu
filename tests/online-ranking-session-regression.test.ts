@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { OnlineSessionsDO } from '../functions/api/admin/OnlineSessionsDO';
 import { __onlineTestUtils, onRequestGet, onRequestPost } from '../functions/api/admin/online';
 
 class MemoryR2Bucket {
@@ -24,6 +25,18 @@ class MemoryR2Bucket {
     }
 }
 
+class MemoryDurableObjectStorage {
+    private store = new Map<string, unknown>();
+
+    async get(key: string) {
+        return this.store.get(key);
+    }
+
+    async put(key: string, value: unknown) {
+        this.store.set(key, value);
+    }
+}
+
 const buildEnv = () => {
     const bucket = new MemoryR2Bucket();
     return {
@@ -35,12 +48,32 @@ const buildEnv = () => {
     };
 };
 
-const buildHeartbeatRequest = (body: Record<string, unknown>) => (
+const buildDoEnv = () => {
+    const bucket = new MemoryR2Bucket();
+    const env: any = {
+        CNB_SYNC_R2: bucket,
+        ONLINE_SESSION_TTL_SECONDS: '120',
+        ONLINE_ADMIN_PASSWORD: 'secret'
+    };
+    const durableObject = new OnlineSessionsDO({
+        storage: new MemoryDurableObjectStorage()
+    }, env);
+    env.ONLINE_SESSIONS_DO = {
+        idFromName: () => 'sessions',
+        get: () => ({
+            fetch: (request: Request) => durableObject.fetch(request)
+        })
+    };
+    return { env, bucket };
+};
+
+const buildHeartbeatRequest = (body: Record<string, unknown>, headers: Record<string, string> = {}) => (
     new Request('https://example.com/api/admin/online', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'User-Agent': 'vitest'
+            'User-Agent': 'vitest',
+            ...headers
         },
         body: JSON.stringify(body)
     })
@@ -148,5 +181,58 @@ describe('在线时长榜会话回归', () => {
         expect(player.totalOnlineSeconds24h).toBeGreaterThanOrEqual(45);
         expect(player.timelineSegments).toHaveLength(1);
         expect(player.timelineSegments[0].startAt).toBe('2026-06-10T01:59:00.000Z');
+    });
+
+    it('counts separate Durable Object sessions and preserves client metadata', async () => {
+        vi.useFakeTimers();
+        const { env } = buildDoEnv();
+        vi.setSystemTime(new Date('2026-06-10T01:00:00.000Z'));
+
+        await onRequestPost({
+            request: buildHeartbeatRequest({
+                sessionId: 'web_do_session_a',
+                platform: 'web'
+            }, {
+                'CF-Connecting-IP': '203.0.113.10',
+                'User-Agent': 'vitest-a'
+            }),
+            env
+        });
+        await onRequestPost({
+            request: buildHeartbeatRequest({
+                sessionId: 'web_do_session_b',
+                platform: 'web'
+            }, {
+                'CF-Connecting-IP': '203.0.113.11',
+                'User-Agent': 'vitest-b'
+            }),
+            env
+        });
+
+        const publicResponse = await onRequestGet({
+            request: new Request('https://example.com/api/admin/online?public=1'),
+            env
+        });
+        const publicPayload = await readJson(publicResponse);
+        expect(publicPayload.onlineCount).toBe(2);
+        expect(publicPayload.onlineSessionCount).toBe(2);
+
+        const adminResponse = await onRequestGet({
+            request: new Request('https://example.com/api/admin/online', {
+                headers: {
+                    Authorization: 'Bearer secret'
+                }
+            }),
+            env
+        });
+        const adminPayload = await readJson(adminResponse);
+        expect(adminPayload.recentUsers.map((item: any) => item.ip).sort()).toEqual([
+            '203.0.113.10',
+            '203.0.113.11'
+        ]);
+        expect(adminPayload.recentUsers.flatMap((item: any) => item.userAgents).sort()).toEqual([
+            'vitest-a',
+            'vitest-b'
+        ]);
     });
 });

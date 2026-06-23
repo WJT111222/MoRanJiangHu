@@ -117,10 +117,7 @@ const runWrangler = (args, options = {}) => {
     shell: process.platform === 'win32',
     timeout: Number(process.env.MORAN_WRANGLER_TIMEOUT_MS || 10 * 60 * 1000),
     env: {
-      ...process.env,
-      HTTP_PROXY: '',
-      HTTPS_PROXY: '',
-      ALL_PROXY: ''
+      ...process.env
     },
     encoding: 'utf8'
   });
