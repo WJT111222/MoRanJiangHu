@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "moranjianghu",
-  "main": ".tmp-worker-build/index.js",
+  "main": ".tmp-worker-build/worker-entry.ts",
   "compatibility_date": "2026-04-21",
   "assets": {
     "binding": "ASSETS",
@@ -32,6 +32,20 @@
     {
       "binding": "CNB_SYNC_R2",
       "bucket_name": "quark-downloads-bacon"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ONLINE_SESSIONS_DO",
+        "class_name": "OnlineSessionsDO"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["OnlineSessionsDO"]
     }
   ],
   "observability": {

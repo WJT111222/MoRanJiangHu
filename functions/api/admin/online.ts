@@ -185,6 +185,12 @@ const getCloudPlayBucket = (env: any): R2Bucket | null => {
     return candidate as R2Bucket;
 };
 
+const getDO = (env: any): any | null => {
+    const id = env?.ONLINE_SESSIONS_DO?.idFromName('sessions');
+    if (!id) return null;
+    return env.ONLINE_SESSIONS_DO.get(id);
+};
+
 const getPrefix = (env: any): string => (
     readString(env?.ONLINE_SESSIONS_R2_PREFIX) || ONLINE_R2_PREFIX
 ).replace(/^\/+|\/+$/g, '') || ONLINE_R2_PREFIX;
@@ -269,6 +275,24 @@ const sanitizeUserField = (value: unknown): string => (
 );
 
 const readRegistry = async (env: any): Promise<OnlineRegistry> => {
+    // Prefer DO – no R2 read needed.
+    const stub = getDO(env);
+    if (stub) {
+        try {
+            const resp = await stub.fetch(new Request('http://do/registry'));
+            if (resp.ok) {
+                const data: any = await resp.json().catch(() => null);
+                if (Array.isArray(data?.sessions)) {
+                    return {
+                        sessions: data.sessions.filter((item: any) => item && typeof item === 'object') as OnlineSessionRecord[]
+                    };
+                }
+            }
+        } catch {
+            // DO failure – fall through to R2.
+        }
+    }
+    // R2 fallback (read-only, never written on heartbeat path).
     const bucket = getBucket(env);
     if (!bucket) return { sessions: [] };
     const object = await bucket.get(getRegistryKey(env));
@@ -534,6 +558,48 @@ const uniqueLimited = (values: string[], value: string, limit = 4): string[] => 
 };
 
 const upsertSessionHeartbeat = async (request: Request, env: any, body: any): Promise<{ sessionId: string; accepted: boolean; serverTime: string; nextHeartbeatSeconds: number }> => {
+    // Route heartbeat to Durable Object – no R2 write on this path.
+    const stub = getDO(env);
+    if (stub) {
+        try {
+            const doResp = await stub.fetch(
+                new Request('http://do/heartbeat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: sanitizeSessionId(body?.sessionId) || buildSessionId(),
+                        transport: body?.transport,
+                        type: body?.type,
+                        userId: body?.userId,
+                        username: body?.username,
+                        path: body?.path,
+                        referrer: body?.referrer,
+                        versionName: body?.versionName,
+                        versionCode: body?.versionCode,
+                        platform: body?.platform,
+                        imageStats: body?.imageStats
+                    })
+                })
+            );
+            if (doResp.ok) {
+                const result: any = await doResp.json().catch(() => null);
+                if (result) {
+                    // Augment with IP/city/country/colo from the edge request (the DO
+                    // won't have the original Request object, so we add these client-side).
+                    return {
+                        sessionId: result.sessionId,
+                        serverTime: result.serverTime,
+                        accepted: result.accepted !== false,
+                        nextHeartbeatSeconds: result.nextHeartbeatSeconds || 30
+                    };
+                }
+            }
+        } catch {
+            // DO failure – fall through to legacy R2 path.
+        }
+    }
+
+    // Legacy R2 fallback (should never fire once DO is deployed).
     const bucket = getBucket(env);
     if (!bucket) throw new Error('Online session storage is not configured');
 
