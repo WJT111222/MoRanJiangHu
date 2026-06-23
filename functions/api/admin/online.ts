@@ -1,3 +1,5 @@
+import { tryDbBucket } from '../_shared/dbStore';
+
 const JSON_HEADERS = {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store'
@@ -324,7 +326,9 @@ const getHourStartIso = (timeMs: number): string => {
 };
 
 const readHourlyHistory = async (env: any): Promise<OnlineHourlyHistory> => {
-    const bucket = getBucket(env);
+    // Prefer D1 – no R2 Class A reads.
+    const store = tryDbBucket(env, 'online_hourly_history');
+    const bucket = store || getBucket(env);
     if (!bucket) return { updatedAt: '', points: [] };
     const object = await bucket.get(getHourlyHistoryKey(env));
     if (!object) return { updatedAt: '', points: [] };
@@ -353,7 +357,9 @@ const readHourlyHistory = async (env: any): Promise<OnlineHourlyHistory> => {
 };
 
 const writeHourlyHistory = async (env: any, history: OnlineHourlyHistory): Promise<void> => {
-    const bucket = getBucket(env);
+    // Prefer D1 – no R2 Class A writes.
+    const store = tryDbBucket(env, 'online_hourly_history');
+    const bucket = store || getBucket(env);
     if (!bucket) return;
     await bucket.put(getHourlyHistoryKey(env), JSON.stringify(history), {
         httpMetadata: { contentType: 'application/json; charset=utf-8' }
