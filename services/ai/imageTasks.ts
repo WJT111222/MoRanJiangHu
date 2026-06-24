@@ -1586,7 +1586,7 @@ const 构建后置正向提示词 = (
         全局无文字正向提示词,
         // [修复] ZImageTurbo 叙事增强只在场景构图注入：对头像/半身/立绘会注入"preserve fixed character features"
         // 等叙事指令，导致模型重复画脸、出现大头像背景。单人角色构图不需要叙事空间指令。
-        options?.构图 === '场景' && options?.后端类型 === 'comfyui' ? ZImageTurbo叙事构图增强提示词 : '',
+        options?.构图 === '场景' && options?.场景类型 === '剧照场景' && options?.后端类型 === 'comfyui' ? ZImageTurbo叙事构图增强提示词 : '',
         场景类型增强,
         options?.构图 === '部位特写' ? NSFW部位特写画质增强提示词 : '',
         options?.构图 === '部位特写' ? 部位特写单图正向提示词 : ''
@@ -1838,6 +1838,16 @@ const 是否角色构图 = (composition?: string): boolean => (
     composition === '头像' || composition === '半身' || composition === '立绘'
 );
 
+const 部位特写前置污染词 = /(?:\bpremium\s+cg\b|\bcg\s+(?:key|rendering|visual|quality)\b|game character key art|character key art|refined facial|facial features|beautiful eyes|\beyes?\b|hair strands|\bhair\b|clothing fabric|\bclothing\b|\bfabric\b|\bportrait\b|\bheadshot\b|upper body|half body|full body|\btorso\b|\bbreasts?\b|\bnipples?\b|extra breasts?|extra nipples?)/i;
+
+const 清洗部位特写前置提示词 = (text: string): string => (
+    合并正向提示词片段(
+        按提示词单元拆分(text)
+            .filter((token) => !部位特写前置污染词.test(token))
+            .join(', ')
+    )
+);
+
 const 提示词明确外国人 = (text: string): boolean => (
     /\b(?:foreigner|foreign|Caucasian|European|Western|white person|blonde|blond|blue eyes|Nordic|Slavic|Russian|British|French|German|American|Japanese|Korean|Indian|Arab|African|Latina|Hispanic)\b/i.test(text || '')
     || /外国|欧美|白人|金发|碧眼|蓝眼|俄罗斯|英伦|法国|德国|美国|日本人|韩国人|印度人|阿拉伯|非洲|拉丁/.test(text || '')
@@ -1878,7 +1888,9 @@ export const 构建最终图片提示词 = (
     }
     const width = Number.isFinite(parsedWidth) && parsedWidth > 0 ? parsedWidth : 1024;
     const height = Number.isFinite(parsedHeight) && parsedHeight > 0 ? parsedHeight : 1024;
-    const 原始前置正向提示词 = (options?.附加正向提示词 || '').trim();
+    const 原始前置正向提示词 = composition === '部位特写'
+        ? 清洗部位特写前置提示词((options?.附加正向提示词 || '').trim())
+        : (options?.附加正向提示词 || '').trim();
     const 主体正向提示词 = 清洗最终主体提示词(prompt || '', {
         isNovelAI: apiConfig.图片后端类型 === 'novelai' || apiConfig.词组转化输出策略 === 'nai_character_segments'
     });
@@ -2977,10 +2989,18 @@ const 强化香闺秘档特写词组 = (
     const source = 清理生图词组输出(prompt);
     if (!source) return source;
     const deny = /^(?:portrait|headshot|upper body|half body|waist-?up|full body|cowboy shot|wide shot|mid shot|long shot|standing|sitting|kneeling|running|walking|looking at viewer|face focus|facial focus|scenery|environment|landscape|room|indoors|outdoors|background|establishing shot|collage|contact sheet|reference sheet|character sheet|comic panel|manga panel|split screen|multiple views|thumbnail|thumbnails|bottom strip|speech bubble|dialogue box|watermark|signature|logo|text|caption|subtitle)$/i;
+    const containsDeny = /(?:refined facial|facial features|beautiful eyes|hair strands|\bhair\b|clothing fabric|\bclothing\b|\bfabric\b|\bportrait\b|\bheadshot\b|upper body|half body|full body|\btorso\b)/i;
+    const wrongPart = 部位 === '胸部'
+        ? /(?:pussy|labia|crotch|anus|penis|genitals?)/i
+        : 部位 === '小穴'
+            ? /(?:breasts?|nipples?|areola|penis|anus)/i
+            : 部位 === '屁穴'
+                ? /(?:breasts?|nipples?|areola|pussy|labia|crotch|penis)/i
+                : /(?:breasts?|nipples?|areola|pussy|labia|crotch|anus)/i;
     return 合并正向提示词片段(
         部位特写单图正向提示词,
         去重提示词片段(按逗号拆分提示词(source))
-        .filter((token) => !deny.test(token))
+            .filter((token) => !deny.test(token) && !containsDeny.test(token) && !wrongPart.test(token))
             .join(', ')
     );
 };

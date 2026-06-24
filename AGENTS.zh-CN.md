@@ -679,3 +679,30 @@
 - 不能只更新 `utils/topicModeProfiles.ts`、`data/structuredItemLibrary.ts` 或 `data/presetItemImages.ts`；还必须运行 `npm.cmd run preset:feedback`。
 - 必须确认 `public/assets/item-preset-feedback-data.json` 包含新题材模式分类，并且该模式的预设图能在 `/item-preset-feedback` 页面看到。
 - `scripts/sync-item-preset-feedback-data.mjs` 应继续从 `题材模式顺序` 自动推导题材分类，不要退回手写旧模式列表，避免未来新增模式被静默漏掉。
+
+## 小米 MiMo Agent 协同规则
+
+- 小米 MiMo 可以作为执行型/代码修改型模型，用来承担实现量较大的代码编辑工作；Codex 仍负责定位 bug、制定修改方向、审查代码、运行验证，并在结果有问题时亲自修正。
+- 这种方式可以减少 Codex 在大段代码编辑初稿上的 token 消耗，但不能让 Codex 完全不消耗 token，因为 Codex 仍需要阅读上下文、写清楚任务、审查 diff、运行验证，并在委派结果错误或不完整时兜底。
+- 本机凭据只能保存在用户级或进程级环境变量中，禁止写入仓库文件、提交、日志、截图、客户更新说明或聊天总结。
+- 当前本机小米环境变量名：
+  - `XIAOMI_API_KEY`
+  - `XIAOMI_OPENAI_BASE_URL`
+  - `XIAOMI_ANTHROPIC_BASE_URL`
+  - `XIAOMI_CODE_MODEL`
+  - `XIAOMI_FAST_MODEL`
+  - `XIAOMI_MODEL_LIST`
+  - 供现有工具兼容使用的 OpenRouter 别名：`OPENROUTER_API_KEY`、`OPENROUTER_BASE_URL`、`OPENROUTER_MODEL`
+- 当前非密钥端点/模型记忆：
+  - OpenAI 兼容接口：`https://token-plan-cn.xiaomimimo.com/v1`
+  - Anthropic 兼容接口：`https://token-plan-cn.xiaomimimo.com/anthropic`
+  - 首选代码修改模型：`mimo-v2.5-pro`
+  - 快速/简单任务模型：`mimo-v2.5`
+  - 可用模型：`mimo-v2.5-pro`、`mimo-v2.5`、`mimo-v2.5-asr`、`mimo-v2.5-tts-voiceclone`、`mimo-v2.5-tts-voicedesign`、`mimo-v2.5-tts`、`mimo-v2-pro`、`mimo-v2-omni`、`mimo-v2-tts`
+- 多 Agent 协同调用方法：
+  - 先由 Codex 阅读相关代码、定位可能根因，并给 MiMo 写一份范围很窄的任务说明。
+  - 只把完成当前任务所需的文件、约束、预期行为和验证命令交给 MiMo。
+  - 优先把局部代码编辑、机械性重构、纯文档更新、简单版本/发布准备步骤、边界清晰的修复初稿交给 MiMo。
+  - 不让 MiMo 独立决定发布范围、版本号策略、公开更新日志内容、密钥处理或部署时机。
+  - MiMo 修改后，Codex 必须审查 diff，检查是否有无关改动或密钥泄露，运行必要测试/构建，并在汇报完成前直接修复残留问题。
+  - 部署或发布工作只能在用户明确要求“部署/发布/上线”后委派；Codex 仍必须监督并执行本项目的发布、备份、验证和禁止自动部署规则。

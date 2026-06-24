@@ -237,6 +237,10 @@ const 应用路径命令 = (
             cursor[lastToken] = (Number(cursor[lastToken]) || 0) - (Number(nextValue) || 0);
             return draft;
         }
+        if (是对象(cursor[lastToken]) && 是对象(nextValue)) {
+            cursor[lastToken] = 深合并对象(cursor[lastToken], nextValue);
+            return draft;
+        }
         cursor[lastToken] = 深拷贝(nextValue);
         return draft;
     }

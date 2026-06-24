@@ -1,0 +1,178 @@
+import { describe, expect, it, vi } from 'vitest';
+import { 创建存档数据, 执行读取存档 } from '../hooks/useGame/saveCoordinator';
+
+const deepClone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
+
+const openingPlaceholderHistory = [
+    {
+        role: 'system' as const,
+        content: '系统: 正在生成开场内容...',
+        timestamp: 1000
+    }
+];
+
+const openingMemory = {
+    回忆档案: [
+        {
+            名称: '【回忆001】',
+            概括: '开局醒来并看见山门。',
+            原文: '【0001:01:01:08:00】\nAI输出：\n【旁白】晨雾压着青石山门，你在钟声里醒来。\n【陆青】先稳住呼吸，别急着下山。',
+            回合: 1,
+            记录时间: '0001:01:01:08:00',
+            时间戳: '0001:01:01:08:00'
+        }
+    ],
+    即时记忆: [],
+    短期记忆: [],
+    中期记忆: [],
+    长期记忆: []
+};
+
+const createDeps = () => ({
+    存档格式版本: 12,
+    自动存档最小间隔毫秒: 0,
+    深拷贝: deepClone,
+    构建完整地点文本: (env?: any) => [env?.大地点, env?.中地点, env?.小地点, env?.具体地点].filter(Boolean).join('/'),
+    规范化环境信息: (value?: any) => value || {},
+    规范化世界状态: (value?: any) => value || {},
+    规范化战斗状态: (value?: any) => value || {},
+    规范化门派状态: (value?: any) => value || {},
+    规范化剧情状态: (value?: any) => value || {},
+    规范化剧情规划状态: (value?: any) => value || {},
+    规范化女主剧情规划状态: (value?: any) => value,
+    规范化同人剧情规划状态: (value?: any) => value,
+    规范化同人女主剧情规划状态: (value?: any) => value,
+    规范化记忆系统: (value?: any) => ({
+        回忆档案: Array.isArray(value?.回忆档案) ? value.回忆档案 : [],
+        即时记忆: Array.isArray(value?.即时记忆) ? value.即时记忆 : [],
+        短期记忆: Array.isArray(value?.短期记忆) ? value.短期记忆 : [],
+        中期记忆: Array.isArray(value?.中期记忆) ? value.中期记忆 : [],
+        长期记忆: Array.isArray(value?.长期记忆) ? value.长期记忆 : []
+    }),
+    规范化可选开局配置: (value?: any) => value,
+    规范化记忆配置: (value?: any) => value || {},
+    规范化游戏设置: (value?: any) => value || {},
+    规范化视觉设置: (value?: any) => value || {},
+    规范化场景图片档案: (value?: any) => ({
+        生图历史: Array.isArray(value?.生图历史) ? value.生图历史 : [],
+        最近生图结果: value?.最近生图结果,
+        当前壁纸图片ID: value?.当前壁纸图片ID
+    }),
+    规范化角色物品容器映射: (value?: any) => value || {},
+    规范化社交列表: (value?: any[]) => Array.isArray(value) ? value : [],
+    获取当前提示词池: () => [],
+    创建开场空白环境: () => ({}),
+    创建开场空白世界: () => ({}),
+    创建开场空白战斗: () => ({}),
+    创建空门派状态: () => ({}),
+    创建开场空白剧情: () => ({}),
+    应用并同步记忆系统: vi.fn(),
+    获取当前视觉设置: () => ({}),
+    setHasSave: vi.fn(),
+    setGameConfig: vi.fn(),
+    setMemoryConfig: vi.fn(),
+    设置视觉设置: vi.fn(),
+    设置场景图片档案: vi.fn(),
+    设置游戏初始时间: vi.fn(),
+    设置角色锚点列表: vi.fn(),
+    设置当前角色锚点ID: vi.fn(),
+    setView: vi.fn(),
+    setShowSaveLoad: vi.fn(),
+    设置最近开局配置: vi.fn(),
+    设置角色: vi.fn(),
+    设置环境: vi.fn(),
+    设置社交: vi.fn(),
+    设置世界: vi.fn(),
+    设置战斗: vi.fn(),
+    设置玩家门派: vi.fn(),
+    设置任务列表: vi.fn(),
+    设置约定列表: vi.fn(),
+    设置剧情: vi.fn(),
+    设置剧情规划: vi.fn(),
+    设置女主剧情规划: vi.fn(),
+    设置同人剧情规划: vi.fn(),
+    设置同人女主剧情规划: vi.fn(),
+    设置开局配置: vi.fn(),
+    设置提示词池: vi.fn(),
+    设置历史记录: vi.fn(),
+    清空重Roll快照: vi.fn(),
+    重置自动存档状态: vi.fn(),
+    切换生图存档作用域: vi.fn(),
+    最近自动存档时间戳Ref: { current: 0 },
+    最近自动存档签名Ref: { current: '' }
+});
+
+const createOpeningState = () => ({
+    历史记录: deepClone(openingPlaceholderHistory),
+    角色: { 姓名: '陆青' },
+    环境: { 时间: '0001:01:01:08:00', 大地点: '青岚山', 具体地点: '山门' },
+    社交: [],
+    世界: { 地图层级: [] },
+    战斗: {},
+    玩家门派: {},
+    任务列表: [],
+    约定列表: [],
+    剧情: {
+        当前章节: {
+            标题: '山门初醒',
+            摘要: '主角在山门钟声中醒来。',
+            正文片段: ['晨雾压着青石山门，你在钟声里醒来。']
+        },
+        已知剧情节点: ['山门初醒']
+    },
+    剧情规划: {},
+    记忆系统: deepClone(openingMemory),
+    openingConfig: { 题材模式: '武侠' },
+    提示词池: [],
+    游戏初始时间: '0001:01:01:08:00',
+    gameConfig: {},
+    memoryConfig: {},
+    visualConfig: {},
+    sceneImageArchive: {},
+    角色锚点列表: [],
+    当前角色锚点ID: ''
+});
+
+describe('saveCoordinator opening save recovery', () => {
+    it('手动保存开局完成状态时，不把仍未刷新的开局占位历史写成坏档', () => {
+        const save = 创建存档数据(
+            'manual',
+            createOpeningState() as any,
+            createDeps() as any
+        );
+
+        expect(save.历史记录).not.toEqual(openingPlaceholderHistory);
+        expect(save.历史记录[0]?.role).toBe('assistant');
+        expect(save.历史记录[0]?.structuredResponse?.logs?.[0]?.text).toContain('晨雾压着青石山门');
+        expect(save.元数据?.历史记录条数).toBe(save.历史记录.length);
+    });
+
+    it('读取已有受影响开局档时，从记忆恢复正文而不是显示开局未完成提示', async () => {
+        const deps = createDeps();
+        const save = {
+            ...createOpeningState(),
+            id: 'opening-race-save',
+            类型: 'manual',
+            时间戳: 2000,
+            元数据: { schemaVersion: 12, 历史记录条数: 1 },
+            角色数据: { 姓名: '陆青' },
+            环境信息: { 时间: '0001:01:01:08:00', 大地点: '青岚山', 具体地点: '山门' },
+            历史记录: deepClone(openingPlaceholderHistory),
+            记忆系统: deepClone(openingMemory),
+            游戏设置: {},
+            记忆配置: {},
+            视觉设置: {},
+            场景图片档案: {},
+            角色锚点列表: [],
+            当前角色锚点ID: ''
+        };
+
+        await 执行读取存档(save as any, deps as any);
+
+        const historyCalls = vi.mocked(deps.设置历史记录).mock.calls;
+        const finalHistory = historyCalls.at(-1)?.[0] as any[];
+        expect(finalHistory[0]?.role).toBe('assistant');
+        expect(finalHistory[0]?.structuredResponse?.logs?.[0]?.text).toContain('晨雾压着青石山门');
+        expect(JSON.stringify(finalHistory)).not.toContain('开局内容未完成生成');
+    });
+});

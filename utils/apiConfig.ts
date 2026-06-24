@@ -52,9 +52,9 @@ export const 请求协议覆盖标签: Record<请求协议覆盖类型, string> 
     deepseek: 'DeepSeek 协议'
 };
 
-const GPT_IMAGE_2_通用正面提示词 = 'best quality, masterpiece, very aesthetic, amazing quality, highres, absurdres, ultra detailed, 8k, premium CG key visual, cinematic CG rendering, high-end game character key art, polished digital painting, luxury visual quality, refined facial features, beautiful eyes, delicate skin shading, natural luminous skin, detailed hair strands, detailed clothing fabric, realistic material response, silk gloss, metal highlights, glass-like reflections, jewel-like sparkle, soft glow, dramatic rim lighting, cinematic lighting, volumetric light, atmospheric depth, shallow depth of field, rich color grading, elegant composition, clean composition, immersive atmosphere, highly detailed background, refined details, smooth polished rendering, cover art quality, High-end Chinese fantasy CG illustration style, Animation style CG sense, using ultra high definition rendering language, emphasizing ultimate detail richness, 动画CG元风格，采用超高清渲染语言，强调极致的细节丰富度';
+const GPT_IMAGE_2_通用正面提示词 = 'best quality, masterpiece, very aesthetic, amazing quality, highres, absurdres, ultra detailed, 8k, premium quality key visual, cinematic rendering, high-end character key art, polished digital painting, luxury visual quality, delicate skin shading, natural luminous skin, realistic material response, silk gloss, metal highlights, glass-like reflections, jewel-like sparkle, soft glow, dramatic rim lighting, cinematic lighting, volumetric light, atmospheric depth, shallow depth of field, rich color grading, elegant composition, clean composition, immersive atmosphere, refined details, smooth polished rendering, cover art quality, ultra high definition rendering, rich detail, clear subject focus';
 const GPT_IMAGE_2_通用负面提示词 = 'lowres, worst quality, low quality, normal quality, blurry, jpeg artifacts, watermark, signature, text, logo, bad anatomy, bad hands, bad fingers, extra fingers, missing fingers, fused fingers, deformed hands, long neck, bad face, asymmetrical eyes, cross-eyed, deformed body, extra limbs, missing limbs, duplicate person, cropped head, out of frame, messy background, flat lighting, dull colors, overexposed, underexposed, plastic skin, waxy skin, uncanny face, dead eyes, rough sketch, unfinished, low-end cartoon, flat cel shading, simple coloring, casual snapshot, live-action photo, studio photo, phone photo, nsfw, nude, explicit, sexualized, fetish, foot focus';
-const GPT_IMAGE_2_场景正面提示词 = 'plain single image, clean composition, uncluttered visual presentation, natural subject focus, clear silhouette, blank unlabeled surfaces, label-free visual design, logo-free visual design, inscription-free object surfaces, High-end Chinese fantasy CG illustration style, premium game CG key art, luxurious and exquisite, cinematic lighting, dramatic rim lighting, volumetric light, bright crystal-like sparkles, glowing magical particles, delicate texture rendering, elegant cinematic composition, 8k resolution, Unreal Engine 5 render style';
+const GPT_IMAGE_2_场景正面提示词 = 'plain single image, clean composition, uncluttered visual presentation, natural subject focus, clear silhouette, blank unlabeled surfaces, label-free visual design, logo-free visual design, inscription-free object surfaces, premium environment key visual, cinematic lighting, dramatic rim lighting, volumetric light, bright crystal-like sparkles, glowing magical particles, delicate texture rendering, elegant cinematic composition, highly detailed materials, atmospheric depth, 8k resolution';
 const GPT_IMAGE_2_场景负面提示词 = 'lowres, bad anatomy, bad hands, extra fingers, blurry, watermark, text, people, person, human, man, woman, boy, girl, child, silhouette, crowd, face, eyes, hands, body, nude, nsfw, character, portrait, 1girl, 1boy, 1man, 1woman, typography, letters, words, numbers, caption, label, labels, plaque, sign, inscription, readable inscription, pseudo text, fake text, gibberish text, Chinese characters, English letters, carved words, engraved words, engraved Chinese characters, vertical calligraphy, calligraphy, glyphs, runes, ideograms, seal, stamp, signature, username, logo, artist name, web address, url, copyright, subtitle, subtitles, title, poster text, comic text, manga text, dialogue text, speech bubble, dialogue box, word balloon, UI overlay, interface text, date stamp, QR code, barcode, poster layout, magazine cover, comic page, comic panel, manga panel, callout, text box, white oval bubble, black outline bubble, overlay, title card';
 const GPT_IMAGE_2_顶级CG模型提示词 = [
     '目标：把输入整理成清晰、可执行、稳定的 GPT Image 2 图像生成提示词。',
@@ -120,7 +120,7 @@ const GPT_IMAGE_2_顶级CG场景判定提示词 = [
 export const 默认画师串预设列表: 画师串预设结构[] = [
     {
         id: 'gpt_image2_wuxia_cg_all',
-        名称: 'GPT Image 2 · 国风CG通用',
+        名称: 'GPT Image 2 · 通用高质感',
         适用范围: 'all',
         画师串: '',
         正面提示词: GPT_IMAGE_2_通用正面提示词,
@@ -140,7 +140,7 @@ export const 默认画师串预设列表: 画师串预设结构[] = [
     },
     {
         id: 'gpt_image2_premium_cg_all',
-        名称: 'GPT Image 2 · 顶级CG通用质感',
+        名称: 'GPT Image 2 · 顶级通用质感',
         适用范围: 'all',
         画师串: '',
         正面提示词: GPT_IMAGE_2_通用正面提示词,
@@ -1840,11 +1840,9 @@ export const 获取生图画师串预设 = (
             ? 读取字符串(feature?.当前场景画师串预设ID).trim()
             : 读取字符串(feature?.当前NPC画师串预设ID).trim());
     const scopedList = list.filter((item) => item?.适用范围 === scope || item?.适用范围 === 'all');
-    if (targetId) {
-        const matched = scopedList.find((item) => item.id === targetId) || list.find((item) => item.id === targetId);
-        if (matched) return matched;
-    }
-    return scopedList[0] || null;
+    if (!targetId) return null;
+    const matched = scopedList.find((item) => item.id === targetId) || list.find((item) => item.id === targetId);
+    return matched || null;
 };
 
 const 获取后端自动模型词组转化器预设ID = (
@@ -1852,13 +1850,16 @@ const 获取后端自动模型词组转化器预设ID = (
     scope?: 词组转化器提示词预设类型
 ): string => {
     const feature = settings?.功能模型占位;
-    const backend = scope === 'scene' || scope === 'scene_judge'
+    const isSceneScope = scope === 'scene' || scope === 'scene_judge';
+    const backend = isSceneScope
         ? (feature?.场景生图后端类型 || feature?.文生图后端类型)
         : feature?.文生图后端类型;
-    const model = scope === 'scene' || scope === 'scene_judge'
+    const model = isSceneScope
         ? (feature?.场景生图模型使用模型 || feature?.文生图模型使用模型)
         : feature?.文生图模型使用模型;
+    const autoStyle = isSceneScope ? feature?.自动场景生图画风 : feature?.自动NPC生图画风;
     if (backend === 'openai' && 是否GPT图片模型(model)) {
+        if (autoStyle === '写实') return '';
         return 'transformer_model_bundle_gpt_image2_premium_cg';
     }
     switch (backend) {

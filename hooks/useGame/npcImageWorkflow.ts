@@ -141,6 +141,36 @@ const 生图记录属于当前NPC = (currentNpc: any, record: any): boolean => {
     return true;
 };
 
+const 读取NPC姓名 = (npc: any): string => (
+    typeof npc?.姓名 === 'string' ? npc.姓名.trim() : ''
+);
+
+const 解析Name标识姓名 = (npcKey: string): string => {
+    if (typeof npcKey !== 'string' || !npcKey.startsWith('name:')) return '';
+    const body = npcKey.slice('name:'.length);
+    const withoutSuffix = body.split('::')[0] || '';
+    const parts = withoutSuffix.split(':').filter(Boolean);
+    return (parts.length >= 2 ? parts.slice(1).join(':') : withoutSuffix).trim();
+};
+
+const NPC生图标识匹配 = (
+    npcKey: string,
+    candidate: any,
+    index: number,
+    getNpcKey: (npc: any, index?: number) => string
+): boolean => {
+    if (getNpcKey(candidate, index) === npcKey) return true;
+    const name = 解析Name标识姓名(npcKey);
+    return Boolean(name && 读取NPC姓名(candidate) === name);
+};
+
+const NPC生图进行中标识匹配 = (activeKey: string, npcKey: string, npc: any): boolean => {
+    if (activeKey === npcKey) return true;
+    const activeName = 解析Name标识姓名(activeKey);
+    const currentName = 解析Name标识姓名(npcKey) || 读取NPC姓名(npc);
+    return Boolean(activeName && currentName && activeName === currentName);
+};
+
 const 合并生图历史记录 = (currentNpc: any, incoming: any): any[] => {
     const archive = currentNpc?.图片档案 && typeof currentNpc.图片档案 === 'object' ? currentNpc.图片档案 : {};
     const baseHistory = Array.isArray(archive?.生图历史)
@@ -387,14 +417,14 @@ export const 执行NPC生图工作流 = async (
         }
         console.warn('NPC 生图词组转化器配置不可用，已改用角色资料直出提示词继续生成。');
     }
-    if (deps.NPC生图进行中集合.has(npcKey)) return;
+    if (Array.from(deps.NPC生图进行中集合).some((activeKey) => NPC生图进行中标识匹配(activeKey, npcKey, npc))) return;
 
     const npcName = typeof npc?.姓名 === 'string' ? npc.姓名.trim() : '未命名NPC';
     const npcImageBaseData = deps.提取NPC生图基础数据(npc);
     const modelName = 获取图片后端显示名(imageApi);
     const 构图: '头像' | '半身' | '立绘' = options?.构图 || '头像';
     const latestNpc = (typeof deps.获取社交列表 === 'function' ? deps.获取社交列表() : [])
-        .find((candidate: any, index: number) => deps.获取NPC唯一标识(candidate, index) === npcKey);
+        .find((candidate: any, index: number) => NPC生图标识匹配(npcKey, candidate, index, deps.获取NPC唯一标识));
     if (!options?.force && latestNpc && NPC已有成功构图(latestNpc, 构图)) return;
 
     deps.NPC生图进行中集合.add(npcKey);

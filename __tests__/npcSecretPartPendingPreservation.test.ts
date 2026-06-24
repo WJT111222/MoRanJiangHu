@@ -269,6 +269,14 @@ describe('香闺秘档部位档案 pending 占位防御', () => {
     });
 
     describe('创建NPC图片状态工作流: pending 占位写入后旧图仍在', () => {
+        const 获取生产式NPC唯一标识 = (npc: any, index?: number): string => {
+            const id = typeof npc?.id === 'string' ? npc.id.trim() : '';
+            if (id) return `id:${id}`;
+            const name = typeof npc?.姓名 === 'string' ? npc.姓名.trim() : '';
+            if (name) return `name:${name}`;
+            return `index:${index ?? -1}`;
+        };
+
         it('部位已有 success 图时，写入 pending 占位后标准化清理仍保留可展示记录', () => {
             let socialList: any[] = [{
                 id: 'npc_yyh',
@@ -315,6 +323,42 @@ describe('香闺秘档部位档案 pending 占位防御', () => {
             const merged = 合并NPC图片档案(socialList[0], socialList[0]);
             const chest = merged?.香闺秘档部位档案?.胸部;
             expect(chest?.图片URL).toBe('https://example.com/old-chest.png');
+        });
+
+        it('早期开局 name 标识的头像结果应写回后续带 id 的同名 NPC', () => {
+            let socialList: any[] = [{
+                id: 'npc_yuyuehe',
+                姓名: '俞月荷',
+                性别: '女',
+                是否主要角色: true
+            }];
+            const autoSave = vi.fn();
+            const workflow = 创建NPC图片状态工作流({
+                设置社交: (updater: any) => { socialList = updater(socialList); },
+                规范化社交列表: (list: any[]) => list,
+                执行社交自动存档: autoSave,
+                获取社交列表: () => socialList,
+                获取NPC唯一标识: 获取生产式NPC唯一标识,
+                设置NPC生图任务队列: vi.fn(),
+                加载图片AI服务: vi.fn()
+            } as any);
+
+            workflow.更新NPC最近生图结果('name:俞月荷', (npc: any) => ({
+                ...npc,
+                最近生图结果: {
+                    id: 'avatar_early',
+                    NPC姓名: '俞月荷',
+                    NPC性别: '女',
+                    构图: '头像',
+                    状态: 'success',
+                    图片URL: 'https://example.com/avatar.png',
+                    生成时间: 1000
+                }
+            }));
+
+            expect(autoSave).toHaveBeenCalledTimes(1);
+            expect(socialList[0].图片档案?.最近生图结果?.id).toBe('avatar_early');
+            expect(socialList[0].图片档案?.已选头像图片ID).toBe('avatar_early');
         });
     });
 });

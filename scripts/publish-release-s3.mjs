@@ -55,7 +55,7 @@ const versionedFileName = path.basename(versionedKey);
 const manifestKey = normalizeKey(`${prefix}/latest.json`);
 const websiteBaseUrl = String(releaseInfo.websiteUrl || '').replace(/\/+$/, '');
 const r2PublicBaseUrl = readEnv('MORAN_R2_PUBLIC_BASE_URL', `https://download.bacon.de5.net/${releaseInfo.r2Prefix || 'moranjianghu'}`).replace(/\/+$/, '');
-const preferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'r2') === 'hi168' ? 'hi168' : 'r2';
+const preferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'hi168') === 'r2' ? 'r2' : 'hi168';
 const providerApkUrls = {
   r2: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=r2` : `${r2PublicBaseUrl}/${encodeURIComponent(versionedFileName)}`,
   hi168: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=hi168` : publicUrl(versionedKey)

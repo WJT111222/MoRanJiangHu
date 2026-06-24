@@ -145,7 +145,7 @@ describe('默认 ComfyUI 生图配置', () => {
             词组转化输出策略: 'plain'
         } as any;
 
-        const normalComfy = 构建最终图片提示词('幽冥冰莲', comfyConfig, { 构图: '场景' });
+        const normalComfy = 构建最终图片提示词('幽冥冰莲', comfyConfig, { 构图: '场景', 场景类型: '剧照场景' });
         const normalOpenAI = 构建最终图片提示词('幽冥冰莲', openAIConfig, { 构图: '场景' });
         const nsfwCloseup = 构建最终图片提示词('私密部位特写', comfyConfig, { 构图: '部位特写' });
 
@@ -156,6 +156,44 @@ describe('默认 ComfyUI 生图配置', () => {
         expect(nsfwCloseup.最终正向提示词).not.toContain('露骨性器、体液、性行为细节');
         expect(nsfwCloseup.最终正向提示词).toContain('macro anatomical close-up');
         expect(nsfwCloseup.最终正向提示词).toContain('target fills the frame');
+    });
+
+    it('keeps secret-part closeups from inheriting character, clothing, breast, or CG artist fragments', () => {
+        const comfyConfig = {
+            图片后端类型: 'comfyui',
+            词组转化输出策略: 'plain'
+        } as any;
+        const prompt = 构建最终图片提示词(
+            'extreme close-up, crotch focus, pussy focus, soft pink labia, glistening moisture',
+            comfyConfig,
+            {
+                构图: '部位特写',
+                附加正向提示词: 'premium CG key visual, refined facial features, beautiful eyes, detailed hair strands, detailed clothing fabric, extra breasts, extra nipples'
+            }
+        );
+
+        expect(prompt.最终正向提示词).toContain('macro anatomical close-up');
+        expect(prompt.最终正向提示词).toContain('target fills the frame');
+        expect(prompt.最终正向提示词).toContain('pussy focus');
+        expect(prompt.最终正向提示词).not.toMatch(/premium CG key visual|refined facial features|beautiful eyes|hair strands|clothing fabric|extra breasts|extra nipples/i);
+    });
+
+    it('keeps landscape scene prompts free of character-preservation and default-person prompts', () => {
+        const comfyConfig = {
+            图片后端类型: 'comfyui',
+            词组转化输出策略: 'plain'
+        } as any;
+
+        const prompt = 构建最终图片提示词(
+            'wooden floor, open heavy metallic hatch door, glowing white sphere, empty white marble plaza',
+            comfyConfig,
+            { 构图: '场景', 场景类型: '风景场景' }
+        );
+
+        expect(prompt.最终正向提示词).not.toContain('Z-Image-Turbo narrative prompt');
+        expect(prompt.最终正向提示词).not.toContain('preserve fixed character features');
+        expect(prompt.最终正向提示词).not.toContain('Chinese person');
+        expect(prompt.最终负向提示词).toContain('text');
     });
 
     it('deduplicates character prompt fragments and defaults non-foreign characters to Chinese features', () => {

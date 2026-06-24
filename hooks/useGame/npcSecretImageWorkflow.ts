@@ -199,29 +199,29 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
         }
 
         const 强制裸体语义 = deps.apiConfig?.功能模型占位?.香闺秘档特写强制裸体语义 === true;
-    const 画师串预设 = deps.获取生图画师串预设(deps.apiConfig, 'npc', options?.画师串预设ID);
     const PNG画风预设 = deps.获取当前PNG画风预设(options?.PNG画风预设ID);
     const 角色锚点 = deps.获取NPC角色锚点(typeof npc?.id === 'string' ? npc.id.trim() : '');
     const 词组转化兼容模式 = deps.apiConfig?.功能模型占位?.词组转化兼容模式 === true;
     const 启用画师串预设 = Boolean(
-        (画师串预设?.画师串 || '').trim()
-        || (画师串预设?.正面提示词 || '').trim()
-        || (画师串预设?.负面提示词 || '').trim()
+        (options?.画师串 || '').trim()
+        || (PNG画风预设?.画师串 || '').trim()
+        || (PNG画风预设?.正面提示词 || '').trim()
+        || (PNG画风预设?.负面提示词 || '').trim()
     );
     const 启用PNG画风预设 = Boolean(
         (PNG画风预设?.画师串 || '').trim()
         || (PNG画风预设?.正面提示词 || '').trim()
         || (PNG画风预设?.负面提示词 || '').trim()
     );
-    const 画师串 = [(画师串预设?.画师串 || '').trim(), (options?.画师串 || '').trim(), (PNG画风预设?.画师串 || '').trim()]
+    const 画师串 = [(options?.画师串 || '').trim(), (PNG画风预设?.画师串 || '').trim()]
         .map((item) => item.trim())
         .filter(Boolean)
         .join(', ');
-    const 画师串负面 = [画师串预设?.负面提示词 || '', 默认额外负面提示词]
+    const 画师串负面 = [默认额外负面提示词]
         .map((item) => item.trim())
         .filter(Boolean)
         .join(', ');
-    const 非画师风格正面提示词 = [(画师串预设?.正面提示词 || '').trim(), (PNG画风预设?.正面提示词 || '').trim()].filter(Boolean).join(', ');
+    const 非画师风格正面提示词 = [(PNG画风预设?.正面提示词 || '').trim()].filter(Boolean).join(', ');
     const 兼容模式风格提示词 = 词组转化兼容模式 ? 非画师风格正面提示词 : '';
     前置正向提示词 = [
         画师串,
@@ -368,7 +368,7 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
                 尺寸: 特写尺寸,
                 附加正向提示词: 特写附加正向提示词,
                 附加负面提示词: 合并负向画师串,
-                跳过基础负面提示词: Boolean((画师串预设?.负面提示词 || '').trim() || (PNG画风预设?.负面提示词 || '').trim()),
+                跳过基础负面提示词: Boolean((PNG画风预设?.负面提示词 || '').trim()),
                 PNG参数
             }),
             {

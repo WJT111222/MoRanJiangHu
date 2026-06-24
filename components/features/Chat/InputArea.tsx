@@ -1,6 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { 获取队列阶段重新生成动作 } from '../../../utils/queueStageActions';
 
 type QuickRestartMode = 'world_only' | 'opening_only' | 'all';
 
@@ -876,7 +877,7 @@ const InputArea: React.FC<Props> = ({
                             </div>
                         ) : (
                             <div className="flex gap-2">
-                            <div className="flex-1 min-w-0 rounded-lg border border-wuxia-gold/25 bg-neutral-950/95 p-3 space-y-2 max-h-[32svh] sm:max-h-[40vh] md:max-h-[58vh] overflow-y-auto no-scrollbar">
+                            <div className="flex-1 min-w-0 rounded-lg border border-wuxia-gold/25 bg-neutral-950/95 p-3 space-y-2 max-h-[32svh] sm:max-h-[40vh] md:max-h-[58vh] overflow-y-auto overscroll-contain no-scrollbar">
                                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                                     <div className="text-wuxia-gold">{isOpeningQueue ? '开局初始化队列' : '独立更新阶段队列'}</div>
                                     <div className="text-gray-400">
@@ -901,6 +902,15 @@ const InputArea: React.FC<Props> = ({
                                         const isVariableStage = stage.id === 'variable';
                                         const hidesModel = 队列阶段不调用AI(stage.progress);
                                         const elapsedText = 格式化队列耗时(stage.progress?.elapsedMs);
+                                        const rerunAction = phase !== 'start' && !variableGenerationRunning
+                                            ? 获取队列阶段重新生成动作({
+                                                stageId: stage.id,
+                                                isOpeningQueue,
+                                                hasReroll: canReroll,
+                                                hasRetryLatestVariableGeneration: Boolean(canRetryLatestVariableGeneration && onRetryLatestVariableGeneration),
+                                                hasQuickRestart: Boolean(canQuickRestart && onQuickRestart)
+                                            })
+                                            : null;
                                         return (
                                             <div key={stage.id} className="rounded border border-gray-800/80 bg-neutral-950 p-2">
                                                 <div className="flex items-center justify-between gap-3">
@@ -939,19 +949,21 @@ const InputArea: React.FC<Props> = ({
                                                                 取消生成
                                                             </button>
                                                         )}
-                                                        {phase !== 'start' && !variableGenerationRunning && stage.id !== 'opening-input' && stage.id !== 'opening-save' && (
+                                                        {rerunAction && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
-                                                                    if (stage.id === 'story' && onReroll) {
-                                                                        void onReroll();
-                                                                    } else if (isVariableStage && onRetryLatestVariableGeneration) {
+                                                                    if (rerunAction === 'quick-opening') {
+                                                                        void handleQuickRestartSelect('opening_only');
+                                                                    } else if (rerunAction === 'reroll') {
+                                                                        void handleReroll();
+                                                                    } else if (rerunAction === 'retry-variable') {
                                                                         void handleRetryVariableGeneration();
                                                                     }
                                                                 }}
                                                                 className="text-xs px-2 py-1 border border-cyan-400/40 text-cyan-100 rounded hover:bg-cyan-500/10"
                                                             >
-                                                                重新生成
+                                                                {rerunAction === 'quick-opening' ? '重跑开局' : '重新生成'}
                                                             </button>
                                                         )}
                                                         {commandTexts.length > 0 && (
@@ -1027,7 +1039,7 @@ const InputArea: React.FC<Props> = ({
                                 const rawText = stage.progress?.rawText || '';
                                 const commandDisplayText = commandTexts.join('\n');
                                 return (
-                                    <div className="w-80 shrink-0 rounded-lg border border-wuxia-gold/25 bg-neutral-950/95 p-3 max-h-[32svh] sm:max-h-[40vh] md:max-h-[58vh] overflow-y-auto no-scrollbar space-y-2">
+                                    <div className="w-80 shrink-0 rounded-lg border border-wuxia-gold/25 bg-neutral-950/95 p-3 max-h-[32svh] sm:max-h-[40vh] md:max-h-[58vh] overflow-y-auto overscroll-contain no-scrollbar space-y-2">
                                         <div className="text-xs text-wuxia-gold font-bold mb-1">
                                             {stage.label} — {isCommand ? '命令列表' : '原始回复'}
                                         </div>

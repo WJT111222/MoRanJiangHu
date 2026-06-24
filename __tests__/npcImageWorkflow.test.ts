@@ -7,7 +7,13 @@ const 构建NPC生图依赖 = (socialList: any[]) => {
     return {
         deps: {
             apiConfig: {} as any,
-            获取NPC唯一标识: (npc: any) => npc?.id || npc?.姓名 || '',
+            获取NPC唯一标识: (npc: any, index?: number) => {
+                const id = typeof npc?.id === 'string' ? npc.id.trim() : '';
+                if (id) return `id:${id}`;
+                const name = typeof npc?.姓名 === 'string' ? npc.姓名.trim() : '';
+                if (name) return `name:${name}`;
+                return `index:${index ?? -1}`;
+            },
             获取社交列表: () => socialList,
             获取文生图接口配置: () => ({ 图片后端类型: 'openai', model: 'image-model' }) as any,
             获取生图词组转化器接口配置: () => null,
@@ -36,6 +42,30 @@ describe('npc image workflow auto generation guard', () => {
         const staleNpc = { id: 'npc_su_wanqing', 姓名: '苏晚晴', 性别: '女' };
         const latestNpc = {
             ...staleNpc,
+            图片档案: {
+                最近生图结果: {
+                    id: 'img_avatar_1',
+                    状态: 'success',
+                    构图: '头像',
+                    图片URL: 'https://example.com/avatar.png'
+                }
+            }
+        };
+        const { deps, 创建NPC生图任务, 追加NPC生图任务 } = 构建NPC生图依赖([latestNpc]);
+
+        await 执行NPC生图工作流(staleNpc, { 构图: '头像' }, deps as any);
+
+        expect(创建NPC生图任务).not.toHaveBeenCalled();
+        expect(追加NPC生图任务).not.toHaveBeenCalled();
+        expect(deps.NPC生图进行中集合.size).toBe(0);
+    });
+
+    it('skips automatic generation when a name-key snapshot matches an id-backed NPC with a successful avatar', async () => {
+        const staleNpc = { 姓名: '俞月荷', 性别: '女' };
+        const latestNpc = {
+            id: 'npc_yuyuehe',
+            姓名: '俞月荷',
+            性别: '女',
             图片档案: {
                 最近生图结果: {
                     id: 'img_avatar_1',

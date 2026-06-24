@@ -220,7 +220,7 @@ export const 合并NPC图片档案 = (currentNpc: any, payload: any) => {
         ? payload.图片档案.生图历史
         : (Array.isArray(payload?.生图历史) ? payload.生图历史 : []);
     const incomingHistory = rawIncomingHistory.filter((item: any) => 生图记录属于当前角色(currentNpc, item));
-    const mergedHistory = [...incomingHistory, ...currentHistory]
+    const baseMergedHistory = [...incomingHistory, ...currentHistory]
         .filter((item) => item && typeof item === 'object')
         .reduce<any[]>((acc, item) => {
             const normalizedItem = 标准化NPC图片结果(item);
@@ -239,10 +239,21 @@ export const 合并NPC图片档案 = (currentNpc: any, payload: any) => {
                 ...normalized,
                 id: typeof normalized.id === 'string' && normalized.id.trim()
                     ? normalized.id
-                    : (mergedHistory[0]?.id || 生成NPC生图记录ID())
+                    : (baseMergedHistory[0]?.id || 生成NPC生图记录ID())
             };
         })()
         : undefined;
+    const mergedHistory = [normalizedRecent, ...baseMergedHistory]
+        .filter((item) => item && typeof item === 'object')
+        .reduce<any[]>((acc, item) => {
+            const normalizedItem = 标准化NPC图片结果(item);
+            if (!normalizedItem) return acc;
+            if (!acc.some((existing) => existing.id === normalizedItem.id)) {
+                acc.push(normalizedItem);
+            }
+            return acc;
+        }, [])
+        .sort((a, b) => (b?.生成时间 || 0) - (a?.生成时间 || 0));
     const incomingSelectedAvatarImageId = typeof payload?.图片档案?.已选头像图片ID === 'string'
         ? payload.图片档案.已选头像图片ID.trim()
         : (typeof payload?.已选头像图片ID === 'string' ? payload.已选头像图片ID.trim() : '');
@@ -313,6 +324,27 @@ export const 获取生图阶段中文 = (stage?: NPC生图任务记录['进度�
 };
 
 export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依赖) => {
+    const 读取NPC姓名 = (npc: any): string => (
+        typeof npc?.姓名 === 'string' ? npc.姓名.trim() : ''
+    );
+
+    const 解析Name标识姓名 = (npcKey: string): string => {
+        if (typeof npcKey !== 'string' || !npcKey.startsWith('name:')) return '';
+        const body = npcKey.slice('name:'.length);
+        const withoutSuffix = body.split('::')[0] || '';
+        const parts = withoutSuffix.split(':').filter(Boolean);
+        return (parts.length >= 2 ? parts.slice(1).join(':') : withoutSuffix).trim();
+    };
+
+    const 查找NPC生图目标索引 = (baseList: any[], npcKey: string): number => {
+        const exactIndex = baseList.findIndex((npc, index) => deps.获取NPC唯一标识(npc, index) === npcKey);
+        if (exactIndex >= 0) return exactIndex;
+
+        const name = 解析Name标识姓名(npcKey);
+        if (!name) return -1;
+        return baseList.findIndex((npc) => 读取NPC姓名(npc) === name);
+    };
+
     const 更新社交并自动存档 = (updater: (prev: any[]) => { nextList: any[]; changed: boolean }): boolean => {
         const baseList = deps.获取社交列表();
         const result = updater(Array.isArray(baseList) ? baseList : []);
@@ -375,8 +407,9 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
     const 更新NPC最近生图结果 = (npcKey: string, updater: (npc: any) => any) => {
         更新社交并自动存档((baseList) => {
             let changed = false;
+            const targetIndex = 查找NPC生图目标索引(baseList, npcKey);
             const nextList = baseList.map((npc, index) => {
-                if (deps.获取NPC唯一标识(npc, index) !== npcKey) return npc;
+                if (index !== targetIndex) return npc;
                 changed = true;
                 const nextNpc = updater(npc);
                 const 图片档案 = 合并NPC图片档案(npc, nextNpc);
@@ -400,8 +433,9 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
         let writeInfo: any = null;
         更新社交并自动存档((baseList) => {
             let changed = false;
+            const targetIndex = 查找NPC生图目标索引(baseList, npcKey);
             const nextList = baseList.map((npc, index) => {
-                if (deps.获取NPC唯一标识(npc, index) !== npcKey) return npc;
+                if (index !== targetIndex) return npc;
                 changed = true;
                 const archive = npc?.图片档案 && typeof npc.图片档案 === 'object' ? npc.图片档案 : {};
                 const currentRecent = archive?.最近生图结果 || npc?.最近生图结果;
@@ -482,8 +516,9 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
     ) => {
         return 更新社交并自动存档((baseList) => {
             let changed = false;
+            const targetIndex = 查找NPC生图目标索引(baseList, npcKey);
             const nextList = baseList.map((npc, index) => {
-                if (deps.获取NPC唯一标识(npc, index) !== npcKey) return npc;
+                if (index !== targetIndex) return npc;
                 changed = true;
                 const archive = npc?.图片档案 && typeof npc.图片档案 === 'object' ? npc.图片档案 : {};
                 const currentSecretArchive = 标准化香闺秘档部位档案(archive?.香闺秘档部位档案) || {};
@@ -514,7 +549,8 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
         const shouldUpdateRecent = options?.同步最近结果 !== false;
         // [发送端调试] 记录入参关键字段，便于追踪图片在哪一步丢失
         const baseListForLog = Array.isArray(deps.获取社交列表()) ? deps.获取社交列表() : [];
-        const matchedNpcForLog = baseListForLog.find((n: any, i: number) => deps.获取NPC唯一标识(n, i) === npcKey);
+        const matchedNpcIndexForLog = 查找NPC生图目标索引(baseListForLog, npcKey);
+        const matchedNpcForLog = matchedNpcIndexForLog >= 0 ? baseListForLog[matchedNpcIndexForLog] : undefined;
         recordDiagnosticLog('info', '[香闺秘档写入·发送端] 进入写入流程', {
             npcKey,
             part,
@@ -539,8 +575,9 @@ export const 创建NPC图片状态工作流 = (deps: NPC图片状态工作流依
         let writeInfo: any = null;
         const updated = 更新社交并自动存档((baseList) => {
             let changed = false;
+            const targetIndex = 查找NPC生图目标索引(baseList, npcKey);
             const nextList = baseList.map((npc, index) => {
-                if (deps.获取NPC唯一标识(npc, index) !== npcKey) return npc;
+                if (index !== targetIndex) return npc;
                 changed = true;
                 const archive = npc?.图片档案 && typeof npc.图片档案 === 'object' ? npc.图片档案 : {};
                 const currentRecent = archive?.最近生图结果 || npc?.最近生图结果;

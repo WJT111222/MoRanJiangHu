@@ -63,7 +63,7 @@ const versionedApkUrl = readEnv(
     : (releaseInfo.apkDownloadUrl || hi168VersionedApkUrl))
 );
 const legacyLatestApkUrl = readEnv('MORAN_RELEASE_LATEST_APK_URL', workerLatestApkUrl || releaseInfo.apkDownloadUrl || hi168LatestApkUrl);
-const preferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'r2') === 'hi168' ? 'hi168' : 'r2';
+const preferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'hi168') === 'r2' ? 'r2' : 'hi168';
 const apkBuffer = fs.readFileSync(apkPath);
 const apkSha256 = crypto.createHash('sha256').update(apkBuffer).digest('hex');
 const apkSize = apkBuffer.byteLength;

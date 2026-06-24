@@ -687,3 +687,30 @@ If the task is "confirm this UI works" and the opening flow depends on external 
 - Do not stop after updating `utils/topicModeProfiles.ts`, `data/structuredItemLibrary.ts`, or `data/presetItemImages.ts`; also run `npm.cmd run preset:feedback`.
 - Verify `public/assets/item-preset-feedback-data.json` contains the new topic mode category and that the mode's preset images appear on `/item-preset-feedback`.
 - Keep `scripts/sync-item-preset-feedback-data.mjs` deriving topic mode categories from `题材模式顺序` instead of a hard-coded old mode list, so future modes are not silently omitted.
+
+## Xiaomi MiMo Agent Collaboration Rule
+
+- Xiaomi MiMo can be used as an execution/code-editing model for implementation-heavy work, while Codex keeps responsibility for bug localization, task direction, code review, verification, and any final corrections.
+- This can reduce Codex token usage for bulk code-editing drafts, but it does not eliminate Codex token usage because Codex still needs to inspect context, write precise instructions, review diffs, run verification, and fix issues when the delegated result is wrong or incomplete.
+- Local credentials must stay only in user/process environment variables, never in repository files, commits, logs, screenshots, customer changelogs, or chat summaries.
+- Current local Xiaomi environment variable names:
+  - `XIAOMI_API_KEY`
+  - `XIAOMI_OPENAI_BASE_URL`
+  - `XIAOMI_ANTHROPIC_BASE_URL`
+  - `XIAOMI_CODE_MODEL`
+  - `XIAOMI_FAST_MODEL`
+  - `XIAOMI_MODEL_LIST`
+  - OpenRouter-compatible aliases for existing tools: `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`
+- Current non-secret endpoint/model memory:
+  - OpenAI-compatible base URL: `https://token-plan-cn.xiaomimimo.com/v1`
+  - Anthropic-compatible base URL: `https://token-plan-cn.xiaomimimo.com/anthropic`
+  - Preferred code-editing model: `mimo-v2.5-pro`
+  - Fast/simple model: `mimo-v2.5`
+  - Available models: `mimo-v2.5-pro`, `mimo-v2.5`, `mimo-v2.5-asr`, `mimo-v2.5-tts-voiceclone`, `mimo-v2.5-tts-voicedesign`, `mimo-v2.5-tts`, `mimo-v2-pro`, `mimo-v2-omni`, `mimo-v2-tts`
+- Multi-agent collaboration method:
+  - Use Codex first to read the relevant code, identify the likely root cause, and write a narrow task brief for MiMo.
+  - Give MiMo only the files, constraints, expected behavior, and verification commands needed for the specific task.
+  - Prefer MiMo for localized code edits, mechanical refactors, documentation-only updates, simple version/deploy preparation steps, and first-pass implementation of well-scoped fixes.
+  - Do not let MiMo independently decide release scope, version bump policy, public changelog contents, secret handling, or deployment timing.
+  - After MiMo edits, Codex must inspect the diff, check for unrelated churn or secret leakage, run the required tests/builds, and directly repair any remaining problems before reporting completion.
+  - Deployment or release work can be delegated only after the user explicitly asks to deploy/publish/go live, and Codex must still enforce the project's release, backup, verification, and no-auto-deploy rules.

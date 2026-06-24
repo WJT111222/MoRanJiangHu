@@ -1,6 +1,7 @@
 import * as dbService from '../../services/dbService';
 import { 后台同步存档到云端 } from '../../services/cloudPlayService';
 import type {
+    GameResponse,
     存档结构,
     聊天记录结构,
     环境信息结构,
@@ -417,6 +418,81 @@ const 过滤当前存档角色锚点 = (
     return { anchors: filtered, currentAnchorId: nextCurrentAnchorId };
 };
 
+const 是否开局生成占位历史 = (history: 聊天记录结构[] | undefined): boolean => {
+    if (!Array.isArray(history) || history.length !== 1) return false;
+    const only = history[0];
+    return only?.role === 'system'
+        && typeof only?.content === 'string'
+        && only.content.includes('正在生成开场内容');
+};
+
+const 从记忆文本恢复开局结构化响应 = (memory: 记忆系统结构 | undefined): GameResponse | null => {
+    const entries = [
+        ...(Array.isArray(memory?.回忆档案) ? memory.回忆档案.map((item: any) => item?.原文 || item?.概括) : []),
+        ...(Array.isArray(memory?.即时记忆) ? memory.即时记忆 : []),
+        ...(Array.isArray(memory?.短期记忆) ? memory.短期记忆 : [])
+    ]
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter(Boolean);
+    const source = entries.find((item) => /AI输出[:：]/u.test(item)) || entries[0] || '';
+    if (!source) return null;
+    const outputMatch = source.match(/AI输出[:：]\s*([\s\S]*)/u);
+    const body = (outputMatch?.[1] || source).split('<<SHORT_TERM_SYNC>>')[0].trim();
+    if (!body) return null;
+    const logs = body
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+            const match = line.match(/^【([^】]+)】\s*(.*)$/u);
+            return match
+                ? { sender: match[1], text: match[2] || '' }
+                : { sender: '旁白', text: line };
+        })
+        .filter((log) => log.text.trim().length > 0);
+    if (logs.length === 0) return null;
+    return { logs };
+};
+
+const 尝试修复完成开局但缺失历史的存档 = (
+    save: Pick<存档结构, '时间戳' | '环境信息' | '游戏初始时间'>,
+    loadedHistory: 聊天记录结构[],
+    loadedMemory: 记忆系统结构,
+    loadedStory: 剧情系统结构
+): 聊天记录结构[] | null => {
+    if (!是否开局生成占位历史(loadedHistory)) return null;
+    const hasOpeningMemory = (Array.isArray(loadedMemory?.回忆档案) && loadedMemory.回忆档案.length > 0)
+        || (Array.isArray(loadedMemory?.即时记忆) && loadedMemory.即时记忆.length > 0)
+        || (Array.isArray(loadedMemory?.短期记忆) && loadedMemory.短期记忆.length > 0);
+    const hasStoryState = Boolean(
+        (loadedStory as any)?.当前章节?.标题
+        || (loadedStory as any)?.当前章节?.摘要
+        || ((loadedStory as any)?.当前章节?.正文片段 || []).length > 0
+        || ((loadedStory as any)?.已知剧情节点 || []).length > 0
+    );
+    if (!hasOpeningMemory && !hasStoryState) return null;
+
+    const restoredResponse = 从记忆文本恢复开局结构化响应(loadedMemory);
+    if (!restoredResponse) return null;
+
+    const timestamp = Number(save.时间戳) || Date.now();
+    const gameTime = 环境时间转标准串(save.环境信息 as any) || save.游戏初始时间 || '未知时间';
+    return [
+        {
+            role: 'assistant',
+            content: 'Opening Story',
+            structuredResponse: restoredResponse,
+            timestamp,
+            gameTime
+        },
+        {
+            role: 'system',
+            content: '[系统] 已从存档记忆恢复开局正文记录。该存档可能是在开局刚完成、界面历史尚未刷新时手动保存的；角色、环境、世界与记忆数据已按存档继续加载。',
+            timestamp: timestamp + 1
+        }
+    ];
+};
+
 const 构建自动存档签名 = (
     snapshot: {
         history?: 聊天记录结构[];
@@ -530,7 +606,6 @@ export const 创建存档数据 = (
     const historySource = Array.isArray(snapshot?.history)
         ? snapshot.history
         : (Array.isArray(currentState.历史记录) ? currentState.历史记录 : []);
-    const historySnapshot = 构建存档历史记录(historySource, deps);
     const roleSource = snapshot?.role ? snapshot.role : currentState.角色;
     const envSource = snapshot?.env ? snapshot.env : currentState.环境;
     const rawSocialSource = Array.isArray(snapshot?.social) ? snapshot.social : currentState.社交;
@@ -545,6 +620,21 @@ export const 创建存档数据 = (
     const fandomStoryPlanSource = snapshot?.fandomStoryPlan ?? currentState.同人剧情规划;
     const fandomHeroinePlanSource = snapshot?.fandomHeroinePlan ?? currentState.同人女主剧情规划;
     const memorySource = snapshot?.memory ? snapshot.memory : deps.规范化记忆系统(currentState.记忆系统);
+    const normalizedMemorySource = deps.规范化记忆系统(deps.深拷贝(memorySource));
+    const storyForSave = deps.规范化剧情状态(deps.深拷贝(storySource));
+    const historySnapshot = (() => {
+        const built = 构建存档历史记录(historySource, deps);
+        return 尝试修复完成开局但缺失历史的存档(
+            {
+                时间戳: Date.now(),
+                环境信息: envSource,
+                游戏初始时间: currentState.游戏初始时间
+            },
+            built,
+            normalizedMemorySource,
+            storyForSave
+        ) || built;
+    })();
     const openingConfigSource = snapshot?.openingConfig ?? currentState.openingConfig;
     const socialSource = 修复开局伙伴社交列表(rawSocialSource, openingConfigSource, roleSource);
     const visualSource = snapshot?.visualConfig ? snapshot.visualConfig : currentState.visualConfig;
@@ -601,7 +691,7 @@ export const 创建存档数据 = (
         玩家门派: deps.深拷贝(sectSource),
         任务列表: deps.深拷贝(tasksSource),
         约定列表: deps.深拷贝(agreementsSource),
-        剧情: deps.规范化剧情状态(deps.深拷贝(storySource)),
+        剧情: storyForSave,
         剧情规划: deps.规范化剧情规划状态(deps.深拷贝(storyPlanSource)),
         女主剧情规划: deps.规范化女主剧情规划状态(heroinePlanSource ? deps.深拷贝(heroinePlanSource) : undefined),
         同人剧情规划: deps.规范化同人剧情规划状态(
@@ -610,7 +700,7 @@ export const 创建存档数据 = (
         同人女主剧情规划: deps.规范化同人女主剧情规划状态(
             fandomHeroinePlanSource ? deps.深拷贝(fandomHeroinePlanSource) : undefined
         ),
-        记忆系统: deps.规范化记忆系统(deps.深拷贝(memorySource)),
+        记忆系统: normalizedMemorySource,
         openingConfig: deps.规范化可选开局配置(deps.深拷贝(openingConfigSource)),
         游戏设置: deps.深拷贝(currentState.gameConfig),
         记忆配置: deps.深拷贝(currentState.memoryConfig),
@@ -857,9 +947,23 @@ export const 执行读取存档 = async (
         }
         trace('promptSnapshot.done');
     }
-    const loadedHistoryForState = 清理历史瞬态滚动标记(
+    let loadedHistoryForState = 清理历史瞬态滚动标记(
         Array.isArray(save.历史记录) ? deps.深拷贝(save.历史记录) : []
     );
+    const loadedMemory = deps.规范化记忆系统(save.记忆系统);
+    const repairedOpeningHistory = 尝试修复完成开局但缺失历史的存档(
+        save,
+        loadedHistoryForState,
+        loadedMemory,
+        loadedStory
+    );
+    if (repairedOpeningHistory) {
+        trace('opening.history.repaired', {
+            originalHistory: buildHistoryDebugSummary(loadedHistoryForState),
+            repairedHistory: buildHistoryDebugSummary(repairedOpeningHistory)
+        });
+        loadedHistoryForState = repairedOpeningHistory;
+    }
     const metadataCount = save?.元数据?.历史记录条数;
     if (typeof metadataCount === 'number' && metadataCount >= 10 && loadedHistoryForState.length <= 2) {
         console.error('[存档异常] 读档历史记录与元数据严重不符', {
@@ -876,7 +980,6 @@ export const 执行读取存档 = async (
     });
     deps.设置历史记录(loadedHistoryForState);
     trace('history.set.done');
-    const loadedMemory = deps.规范化记忆系统(save.记忆系统);
     deps.应用并同步记忆系统(loadedMemory, { 静默总结提示: true });
     trace('memory.set.done', {
         memory: {
@@ -974,10 +1077,7 @@ export const 执行读取存档 = async (
     // [防御] 检测"开局中途存档"：历史记录只有一条 "正在生成开场内容..."
     // 这种存档通常是在新游戏开局过程中（API 请求尚未完成时）被保存的，
     // 读档后会导致主内容区空白、只显示开局占位消息。
-    const isOpeningIncomplete = loadedHistory.length === 1
-        && loadedHistory[0]?.role === 'system'
-        && typeof loadedHistory[0]?.content === 'string'
-        && loadedHistory[0].content.includes('正在生成开场内容');
+    const isOpeningIncomplete = 是否开局生成占位历史(loadedHistory);
     if (isOpeningIncomplete) {
         trace('incomplete.opening.save.detected', {
             historyLength: loadedHistory.length,
