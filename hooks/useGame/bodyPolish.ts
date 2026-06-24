@@ -19,6 +19,8 @@ import { 规范化环境信息, 构建完整地点文本 } from './stateTransfor
 import { 规范化对白日志 } from '../../utils/dialogueLogNormalizer';
 import { 是否可信正文标签发送者, 规范化正文发送者名 } from '../../utils/dialogueSpeakerGuard';
 import { 拆分判定日志与后续正文, 提取判定日志前缀, 是否判定日志文本 } from '../../utils/judgmentFormat';
+import { 构建运行时额外提示词 } from '../../prompts/runtime/nsfw';
+import { 按功能开关过滤提示词内容 } from '../../utils/promptFeatureToggles';
 
 type 正文日志结构 = Array<{ sender: string; text: string }>;
 
@@ -546,9 +548,10 @@ export const 执行正文润色 = async (
     ]
         .filter((item) => typeof item === 'string' && item.trim().length > 0)
         .join('\n\n');
-    const polishExtraPrompt = typeof runtimeGameConfig.额外提示词 === 'string'
-        ? runtimeGameConfig.额外提示词.trim()
-        : '';
+    const polishExtraPrompt = 按功能开关过滤提示词内容(
+        构建运行时额外提示词(runtimeGameConfig.额外提示词 || '', runtimeGameConfig),
+        runtimeGameConfig
+    );
     const polishCotPseudoPrompt = '';
     const guardedOnDelta = 构建文章优化流式守卫(deps.onDelta);
     const shouldNonStream = deps.gameConfig?.启用非流式输出 || featureConfig?.文章优化非流式输出;

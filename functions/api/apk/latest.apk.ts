@@ -1,6 +1,7 @@
 import {
     APK_CORS_HEADERS,
     APK_LATEST_CACHE_CONTROL,
+    buildB2ApkRedirect,
     buildR2ApkResponse,
     buildSignedObjectUrl,
     buildVersionedApkFileName,
@@ -24,6 +25,9 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
         const versionedKey = normalizeObjectKey(`${prefix}/${versionedFileName || 'latest.apk'}`);
         const selectedProvider = pickApkProvider(request, manifest?.payload);
         const key = versionedKey;
+        if (selectedProvider === 'b2') {
+            return buildB2ApkRedirect(env, key, fileName, APK_LATEST_CACHE_CONTROL);
+        }
         if (selectedProvider === 'r2' && versionedFileName) {
             const r2Response = await buildR2ApkResponse(env, key, fileName, 'GET', 'r2-preferred');
             if (r2Response) return r2Response;
@@ -71,6 +75,9 @@ export async function onRequestHead({ request, env }: any): Promise<Response> {
         const versionedKey = normalizeObjectKey(`${prefix}/${versionedFileName || 'latest.apk'}`);
         const selectedProvider = pickApkProvider(request, manifest?.payload);
         const key = versionedKey;
+        if (selectedProvider === 'b2') {
+            return buildB2ApkRedirect(env, key, fileName, APK_LATEST_CACHE_CONTROL);
+        }
         if (selectedProvider === 'r2' && versionedFileName) {
             const r2Response = await buildR2ApkResponse(env, key, fileName, 'HEAD', 'r2-preferred');
             if (r2Response) return r2Response;

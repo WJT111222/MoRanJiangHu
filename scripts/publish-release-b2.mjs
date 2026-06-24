@@ -1,0 +1,307 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '..');
+
+const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, 'utf8'));
+const releaseInfo = readJson(path.join(rootDir, 'release.config.json'));
+const apkPath = path.resolve(
+  process.argv[2] || path.join(rootDir, 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk')
+);
+
+const readEnv = (name, fallback = '') => String(process.env[name] || fallback).trim();
+const normalizeKey = (key) => key.replace(/^\/+/, '').replace(/\/+/g, '/');
+const encodeKey = (key) => normalizeKey(key).split('/').map((part) => encodeURIComponent(part)).join('/');
+const sha256Hex = (body) => crypto.createHash('sha256').update(body).digest('hex');
+const hmac = (key, value) => crypto.createHmac('sha256', key).update(value).digest();
+const hmacHex = (key, value) => crypto.createHmac('sha256', key).update(value).digest('hex');
+const safeVersionName = (value) => String(value || '').trim().replace(/[^0-9A-Za-z._-]/g, '');
+
+const baseUrl = readEnv('MORAN_B2_DISTRIBUTION_BASE_URL', 'https://obs1.bacon159.pp.ua').replace(/\/+$/, '');
+const token = readEnv('MORAN_B2_DISTRIBUTION_TOKEN');
+const prefix = readEnv('MORAN_B2_DISTRIBUTION_RELEASE_PREFIX', releaseInfo.r2Prefix || 'moranjianghu').replace(/^\/+|\/+$/g, '');
+const keepVersionedApkCount = Math.max(1, Number(process.env.MORAN_B2_KEEP_VERSIONED_APKS || 5));
+const timeoutMs = Math.max(1000, Number(process.env.MORAN_B2_DISTRIBUTION_TIMEOUT_MS || 10 * 60 * 1000));
+
+const s3Endpoint = readEnv('MORAN_OSS_ENDPOINT', 'https://s3.hi168.com').replace(/\/+$/, '');
+const s3Bucket = readEnv('MORAN_OSS_BUCKET');
+const s3AccessKey = readEnv('MORAN_OSS_ACCESS_KEY');
+const s3SecretKey = readEnv('MORAN_OSS_SECRET_KEY');
+const s3Region = readEnv('MORAN_OSS_REGION', 'auto');
+const s3Prefix = readEnv('MORAN_OSS_RELEASE_PREFIX', releaseInfo.r2Prefix || 'moranjianghu').replace(/^\/+|\/+$/g, '');
+
+if (!token) {
+  throw new Error('Missing MORAN_B2_DISTRIBUTION_TOKEN.');
+}
+if (!fs.existsSync(apkPath)) {
+  throw new Error(`APK not found: ${apkPath}`);
+}
+
+const b2ObjectUrl = (key) => `${baseUrl}/${encodeKey(key)}`;
+const s3ObjectUrl = (key) => new URL(`${s3Endpoint}/${encodeURIComponent(s3Bucket)}/${encodeKey(key)}`);
+
+const formatAmzDate = (date) => {
+  const iso = date.toISOString().replace(/[:-]|\.\d{3}/g, '');
+  return { amzDate: iso, dateStamp: iso.slice(0, 8) };
+};
+
+const signingKey = (dateStamp) => {
+  const kDate = hmac(Buffer.from(`AWS4${s3SecretKey}`, 'utf8'), dateStamp);
+  const kRegion = hmac(kDate, s3Region);
+  const kService = hmac(kRegion, 's3');
+  return hmac(kService, 'aws4_request');
+};
+
+const buildSignedS3Url = (key, method = 'GET', expiresSeconds = 1800) => {
+  if (!s3Bucket || !s3AccessKey || !s3SecretKey) {
+    throw new Error('Missing MORAN_OSS_BUCKET, MORAN_OSS_ACCESS_KEY, or MORAN_OSS_SECRET_KEY for history APK migration.');
+  }
+  const target = s3ObjectUrl(key);
+  const { amzDate, dateStamp } = formatAmzDate(new Date());
+  const credentialScope = `${dateStamp}/${s3Region}/s3/aws4_request`;
+  target.searchParams.set('X-Amz-Algorithm', 'AWS4-HMAC-SHA256');
+  target.searchParams.set('X-Amz-Credential', `${s3AccessKey}/${credentialScope}`);
+  target.searchParams.set('X-Amz-Date', amzDate);
+  target.searchParams.set('X-Amz-Expires', String(Math.max(60, Math.min(604800, expiresSeconds))));
+  target.searchParams.set('X-Amz-SignedHeaders', 'host');
+
+  const canonicalQuery = Array.from(target.searchParams.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, value]) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`)
+    .join('&');
+  const canonicalRequest = [
+    method,
+    target.pathname,
+    canonicalQuery,
+    `host:${target.host}\n`,
+    'host',
+    'UNSIGNED-PAYLOAD'
+  ].join('\n');
+  const stringToSign = [
+    'AWS4-HMAC-SHA256',
+    amzDate,
+    credentialScope,
+    sha256Hex(canonicalRequest)
+  ].join('\n');
+  const signature = hmacHex(signingKey(dateStamp), stringToSign);
+  target.searchParams.set('X-Amz-Signature', signature);
+  return target.toString();
+};
+
+const request = async (url, init = {}) => {
+  const response = await fetch(url, {
+    ...init,
+    signal: AbortSignal.timeout(timeoutMs)
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`${init.method || 'GET'} ${url} failed (${response.status}): ${text.slice(0, 500)}`);
+  }
+  return response;
+};
+
+const currentVersionName = safeVersionName(releaseInfo.versionName);
+const currentVersionedFileName = `MoRanJiangHu-v${currentVersionName}.apk`;
+const currentApkBuffer = fs.readFileSync(apkPath);
+const apkSha256 = sha256Hex(currentApkBuffer);
+const apkSize = currentApkBuffer.byteLength;
+const websiteBaseUrl = String(releaseInfo.websiteUrl || '').replace(/\/+$/, '');
+
+const releaseRecords = [
+  { versionName: currentVersionName, versionCode: releaseInfo.versionCode },
+  ...(Array.isArray(releaseInfo.releaseHistory) ? releaseInfo.releaseHistory : [])
+]
+  .map((item) => ({
+    versionName: safeVersionName(item?.versionName),
+    versionCode: Number(item?.versionCode || 0)
+  }))
+  .filter((item) => item.versionName);
+
+const seenVersions = new Set();
+const versionsToPublish = releaseRecords
+  .filter((item) => {
+    if (seenVersions.has(item.versionName)) return false;
+    seenVersions.add(item.versionName);
+    return true;
+  })
+  .slice(0, keepVersionedApkCount);
+
+const versionedFileName = (versionName) => `MoRanJiangHu-v${safeVersionName(versionName)}.apk`;
+const b2VersionedKey = (versionName) => normalizeKey(`${prefix}/${versionedFileName(versionName)}`);
+const b2LatestApkKey = normalizeKey(`${prefix}/latest.apk`);
+const b2ManifestKey = normalizeKey(`${prefix}/latest.json`);
+const hi168VersionedKey = (versionName) => normalizeKey(`${s3Prefix}/${versionedFileName(versionName)}`);
+
+const providerApkUrls = {
+  hi168: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(currentVersionedFileName)}?provider=hi168` : '',
+  b2: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(currentVersionedFileName)}?provider=b2` : b2ObjectUrl(b2VersionedKey(currentVersionName))
+};
+const preferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'hi168') === 'b2' ? 'b2' : 'hi168';
+const orderedProviderUrls = preferredApkProvider === 'b2'
+  ? [providerApkUrls.b2, providerApkUrls.hi168].filter(Boolean)
+  : [providerApkUrls.hi168, providerApkUrls.b2].filter(Boolean);
+
+const manifest = {
+  latest: {
+    versionCode: releaseInfo.versionCode,
+    versionName: releaseInfo.versionName,
+    apkSha256,
+    apkSize,
+    releaseChannel: releaseInfo.releaseChannel,
+    websiteUrl: releaseInfo.websiteUrl,
+    githubRepoUrl: releaseInfo.githubRepoUrl,
+    releaseNotesUrl: releaseInfo.releaseNotesUrl,
+    apkUrl: `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(currentVersionedFileName)}`,
+    latestApkUrl: `${websiteBaseUrl}/api/apk/latest.apk`,
+    directApkUrl: `${websiteBaseUrl}/api/apk/latest.apk`,
+    preferredApkProvider,
+    r2ApkUrl: '',
+    hi168ApkUrl: providerApkUrls.hi168,
+    b2ApkUrl: providerApkUrls.b2,
+    r2DirectApkUrl: '',
+    hi168DirectApkUrl: providerApkUrls.hi168,
+    b2DirectApkUrl: b2ObjectUrl(b2VersionedKey(currentVersionName)),
+    apkUrls: [
+      `${websiteBaseUrl}/api/apk/latest.apk`,
+      `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(currentVersionedFileName)}`,
+      ...orderedProviderUrls
+    ].filter(Boolean),
+    manifestUrl: b2ObjectUrl(b2ManifestKey),
+    publishedAt: releaseInfo.releasePublishedAt || new Date().toISOString(),
+    changes: Array.isArray(releaseInfo.releaseNotes) ? releaseInfo.releaseNotes : []
+  },
+  history: Array.isArray(releaseInfo.releaseHistory) ? releaseInfo.releaseHistory : []
+};
+
+const uploadBytes = async ({ key, bytes, contentType, cacheControl }) => {
+  const target = path.join(os.tmpdir(), `moranjianghu-b2-upload-${Date.now()}-${path.basename(key)}`);
+  fs.writeFileSync(target, bytes);
+  const curl = process.platform === 'win32' ? 'curl.exe' : 'curl';
+  const result = spawnSync(curl, [
+    '--fail',
+    '--silent',
+    '--show-error',
+    '--location',
+    '--retry', '4',
+    '--retry-delay', '2',
+    '--max-time', String(Math.ceil(timeoutMs / 1000)),
+    '-X', 'PUT',
+    '-H', `Authorization: Bearer ${token}`,
+    '-H', `Content-Type: ${contentType}`,
+    '-H', `Cache-Control: ${cacheControl}`,
+    '--data-binary', `@${target}`,
+    b2ObjectUrl(key)
+  ], {
+    cwd: rootDir,
+    encoding: 'utf8',
+    timeout: timeoutMs + 30 * 1000
+  });
+  fs.rmSync(target, { force: true });
+  if (result.status !== 0) {
+    throw new Error(`Upload ${key} failed: ${(result.stderr || result.stdout || '').slice(0, 500)}`);
+  }
+};
+
+const downloadHistoryApk = async (versionName) => {
+  const key = hi168VersionedKey(versionName);
+  const signedUrl = buildSignedS3Url(key, 'GET', 1800);
+  const target = path.join(os.tmpdir(), `moranjianghu-b2-migrate-${versionName}-${Date.now()}.apk`);
+  const curl = process.platform === 'win32' ? 'curl.exe' : 'curl';
+  const result = spawnSync(curl, [
+    '--fail',
+    '--silent',
+    '--show-error',
+    '--location',
+    '--retry', '4',
+    '--retry-delay', '2',
+    '--continue-at', '-',
+    '--max-time', String(Math.ceil(timeoutMs / 1000)),
+    '--output', target,
+    signedUrl
+  ], {
+    cwd: rootDir,
+    encoding: 'utf8',
+    timeout: timeoutMs + 30 * 1000
+  });
+  if (result.status !== 0) {
+    fs.rmSync(target, { force: true });
+    throw new Error(`Download history APK ${versionName} failed: ${(result.stderr || result.stdout || '').slice(0, 500)}`);
+  }
+  try {
+    const bytes = fs.readFileSync(target);
+    if (bytes.byteLength <= 0) throw new Error(`Downloaded empty history APK: ${versionName}`);
+    return bytes;
+  } finally {
+    fs.rmSync(target, { force: true });
+  }
+};
+
+const listB2Files = async () => {
+  const response = await request(`${baseUrl}/`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+  });
+  const payload = await response.json();
+  return Array.isArray(payload?.files) ? payload.files : [];
+};
+
+const deleteB2Object = async (key) => {
+  await request(b2ObjectUrl(key), {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+};
+
+const uploadedVersions = [];
+for (const item of versionsToPublish) {
+  const key = b2VersionedKey(item.versionName);
+  const bytes = item.versionName === currentVersionName
+    ? currentApkBuffer
+    : await downloadHistoryApk(item.versionName);
+  await uploadBytes({
+    key,
+    bytes,
+    contentType: 'application/vnd.android.package-archive',
+    cacheControl: 'public,max-age=31536000,immutable'
+  });
+  uploadedVersions.push({ versionName: item.versionName, key, size: bytes.byteLength });
+  console.log(`[B2] uploaded ${key} (${bytes.byteLength} bytes)`);
+}
+
+await uploadBytes({
+  key: b2LatestApkKey,
+  bytes: currentApkBuffer,
+  contentType: 'application/vnd.android.package-archive',
+  cacheControl: 'no-store,no-cache,max-age=0,must-revalidate'
+});
+await uploadBytes({
+  key: b2ManifestKey,
+  bytes: Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8'),
+  contentType: 'application/json; charset=utf-8',
+  cacheControl: 'no-store,no-cache,max-age=0,must-revalidate'
+});
+
+const keepKeys = new Set(uploadedVersions.map((item) => item.key));
+const versionedKeyPattern = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/MoRanJiangHu-v[^/]+\\.apk$`);
+let deletedCount = 0;
+for (const file of await listB2Files()) {
+  const key = typeof file?.key === 'string' ? file.key : '';
+  if (!versionedKeyPattern.test(key) || keepKeys.has(key)) continue;
+  await deleteB2Object(key);
+  deletedCount += 1;
+  console.log(`[B2 cleanup] deleted stale APK: ${key}`);
+}
+
+console.log(`B2 publish complete:
+- latest APK URL: ${b2ObjectUrl(b2LatestApkKey)}
+- latest manifest URL: ${b2ObjectUrl(b2ManifestKey)}
+- preferredApkProvider=${preferredApkProvider}
+- apkSha256=${apkSha256}
+- apkSize=${apkSize}
+- keptVersionedApks=${uploadedVersions.map((item) => item.versionName).join(', ')}
+- staleVersionedApksDeleted=${deletedCount}`);

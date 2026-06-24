@@ -714,3 +714,26 @@ If the task is "confirm this UI works" and the opening flow depends on external 
   - Do not let MiMo independently decide release scope, version bump policy, public changelog contents, secret handling, or deployment timing.
   - After MiMo edits, Codex must inspect the diff, check for unrelated churn or secret leakage, run the required tests/builds, and directly repair any remaining problems before reporting completion.
   - Deployment or release work can be delegated only after the user explicitly asks to deploy/publish/go live, and Codex must still enforce the project's release, backup, verification, and no-auto-deploy rules.
+
+## 2026-06-24 B2 Backup APK Distribution Channel
+
+- Backup APK distribution domain: `https://obs1.bacon159.pp.ua`.
+- API operations:
+  - `GET /` lists objects and requires Bearer token authentication.
+  - `GET /{path}` downloads objects publicly without a token.
+  - `PUT /{path}` uploads objects and requires Bearer token authentication.
+  - `DELETE /{path}` deletes objects and requires Bearer token authentication.
+- Keep the real B2 token only in local user/process environment variables, `.env.production`, `.dev.vars`, or Cloudflare Secrets. Never commit it, print it in logs, include it in screenshots, or put it in customer changelogs.
+- Local/Cloudflare secret variable: `MORAN_B2_DISTRIBUTION_TOKEN`.
+- Non-secret variables:
+  - `MORAN_B2_DISTRIBUTION_BASE_URL=https://obs1.bacon159.pp.ua`
+  - `MORAN_B2_DISTRIBUTION_RELEASE_PREFIX=moranjianghu`
+  - Optional timeout: `MORAN_B2_DISTRIBUTION_TIMEOUT_MS`
+  - Optional retention count: `MORAN_B2_KEEP_VERSIONED_APKS`, default `5`.
+- B2 replaces Cloudflare R2 as the normal backup APK binary provider. Public manifests should expose same-origin URLs such as `/api/apk/version/MoRanJiangHu-vX.apk?provider=b2` and keep `preferredApkProvider` as `hi168` unless a release explicitly chooses B2.
+- R2 remains only for the legacy update manifest compatibility path (`https://download.bacon.de5.net/moranjianghu/latest.json`) unless the user explicitly retires or re-enables it. Do not add R2 back as a normal APK provider by default.
+- Use `npm run release:b2` after building the release APK when explicitly publishing or migrating release artifacts. The script uploads `latest.apk`, `latest.json`, and the latest retained versioned APKs to B2.
+- Cost-control rule: B2 should keep only the most recent 5 versioned APKs under `moranjianghu/MoRanJiangHu-v*.apk`, plus the moving `latest.apk` and `latest.json`. Older versioned APKs should be deleted during each B2 publish/migration run.
+- Historical no-proxy speed memory: the retired `https://obs.bacon159.pp.ua` route once downloaded a 49,504,418 byte APK in about 35.65 seconds, around 1.39 MB/s. The active B2 backup route is now `https://obs1.bacon159.pp.ua`; retest this active route before making any speed claim.
+- No-proxy retest on 2026-06-24 after B2 migration: full downloads of `MoRanJiangHu-v1.0.523.apk` with `curl --noproxy "*"` timed out twice. The first 240 second attempt downloaded only 2,700,270 of 49,504,418 bytes; the retry downloaded only 523,758 bytes in another 240 seconds. A later 30 second GET attempt downloaded 4,087,854 bytes but still did not complete, and byte-range probing was not honored as a tiny partial response.
+- Latest no-proxy retest on 2026-06-25 after publishing `1.0.524`: full download of `MoRanJiangHu-v1.0.524.apk` with `curl --noproxy "*"` completed successfully with HTTP 200, 49,505,642 bytes, about 42.54 seconds, about 1.16 MB/s, and SHA-256 matching the release APK. B2 can be used as the integrated backup APK object storage channel, but response headers still showed Cloudflare cache bypass during provider verification, so do not describe it as a proven cache-accelerated/high-speed channel unless a later cache-hit test confirms it.

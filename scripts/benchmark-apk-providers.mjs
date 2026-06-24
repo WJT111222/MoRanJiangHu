@@ -18,12 +18,12 @@ if (!websiteBaseUrl) {
 
 const providers = [
   {
-    provider: 'r2',
-    url: `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=r2`
-  },
-  {
     provider: 'hi168',
     url: `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=hi168`
+  },
+  {
+    provider: 'b2',
+    url: `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=b2`
   }
 ];
 
@@ -76,7 +76,7 @@ for (const provider of providers) {
 const successful = results
   .filter((item) => !item.error)
   .sort((a, b) => b.mbps - a.mbps);
-const preferredApkProvider = successful[0]?.provider || 'r2';
+const preferredApkProvider = successful[0]?.provider || 'hi168';
 
 const report = {
   versionName: releaseInfo.versionName,

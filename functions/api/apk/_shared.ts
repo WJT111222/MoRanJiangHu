@@ -13,6 +13,8 @@ export const readEnvString = (env: any, name: string, fallback = ''): string => 
     typeof env?.[name] === 'string' && env[name].trim() ? env[name].trim() : fallback
 );
 
+export type ApkProvider = 'r2' | 'hi168' | 'b2';
+
 export const readReleaseBaseUrl = (request: Request, env: any): string => {
     const configured = readEnvString(env, 'MORAN_RELEASE_BASE_URL');
     if (configured) return configured.replace(/\/+$/, '');
@@ -124,11 +126,12 @@ export const buildVersionedApkFileName = (versionName: unknown): string => {
     return safeVersion ? `MoRanJiangHu-v${safeVersion}.apk` : '';
 };
 
-export const pickApkProvider = (request: Request, manifestPayload: any): 'r2' | 'hi168' => {
+export const pickApkProvider = (request: Request, manifestPayload: any): ApkProvider => {
     const url = new URL(request.url);
     const queryProvider = url.searchParams.get('provider') || url.searchParams.get('source');
-    if (queryProvider === 'r2' || queryProvider === 'hi168') return queryProvider;
+    if (queryProvider === 'r2' || queryProvider === 'hi168' || queryProvider === 'b2') return queryProvider;
     const preferred = String(manifestPayload?.latest?.preferredApkProvider || '').trim();
+    if (preferred === 'b2') return 'b2';
     return preferred === 'r2' ? 'r2' : 'hi168';
 };
 
@@ -169,6 +172,34 @@ export const buildR2ApkResponse = async (
     const headers = buildVersionedApkHeaders(fileName, sourceHeaders, source);
     return new Response(method === 'HEAD' ? null : r2Object.body, { status: 200, headers });
 };
+
+export const readB2ReleaseObjectPrefix = (env: any): string => (
+    readEnvString(env, 'MORAN_B2_DISTRIBUTION_RELEASE_PREFIX', readReleaseObjectPrefix(env)).replace(/^\/+|\/+$/g, '') || 'moranjianghu'
+);
+
+export const buildB2ObjectUrl = (env: any, key: string): string => {
+    const baseUrl = readEnvString(env, 'MORAN_B2_DISTRIBUTION_BASE_URL', 'https://obs1.bacon159.pp.ua').replace(/\/+$/, '');
+    return `${baseUrl}/${encodeS3Path(normalizeObjectKey(key))}`;
+};
+
+export const buildB2ApkRedirect = (
+    env: any,
+    key: string,
+    fileName: string,
+    cacheControl = APK_VERSIONED_CACHE_CONTROL
+): Response => (
+    new Response(null, {
+        status: 302,
+        headers: {
+            Location: buildB2ObjectUrl(env, key),
+            'Content-Type': 'application/vnd.android.package-archive',
+            'Cache-Control': cacheControl,
+            'Content-Disposition': `attachment; filename="${fileName}"`,
+            'X-Moran-Apk-Source': 'b2-redirect',
+            ...APK_CORS_HEADERS
+        }
+    })
+);
 
 const parseVersionParts = (value: unknown): number[] => (
     String(value || '')

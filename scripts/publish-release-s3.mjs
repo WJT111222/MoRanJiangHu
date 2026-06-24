@@ -55,15 +55,18 @@ const versionedFileName = path.basename(versionedKey);
 const manifestKey = normalizeKey(`${prefix}/latest.json`);
 const websiteBaseUrl = String(releaseInfo.websiteUrl || '').replace(/\/+$/, '');
 const r2PublicBaseUrl = readEnv('MORAN_R2_PUBLIC_BASE_URL', `https://download.bacon.de5.net/${releaseInfo.r2Prefix || 'moranjianghu'}`).replace(/\/+$/, '');
-const preferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'hi168') === 'r2' ? 'r2' : 'hi168';
+const b2PublicBaseUrl = readEnv('MORAN_B2_DISTRIBUTION_BASE_URL', 'https://obs1.bacon159.pp.ua').replace(/\/+$/, '');
+const requestedPreferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'hi168');
+const preferredApkProvider = requestedPreferredApkProvider === 'b2' ? 'b2' : 'hi168';
 const providerApkUrls = {
   r2: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=r2` : `${r2PublicBaseUrl}/${encodeURIComponent(versionedFileName)}`,
-  hi168: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=hi168` : publicUrl(versionedKey)
+  hi168: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=hi168` : publicUrl(versionedKey),
+  b2: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=b2` : `${b2PublicBaseUrl}/${encodeKey(`${prefix}/${versionedFileName}`)}`
 };
-const enabledProviderUrls = skipApkUpload ? { hi168: providerApkUrls.hi168 } : providerApkUrls;
-const orderedProviderUrls = preferredApkProvider === 'r2' && enabledProviderUrls.r2
-  ? [providerApkUrls.r2, providerApkUrls.hi168]
-  : [providerApkUrls.hi168, enabledProviderUrls.r2].filter(Boolean);
+const enabledProviderUrls = { hi168: providerApkUrls.hi168, b2: providerApkUrls.b2 };
+const orderedProviderUrls = preferredApkProvider === 'b2'
+  ? [enabledProviderUrls.b2, enabledProviderUrls.hi168].filter(Boolean)
+  : [enabledProviderUrls.hi168, enabledProviderUrls.b2].filter(Boolean);
 const apkBuffer = fs.readFileSync(apkPath);
 const apkSha256 = crypto.createHash('sha256').update(apkBuffer).digest('hex');
 const apkSize = apkBuffer.byteLength;
@@ -82,10 +85,12 @@ const manifest = {
     latestApkUrl: `${websiteBaseUrl}/api/apk/latest.apk`,
     directApkUrl: `${websiteBaseUrl}/api/apk/latest.apk`,
     preferredApkProvider,
-    r2ApkUrl: enabledProviderUrls.r2 || '',
+    r2ApkUrl: '',
     hi168ApkUrl: providerApkUrls.hi168,
-    r2DirectApkUrl: enabledProviderUrls.r2 ? `${r2PublicBaseUrl}/${encodeURIComponent(versionedFileName)}` : '',
+    b2ApkUrl: providerApkUrls.b2,
+    r2DirectApkUrl: '',
     hi168DirectApkUrl: providerApkUrls.hi168,
+    b2DirectApkUrl: `${b2PublicBaseUrl}/${encodeKey(`${prefix}/${versionedFileName}`)}`,
     apkUrls: [
       `${websiteBaseUrl}/api/apk/latest.apk`,
       `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}`,

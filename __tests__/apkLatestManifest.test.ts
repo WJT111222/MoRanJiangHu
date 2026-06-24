@@ -53,6 +53,35 @@ describe('APK latest manifest proxy', () => {
         expect(payload.latest.apkUrls).toContain('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.425.apk?provider=hi168');
     });
 
+    it('keeps b2 as the same-origin fallback provider and does not re-add R2', async () => {
+        const response = await onRequestGet({
+            request: buildRequest(),
+            env: buildEnv({
+                latest: {
+                    versionName: '1.0.523',
+                    versionCode: 523,
+                    preferredApkProvider: 'hi168',
+                    r2ApkUrl: '',
+                    b2ApkUrl: 'https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.523.apk?provider=b2',
+                    apkUrls: [
+                        'https://msjh.bacon159.pp.ua/api/apk/latest.apk',
+                        'https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.523.apk?provider=hi168',
+                        'https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.523.apk?provider=b2'
+                    ]
+                },
+                history: []
+            }, { skipS3: true })
+        } as any);
+
+        expect(response.status).toBe(200);
+        const payload = await response.json();
+        expect(payload.latest.r2ApkUrl).toBe('');
+        expect(payload.latest.b2ApkUrl).toBe('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.523.apk?provider=b2');
+        expect(payload.latest.apkUrls).toContain('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.523.apk?provider=hi168');
+        expect(payload.latest.apkUrls).toContain('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.523.apk?provider=b2');
+        expect(payload.latest.apkUrls).not.toContain('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.523.apk?provider=r2');
+    });
+
     it('reads manifest from R2 when S3 credentials are absent', async () => {
         // No S3 credentials: S3 path is skipped entirely, reads directly from R2.
         const response = await onRequestGet({

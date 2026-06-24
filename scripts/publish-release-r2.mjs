@@ -42,6 +42,7 @@ const s3PublicUrl = (key) => {
   if (!s3Bucket) return '';
   return `${s3Endpoint}/${encodeURIComponent(s3Bucket)}/${encodeKey(key)}`;
 };
+const b2PublicBaseUrl = readEnv('MORAN_B2_DISTRIBUTION_BASE_URL', 'https://obs1.bacon159.pp.ua').replace(/\/+$/, '');
 const hi168VersionedApkUrl = s3PublicUrl(`${s3Prefix}/MoRanJiangHu-v${releaseInfo.versionName}.apk`);
 const hi168LatestApkUrl = s3PublicUrl(`${s3Prefix}/latest.apk`);
 const websiteBaseUrl = String(releaseInfo.websiteUrl || '').replace(/\/+$/, '');
@@ -63,18 +64,29 @@ const versionedApkUrl = readEnv(
     : (releaseInfo.apkDownloadUrl || hi168VersionedApkUrl))
 );
 const legacyLatestApkUrl = readEnv('MORAN_RELEASE_LATEST_APK_URL', workerLatestApkUrl || releaseInfo.apkDownloadUrl || hi168LatestApkUrl);
-const preferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'hi168') === 'r2' ? 'r2' : 'hi168';
+const enableR2Provider = readEnv('MORAN_RELEASE_ENABLE_R2_PROVIDER', '0') === '1' && !skipApkUpload;
+const requestedPreferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'hi168');
+const preferredApkProvider = requestedPreferredApkProvider === 'b2'
+  ? 'b2'
+  : (requestedPreferredApkProvider === 'r2' && enableR2Provider ? 'r2' : 'hi168');
 const apkBuffer = fs.readFileSync(apkPath);
 const apkSha256 = crypto.createHash('sha256').update(apkBuffer).digest('hex');
 const apkSize = apkBuffer.byteLength;
 const providerApkUrls = {
   r2: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedApkFileName)}?provider=r2` : r2VersionedApkUrl,
-  hi168: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedApkFileName)}?provider=hi168` : hi168VersionedApkUrl
+  hi168: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedApkFileName)}?provider=hi168` : hi168VersionedApkUrl,
+  b2: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedApkFileName)}?provider=b2` : `${b2PublicBaseUrl}/${encodeKey(`${prefix}/${versionedApkFileName}`)}`
 };
-const enabledProviderUrls = skipApkUpload ? { hi168: providerApkUrls.hi168 } : providerApkUrls;
+const enabledProviderUrls = {
+  hi168: providerApkUrls.hi168,
+  b2: providerApkUrls.b2,
+  ...(enableR2Provider ? { r2: providerApkUrls.r2 } : {})
+};
 const orderedProviderUrls = preferredApkProvider === 'r2' && enabledProviderUrls.r2
-  ? [providerApkUrls.r2, providerApkUrls.hi168]
-  : [providerApkUrls.hi168, enabledProviderUrls.r2].filter(Boolean);
+  ? [providerApkUrls.r2, providerApkUrls.hi168, providerApkUrls.b2]
+  : (preferredApkProvider === 'b2'
+    ? [providerApkUrls.b2, providerApkUrls.hi168, enabledProviderUrls.r2]
+    : [providerApkUrls.hi168, providerApkUrls.b2, enabledProviderUrls.r2]).filter(Boolean);
 
 const manifest = {
   latest: {
@@ -92,8 +104,10 @@ const manifest = {
     preferredApkProvider,
     r2ApkUrl: enabledProviderUrls.r2 || '',
     hi168ApkUrl: providerApkUrls.hi168,
+    b2ApkUrl: providerApkUrls.b2,
     r2DirectApkUrl: enabledProviderUrls.r2 ? r2VersionedApkUrl : '',
     hi168DirectApkUrl: providerApkUrls.hi168,
+    b2DirectApkUrl: `${b2PublicBaseUrl}/${encodeKey(`${prefix}/${versionedApkFileName}`)}`,
     apkUrls: [
       legacyLatestApkUrl,
       versionedApkUrl,

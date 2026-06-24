@@ -54,11 +54,23 @@ export const 默认亲密边界机制提示词 = `亲密边界机制已启用：
 - ASD反轻浮机制必须参与发生关系判定：每名女性有 ASD基准值，每个部位/行为有 ASD部位阈值 和 部位边界[].ASD值/阻止力度。发生性关系前必须做“场合 + 好感 + 欲望 + ASD + 部位边界”综合判定；未通过时只能拒绝、推迟、要求承诺/私密场所，或提出更低边界的自愿替代方案。
 - 若出现胁迫、威胁、失去意识、药物影响、信息欺骗或无法自由拒绝的情境，系统必须按伤害/犯罪/创伤/敌对后果处理，不把它写成恋爱推进或可用攻略策略。`;
 
+const 包装玩家额外提示词 = (customPrompt: string): string => {
+    const custom = typeof customPrompt === 'string' ? customPrompt.trim() : '';
+    if (!custom) return '';
+    return [
+        '【玩家额外提示词（最高优先级）】',
+        '以下内容来自玩家在设置中填写的长期额外提示词；在不违反输出协议、平台安全和已成立事实的前提下，主剧情、开局、文章优化、变量生成链路都必须优先遵守。',
+        '若其中包含禁名、文风、人物塑造、叙事偏好、世界观边界、对白习惯或变量写入偏好，必须持续生效，不得被默认思维链、预设文风、示例姓名或后续校准提示覆盖。',
+        custom,
+        '【玩家额外提示词结束】'
+    ].join('\n');
+};
+
 export const 构建运行时额外提示词 = (
     customPrompt: string,
     options?: Pick<游戏设置结构, '启用NSFW模式' | '启用亲密边界机制'>
 ): string => {
-    const custom = typeof customPrompt === 'string' ? customPrompt.trim() : '';
+    const custom = 包装玩家额外提示词(customPrompt);
     const nsfw = options?.启用NSFW模式 === true
         ? 默认NSFW模式提示词
         : '';

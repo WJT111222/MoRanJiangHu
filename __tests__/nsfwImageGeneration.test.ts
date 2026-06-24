@@ -572,9 +572,20 @@ describe('NSFW prompt generation', () => {
         expect(result).toContain('NSFW');
     });
 
+    it('构建运行时额外提示词 wraps player custom instructions as highest priority story rules', () => {
+        const custom = '禁止生成婉清这个名字；新文风必须克制冷峻。';
+        const result = 构建运行时额外提示词(custom, { 启用NSFW模式: false });
+
+        expect(result).toContain('【玩家额外提示词（最高优先级）】');
+        expect(result).toContain('主剧情、开局、文章优化、变量生成');
+        expect(result).toContain('禁名');
+        expect(result).toContain(custom);
+    });
+
     it('构建运行时额外提示词 returns only custom prompt when NSFW disabled', () => {
         const result = 构建运行时额外提示词('custom instruction', { 启用NSFW模式: false });
-        expect(result).toBe('custom instruction');
+        expect(result).toContain('【玩家额外提示词（最高优先级）】');
+        expect(result).toContain('custom instruction');
         expect(result).not.toContain('NSFW');
     });
 
@@ -599,7 +610,8 @@ describe('NSFW prompt generation', () => {
 
     it('构建运行时额外提示词 handles undefined options gracefully', () => {
         const result = 构建运行时额外提示词('test', undefined);
-        expect(result).toBe('test');
+        expect(result).toContain('【玩家额外提示词（最高优先级）】');
+        expect(result).toContain('test');
     });
 
     it('构建文生图运行时额外提示词 handles undefined options gracefully', () => {
@@ -609,7 +621,8 @@ describe('NSFW prompt generation', () => {
 
     it('构建运行时额外提示词 trims whitespace', () => {
         const result = 构建运行时额外提示词('  custom  ', { 启用NSFW模式: true });
-        expect(result.startsWith('custom')).toBe(true);
+        expect(result).toContain('【玩家额外提示词（最高优先级）】');
+        expect(result).toContain('custom');
         expect(result).toContain('NSFW');
     });
 

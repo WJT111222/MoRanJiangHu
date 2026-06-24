@@ -297,23 +297,27 @@ const resolveNativeApkDownloadUrls = (manifest: UpdateManifest): string[] => {
 const probeAndSortUrlsByLatency = async (urls: string[], timeoutMs = 5000): Promise<string[]> => {
     if (urls.length <= 1) return urls;
 
-    const probeOne = async (url: string): Promise<{ url: string; latencyMs: number }> => {
+    const probeOne = async (url: string, index: number): Promise<{ url: string; latencyMs: number; index: number }> => {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
         const start = Date.now();
         try {
             await fetch(url, { method: 'HEAD', signal: controller.signal, cache: 'no-store' });
-            return { url, latencyMs: Date.now() - start };
+            return { url, latencyMs: Date.now() - start, index };
         } catch {
-            return { url, latencyMs: Infinity };
+            return { url, latencyMs: Infinity, index };
         } finally {
             clearTimeout(timer);
         }
     };
 
-    const results = await Promise.all(urls.map(probeOne));
+    const results = await Promise.all(urls.map((url, index) => probeOne(url, index)));
     return results
-        .sort((a, b) => a.latencyMs - b.latencyMs)
+        .sort((a, b) => {
+            const latencyDelta = a.latencyMs - b.latencyMs;
+            if (Number.isFinite(latencyDelta) && Math.abs(latencyDelta) > 100) return latencyDelta;
+            return a.index - b.index;
+        })
         .map((item) => item.url);
 };
 

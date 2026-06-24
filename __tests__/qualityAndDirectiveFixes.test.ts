@@ -204,6 +204,46 @@ describe('正文优化重试', () => {
         expect(result.response.logs?.[0]?.text).toContain('修复后的正文');
         expect(result.rawText).toBe('second');
     });
+
+    it('会把玩家额外提示词作为最高优先级规则传给文章优化模型', async () => {
+        vi.mocked(textAIService.generatePolishedBody).mockResolvedValueOnce({
+            bodyText: '这是一段遵守禁名与新文风的正文。'.repeat(8),
+            rawText: 'polished'
+        } as any);
+
+        const result = await 执行正文润色(
+            { logs: [{ sender: '旁白', text: '原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文' }] } as any,
+            '<正文>原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文</正文>',
+            {
+                apiConfig: {
+                    功能模型占位: {
+                        文章优化独立模型开关: true,
+                        文章优化使用模型: 'test-model',
+                        文章优化API地址: 'https://example.com',
+                        文章优化API密钥: 'test-key'
+                    }
+                },
+                prompts: [],
+                gameConfig: {
+                    额外提示词: '禁止生成婉清这个名字；新文风必须克制冷峻。'
+                },
+                环境: {} as any,
+                剧情: {} as any,
+                社交: [],
+                战斗: {} as any,
+                角色: {} as any,
+                文章优化已开启: true,
+                深拷贝: (value: any) => JSON.parse(JSON.stringify(value))
+            } as any,
+            { minLength: 80 }
+        );
+
+        const extraPrompt = vi.mocked(textAIService.generatePolishedBody).mock.calls[0][4] as string;
+        expect(extraPrompt).toContain('【玩家额外提示词（最高优先级）】');
+        expect(extraPrompt).toContain('主剧情、开局、文章优化、变量生成');
+        expect(extraPrompt).toContain('禁止生成婉清这个名字');
+        expect(result.applied).toBe(true);
+    });
 });
 
 describe('无限流商城文案边界', () => {

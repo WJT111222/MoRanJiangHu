@@ -706,3 +706,26 @@
   - 不让 MiMo 独立决定发布范围、版本号策略、公开更新日志内容、密钥处理或部署时机。
   - MiMo 修改后，Codex 必须审查 diff，检查是否有无关改动或密钥泄露，运行必要测试/构建，并在汇报完成前直接修复残留问题。
   - 部署或发布工作只能在用户明确要求“部署/发布/上线”后委派；Codex 仍必须监督并执行本项目的发布、备份、验证和禁止自动部署规则。
+
+## 2026-06-24 B2 备用 APK 分发渠道
+
+- 备用 APK 分发域名：`https://obs1.bacon159.pp.ua`。
+- API 操作：
+  - `GET /` 列出对象，需要 Bearer token 鉴权。
+  - `GET /{path}` 下载对象，公开访问，不需要 token。
+  - `PUT /{path}` 上传对象，需要 Bearer token 鉴权。
+  - `DELETE /{path}` 删除对象，需要 Bearer token 鉴权。
+- 真实 B2 token 只能保存在本机用户/进程环境变量、`.env.production`、`.dev.vars` 或 Cloudflare Secrets 中。不要提交到仓库，不要打印到日志，不要放进截图，也不要写进客户更新说明。
+- 本地/Cloudflare 密钥变量：`MORAN_B2_DISTRIBUTION_TOKEN`。
+- 非敏感变量：
+  - `MORAN_B2_DISTRIBUTION_BASE_URL=https://obs1.bacon159.pp.ua`
+  - `MORAN_B2_DISTRIBUTION_RELEASE_PREFIX=moranjianghu`
+  - 可选超时：`MORAN_B2_DISTRIBUTION_TIMEOUT_MS`
+  - 可选保留版本数：`MORAN_B2_KEEP_VERSIONED_APKS`，默认 `5`。
+- B2 取代 Cloudflare R2，作为正常的 APK 二进制备用 provider。公开 manifest 应暴露同源地址，例如 `/api/apk/version/MoRanJiangHu-vX.apk?provider=b2`；除非某次发布明确选择 B2，否则 `preferredApkProvider` 仍保持 `hi168`。
+- R2 仅保留为旧版更新清单兼容路径（`https://download.bacon.de5.net/moranjianghu/latest.json`），除非用户明确废弃或重新启用，不要把 R2 默认加回正常 APK provider。
+- 用户明确发布或迁移 release 产物时，在构建 APK 后运行 `npm run release:b2`。脚本会把 `latest.apk`、`latest.json` 和最近保留的带版本号 APK 上传到 B2。
+- 成本控制规则：B2 只保留 `moranjianghu/MoRanJiangHu-v*.apk` 下最近 5 个带版本号 APK，加上滚动覆盖的 `latest.apk` 和 `latest.json`。每次 B2 发布/迁移时都应删除更旧的带版本号 APK。
+- 历史无代理测速记忆：已退役的 `https://obs.bacon159.pp.ua` 线路曾经下载 49,504,418 字节 APK 成功，约 35.65 秒，约 1.39 MB/s。当前启用的 B2 备用线路为 `https://obs1.bacon159.pp.ua`；需要重新实测当前线路后才能对速度下结论。
+- 无代理复测（2026-06-24 接入迁移后）：使用 `curl --noproxy "*"` 全量下载 `MoRanJiangHu-v1.0.523.apk` 连续两轮超时。首轮 240 秒仅下载 2,700,270/49,504,418 字节；重试 240 秒仅下载 523,758 字节。后续一次 30 秒 GET 拿到 4,087,854 字节但仍未完成，且字节范围探测没有按极小分片返回。
+- 最新无代理复测（2026-06-25 发布 `1.0.524` 后）：使用 `curl --noproxy "*"` 全量下载 `MoRanJiangHu-v1.0.524.apk` 成功完成，HTTP 200，49,505,642 字节，约 42.54 秒，约 1.16 MB/s，SHA-256 与发布 APK 一致。B2 可以作为已接入的备用 APK 对象存储渠道，但 provider 验证时响应头仍显示 Cloudflare 缓存绕过，因此除非后续缓存命中测试确认，不要对外描述成已验证的缓存加速/高速渠道。

@@ -42,6 +42,9 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
         const hi168ApkUrl = versionedFileName
             ? `${baseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=hi168`
             : `${baseUrl}/api/apk/latest.apk?provider=hi168`;
+        const b2ApkUrl = versionedFileName
+            ? `${baseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=b2`
+            : `${baseUrl}/api/apk/latest.apk?provider=b2`;
         const latest = payload?.latest || {};
         const manifestApkUrls = Array.isArray(latest.apkUrls)
             ? latest.apkUrls.map((url: unknown) => String(url || '')).filter(Boolean)
@@ -49,7 +52,14 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
         const allowsR2Provider = String(latest.preferredApkProvider || '').trim() === 'r2'
             || manifestApkUrls.some((url: string) => /[?&]provider=r2(?:&|$)/i.test(url))
             || Boolean(String(latest.r2ApkUrl || '').trim());
-        const providerUrls = allowsR2Provider ? [r2ApkUrl, hi168ApkUrl] : [hi168ApkUrl];
+        const allowsB2Provider = String(latest.preferredApkProvider || '').trim() === 'b2'
+            || manifestApkUrls.some((url: string) => /[?&]provider=b2(?:&|$)/i.test(url))
+            || Boolean(String(latest.b2ApkUrl || '').trim());
+        const providerUrls = [
+            ...(allowsR2Provider ? [r2ApkUrl] : []),
+            hi168ApkUrl,
+            ...(allowsB2Provider ? [b2ApkUrl] : [])
+        ];
         const nextPayload = {
             ...payload,
             latest: {
@@ -63,6 +73,7 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
                 ].filter(Boolean),
                 r2ApkUrl: allowsR2Provider ? r2ApkUrl : '',
                 hi168ApkUrl,
+                b2ApkUrl: allowsB2Provider ? b2ApkUrl : '',
                 latestApkUrl,
                 manifestUrl: stableManifestUrl
             }

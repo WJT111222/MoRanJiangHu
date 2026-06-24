@@ -1,6 +1,7 @@
 import {
     APK_CORS_HEADERS,
     APK_LATEST_CACHE_CONTROL,
+    buildB2ApkRedirect,
     buildR2ApkResponse,
     buildSignedObjectUrl,
     buildVersionedApkHeaders,
@@ -82,6 +83,9 @@ const handleVersionedApkRequest = async (context: any, method: 'GET' | 'HEAD'): 
 
         const key = normalizeObjectKey(`${readReleaseObjectPrefix(env)}/${fileName}`);
         const preferredProvider = pickApkProvider(request, manifest?.payload);
+        if (preferredProvider === 'b2') {
+            return buildB2ApkRedirect(env, key, fileName);
+        }
         if (preferredProvider === 'r2') {
             const r2Response = await buildR2ApkResponse(env, key, fileName, method, 'r2-preferred');
             if (r2Response) return r2Response;
