@@ -206,7 +206,7 @@
     };
 
     const renderEntry = (entry) => {
-      const changes = Array.isArray(entry.changes) && entry.changes.length > 0 ? entry.changes : ['该版本已发布，详细内容整理中。'];
+      const changes = Array.isArray(entry.changes) && entry.changes.length > 0 ? entry.changes : (Array.isArray(entry.releaseNotes) && entry.releaseNotes.length > 0 ? entry.releaseNotes : ['该版本已发布，详细内容整理中。']);
       return `
         <article class="entry">
           <div class="entry-title">

@@ -13,6 +13,19 @@
   ],
   "releaseHistory": [
     {
+      "versionName": "1.0.525",
+      "versionCode": 525,
+      "releasePublishedAt": "2026-06-25T23:50:39+08:00",
+      "releaseNotes": [
+        "修复导入酒馆预设后原有提示词被项目默认风格/格式/字数/免责声明覆盖的问题：酒馆模式下外部预设完全主导提示词，不再混入本项目协议。",
+        "修复正常着装和普通场景被生图 API 误判为色情内容的问题：非 NSFW 模式下自动过滤成人敏感标签，只有明确开启 NSFW 时才保留。",
+        "新增 Izumi 0623 作为内置酒馆预设，支持直接导入使用。",
+        "官网：https://msjh.bacon159.pp.ua/",
+        "备用站：https://msjh.bacon.de5.net/",
+        "同步更新 Web 与更新清单到 v1.0.525。"
+      ]
+    },
+    {
       "versionName": "1.0.524",
       "versionCode": 524,
       "releasePublishedAt": "2026-06-25T01:55:30+08:00",
