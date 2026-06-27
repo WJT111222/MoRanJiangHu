@@ -67,6 +67,15 @@ const getBucket = (env: any): any => {
     return candidate;
 };
 
+/** Auth bucket reads from the same store as cloud-play user registration. */
+const getAuthBucket = (env: any): any => {
+    const dbBucket = tryDbBucket(env, 'cloud_play_data');
+    if (dbBucket) return dbBucket;
+    const candidate = env?.CLOUD_PLAY_R2 || env?.CNB_SYNC_R2;
+    if (!candidate || typeof candidate.get !== 'function' || typeof candidate.put !== 'function') return null;
+    return candidate;
+};
+
 const getPrefix = (env: any): string => (
     readString(env?.WORKSHOP_NOVEL_DECOMPOSITION_PREFIX) || WORKSHOP_PREFIX
 ).replace(/^\/+|\/+$/g, '') || WORKSHOP_PREFIX;
@@ -179,7 +188,7 @@ const sanitizePassword = (value: unknown): string => {
 };
 
 const authenticateWorkshopUser = async (env: any, auth: any): Promise<CloudPlayUser> => {
-    const bucket = getBucket(env);
+    const bucket = getAuthBucket(env);
     if (!bucket) throw new Error('创意工坊存储未配置。');
     const username = sanitizeUsername(auth?.username);
     const password = sanitizePassword(auth?.password);
@@ -291,7 +300,35 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
             const bucket = getBucket(env);
             const object = bucket ? await bucket.get(entry.r2Key) : null;
             if (!object) return jsonResponse({ error: '模块 ZIP 暂不可下载' }, 404);
-            return new Response(object.body, {
+
+            // R2 bucket returns a readable body stream directly.
+            if (object.body) {
+                return new Response(object.body, {
+                    headers: {
+                        'Content-Type': 'application/zip',
+                        'Content-Disposition': `attachment; filename="${entry.fileName.replace(/"/g, '')}"`,
+                        'Cache-Control': 'public, max-age=300',
+                        ...CORS_HEADERS
+                    }
+                });
+            }
+
+            // D1-backed bucket stores body as null; reconstruct binary from text value.
+            const stored = await object.text();
+            let zipBytes: Uint8Array;
+            try {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed) && typeof parsed[0] === 'number') {
+                    zipBytes = new Uint8Array(parsed);
+                } else if (typeof parsed === 'string') {
+                    zipBytes = decodeBase64(parsed);
+                } else {
+                    zipBytes = decodeBase64(stored);
+                }
+            } catch {
+                zipBytes = decodeBase64(stored);
+            }
+            return new Response(zipBytes, {
                 headers: {
                     'Content-Type': 'application/zip',
                     'Content-Disposition': `attachment; filename="${entry.fileName.replace(/"/g, '')}"`,

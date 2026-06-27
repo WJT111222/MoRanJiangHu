@@ -125,21 +125,24 @@ type 合并历史记录 = {
 
 const 香闺秘档部位列表: 香闺秘档部位类型[] = ['胸部', '小穴', '屁穴', '肉棒'];
 
-const 状态样式: Record<图片生成状态类型, string> = {
+const 状态样式: Record<图片生成状态类型 | '未生成', string> = {
     success: 'border-emerald-700 text-emerald-300 bg-emerald-950/20',
     failed: 'border-red-700 text-red-300 bg-red-950/20',
-    pending: 'border-amber-700 text-amber-300 bg-amber-950/20'
+    pending: 'border-amber-700 text-amber-300 bg-amber-950/20',
+    '未生成': 'border-slate-600 text-slate-400 bg-slate-900/20'
 };
 
-const 状态文案: Record<图片生成状态类型, string> = {
+const 状态文案: Record<图片生成状态类型 | '未生成', string> = {
     success: '成功',
     failed: '失败',
-    pending: '生成中'
+    pending: '生成中',
+    '未生成': '未生成'
 };
 
 const 获取图片状态文案 = (result?: { 状态?: 图片生成状态类型; 来源?: string } | null): string => {
     if ((result?.来源 || '') === 'hosted') return '无需生图';
-    return 状态文案[result?.状态 || 'success'];
+    if (!result?.状态) return 状态文案['未生成'];
+    return 状态文案[result.状态];
 };
 
 const 队列状态样式: Record<NPC生图任务记录['状态'], string> = {
@@ -978,7 +981,7 @@ const ImageManagerModal: React.FC<Props> = ({
             if (keyword && !record.NPC姓名.toLowerCase().includes(keyword)) {
                 return false;
             }
-            if (filters.状态 && filters.状态 !== '全部' && (record.结果?.状态 || 'success') !== filters.状态) {
+            if (filters.状态 && filters.状态 !== '全部' && (record.结果?.状态 || '未生成') !== filters.状态) {
                 return false;
             }
             return true;
@@ -1086,7 +1089,7 @@ const ImageManagerModal: React.FC<Props> = ({
         const sceneHistoryCount = Array.isArray(sceneArchive?.生图历史) ? sceneArchive.生图历史 : [];
         return {
             total: records.length + sceneHistoryCount.length + itemSequenceList.length,
-            success: records.filter((item) => (item.结果?.状态 || 'success') === 'success').length + sceneHistoryCount.filter((item) => (item?.状态 || 'success') === 'success').length + itemSequenceList.filter((item) => (item.状态 || 'success') === 'success').length,
+            success: records.filter((item) => item.结果?.状态 === 'success').length + sceneHistoryCount.filter((item) => item?.状态 === 'success').length + itemSequenceList.filter((item) => item.状态 === 'success').length,
             failed: records.filter((item) => item.结果?.状态 === 'failed').length + sceneHistoryCount.filter((item) => item?.状态 === 'failed').length + itemSequenceList.filter((item) => item.状态 === 'failed').length,
             pending: records.filter((item) => item.结果?.状态 === 'pending').length + sceneHistoryCount.filter((item) => item?.状态 === 'pending').length + itemSequenceList.filter((item) => item.状态 === 'pending').length
         };
@@ -1114,7 +1117,7 @@ const ImageManagerModal: React.FC<Props> = ({
 
     const sceneStats = React.useMemo(() => ({
         total: sceneHistory.length,
-        success: sceneHistory.filter((item) => (item?.状态 || 'success') === 'success').length,
+        success: sceneHistory.filter((item) => item?.状态 === 'success').length,
         failed: sceneHistory.filter((item) => item?.状态 === 'failed').length,
         pending: sceneHistory.filter((item) => item?.状态 === 'pending').length,
         queueTotal: sceneQueueList.length,
@@ -1191,13 +1194,13 @@ const ImageManagerModal: React.FC<Props> = ({
             类型: 'npc',
             key: `${record.NPC标识}_${record.结果?.id || record.结果?.生成时间 || Math.random()}`,
             时间: record.结果?.生成时间 || 0,
-            状态: record.结果?.状态 || 'success',
+            状态: record.结果?.状态 || '未生成',
             npcRecord: record
         }));
         const sceneItems: 合并历史记录[] = sceneHistory
             .filter((result) => {
                 if (filters.目标类型 && filters.目标类型 !== '全部' && filters.目标类型 !== 'scene') return false;
-                if (filters.状态 && filters.状态 !== '全部' && (result?.状态 || 'success') !== filters.状态) return false;
+                if (filters.状态 && filters.状态 !== '全部' && (result?.状态 || '未生成') !== filters.状态) return false;
                 const keyword = (filters.角色姓名 || '').trim().toLowerCase();
                 if (!keyword) return true;
                 const text = [result?.摘要, result?.场景类型, result?.画风, result?.画师串, result?.使用模型, '场景']
@@ -1210,13 +1213,13 @@ const ImageManagerModal: React.FC<Props> = ({
                 类型: 'scene' as const,
                 key: `scene_${result?.id || result?.生成时间 || Math.random()}`,
                 时间: result?.生成时间 || 0,
-                状态: result?.状态 || 'success',
+                状态: result?.状态 || '未生成',
                 sceneRecord: result
             }));
         const itemItems: 合并历史记录[] = itemSequenceList
             .filter((result) => {
                 if (filters.目标类型 && filters.目标类型 !== '全部' && filters.目标类型 !== 'item') return false;
-                if (filters.状态 && filters.状态 !== '全部' && (result?.状态 || 'success') !== filters.状态) return false;
+                if (filters.状态 && filters.状态 !== '全部' && (result?.状态 || '未生成') !== filters.状态) return false;
                 const keyword = (filters.角色姓名 || '').trim().toLowerCase();
                 if (!keyword) return true;
                 const text = [
@@ -1236,7 +1239,7 @@ const ImageManagerModal: React.FC<Props> = ({
                 类型: 'item' as const,
                 key: `item_${result?.id || result?.生成时间 || Math.random()}`,
                 时间: result?.生成时间 || 0,
-                状态: result?.状态 || 'success',
+                状态: result?.状态 || '未生成',
                 itemRecord: result
             }));
         return [...npcItems, ...sceneItems, ...itemItems].sort((a, b) => b.时间 - a.时间);
@@ -2847,7 +2850,7 @@ const ImageManagerModal: React.FC<Props> = ({
                             <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-5">
                                 {currentLibraryGroup.records.map((record) => {
                                     const result = record.结果;
-                                    const status = result.状态 || 'success';
+                                    const status = result.状态 || '未生成';
                                     const imageId = typeof result.id === 'string' ? result.id : '';
                                     const imageSrc = 获取图片展示地址(result);
                                     const isPlayerRecord = record.NPC标识 === 主角图库标识;
@@ -3073,7 +3076,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                     <div key={item.id} className="rounded border border-cyan-400/15 bg-black/35 px-3 py-2 text-[11px]">
                                         <div className="flex items-center justify-between gap-2">
                                             <span className="truncate font-serif text-cyan-100" title={item.物品名称}>{item.物品名称}</span>
-                                            <span className={`shrink-0 rounded border px-1.5 py-0.5 ${状态样式[item.状态 || 'success']}`}>{获取图片状态文案(item)}</span>
+                                            <span className={`shrink-0 rounded border px-1.5 py-0.5 ${状态样式[item.状态 || '未生成']}`}>{获取图片状态文案(item)}</span>
                                         </div>
                                         <div className="mt-1 flex flex-wrap gap-2 text-cyan-100/55">
                                             <span>{item.构图 || '物品图'}</span>
@@ -3097,7 +3100,7 @@ const ImageManagerModal: React.FC<Props> = ({
                             if (entry.类型 === 'item' && entry.itemRecord) {
                                 const item = entry.itemRecord;
                                 const imageSrc = 获取图片展示地址(item);
-                                const status = item.状态 || 'success';
+                                const status = item.状态 || '未生成';
                                 return (
                                     <div key={item.id} className="rounded border border-cyan-400/20 bg-black/40 p-4 relative group hover:border-cyan-300/50 transition-colors">
                                         <div className="absolute top-0 right-0 px-2 py-0.5 bg-cyan-400/10 border-b border-l border-cyan-300/20 text-[10px] text-cyan-100/80 font-serif rounded-bl">
@@ -3661,7 +3664,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                         const normalizedPersistentWallpaper = (currentPersistentWallpaper || '').trim();
                                         const isPersistentWallpaper = Boolean(imageSrc && normalizedPersistentWallpaper && imageSrc === normalizedPersistentWallpaper);
                                         const hasLocalCopy = 是否存在本地图片副本(result);
-                                        const status = result?.状态 || 'success';
+                                        const status = result?.状态 || '未生成';
                                         const canUseSceneImage = Boolean(imageId && imageSrc && status === 'success');
                                         
                                         return (
@@ -3830,7 +3833,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                     const normalizedPersistentWallpaper = (currentPersistentWallpaper || '').trim();
                                     const isPersistentWallpaper = Boolean(imageSrc && normalizedPersistentWallpaper && imageSrc === normalizedPersistentWallpaper);
                                     const hasLocalCopy = 是否存在本地图片副本(result);
-                                    const status = result?.状态 || 'success';
+                                    const status = result?.状态 || '未生成';
                                     
                                     return (
                                         <div key={entry.key} className="rounded border border-wuxia-gold/20 bg-black/40 overflow-hidden flex flex-col xl:flex-row group hover:border-wuxia-gold/50 hover:shadow-[0_4px_20px_rgba(212,175,55,0.15)] transition-all duration-300">
@@ -3961,7 +3964,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                     const result = entry.itemRecord;
                                     const imageId = typeof result?.id === 'string' ? result.id : '';
                                     const imageSrc = 获取图片展示地址(result);
-                                    const status = result?.状态 || 'success';
+                                    const status = result?.状态 || '未生成';
                                     const hasLocalCopy = 是否存在本地图片副本(result);
 
                                     return (
@@ -4081,7 +4084,7 @@ const ImageManagerModal: React.FC<Props> = ({
 
                                 const record = entry.npcRecord!;
                                 const result = record.结果;
-                                const status = result.状态 || 'success';
+                                const status = result.状态 || '未生成';
                                 const imageId = typeof result.id === 'string' ? result.id : '';
                                 const imageSrc = 获取图片展示地址(result);
                                 const normalizedPersistentWallpaper = (currentPersistentWallpaper || '').trim();

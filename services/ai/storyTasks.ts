@@ -1,5 +1,6 @@
 import { GameResponse, TavernCommand, 内置提示词条目结构 } from '../../types';
 import type { 当前可用接口结构 } from '../../utils/apiConfig';
+import type { 小说拆分数据集结构 } from '../../models/novelDecomposition';
 import { 翻译连接测试错误 } from './imageGenerationDiagnostics';
 import { parseJsonWithRepair } from '../../utils/jsonRepair';
 import { 获取世界观生成系统提示词, 构建世界观生成用户提示词 } from '../../prompts/runtime/worldGeneration';
@@ -23,6 +24,7 @@ import {
     小说拆分COT伪装提示词
 } from '../../prompts/runtime/novelDecomposition';
 import { 小说拆分COT提示词 } from '../../prompts/runtime/novelDecompositionCot';
+import { 小说模式包补全系统提示词, 构建小说模式包补全用户提示词 } from '../../prompts/runtime/novelModePackCompletion';
 import { 同人规划分析附加系统提示词, 同人规划分析附加COT提示词 } from '../../prompts/runtime/fandomPlanningAnalysis';
 import { 同人世界演变附加系统提示词, 同人世界演变附加COT提示词 } from '../../prompts/runtime/fandomWorldEvolution';
 import { 归一化或补全境界体系提示词, 校验境界体系提示词完整性 } from '../../prompts/runtime/fandom';
@@ -2284,4 +2286,85 @@ export const testConnection = async (
             })
         };
     }
+};
+
+export interface NovelModePackCompletionResult {
+    completion: Record<string, any>;
+    rawText: string;
+}
+
+/**
+ * Generates a runtime-profile completion patch for a novel decomposition mode pack
+ * by sending the novel dataset summary to AI and parsing the JSON response.
+ */
+export const generateNovelModePackCompletion = async (
+    dataset: 小说拆分数据集结构,
+    apiConfig: 当前可用接口结构,
+    streamOptions?: WorldStreamOptions,
+    signal?: AbortSignal
+): Promise<NovelModePackCompletionResult> => {
+    if (!apiConfig.apiKey) throw new Error('Missing API Key');
+
+    const systemPrompt = 小说模式包补全系统提示词;
+    const userPrompt = 构建小说模式包补全用户提示词(dataset);
+
+    const messages: 通用消息[] = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+    ];
+
+    const rawText = await 请求模型文本(
+        apiConfig,
+        规范化文本补全消息链(messages, { 保留System: true, 合并同角色: false }),
+        {
+            temperature: 0.4,
+            streamOptions,
+            signal
+        }
+    );
+
+    const completion = 解析小说模式包补全JSON(rawText);
+    return { completion, rawText };
+};
+
+const 解析小说模式包补全JSON = (rawText: string): Record<string, any> => {
+    const cleaned = (rawText || '')
+        .replace(/<\s*thinking\s*>[\s\S]*?<\s*\/\s*thinking\s*>/gi, '')
+        .replace(/<\s*think\s*>[\s\S]*?<\s*\/\s*think\s*>/gi, '')
+        .trim();
+
+    // Strip markdown code block markers
+    const withoutCodeBlock = cleaned
+        .replace(/^```(?:json|JSON)?\s*\n?/gm, '')
+        .replace(/\n?\s*```$/gm, '')
+        .trim();
+
+    let parsed: any;
+    try {
+        parsed = parseJsonWithRepair(withoutCodeBlock);
+    } catch {
+        // Try to find a JSON object in the text
+        const jsonMatch = withoutCodeBlock.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            parsed = parseJsonWithRepair(jsonMatch[0]);
+        } else {
+            throw new Error('AI 输出无法解析为 JSON 对象');
+        }
+    }
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('AI 输出不是有效的 JSON 对象');
+    }
+
+    // Basic validation: require at least primaryCurrency or progressionNames
+    const hasEconomy = parsed.economy && typeof parsed.economy === 'object';
+    const hasAbility = parsed.ability && typeof parsed.ability === 'object';
+    const hasPrimaryCurrency = hasEconomy && typeof parsed.economy.primaryCurrency === 'string' && parsed.economy.primaryCurrency.trim();
+    const hasProgressionNames = hasAbility && Array.isArray(parsed.ability.progressionNames) && parsed.ability.progressionNames.length >= 3;
+
+    if (!hasPrimaryCurrency && !hasProgressionNames) {
+        throw new Error('AI 补全缺少必要字段（primaryCurrency 或 progressionNames），请重试。');
+    }
+
+    return parsed;
 };

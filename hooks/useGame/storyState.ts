@@ -193,6 +193,53 @@ const 规范化世界基底势力列表 = (rawFactions: any[]): any[] => {
         .filter((faction) => faction.名称);
 };
 
+/**
+ * 标准化势力列表（运行时版本）：
+ * 对齐 规范化世界基底势力列表 的结构，但不过滤掉缺名称的条目。
+ * 当 AI 的部分更新命令导致某个势力条目缺失名称字段时，
+ * 填充占位名 "势力 N" 而非直接透传空名称。
+ */
+const 标准化势力列表 = (rawFactions: any[]): any[] => {
+    const source = Array.isArray(rawFactions) ? rawFactions : [];
+    const ids = new Set<string>();
+    const fallbackId = (index: number) => `FCT-${String(index + 1).padStart(3, '0')}`;
+    return source
+        .map((faction, index) => {
+            const idRaw = 取文本(faction?.ID || faction?.id) || fallbackId(index);
+            let id = idRaw;
+            if (ids.has(id)) id = fallbackId(index);
+            ids.add(id);
+            const name = 取文本(faction?.名称 || faction?.name);
+            const type = 取文本(faction?.类型 || faction?.type);
+            const relationSource = faction?.关系网 && typeof faction.关系网 === 'object' && !Array.isArray(faction.关系网)
+                ? faction.关系网
+                : {};
+            const relationEntries = Object.entries(relationSource)
+                .map(([key, value]) => [取文本(key), 势力关系集合.has(取文本(value)) ? 取文本(value) : '中立'])
+                .filter(([key]) => key);
+            return {
+                ID: id,
+                名称: name || `势力 ${index + 1}`,
+                类型: 势力类型集合.has(type) ? type : '其他',
+                实力等级: Math.max(1, Math.min(10, 取数字(faction?.实力等级 || faction?.power || faction?.level, 5))),
+                地盘归属: 取文本(faction?.地盘归属 || faction?.territory || faction?.所在地),
+                描述: 取文本(faction?.描述 || faction?.description),
+                代表性物品风格: 取文本(faction?.代表性物品风格 || faction?.itemStyle),
+                关系网: Object.fromEntries(relationEntries),
+                库藏物品池: Array.isArray(faction?.库藏物品池 || faction?.items)
+                    ? (faction?.库藏物品池 || faction?.items).map((item: any) => ({
+                        名称: 取文本(item?.名称 || item?.name),
+                        类型: 取文本(item?.类型 || item?.type),
+                        品质: 取文本(item?.品质 || item?.quality, '普通'),
+                        描述: 取文本(item?.描述 || item?.description),
+                        预置图片URL: 取文本(item?.预置图片URL)
+                    })).filter((item: any) => item.名称)
+                    : [],
+                当前状态: 取文本(faction?.当前状态 || faction?.status)
+            };
+        });
+};
+
 export const 合并世界基底到开场状态 = <T extends { 世界?: 世界数据结构 }>(
     openingBase: T,
     foundation?: Pick<WorldFoundationResult, 'mapLayers' | 'factions'> | null
@@ -1933,8 +1980,8 @@ export const 规范化世界状态 = (raw?: any): 世界数据结构 => {
         地图建筑: Array.isArray(world?.地图建筑) ? world.地图建筑 : [],
         地图道路: Array.isArray(world?.地图道路) ? world.地图道路 : [],
         地图人物: Array.isArray(world?.地图人物) ? world.地图人物 : [],
-        // 势力系统（旧存档兼容：缺失时默认为空数组）
-        势力列表: Array.isArray(world?.势力列表) ? world.势力列表 : [],
+        // 势力系统：标准化处理，确保每个势力项结构完整
+        势力列表: 标准化势力列表(world?.势力列表),
         势力互动历史: Array.isArray(world?.势力互动历史) ? world.势力互动历史 : [],
         拍卖行待投放物品: Array.isArray(world?.拍卖行待投放物品) ? world.拍卖行待投放物品 : []
     };

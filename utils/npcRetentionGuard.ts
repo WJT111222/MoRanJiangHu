@@ -32,12 +32,37 @@ const 是普通对象 = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
+/** 判断一个文本值是否"实质为空"（空字符串、纯空白、null、undefined） */
+export const 实质为空文本 = (value: unknown): boolean => (
+    value === undefined || value === null || (typeof value === 'string' && !value.trim())
+);
+
+/** 判断一个姓名/名称值是否是自动生成的占位名（如 "角色0"、"角色1"、"未命名功法1"、"势力 1"、"npc_0" 等） */
+export const 是否占位名 = (value: unknown): boolean => {
+    if (typeof value !== 'string' || !value.trim()) return true;
+    const trimmed = value.trim();
+    return /^(角色|未命名功法|未命名武功|势力\s*)\d+$/u.test(trimmed)
+        || /^npc_\d+$/i.test(trimmed)
+        || /^FCT-\d+$/i.test(trimmed);
+};
+
+/** 需要在深合并中做空值保护的关键字段（名称类字段） */
+const 名称保护字段 = new Set(['姓名', '名称', 'name', 'Name', 'ID', 'id']);
+
 const 深合并保留NPC字段 = (previous: any, next: any): any => {
     if (Array.isArray(next)) return 深拷贝(next);
     if (!是普通对象(next)) return 深拷贝(next);
     const result = 是普通对象(previous) ? 深拷贝(previous) : {};
     Object.entries(next).forEach(([key, value]) => {
         if (value === undefined) return;
+        // 名称字段空值保护：当新值为空或占位名，且旧值有真实名称时，保留旧值
+        if (名称保护字段.has(key) && 实质为空文本(value) && !实质为空文本(result[key]) && !是否占位名(result[key])) {
+            return; // 保留旧的真实名称，不覆盖
+        }
+        // 名称字段占位名保护：当新值是占位名但旧值有真实名称时，保留旧值
+        if (名称保护字段.has(key) && 是否占位名(value) && !是否占位名(result[key]) && !实质为空文本(result[key])) {
+            return; // 保留旧的真实名称，不用占位名覆盖
+        }
         if (是普通对象(result[key]) && 是普通对象(value)) {
             result[key] = 深合并保留NPC字段(result[key], value);
             return;
@@ -61,6 +86,13 @@ export const 合并保留既有NPC列表 = (
     let mergedCount = 0;
     const playerNormKey = playerName ? 规范化NPC键(playerName) : '';
 
+    // 预建 ID → index 映射，用于当姓名匹配失败时用 ID 做第二道匹配
+    const nextIdMap = new Map<string, number>();
+    result.forEach((npc: any, idx: number) => {
+        const id = 规范化NPC键(npc?.id || npc?.ID);
+        if (id) nextIdMap.set(id, idx);
+    });
+
     previous.forEach((npc, index) => {
         if (!npc || typeof npc !== 'object' || Array.isArray(npc)) return;
         // 跳过与主角同名的NPC，防止主角被NPC化
@@ -68,7 +100,15 @@ export const 合并保留既有NPC列表 = (
             const npcKey = 规范化NPC键(npc?.姓名);
             if (npcKey && npcKey === playerNormKey) return;
         }
-        const existingIndex = result.findIndex((candidate) => NPC互相匹配(npc, candidate));
+        // 第一道匹配：用 NPC互相匹配（基于 id + 姓名键列表）
+        let existingIndex = result.findIndex((candidate) => NPC互相匹配(npc, candidate));
+        // 第二道匹配：用稳定 ID 匹配（当 NPC互相匹配 因为占位名导致姓名不匹配时）
+        if (existingIndex < 0) {
+            const npcId = 规范化NPC键(npc?.id || npc?.ID);
+            if (npcId && nextIdMap.has(npcId)) {
+                existingIndex = nextIdMap.get(npcId)!;
+            }
+        }
         if (existingIndex >= 0) {
             result[existingIndex] = 深合并保留NPC字段(npc, result[existingIndex]);
             mergedCount += 1;

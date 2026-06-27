@@ -130,21 +130,24 @@ type 合并历史记录 = {
     itemRecord?: 物品历史展示记录;
 };
 
-const 状态样式: Record<图片生成状态类型, string> = {
+const 状态样式: Record<图片生成状态类型 | '未生成', string> = {
     success: 'border-emerald-700 text-emerald-300 bg-emerald-950/20',
     failed: 'border-red-700 text-red-300 bg-red-950/20',
-    pending: 'border-amber-700 text-amber-300 bg-amber-950/20'
+    pending: 'border-amber-700 text-amber-300 bg-amber-950/20',
+    '未生成': 'border-slate-600 text-slate-400 bg-slate-900/20'
 };
 
-const 状态文案: Record<图片生成状态类型, string> = {
+const 状态文案: Record<图片生成状态类型 | '未生成', string> = {
     success: '成功',
     failed: '失败',
-    pending: '生成中'
+    pending: '生成中',
+    '未生成': '未生成'
 };
 
 const 获取图片状态文案 = (result?: { 状态?: 图片生成状态类型; 来源?: string } | null): string => {
     if ((result?.来源 || '') === 'hosted') return '无需生图';
-    return 状态文案[result?.状态 || 'success'];
+    if (!result?.状态) return 状态文案['未生成'];
+    return 状态文案[result.状态];
 };
 
 const 队列状态样式: Record<NPC生图任务记录['状态'], string> = {
@@ -1260,7 +1263,7 @@ const LibraryTabContent: React.FC<TabProps> = ({
                                             <div className="text-[#a67c00]/60 font-serif tracking-widest p-6 text-center border border-dashed border-[#d4af37]/20 rounded">图片不可用</div>
                                         )}
                                         <div className="flex items-center justify-between font-serif relative z-10">
-                                            <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[img.状态 || 'success']}`}>{获取图片状态文案(img)}</span>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[img.状态 || '未生成']}`}>{获取图片状态文案(img)}</span>
                                             <span className='text-[#a67c00]/60 text-[10px] tracking-wider'>{格式化时间(img.生成时间)}</span>
                                         </div>
                                         <div className="text-[10px] text-gray-500 font-serif relative z-10">本地路径：{格式化本地图片描述(img.本地路径)}</div>
@@ -1658,7 +1661,7 @@ const SceneTabContent: React.FC<TabProps> = ({
                         const isCurrent = Boolean(imageId) && imageId === currentWallpaperId;
                         const normalizedPersistentWallpaper = (currentPersistentWallpaper || '').trim();
                         const isPersistent = Boolean(src && normalizedPersistentWallpaper && src === normalizedPersistentWallpaper);
-                        const canUse = Boolean(imageId && src && (item?.状态 || 'success') === 'success');
+                        const canUse = Boolean(imageId && src && item?.状态 === 'success');
                         return (
                             <div key={imageId || item.生成时间} className="rounded border border-wuxia-gold/30 bg-black/50 p-3 space-y-3 font-serif relative group hover:border-wuxia-gold/60 transition-colors shadow-inner">
                                 <div className="absolute inset-0 bg-gradient-to-b from-wuxia-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
@@ -1838,12 +1841,12 @@ const HistoryTabContent: React.FC<TabProps> = ({
         const npcItems: 合并历史记录[] = (Array.isArray(socialList) ? socialList : []).flatMap(npc =>
             (Array.isArray(npc?.图片档案?.生图历史) ? npc.图片档案.生图历史 : (npc.最近生图结果 ? [npc.最近生图结果] : []))
                 .filter(item => item && typeof item === 'object')
-                .map(result => ({ 类型: 'npc' as const, key: `${npc.id}_${result.id || result.生成时间}`, 时间: result.生成时间 || 0, 状态: result.状态 || 'success', npcRecord: { 目标类型: 'npc', NPC标识: npc.id, NPC姓名: npc.姓名, NPC性别: npc.性别, 是否主要角色: npc.是否主要角色, 结果: result } }))
+                .map(result => ({ 类型: 'npc' as const, key: `${npc.id}_${result.id || result.生成时间}`, 时间: result.生成时间 || 0, 状态: result.状态 || '未生成', npcRecord: { 目标类型: 'npc', NPC标识: npc.id, NPC姓名: npc.姓名, NPC性别: npc.性别, 是否主要角色: npc.是否主要角色, 结果: result } }))
         );
         const sceneItems: 合并历史记录[] = (Array.isArray(sceneArchive?.生图历史) ? sceneArchive.生图历史 : [])
-            .map(result => ({ 类型: 'scene' as const, key: `scene_${result.id || result.生成时间}`, 时间: result.生成时间 || 0, 状态: result.状态 || 'success', sceneRecord: result }));
+            .map(result => ({ 类型: 'scene' as const, key: `scene_${result.id || result.生成时间}`, 时间: result.生成时间 || 0, 状态: result.状态 || '未生成', sceneRecord: result }));
         const itemItems: 合并历史记录[] = (Array.isArray(itemImageSequence) ? itemImageSequence : [])
-            .map(result => ({ 类型: 'item' as const, key: `item_${result.id || result.生成时间}`, 时间: result.生成时间 || 0, 状态: result.状态 || 'success', itemRecord: result }));
+            .map(result => ({ 类型: 'item' as const, key: `item_${result.id || result.生成时间}`, 时间: result.生成时间 || 0, 状态: result.状态 || '未生成', itemRecord: result }));
 
         return [...npcItems, ...sceneItems, ...itemItems].sort((a, b) => b.时间 - a.时间);
     }, [itemImageSequence, socialList, sceneArchive]);
@@ -1866,7 +1869,7 @@ const HistoryTabContent: React.FC<TabProps> = ({
                             <summary className='flex items-center justify-between outline-none cursor-pointer gap-2'>
                                 <span className='font-bold text-cyan-100 tracking-widest truncate'>{result.物品名称 || '物品记录'}</span>
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[result.状态 || 'success']}`}>{获取图片状态文案(result)}</span>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[result.状态 || '未生成']}`}>{获取图片状态文案(result)}</span>
                                     <span className="text-cyan-100 transition-transform group-open:rotate-180">▼</span>
                                 </div>
                             </summary>
@@ -1896,7 +1899,7 @@ const HistoryTabContent: React.FC<TabProps> = ({
                             <summary className='flex items-center justify-between outline-none cursor-pointer'>
                                 <span className='font-bold text-cyan-500/90 tracking-widest truncate max-w-[150px]'>{result.摘要 || '场景记录'}</span>
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[result.状态 || 'success']}`}>{获取图片状态文案(result)}</span>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[result.状态 || '未生成']}`}>{获取图片状态文案(result)}</span>
                                     <span className="text-[#A67C00] transition-transform group-open:rotate-180">▼</span>
                                 </div>
                             </summary>
@@ -1925,7 +1928,7 @@ const HistoryTabContent: React.FC<TabProps> = ({
                                             查看大图
                                         </button>
                                     )}
-                                    {onSetPersistentWallpaper && imageSrc && (result.状态 || 'success') === 'success' && (
+                                    {onSetPersistentWallpaper && imageSrc && result.状态 === 'success' && (
                                         <button
                                             onClick={() => withBusyAction(`set_persistent_scene_hist_${result.id || result.生成时间}`, () => (isPersistent ? onClearPersistentWallpaper?.() : onSetPersistentWallpaper(imageSrc)))}
                                             disabled={!!busyActionKey}
@@ -1949,7 +1952,7 @@ const HistoryTabContent: React.FC<TabProps> = ({
                             <summary className='flex items-center justify-between outline-none cursor-pointer'>
                                 <span className='font-bold text-[#d4af37] tracking-widest'>{entry.npcRecord.NPC姓名} ({获取NPC构图文案(result.构图, result.部位)})</span>
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[result.状态 || 'success']}`}>{获取图片状态文案(result)}</span>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${状态样式[result.状态 || '未生成']}`}>{获取图片状态文案(result)}</span>
                                     <span className="text-[#A67C00] transition-transform group-open:rotate-180">▼</span>
                                 </div>
                             </summary>
@@ -1979,7 +1982,7 @@ const HistoryTabContent: React.FC<TabProps> = ({
                                             查看大图
                                         </button>
                                     )}
-                                    {onSetPersistentWallpaper && imageSrc && (result.状态 || 'success') === 'success' && (
+                                    {onSetPersistentWallpaper && imageSrc && result.状态 === 'success' && (
                                         <button
                                             onClick={() => withBusyAction(`set_persistent_npc_hist_${result.id || result.生成时间}`, () => (isPersistent ? onClearPersistentWallpaper?.() : onSetPersistentWallpaper(imageSrc)))}
                                             disabled={!!busyActionKey}

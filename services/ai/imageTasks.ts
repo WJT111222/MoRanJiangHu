@@ -4648,46 +4648,136 @@ const 发送NovelAI原生请求 = async (
     body: string,
     signal?: AbortSignal
 ): Promise<Response> => {
-    if (!isNativeCapacitorEnvironment() || typeof XMLHttpRequest === 'undefined') {
+    // 非原生环境：直接用浏览器的 fetch（浏览器 CORS 策略和代理配合正常）
+    if (!isNativeCapacitorEnvironment()) {
         return fetch(endpoint, { method: 'POST', headers, body, signal });
     }
-    const xhr = new XMLHttpRequest();
-    const abortHandler = () => { try { xhr.abort(); } catch { /* ignore */ } };
-    signal?.addEventListener('abort', abortHandler, { once: true });
-    return new Promise<Response>((resolve, reject) => {
-        xhr.open('POST', endpoint, true);
-        xhr.responseType = 'arraybuffer';
-        Object.entries(headers).forEach(([key, value]) => {
-            xhr.setRequestHeader(key, value);
+
+    // ── APK 原生环境 ──
+    // CapacitorHttp 在 config 中 enabled: true 会使 Capacitor monkey-patch 全局
+    // XMLHttpRequest 和 fetch。被 patch 过的 XHR 对 responseType='arraybuffer'
+    // 支持不完整（xhr.response 可能不是真正的 ArrayBuffer），导致 ZIP 图片响应
+    // 被截断为空 buffer，后续 unzipSync 必然失败。
+    // 因此在原生环境中，优先使用 CapacitorHttp.request() 原生插件 API，
+    // 该 API 能可靠返回 arraybuffer 二进制数据。
+    try {
+        const { CapacitorHttp } = await import('@capacitor/core');
+        let parsedBody: Record<string, unknown>;
+        try {
+            parsedBody = JSON.parse(body);
+        } catch {
+            parsedBody = { raw: body };
+        }
+
+        const requestPromise = CapacitorHttp.request({
+            url: endpoint,
+            method: 'POST',
+            headers,
+            data: parsedBody,
+            responseType: 'arraybuffer',
+            connectTimeout: 60000,
+            readTimeout: 300000,
         });
-        xhr.onload = () => {
-            signal?.removeEventListener('abort', abortHandler);
-            const responseHeaders = new Headers();
-            (xhr.getAllResponseHeaders() || '').trim().split(/\r?\n/).forEach((line: string) => {
-                const sep = line.indexOf(':');
-                if (sep > 0) {
-                    responseHeaders.append(line.slice(0, sep).trim(), line.slice(sep + 1).trim());
+
+        // CapacitorHttp.request() 不原生支持 AbortSignal，
+        // 用 Promise.race 模拟取消：signal 触发时 reject，否则等请求完成
+        const response = signal
+            ? await Promise.race([
+                requestPromise,
+                new Promise<never>((_, reject) => {
+                    if (signal.aborted) {
+                        reject(new DOMException('Aborted', 'AbortError'));
+                        return;
+                    }
+                    signal.addEventListener('abort', () => {
+                        reject(new DOMException('Aborted', 'AbortError'));
+                    }, { once: true });
+                }),
+            ])
+            : await requestPromise;
+
+        const responseHeaders = new Headers();
+        if (response.headers && typeof response.headers === 'object') {
+            Object.entries(response.headers).forEach(([key, value]) => {
+                if (typeof value === 'string') {
+                    responseHeaders.append(key, value);
                 }
             });
-            const responseBody = xhr.response instanceof ArrayBuffer
-                ? xhr.response
-                : new Uint8Array(0).buffer;
-            resolve(new Response(responseBody, {
-                status: xhr.status,
-                statusText: xhr.statusText || '',
-                headers: responseHeaders
-            }));
-        };
-        xhr.onerror = () => {
-            signal?.removeEventListener('abort', abortHandler);
-            reject(new TypeError('NovelAI XHR request failed — network error or CORS blocked'));
-        };
-        xhr.onabort = () => {
-            signal?.removeEventListener('abort', abortHandler);
-            reject(new DOMException('Aborted', 'AbortError'));
-        };
-        xhr.send(body);
-    });
+        }
+
+        // CapacitorHttp 对于 responseType='arraybuffer' 应返回 ArrayBuffer，
+        // 但部分版本/平台可能退化为字符串，需要兜底处理
+        let responseBody: ArrayBuffer;
+        if (response.data instanceof ArrayBuffer) {
+            responseBody = response.data;
+        } else if (typeof response.data === 'string' && response.data.length > 0) {
+            // 字符串回退：尝试 base64 解码或 UTF-8 编码
+            try {
+                const binaryStr = atob(response.data);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+                responseBody = bytes.buffer;
+            } catch {
+                responseBody = new TextEncoder().encode(response.data).buffer;
+            }
+        } else {
+            responseBody = new Uint8Array(0).buffer;
+        }
+
+        return new Response(responseBody, {
+            status: response.status,
+            statusText: response.status >= 400 ? 'Error' : 'OK',
+            headers: responseHeaders,
+        });
+    } catch (capacitorError: any) {
+        // CapacitorHttp 不可用或调用失败时的降级路径：
+        // 保留 XHR 作为最终 fallback（已知在 CapacitorHttp 劫持下
+        // arraybuffer 支持有限，但作为 graceful degradation）
+        if (typeof XMLHttpRequest === 'undefined') {
+            throw capacitorError;
+        }
+        console.warn('[NovelAI] CapacitorHttp.request() 不可用，降级到 XHR:', capacitorError?.message || capacitorError);
+
+        const xhr = new XMLHttpRequest();
+        const abortHandler = () => { try { xhr.abort(); } catch { /* ignore */ } };
+        signal?.addEventListener('abort', abortHandler, { once: true });
+        return new Promise<Response>((resolve, reject) => {
+            xhr.open('POST', endpoint, true);
+            xhr.responseType = 'arraybuffer';
+            Object.entries(headers).forEach(([key, value]) => {
+                xhr.setRequestHeader(key, value);
+            });
+            xhr.onload = () => {
+                signal?.removeEventListener('abort', abortHandler);
+                const responseHeaders = new Headers();
+                (xhr.getAllResponseHeaders() || '').trim().split(/\r?\n/).forEach((line: string) => {
+                    const sep = line.indexOf(':');
+                    if (sep > 0) {
+                        responseHeaders.append(line.slice(0, sep).trim(), line.slice(sep + 1).trim());
+                    }
+                });
+                const responseBody = xhr.response instanceof ArrayBuffer
+                    ? xhr.response
+                    : new Uint8Array(0).buffer;
+                resolve(new Response(responseBody, {
+                    status: xhr.status,
+                    statusText: xhr.statusText || '',
+                    headers: responseHeaders
+                }));
+            };
+            xhr.onerror = () => {
+                signal?.removeEventListener('abort', abortHandler);
+                reject(new TypeError('NovelAI XHR request failed — network error or CORS blocked'));
+            };
+            xhr.onabort = () => {
+                signal?.removeEventListener('abort', abortHandler);
+                reject(new DOMException('Aborted', 'AbortError'));
+            };
+            xhr.send(body);
+        });
+    }
 };
 
     let response: Response;

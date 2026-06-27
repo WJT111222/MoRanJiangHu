@@ -14,7 +14,7 @@ import {
 import GameButton from '../../ui/GameButton';
 import ToggleSwitch from '../../ui/ToggleSwitch';
 import InlineSelect from '../../ui/InlineSelect';
-import { 规范化接口设置 } from '../../../utils/apiConfig';
+import { 规范化接口设置, 获取小说拆分接口配置, type 当前可用接口结构 } from '../../../utils/apiConfig';
 import {
     读取小说拆分任务列表,
     读取小说拆分数据集列表,
@@ -48,7 +48,7 @@ import {
     type 小说分解创意工坊条目
 } from '../../../services/workshopNovelDecomposition';
 import { 发布创意工坊模块, 导入本地创意工坊模块 } from '../../../services/creativeWorkshop';
-import { 构建小说拆分模式包创意工坊模块 } from '../../../services/novelDecompositionWorkshopBridge';
+import { 构建小说拆分模式包创意工坊模块, AI补全小说模式包配置 } from '../../../services/novelDecompositionWorkshopBridge';
 import { 读取云端游玩会话 } from '../../../services/cloudPlayService';
 
 interface Props {
@@ -457,11 +457,19 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
     const [workshopBusyId, setWorkshopBusyId] = useState('');
     const [workshopPublishing, setWorkshopPublishing] = useState(false);
     const [modePackagePublishing, setModePackagePublishing] = useState(false);
+    const [aiCompletionRunning, setAiCompletionRunning] = useState(false);
+    const [aiCompletionDraft, setAiCompletionDraft] = useState<Partial<import('../../../models/system').ModeRuntimeProfile> | null>(null);
+    const [aiCompletionLog, setAiCompletionLog] = useState('');
     const [workshopAnonymous, setWorkshopAnonymous] = useState(false);
     const [workshopUsername, setWorkshopUsername] = useState('');
     const [workshopEditingId, setWorkshopEditingId] = useState('');
     const [workshopEditDraft, setWorkshopEditDraft] = useState({ title: '', workName: '', contributor: '', note: '', tags: '', anonymous: false });
     const [selectedDatasetId, setSelectedDatasetId] = useState('');
+    // Clear AI completion draft when switching datasets
+    useEffect(() => {
+        setAiCompletionDraft(null);
+        setAiCompletionLog('');
+    }, [selectedDatasetId]);
     const [selectedSegmentId, setSelectedSegmentId] = useState('');
     const [showStrategySection, setShowStrategySection] = useState(false);
     const [showChapterSection, setShowChapterSection] = useState(false);
@@ -1623,6 +1631,42 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
         }
     };
 
+    const handleAiCompletionForModePackage = async () => {
+        if (!selectedDataset) {
+            推送错误提示('请先选择一个数据集。');
+            return;
+        }
+        const apiConfig = 获取小说拆分接口配置(form);
+        if (!apiConfig?.apiKey) {
+            推送错误提示('请先在接口设置中配置小说分解 API，AI 补全需要可用接口。');
+            return;
+        }
+
+        setAiCompletionRunning(true);
+        setAiCompletionLog('AI 补全中...\n');
+        try {
+            const result = await AI补全小说模式包配置({
+                dataset: 聚合小说拆分数据集(selectedDataset),
+                apiConfig,
+                onDelta: (delta, accumulated) => {
+                    setAiCompletionLog(accumulated);
+                }
+            });
+            setAiCompletionDraft(result.completion as any);
+            const fieldNames = Object.keys(result.completion);
+            设置状态消息(`AI 补全完成，已覆盖 ${fieldNames.length} 个配置字段（${fieldNames.join('、')}）。下次生成或贡献模式包时会自动携带。`);
+            onNotify?.({
+                title: 'AI 补全完成',
+                message: `已生成 ${fieldNames.length} 个小说专属配置字段，生成模式包时将自动合并。`,
+                tone: 'success'
+            });
+        } catch (error: any) {
+            推送错误提示(`AI 补全失败：${error?.message || '未知错误'}`);
+        } finally {
+            setAiCompletionRunning(false);
+        }
+    };
+
     const handleGenerateModePackageFromSelectedDataset = async () => {
         if (!selectedDataset) {
             setMessage('请先选择一个数据集。');
@@ -1631,7 +1675,8 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
         try {
             const module = 构建小说拆分模式包创意工坊模块({
                 dataset: 聚合小说拆分数据集(selectedDataset),
-                contributor: workshopUsername || ''
+                contributor: workshopUsername || '',
+                aiCompletion: aiCompletionDraft
             });
             const local = 导入本地创意工坊模块(module);
             设置状态消息(`已生成本地创意工坊模式包：${local.title}。新开同人存档时可在创意工坊模式包中套用。`);
@@ -1668,7 +1713,8 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
         try {
             const module = 构建小说拆分模式包创意工坊模块({
                 dataset: 聚合小说拆分数据集(selectedDataset),
-                contributor: workshopUsername
+                contributor: workshopUsername,
+                aiCompletion: aiCompletionDraft
             });
             const local = 导入本地创意工坊模块(module);
             const published = await 发布创意工坊模块({
@@ -2207,6 +2253,14 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                     {workshopPublishing ? '发布中...' : '发布为小说分解模块'}
                                 </button>
                                 <button
+                                    onClick={() => void handleAiCompletionForModePackage()}
+                                    disabled={aiCompletionRunning || !selectedDataset}
+                                    title="用 AI 根据小说内容补全模式包的货币、能力体系、开局背景等运行时配置"
+                                    className="px-5 py-2.5 rounded-lg text-xs font-medium border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {aiCompletionRunning ? 'AI 补全中...' : aiCompletionDraft ? '重新 AI 补全' : 'AI 补全模式包'}
+                                </button>
+                                <button
                                     onClick={() => void handleGenerateModePackageFromSelectedDataset()}
                                     className="px-5 py-2.5 rounded-lg text-xs font-medium border border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20 transition-all"
                                 >
@@ -2233,6 +2287,31 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                     删除数据集
                                 </button>
                             </div>
+                            {(aiCompletionDraft || aiCompletionLog) && (
+                                <div className="rounded-lg border border-cyan-500/15 bg-cyan-950/10 px-4 py-3 text-xs space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-medium text-cyan-200">
+                                            {aiCompletionDraft ? `AI 补全已就绪（${Object.keys(aiCompletionDraft).length} 个字段）` : 'AI 补全输出'}
+                                        </span>
+                                        {aiCompletionDraft && (
+                                            <button
+                                                onClick={() => { setAiCompletionDraft(null); setAiCompletionLog(''); }}
+                                                className="text-[10px] text-cyan-400/60 hover:text-cyan-300 transition-colors"
+                                            >
+                                                清除补全
+                                            </button>
+                                        )}
+                                    </div>
+                                    {aiCompletionLog && (
+                                        <pre className="whitespace-pre-wrap break-all max-h-32 overflow-y-auto text-cyan-100/60 font-mono text-[10px] leading-relaxed">{aiCompletionLog}</pre>
+                                    )}
+                                    {aiCompletionDraft && (
+                                        <div className="text-[10px] text-cyan-100/50">
+                                            已覆盖字段：{Object.keys(aiCompletionDraft).join('、')}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -2269,6 +2348,15 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                             </button>
                             <button
                                 type="button"
+                                onClick={() => void handleAiCompletionForModePackage()}
+                                disabled={aiCompletionRunning || !selectedDataset}
+                                title="用 AI 根据小说内容补全模式包运行时配置"
+                                className="px-4 py-2 rounded-lg text-xs font-medium border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all disabled:opacity-50"
+                            >
+                                {aiCompletionRunning ? 'AI 补全中...' : aiCompletionDraft ? '重新 AI 补全' : 'AI 补全模式包'}
+                            </button>
+                            <button
+                                type="button"
                                 onClick={() => void handleGenerateModePackageFromSelectedDataset()}
                                 disabled={!selectedDataset}
                                 className="px-4 py-2 rounded-lg text-xs font-medium border border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20 transition-all disabled:opacity-50"
@@ -2291,6 +2379,32 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                         </div>
                     </div>
                     <div className="text-[11px] text-gray-500">{workshopUsername ? `联机账号：${workshopUsername}` : '发布社区投稿需要先登录联机账号'}</div>
+
+                    {(aiCompletionDraft || aiCompletionLog) && (
+                        <div className="rounded-lg border border-cyan-500/15 bg-cyan-950/10 px-4 py-3 text-xs space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium text-cyan-200">
+                                    {aiCompletionDraft ? `AI 补全已就绪（${Object.keys(aiCompletionDraft).length} 个字段）` : 'AI 补全输出'}
+                                </span>
+                                {aiCompletionDraft && (
+                                    <button
+                                        onClick={() => { setAiCompletionDraft(null); setAiCompletionLog(''); }}
+                                        className="text-[10px] text-cyan-400/60 hover:text-cyan-300 transition-colors"
+                                    >
+                                        清除补全
+                                    </button>
+                                )}
+                            </div>
+                            {aiCompletionLog && (
+                                <pre className="whitespace-pre-wrap break-all max-h-32 overflow-y-auto text-cyan-100/60 font-mono text-[10px] leading-relaxed">{aiCompletionLog}</pre>
+                            )}
+                            {aiCompletionDraft && (
+                                <div className="text-[10px] text-cyan-100/50">
+                                    已覆盖字段：{Object.keys(aiCompletionDraft).join('、')}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {workshopLoading && workshopEntries.length <= 0 ? (
                         <div className="rounded-xl border border-white/5 bg-black/25 p-8 text-center text-sm text-gray-400">正在读取创意工坊模块...</div>

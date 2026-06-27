@@ -2,6 +2,8 @@ import type { 创意工坊模块条目 } from '../data/creativeWorkshopModules';
 import type { ModeRuntimeProfile, 世界书条目结构, 世界书作用域, 世界书结构, 小说拆分数据集结构, 题材模式类型 } from '../types';
 import { 构建官方模式运行时配置, 规范化模式运行时配置, 渲染模式运行时配置世界书内容 } from '../utils/modeRuntimeProfile';
 import { 构建小说拆分跨世界时间线规则, 小说拆分疑似跨世界题材 } from './novelDecompositionTimelineConstraints';
+import { generateNovelModePackCompletion, type NovelModePackCompletionResult } from './ai/storyTasks';
+import type { 当前可用接口结构 } from '../utils/apiConfig';
 
 const 全流程模式世界书作用域: 世界书作用域[] = ['main', 'opening', 'world_evolution', 'variable_calibration', 'story_plan', 'heroine_plan', 'tavern'];
 
@@ -169,6 +171,7 @@ export const 构建小说拆分模式包创意工坊模块 = (params: {
     contributor?: string;
     baseMode?: 题材模式类型;
     now?: number;
+    aiCompletion?: Partial<ModeRuntimeProfile> | null;
 }): 创意工坊模块条目 => {
     const dataset = params.dataset;
     const now = params.now || Date.now();
@@ -179,8 +182,14 @@ export const 构建小说拆分模式包创意工坊模块 = (params: {
     const suiteTitle = `${workName}同人模式包`;
     const crossWorldRules = 构建小说拆分跨世界时间线规则(dataset);
     const officialProfile = 构建官方模式运行时配置(baseMode);
+
+    // Merge AI completion fields over the official profile when available
+    const mergedProfile = params.aiCompletion
+        ? 合并AI补全到模式运行时配置(officialProfile, params.aiCompletion, baseMode)
+        : officialProfile;
+
     const modeRuntimeProfile = 规范化模式运行时配置({
-        ...officialProfile,
+        ...mergedProfile,
         identity: {
             ...officialProfile.identity,
             modeId: suiteId,
@@ -358,4 +367,129 @@ export const 构建小说拆分模式包创意工坊模块 = (params: {
         createdAt: iso,
         updatedAt: iso
     };
+};
+
+/** Deep-merge AI completion fields over the official profile. */
+const 合并AI补全到模式运行时配置 = (
+    base: ModeRuntimeProfile,
+    patch: Partial<ModeRuntimeProfile>,
+    _baseMode: 题材模式类型
+): ModeRuntimeProfile => {
+    const result = { ...base };
+
+    if (patch.economy && typeof patch.economy === 'object') {
+        result.economy = { ...result.economy };
+        const eco = patch.economy as any;
+        if (eco.primaryCurrency) result.economy.primaryCurrency = eco.primaryCurrency;
+        if (eco.accountingUnit) result.economy.accountingUnit = eco.accountingUnit;
+        if (eco.exchangeRules) result.economy.exchangeRules = eco.exchangeRules;
+        if (eco.marketName) result.economy.marketName = eco.marketName;
+        if (eco.marketVerb) result.economy.marketVerb = eco.marketVerb;
+        if (eco.currencyTiers && typeof eco.currencyTiers === 'object') {
+            result.economy.currencyTiers = { ...result.economy.currencyTiers };
+            if (eco.currencyTiers.upperName) result.economy.currencyTiers.upperName = eco.currencyTiers.upperName;
+            if (eco.currencyTiers.middleName) result.economy.currencyTiers.middleName = eco.currencyTiers.middleName;
+            if (eco.currencyTiers.lowerName) result.economy.currencyTiers.lowerName = eco.currencyTiers.lowerName;
+        }
+    }
+
+    if (patch.ability && typeof patch.ability === 'object') {
+        result.ability = { ...result.ability };
+        const abil = patch.ability as any;
+        if (abil.primaryAxis) result.ability.primaryAxis = abil.primaryAxis;
+        if (Array.isArray(abil.progressionNames) && abil.progressionNames.length >= 3) {
+            result.ability.progressionNames = abil.progressionNames;
+        }
+        if (abil.combatResolution) result.ability.combatResolution = abil.combatResolution;
+        if (Array.isArray(abil.skillPool) && abil.skillPool.length > 0) {
+            result.ability.skillPool = abil.skillPool;
+        }
+        if (Array.isArray(abil.kungfuTypes) && abil.kungfuTypes.length > 0) {
+            result.ability.kungfuTypes = abil.kungfuTypes;
+        }
+    }
+
+    if (patch.opening && typeof patch.opening === 'object') {
+        result.opening = { ...result.opening };
+        const opening = patch.opening as any;
+        if (Array.isArray(opening.defaultBackgrounds) && opening.defaultBackgrounds.length > 0) {
+            result.opening.defaultBackgrounds = opening.defaultBackgrounds;
+        }
+        if (Array.isArray(opening.defaultTalents) && opening.defaultTalents.length > 0) {
+            result.opening.defaultTalents = opening.defaultTalents;
+        }
+    }
+
+    if (patch.organization && typeof patch.organization === 'object') {
+        result.organization = { ...result.organization };
+        const org = patch.organization as any;
+        if (org.organizationName) result.organization.organizationName = org.organizationName;
+        if (org.memberName) result.organization.memberName = org.memberName;
+        if (org.contributionName) result.organization.contributionName = org.contributionName;
+        if (Array.isArray(org.rankNames) && org.rankNames.length > 0) {
+            result.organization.rankNames = org.rankNames;
+        }
+    }
+
+    if (patch.map && typeof patch.map === 'object') {
+        result.map = { ...result.map };
+        const map = patch.map as any;
+        if (Array.isArray(map.locationTypes) && map.locationTypes.length > 0) {
+            result.map.locationTypes = map.locationTypes;
+        }
+        if (Array.isArray(map.poiTypes) && map.poiTypes.length > 0) {
+            result.map.poiTypes = map.poiTypes;
+        }
+        if (map.mapPrompt) result.map.mapPrompt = map.mapPrompt;
+    }
+
+    if (patch.npc && typeof patch.npc === 'object') {
+        result.npc = { ...result.npc };
+        const npc = patch.npc as any;
+        if (Array.isArray(npc.defaultIdentityPool) && npc.defaultIdentityPool.length > 0) {
+            result.npc.defaultIdentityPool = npc.defaultIdentityPool;
+        }
+        if (Array.isArray(npc.relationTemplates) && npc.relationTemplates.length > 0) {
+            result.npc.relationTemplates = npc.relationTemplates;
+        }
+    }
+
+    if (patch.image && typeof patch.image === 'object') {
+        result.image = { ...result.image };
+        const image = patch.image as any;
+        if (image.characterClothingEra) result.image.characterClothingEra = image.characterClothingEra;
+        if (image.sceneMaterials) result.image.sceneMaterials = image.sceneMaterials;
+        if (image.visualStyle) result.image.visualStyle = image.visualStyle;
+    }
+
+    if (patch.time && typeof patch.time === 'object') {
+        const time = patch.time as any;
+        if (time.calendarName) {
+            result.time = { ...result.time, calendarName: time.calendarName };
+        }
+        if (time.narrativeStyle) {
+            result.time = { ...result.time, narrativeStyle: [result.time.narrativeStyle, time.narrativeStyle].filter(Boolean).join('\n') };
+        }
+    }
+
+    return result;
+};
+
+export type { NovelModePackCompletionResult };
+
+/**
+ * Front-end function: calls AI to generate a runtime-profile completion
+ * for a novel-decomposition mode pack, returning the patch object.
+ */
+export const AI补全小说模式包配置 = async (
+    params: {
+        dataset: 小说拆分数据集结构;
+        apiConfig: 当前可用接口结构;
+        signal?: AbortSignal;
+        onDelta?: (delta: string, accumulated: string) => void;
+    }
+): Promise<NovelModePackCompletionResult> => {
+    const { dataset, apiConfig, signal, onDelta } = params;
+    const streamOptions = onDelta ? { stream: true, onDelta } : undefined;
+    return generateNovelModePackCompletion(dataset, apiConfig, streamOptions, signal);
 };

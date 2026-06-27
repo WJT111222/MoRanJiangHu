@@ -354,10 +354,17 @@ const MobileSocial: React.FC<Props> = ({
         }
         if (source && sourceDisplayUrl) return source;
         const history = Array.isArray((npc as any)?.图片档案?.生图历史) ? (npc as any).图片档案.生图历史 : [];
+        // 优先从历史中查找可展示的成功记录
         const match = history
             .filter((item: any) => item?.部位 === part && item?.状态 !== 'failed' && item?.状态 !== 'pending' && 获取图片展示地址(item))
             .sort((a: any, b: any) => Number(b?.生成时间 || 0) - Number(a?.生成时间 || 0))[0];
         if (match) return match;
+        // 没有可展示记录时，返回当前部位档案或最近的 failed 记录，让 UI 能正确显示失败状态
+        if (source?.状态 === 'failed' || source?.状态 === 'pending') return source;
+        const latestFailedOrPending = history
+            .filter((item: any) => item?.部位 === part && (item?.状态 === 'failed' || item?.状态 === 'pending'))
+            .sort((a: any, b: any) => Number(b?.生成时间 || 0) - Number(a?.生成时间 || 0))[0];
+        if (latestFailedOrPending) return latestFailedOrPending;
         return undefined;
     };
     const 读取关系网 = (npc: NPC结构): Array<{ 对象姓名: string; 关系: string; 备注?: string }> => {

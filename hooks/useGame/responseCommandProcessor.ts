@@ -16,9 +16,111 @@ import { 规范化任务列表自动结算 } from '../../utils/taskCompat';
 import { 结算已完成任务奖励 } from '../../utils/taskRewards';
 import { sanitizeInventoryCommand } from './inventoryCommandGuard';
 import { 姓名含已知中文姓氏 } from '../../utils/chineseName';
-import { 合并保留既有NPC列表, 命令存在社交删除风险 } from '../../utils/npcRetentionGuard';
+import { 合并保留既有NPC列表, 命令存在社交删除风险, 是否占位名 } from '../../utils/npcRetentionGuard';
 import { 提取NPC死亡风险命令索引, 状态效果是死亡判定 } from '../../utils/npcDeathGuard';
 import { 构建体内射精记录, 推进社交孕产状态, 规范化孕产时间 } from '../../utils/reproduction';
+
+/** 判断文本是否实质为空 */
+const 实质为空文本 = (value: unknown): boolean => (
+    value === undefined || value === null || (typeof value === 'string' && !value.trim())
+);
+
+/**
+ * 合并保留势力列表名称：
+ * 当 AI 命令部分更新势力导致某个势力的名称变成占位名时，
+ * 用旧列表中对应 ID 的真实名称恢复。
+ */
+const 合并保留势力列表名称 = (previousList: any[], nextList: any[]): any[] => {
+    if (!Array.isArray(previousList) || previousList.length <= 0) return nextList;
+    if (!Array.isArray(nextList)) return [];
+    // 预建 ID → 旧势力 映射和 名称 → 旧势力 映射
+    const prevById = new Map<string, any>();
+    const prevByName = new Map<string, any>();
+    previousList.forEach((faction: any) => {
+        if (!faction || typeof faction !== 'object') return;
+        const id = typeof faction.ID === 'string' ? faction.ID.trim() : '';
+        const name = typeof faction.名称 === 'string' ? faction.名称.trim() : '';
+        if (id) prevById.set(id, faction);
+        if (name && !是否占位名(name)) prevByName.set(name, faction);
+    });
+    return nextList.map((faction: any, index: number) => {
+        if (!faction || typeof faction !== 'object') return faction;
+        const name = typeof faction.名称 === 'string' ? faction.名称.trim() : '';
+        const id = typeof faction.ID === 'string' ? faction.ID.trim() : '';
+        // 如果名称有效且不是占位名，不需要恢复
+        if (name && !是否占位名(name)) return faction;
+        // 尝试用 ID 匹配旧势力
+        const prevFaction = id && prevById.has(id) ? prevById.get(id) : undefined;
+        if (prevFaction && typeof prevFaction.名称 === 'string' && prevFaction.名称.trim() && !是否占位名(prevFaction.名称)) {
+            return { ...faction, 名称: prevFaction.名称 };
+        }
+        // 尝试用名称占位名对应的旧索引匹配（如果 ID 也匹配不上，用索引兜底）
+        if (是否占位名(name) && index < previousList.length) {
+            const prevByIndex = previousList[index];
+            if (prevByIndex && typeof prevByIndex.名称 === 'string' && prevByIndex.名称.trim() && !是否占位名(prevByIndex.名称)) {
+                // 仅当 ID 也匹配或两边 ID 都不存在时才用索引匹配
+                const prevId = typeof prevByIndex.ID === 'string' ? prevByIndex.ID.trim() : '';
+                if (!id || !prevId || id === prevId) {
+                    return { ...faction, 名称: prevByIndex.名称 };
+                }
+            }
+        }
+        return faction;
+    });
+};
+
+/**
+ * 合并保留功法列表名称：
+ * 当 AI 命令部分更新功法导致某个功法的名称变成 "未命名功法N" 时，
+ * 用旧列表中对应索引的真实名称恢复。
+ */
+const 合并保留功法列表名称 = (previousList: any[], nextList: any[]): any[] => {
+    if (!Array.isArray(previousList) || previousList.length <= 0) return nextList;
+    if (!Array.isArray(nextList)) return [];
+    // 预建 名称 → 旧功法 映射（只保存非占位名的功法）
+    const prevByName = new Map<string, any>();
+    previousList.forEach((skill: any) => {
+        if (!skill || typeof skill !== 'object') return;
+        const name = typeof skill.名称 === 'string' ? skill.名称.trim() : '';
+        if (name && !是否占位名(name)) prevByName.set(name.toLowerCase(), skill);
+    });
+    return nextList.map((skill: any, index: number) => {
+        if (!skill || typeof skill !== 'object') return skill;
+        const name = typeof skill.名称 === 'string' ? skill.名称.trim() : '';
+        // 如果名称有效且不是占位名，不需要恢复
+        if (name && !是否占位名(name)) return skill;
+        // 策略1：同索引匹配 — 如果旧列表同索引有真实名称，且 ID 一致（或两边都没有ID）
+        if (index < previousList.length) {
+            const prevByIndex = previousList[index];
+            if (prevByIndex && typeof prevByIndex.名称 === 'string' && prevByIndex.名称.trim() && !是否占位名(prevByIndex.名称)) {
+                const prevId = typeof prevByIndex.ID === 'string' ? prevByIndex.ID.trim() : '';
+                const nextId = typeof skill.ID === 'string' ? skill.ID.trim() : '';
+                // ID 一致或两边都没有 ID 时用索引匹配
+                if (!prevId || !nextId || prevId === nextId) {
+                    return { ...skill, 名称: prevByIndex.名称 };
+                }
+                // ID 不一致（顺序打乱），跳过索引匹配，fallback 到类型+品质匹配
+            }
+        }
+        // 策略2：旧列表中查找匹配项（类型+品质组合匹配或循环遍历）
+        // 如果新值有非占位名的类型和品质字段，尝试在旧列表中找到相同类型+品质的功法
+        const skillType = typeof skill.类型 === 'string' ? skill.类型.trim() : '';
+        const skillQuality = typeof skill.品质 === 'string' ? skill.品质.trim() : '';
+        if (skillType || skillQuality) {
+            for (const prevSkill of previousList) {
+                if (!prevSkill || typeof prevSkill !== 'object') continue;
+                const prevName = typeof prevSkill.名称 === 'string' ? prevSkill.名称.trim() : '';
+                if (!prevName || 是否占位名(prevName)) continue;
+                const prevType = typeof prevSkill.类型 === 'string' ? prevSkill.类型.trim() : '';
+                const prevQuality = typeof prevSkill.品质 === 'string' ? prevSkill.品质.trim() : '';
+                if (skillType === prevType && skillQuality === prevQuality) {
+                    return { ...skill, 名称: prevName };
+                }
+            }
+        }
+        return skill;
+    });
+};
 
 const 占位开局时间 = '1:01:01:00:00';
 
@@ -1324,6 +1426,8 @@ export const 执行响应命令处理 = (
     let fandomStoryPlanBuffer = deps.规范化同人剧情规划状态(baseState?.同人剧情规划 ?? currentState.同人剧情规划);
     let fandomHeroinePlanBuffer = deps.规范化同人女主剧情规划状态(baseState?.同人女主剧情规划 ?? currentState.同人女主剧情规划);
     const socialBeforeCommands = Array.isArray(socialBuffer) ? socialBuffer : [];
+    const worldFactionsBeforeCommands = Array.isArray(worldBuffer?.势力列表) ? worldBuffer.势力列表 : [];
+    const charKungfuBeforeCommands = Array.isArray(charBuffer?.功法列表) ? charBuffer.功法列表 : [];
 
     const responseFactText = 提取响应事实文本(response);
     const dialogueSenderKeys = 提取对白发送者集合(response, charBuffer?.姓名);
@@ -1398,6 +1502,8 @@ export const 执行响应命令处理 = (
         envBuffer = deps.规范化环境信息(envBuffer);
         socialBuffer = deps.规范化社交列表(socialBuffer, { 合并同名: false });
         worldBuffer = deps.规范化世界状态(worldBuffer);
+        // 势力名称保留：当 AI 命令部分更新势力导致名称丢失时，恢复旧的真实名称
+        worldBuffer.势力列表 = 合并保留势力列表名称(worldFactionsBeforeCommands, worldBuffer?.势力列表 || []);
         sectBuffer = deps.规范化门派状态(sectBuffer);
         storyPlanBuffer = deps.规范化剧情规划状态(storyPlanBuffer);
         heroinePlanBuffer = deps.规范化女主剧情规划状态(heroinePlanBuffer);
@@ -1410,6 +1516,10 @@ export const 执行响应命令处理 = (
             事件文本: responseFactText,
             ...deps.角色规范化选项
         });
+        // 功法名称保留：当 AI 命令部分更新功法导致名称丢失时，恢复旧的真实名称
+        if (Array.isArray(charBuffer?.功法列表) && charKungfuBeforeCommands.length > 0) {
+            charBuffer.功法列表 = 合并保留功法列表名称(charKungfuBeforeCommands, charBuffer.功法列表);
+        }
         socialBuffer = deps.规范化社交列表(
             补入对白发送者到社交(response, socialBuffer, charBuffer?.姓名),
             { 合并同名: false }
@@ -1469,7 +1579,7 @@ export const 执行响应命令处理 = (
             角色: charBuffer,
             环境: deps.规范化环境信息(envBuffer),
             社交: socialBuffer,
-            世界: deps.规范化世界状态(worldBuffer),
+            世界: worldBuffer,
             战斗: battleBuffer,
             玩家门派: deps.规范化门派状态(过滤玩家本人门派成员(sectBuffer, charBuffer?.姓名)),
             任务列表: 规范化任务列表自动结算(Array.isArray(tasksBuffer) ? tasksBuffer : []),
@@ -1576,7 +1686,11 @@ export const 执行响应命令处理 = (
         角色: charBuffer,
         环境: normalizedEnv,
         社交: normalizedSocial,
-        世界: deps.规范化世界状态(worldBuffer),
+        世界: (() => {
+            const normalized = deps.规范化世界状态(worldBuffer);
+            normalized.势力列表 = 合并保留势力列表名称(worldFactionsBeforeCommands, normalized?.势力列表 || []);
+            return normalized;
+        })(),
         战斗: battleBuffer,
         玩家门派: deps.规范化门派状态(sectBuffer),
         任务列表: 规范化任务列表自动结算(Array.isArray(tasksBuffer) ? tasksBuffer : []),

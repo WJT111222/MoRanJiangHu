@@ -68,6 +68,15 @@ const getBucket = (env: any): any => {
     return candidate;
 };
 
+/** Auth bucket reads from the same store as cloud-play user registration. */
+const getAuthBucket = (env: any): any => {
+    const dbBucket = tryDbBucket(env, 'cloud_play_data');
+    if (dbBucket) return dbBucket;
+    const candidate = env?.CLOUD_PLAY_R2 || env?.CNB_SYNC_R2;
+    if (!candidate || typeof candidate.get !== 'function' || typeof candidate.put !== 'function') return null;
+    return candidate;
+};
+
 const getPrefix = (env: any): string => (
     readString(env?.WORKSHOP_MODULES_PREFIX) || WORKSHOP_PREFIX
 ).replace(/^\/+|\/+$/g, '') || WORKSHOP_PREFIX;
@@ -179,7 +188,7 @@ const sanitizePassword = (value: unknown): string => {
 };
 
 const authenticateWorkshopUser = async (env: any, auth: any): Promise<CloudPlayUser> => {
-    const bucket = getBucket(env);
+    const bucket = getAuthBucket(env);
     if (!bucket) throw new Error('创意工坊存储未配置');
     const username = sanitizeUsername(auth?.username);
     const password = sanitizePassword(auth?.password);
