@@ -126,13 +126,9 @@ export const buildVersionedApkFileName = (versionName: unknown): string => {
     return safeVersion ? `MoRanJiangHu-v${safeVersion}.apk` : '';
 };
 
-export const pickApkProvider = (request: Request, manifestPayload: any): ApkProvider => {
-    const url = new URL(request.url);
-    const queryProvider = url.searchParams.get('provider') || url.searchParams.get('source');
-    if (queryProvider === 'r2' || queryProvider === 'hi168' || queryProvider === 'b2') return queryProvider;
-    const preferred = String(manifestPayload?.latest?.preferredApkProvider || '').trim();
-    if (preferred === 'b2') return 'b2';
-    return preferred === 'r2' ? 'r2' : 'hi168';
+export const pickApkProvider = (_request: Request, _manifestPayload: any): ApkProvider => {
+    // hi168 S3 decommissioned, R2 retired. B2 is the only provider.
+    return 'b2';
 };
 
 export const buildVersionedApkHeaders = (
@@ -201,6 +197,56 @@ export const buildB2ApkRedirect = (
     })
 );
 
+// ---------- OneDrive APK fallback (via OpenList proxy) ----------
+
+const ONEDRIVE_APK_DIR = '/Onedrive/MoRanJiangHu/releases';
+const ONEDRIVE_APK_FILE = 'latest.apk';
+const ONEDRIVE_SIGN_CACHE_CONTROL = 'public, max-age=3600';
+
+const fetchOneDriveApkSign = async (env: any): Promise<string | null> => {
+    const authToken = env?.MORAN_OPENLIST_AUTH_TOKEN;
+    if (!authToken) return null;
+    const baseUrl = readEnvString(env, 'MORAN_OPENLIST_BASE_URL', 'https://openlist.bacon.de5.net').replace(/\/+$/, '');
+    try {
+        const response = await fetch(`${baseUrl}/api/fs/list`, {
+            method: 'POST',
+            headers: { 'Authorization': authToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: ONEDRIVE_APK_DIR, password: '', page: 1, per_page: 100, refresh: false }),
+        });
+        if (!response.ok) return null;
+        const json = await response.json() as any;
+        if (json?.code !== 200 || !Array.isArray(json?.data?.content)) return null;
+        const apkItem = json.data.content.find(
+            (item: any) => item?.name === ONEDRIVE_APK_FILE && !item?.is_dir && item?.sign
+        );
+        return apkItem?.sign || null;
+    } catch {
+        return null;
+    }
+};
+
+export const buildOneDriveApkRedirect = async (
+    env: any,
+    fileName: string,
+    cacheControl = APK_LATEST_CACHE_CONTROL
+): Promise<Response | null> => {
+    const sign = await fetchOneDriveApkSign(env);
+    if (!sign) return null;
+    const baseUrl = readEnvString(env, 'MORAN_OPENLIST_BASE_URL', 'https://openlist.bacon.de5.net').replace(/\/+$/, '');
+    const proxyUrl = `${baseUrl}/p${ONEDRIVE_APK_DIR}/${ONEDRIVE_APK_FILE}?sign=${encodeURIComponent(sign)}`;
+    return new Response(null, {
+        status: 302,
+        headers: {
+            Location: proxyUrl,
+            'Content-Type': 'application/vnd.android.package-archive',
+            'Cache-Control': cacheControl,
+            'Content-Disposition': `attachment; filename="${fileName}"`,
+            'X-Moran-Apk-Source': 'onedrive-proxy',
+            ...APK_CORS_HEADERS
+        }
+    });
+};
+
 const parseVersionParts = (value: unknown): number[] => (
     String(value || '')
         .split(/[^0-9]+/)
@@ -238,51 +284,26 @@ type ManifestCandidate = {
     payload: any;
     sourceHeaders: Headers;
     etag?: string;
-    source: 's3' | 'r2';
+    source: 'kv' | 's3' | 'r2';
 };
 
+const KV_MANIFEST_KEY = 'release-manifest/latest.json';
+
 export const readManifestPayload = async (env: any): Promise<{ payload: any; sourceHeaders: Headers; etag?: string } | null> => {
-    const prefix = readReleaseObjectPrefix(env);
-    const key = normalizeObjectKey(`${prefix}/latest.json`);
-    const candidates: ManifestCandidate[] = [];
-
-    // Prefer hi168 S3: the publish-release-s3.mjs script writes latest.json there,
-    // so reading from S3 avoids having to duplicate the manifest into R2.
-    try {
-        const manifestUrl = await buildSignedObjectUrl(env, key, 300);
-        const upstream = await fetch(manifestUrl, { headers: { Accept: 'application/json' } });
-        if (upstream.ok) {
-            candidates.push({
-                payload: await upstream.json(),
-                sourceHeaders: upstream.headers,
-                etag: upstream.headers.get('ETag') || undefined,
-                source: 's3'
-            });
-        } else {
-            console.warn(`APK manifest S3 fetch returned ${upstream.status}, falling back to R2`);
+    // Primary and only source: Cloudflare KV.
+    if (env?.RELEASE_MANIFEST) {
+        try {
+            const kvValue = await env.RELEASE_MANIFEST.get(KV_MANIFEST_KEY, 'json');
+            if (kvValue) {
+                return {
+                    payload: kvValue,
+                    sourceHeaders: new Headers({ 'Content-Type': 'application/json; charset=utf-8' }),
+                    source: 'kv'
+                };
+            }
+        } catch (kvError) {
+            console.warn('APK manifest KV read failed:', kvError);
         }
-    } catch (s3Error) {
-        console.warn('APK manifest S3 fetch failed, falling back to R2:', s3Error);
     }
-
-    // Also read R2 when available. It is usually the legacy fallback, but during
-    // release propagation it can be newer than S3, so choose by manifest version.
-    const r2Object = env?.CNB_SYNC_R2 ? await env.CNB_SYNC_R2.get(key) : null;
-    if (r2Object) {
-        const headers = new Headers();
-        r2Object.writeHttpMetadata?.(headers);
-        if (r2Object.etag) headers.set('ETag', r2Object.etag);
-        candidates.push({
-            payload: await r2Object.json(),
-            sourceHeaders: headers,
-            etag: r2Object.etag,
-            source: 'r2'
-        });
-    }
-
-    if (candidates.length === 0) return null;
-
-    return candidates.reduce((best, candidate) => (
-        compareManifestPayloads(candidate.payload, best.payload) > 0 ? candidate : best
-    ));
+    return null;
 };

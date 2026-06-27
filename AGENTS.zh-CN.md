@@ -40,10 +40,7 @@
 
 - 每次发布新版本，结束任务前必须验证所有公开发布入口。
 - 在最终公开部署或上传前，必须把 `releasePublishedAt` 刷新为当前真实本地时间，然后重新运行 `npm run release:sync`，再构建、上传、部署或验证。展示的发布时间必须代表真正最终发布时刻，不能使用前面版本准备时的时间。
-- R2 上传、Wrangler 部署、APK 下载验证、HTTPS 端点检查等外部命令必须带明确超时。如果包装命令可能在部分成功后卡住，要拆成上传、部署、验证等更小步骤，并逐一确认公开产物。
-- Cloudflare/Wrangler 部署命令（`wrangler deploy`、Worker 部署）应清除代理环境变量后执行，避免部署卡住。
-- Cloudflare/Wrangler R2 上传命令（`release:r2`、`wrangler r2 object put`）在本机**保留代理反而更快**，实测带代理秒完成，清空代理反而超时。R2 上传不要清空代理。
-- 总结：Worker 部署清代理，R2 上传留代理。
+- OneDrive APK 上传、APK 下载验证、HTTPS 端点检查等外部命令必须带明确超时。如果包装命令可能在部分成功后卡住，要拆成上传、部署、验证等更小步骤，并逐一确认公开产物。
 - 必须检查 `release.config.json` 中的网站 URL、APK 下载 URL、更新 manifest URL，以及所有文档中列出的备份域名或指南 URL。
 - 当前域名记忆：主站是 `https://msjh.bacon159.pp.ua/`；备站是 `https://msjh.bacon.de5.net/`。
 - 对当前项目，每次都要确认主站 `https://msjh.bacon159.pp.ua/` 和备站 `https://msjh.bacon.de5.net/` 是否部署了与 APK/update manifest 相同的版本。
@@ -51,26 +48,23 @@
   - 与 release 匹配的正确版本号。
   - 准确的发布时间 `releasePublishedAt`。
   - 如果版本号或时间戳不正确，说明部署未完成。
-- 如果 release 已上传到 R2 但网站没有部署，必须在同一发布流程里部署 Cloudflare Worker/site，或清楚说明不能部署的原因。
+- 如果 release 已上传到 OneDrive 但网站没有部署，必须在同一发布流程里部署网站，或清楚说明不能部署的原因。
 - 部署后必须通过 HTTPS 验证线上站点和 manifest，不能只看本地构建输出。
 - 每次部署并推送 release backup 后，都要显式检查 `ypq123456789/MoRanJiangHu` 的 GitHub Actions CI，而不是 upstream 仓库。确认最新推送 commit 的 `CI` run 成功；如果失败，要拉取日志，能修则修，不能修要在结束前报告阻塞。
 
-## 旧版 APK 更新清单规则
+## 旧版 APK 更新清单规则（已停用）
 
-- 只要还有已安装的旧版 APK 读取 `https://download.bacon.de5.net/moranjianghu/latest.json`，每次发布 APK 新版本时都必须同步旧 R2/对象存储更新清单。
-- APK 二进制的首选存放位置是 hi168 S3 兼容对象存储。只要同一个 APK 已经上传到 hi168，并且公开下载 URL 可用，就不要再把 APK 二进制重复上传到 Cloudflare R2。
-- 旧 R2/download 通道应尽量只发布或同步更新清单（`latest.json`），并让清单里的 `apkUrl` / 带版本号 APK URL 指向 hi168 上的 APK。不要为了让旧 JSON 生效而在 R2 里重复保存 `latest.apk` 或带版本号 APK 二进制。
-- 如果某些已安装旧 APK 只能从 `https://download.bacon.de5.net/moranjianghu/latest.apk` 下载，不能跟随 `latest.json` 里的 hi168 地址，必须先明确报告这个兼容阻塞，再决定是否临时把 APK 二进制上传到 R2。
-- 即使大多数用户已经升级到读取新版官方清单的 APK，也建议长期保留旧通道作为低成本兜底。除非用户明确要求废弃旧更新通道，否则发布时不要移除或跳过它。
-- 发布验证必须包含 `https://download.bacon.de5.net/moranjianghu/latest.json` 以及该清单指向的 hi168 APK URL，同时也要验证主站和备用站的新更新清单。
+- 旧版 `download.bacon.de5.net` 更新清单路径托管在 Cloudflare R2 上，R2 已**完全停用**，不再用于任何用途。
+- 读取 `https://download.bacon.de5.net/moranjianghu/latest.json` 的旧版已安装 APK 无法再收到更新。用户必须从主站手动下载最新 APK。
+- 所有 APK 分发现在仅通过 **OneDrive** 经 OpenList 代理。
 
 ## 禁止自动部署规则
 
 - 没有用户明确指令时，绝不部署。
-- 只有用户明确说“部署”“发布”“上线”等含义时，才可以运行 `npm run worker:deploy`。
+- 只有用户明确说”部署””发布””上线”等含义时，才可以执行部署。
 - 修 bug 或改代码时，只做本地构建（`npm run build`）和测试，不部署。
-- 如果用户只说“修改”“修复”“改”，不要部署。
-- 只有用户说“发布”“部署”“上线”时才部署。
+- 如果用户只说”修改””修复””改”，不要部署。
+- 只有用户说”发布””部署””上线”时才部署。
 
 ## 部署报告规则
 
@@ -85,7 +79,7 @@
 
 - 如果本次唯一有意义的变更是文档或静态指南内容，并且用户明确要求“不更新版本号也部署”，不要提升 `versionName`、`versionCode` 或 `releasePublishedAt`。
 - 这个例外只适用于纯文档变更，例如 `public/cnb-comfyui-guide.html`、更新日志文案、README/AGENTS 更新，或其它不改变应用行为、APK 内容、更新清单、运行时代码的客户指南文字。
-- 纯文档部署仍然要先本地构建，再清空代理变量部署网站/Worker，并通过 HTTPS 验证公开指南页已经更新；最终报告里要说明版本号因为纯文档部署而有意保持不变。
+- 纯文档部署仍然要先本地构建，再清空代理变量部署网站，并通过 HTTPS 验证公开指南页已经更新；最终报告里要说明版本号因为纯文档部署而有意保持不变。
 - 这个例外也适用于非游戏内容的支持入口/外链更新，例如首页或更新弹窗里的支持入口、邀请/返利链接、福利说明、赞助文案、外部帮助链接；当用户明确说明这不属于游戏内容，并要求部署但不升版本号或不写更新日志时，按本规则处理。
 - 以后用户明确要求部署纯文档改动时，默认按这条规则执行。
 
@@ -98,14 +92,14 @@
 
 ## 本地与云端环境变量规则
 
-- 本地/云端协同开发统一使用“本地 env 文件 + Cloudflare Wrangler Secrets”。
+- 本地/云端协同开发统一使用"本地 env 文件 + Cloudflare Secrets"。
 - 真实密钥只能保存在本机 `.env.local`、`.env.production`、`.dev.vars`、用户环境变量或 Cloudflare Secrets 中。不要把 OAuth client secret、GitHub token、图床 token、对象存储凭据、AI/API key 提交进仓库。
 - 只提交安全模板，例如 `.env.production.example` 和 `.dev.vars.example`。
 - 前端构建期变量使用 `VITE_` 前缀，会被写入构建产物，所以这里只能放公开 client id 或公开 API base URL。
 - Cloudflare 运行时密钥应通过 `npm run cf:secrets:bulk -- .env.production` 或单个 `wrangler secret put ...` 命令设置。
 - 每次环境变量新增、删除或修改后，都要刷新本机 `.env.production`，重新加密，并把加密包同步到对象存储。
-- `wrangler.jsonc` 只放绑定和非敏感变量，例如 R2 绑定、键名前缀、静态资源绑定、公开仓库默认值；不要把运行时密钥写进 `wrangler.jsonc`。
-- 当前需要的 Cloudflare secrets 包括 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`、`GITHUB_NATIVE_CLIENT_ID`、`GITHUB_NATIVE_CLIENT_SECRET`、`FANDOM_PRESET_GITHUB_TOKEN`、`IMAGE_HOST_TOKEN`。
+- `wrangler.jsonc` 只放绑定和非敏感变量，例如 KV 绑定、键名前缀、静态资源绑定、公开仓库默认值；不要把运行时密钥写进 `wrangler.jsonc`。
+- 当前需要的 Cloudflare secrets 包括 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`、`GITHUB_NATIVE_CLIENT_ID`、`GITHUB_NATIVE_CLIENT_SECRET`、`FANDOM_PRESET_GITHUB_TOKEN`、`IMAGE_HOST_TOKEN`、`MORAN_OPENLIST_AUTH_TOKEN` 和 `ONLINE_ADMIN_PASSWORD`。
 - 当前公开前端构建变量包括 `VITE_GITHUB_CLIENT_ID`、`VITE_GITHUB_NATIVE_CLIENT_ID`、`VITE_SYNC_API_BASE_URL`。
 
 ## 根因级 Bug 修复规则
@@ -291,23 +285,26 @@
 
 ## 对象存储同步说明
 
-- 用户可能会使用 hi168 的 S3 兼容对象存储做存档同步。
+- **hi168 S3 已于 2026-06-28 停用**，返回 HTTP 403 AccessDenied。所有数据已迁移到 OneDrive。
+- 用户现在使用 OneDrive（通过 OpenList/AList 代理访问，地址为 `https://openlist.bacon.de5.net`）进行存档同步和数据存储。
+- OneDrive 数据布局位于 `/Onedrive/MoRanJiangHu/` 下：
+  - `apk/` — APK 二进制（latest.apk，约 48.7MB）
+  - `releases/` — 带版本号的 release APK（约 97MB）
+  - `saves/` — 游戏存档包（约 9.5GB）
+  - `preset-items/` — 预设物品图 + 缩略图（约 901MB，496 个物品）
+  - `chunks/` — 存档同步分片
+  - `codex-env/` — 加密环境变量备份
+  - `manifest-backups/` — Release manifest 备份
+  - `e2e/` — 端到端测试数据
 - 对象存储凭据只能保存在本机用户环境变量中；不要把 Access Key 或 Secret Key 写入仓库文件、提交、日志、更新说明或聊天回复。
-- 本机环境变量名称：
+- 旧 hi168 环境变量名（仍存在但服务已停用）：
   - `MORAN_OSS_USERNAME`
   - `MORAN_OSS_ACCESS_KEY`
   - `MORAN_OSS_SECRET_KEY`
-  - `MORAN_OSS_ENDPOINT`
-  - `MORAN_OSS_BUCKET`
-- 当前非敏感默认值：
-  - 端点：`https://s3.hi168.com`
-  - 存储桶：`hi168-19275-07130td3`
-- hi168 使用 S3 兼容 API，调用时使用 path-style 地址：`https://s3.hi168.com/<bucket>/<key>`。
-- 应用内对象存储同步应走 `/api/object-storage-proxy` 运行时端点，使用 AWS Signature V4 签名，region 使用 `auto`，service 使用 `s3`，并复用 WebDAV 的清单、分片和增量同步语义。
-- 默认存储前缀为 `MoRanJiangHu`；存档包放在 `MoRanJiangHu/saves`，分片放在 `MoRanJiangHu/chunks`，清单文件是 `MoRanJiangHu/manifest.json`。
-- 本地端到端测试时，从用户环境变量读取凭据，在 `MoRanJiangHu/e2e/` 下 PUT 一个小对象，GET 回来校验内容，然后 DELETE 该测试对象。
+  - `MORAN_OSS_ENDPOINT`（原为 `https://s3.hi168.com`）
+  - `MORAN_OSS_BUCKET`（原为 `hi168-19275-07130td3`）
 
-## Shell Encoding Rule
+## Shell 编码规则
 
 - 在 PowerShell 里读取或写入 UTF-8 JSON/文本时，不要依赖默认控制台编码。
 - 优先使用 `node`、显式 UTF-8 文件读写，或其它能保留 Unicode 文本的命令。
@@ -327,7 +324,7 @@
 - 在 Windows 上，`command &` 在 Git Bash/MSYS2 中不能可靠地分离进程。Bash 工具会等待退出，所以会永远卡住。
 - **无限进程的正确做法**：使用 `powershell.exe -Command "Start-Process -FilePath <cmd> -ArgumentList <args> -WindowStyle Hidden"` 启动后台进程，然后用 HTTP/请求检查验证。
 - **错误做法**：`python -m http.server 4173 -d dist &` —— 会无限期阻塞 Bash 工具。
-- **必须后台运行的命令示例**：`python -m http.server`、`npx vite preview`、`npm run dev`、`npx wrangler dev`、`tail -f`、任何 `watch` 模式。
+- **必须后台运行的命令示例**：`python -m http.server`、`npx vite preview`、`npm run dev`、`tail -f`、任何 `watch` 模式。
 - **直接运行的有限命令示例**：`npm run build`、`gradlew assembleRelease`、`npm run test:run`、`git push`。
 
 ## 2026-05-17 地图重构与同步记忆
@@ -502,10 +499,10 @@
 - 每次构建都会因 `release:sync` 修改 release 元数据；由于本次不是发布，已恢复 `data/releaseInfo.ts` 与 `public/release-info.json`。
 - 用户已确认 NPC 在地图上的显示位置修复后是正确的。
 
-## 2026-05-18 GitHub Actions 已关闭与本机直连 Cloudflare 发布规则
+## 2026-05-18 GitHub Actions 已关闭
 
-- GitHub Actions 的自动 CI 和自动 Cloudflare Worker 部署已经关闭。除非用户明确要求恢复自动 CI/自动部署，否则 workflow 文件只保留 `workflow_dispatch` 手动触发。
-- 后续正常发布新版本不要依赖 GitHub Actions，应从本机执行直连 Cloudflare 的发布命令。
+- GitHub Actions 的自动 CI 已经关闭。除非用户明确要求恢复自动 CI，否则 workflow 文件只保留 `workflow_dispatch` 手动触发。
+- 后续正常发布新版本不要依赖 GitHub Actions，应从本机执行发布命令。
 - 执行 Cloudflare 部署时，先清空代理环境变量，并使用明确的命令超时，继续遵守现有发布覆盖验证规则。
 - 推送到 `main` 现在只作为源码备份步骤，不再视为部署机制。
 
@@ -653,15 +650,101 @@
 
 ## 预设物品图存储规则
 
-- 预设物品图应上传到 hi168 S3 对象存储，不再使用 111666 或 nodeimage。
-- S3 上传路径：`MoRanJiangHu/preset-items/<物品名>.png`；使用稳定物品名，之后替换图片时可直接覆盖同名对象，不需要重新部署代码。
-- 公开 URL 格式：`https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/<URL编码后的物品名>.png`
-- 预设图反馈页缩略图路径使用 `MoRanJiangHu/preset-items/thumbs/<物品名>.webp`；卡片网格加载 `thumbSrc`，放大预览和正式注册表继续使用原始 PNG `src`。
-- 预设图上传时使用至少 24 小时的浏览器/CDN 缓存，目前为 `Cache-Control: public, max-age=86400, stale-while-revalidate=604800`；覆盖同名对象后，如果用户仍看到旧图，需要刷新/清理图片缓存。
-- 不要再把旧的 hi168 根级对象直链作为预设图注册表 URL，例如 `https://s3.hi168.com/hi168-19275-07130td3/s3_*.png` 或 `.jpg`。这些直链在本项目里没有对外公开，常见结果是 HTTP 403；应重新生成或重新上传到 `MoRanJiangHu/preset-items/`。
-- hi168 S3 不需要 Referer 头（不像 111666 有防盗链），图片在任何上下文都能可靠加载。
-- 上传使用 AWS Signature V4 签名，path-style 寻址，region `auto`，service `s3`。
-- `scripts/regenerate-preset-images-gpt-image2.mjs` 脚本应支持 `--host=hi168` 进行 S3 上传。
+- 预设物品图存储在 OneDrive 上，通过 OpenList 提供服务。
+- **hi168 S3 已于 2026-06-28 停用**——旧的 S3 URL 已失效。
+- 公开 URL 格式：`https://msjh.bacon159.pp.ua/api/preset-image/{URL编码后的名称}.png`（完整图）和 `thumbs/{名称}.webp`（缩略图）。
+- OpenList 签名 URL 格式（内部）：`/p/Onedrive/MoRanJiangHu/preset-items/{名称}?sign={sign}`。
+- 目录列表 sign 值缓存 1 小时；图片 CDN 缓存 1 年。
+- 部署时需确保 `MORAN_OPENLIST_AUTH_TOKEN` Cloudflare Secret 为最新。
+- OpenList 的 `/api/fs/get` 对中文文件名有 bug（object not found）；应使用 `/api/fs/list` 获取 sign 映射后构造 `/p/` URL。
+- 预设图反馈页缩略图使用 `thumbs/<物品名>.webp`；卡片网格加载 `thumbSrc`，放大预览和正式注册表继续使用原始 PNG `src`。
+- 新预设图上传到 OneDrive 路径：`/Onedrive/MoRanJiangHu/preset-items/<物品名>.png`。
+- `scripts/regenerate-preset-images-gpt-image2.mjs` 脚本应支持 `--host=onedrive`，通过 OpenList API 上传到 OneDrive。
+
+## OpenList / OneDrive API 调用指南（供 AI Agent 参考）
+
+之前存放在 hi168 S3 上的所有文件已迁移到 **OneDrive**，通过 **OpenList (AList)** 代理服务器访问。以下是在代码中与该体系交互的实用指南。
+
+### 架构概览
+
+```
+客户端请求
+  → OpenList API (openlist.bacon.de5.net)
+    → OneDrive（实际文件存储）
+```
+
+### 鉴权
+
+- 所有 OpenList API 调用需要请求头：`Authorization: <token>`，令牌存放在 Cloudflare Secret `MORAN_OPENLIST_AUTH_TOKEN`。
+- Base URL 默认为 `https://openlist.bacon.de5.net`（环境变量 `MORAN_OPENLIST_BASE_URL`）。
+
+### 主要 API 端点
+
+**1. 列出目录内容 — `POST /api/fs/list`**
+
+这是发现文件和获取签名下载令牌的主要方式。
+
+```json
+// 请求体：
+{ "path": "/Onedrive/MoRanJiangHu/releases", "password": "", "page": 1, "per_page": 100, "refresh": false }
+
+// 响应：
+{ "code": 200, "data": { "content": [
+  { "name": "latest.apk", "is_dir": false, "size": 48700000, "sign": "abc123..." },
+  ...
+]}}
+```
+
+每个文件项都有 `sign` 字段——这是代理下载所需的签名令牌。
+
+**2. 代理下载 — `GET /p/{onedrive路径}?sign={sign}`**
+
+通过 OpenList 代理下载文件。OneDrive 存储驱动**必须启用"网页代理"选项**，否则返回 403。
+
+```
+GET https://openlist.bacon.de5.net/p/Onedrive/MoRanJiangHu/releases/latest.apk?sign=abc123...
+```
+
+**3. 获取文件信息 — `POST /api/fs/get`**
+
+返回文件元数据，包含 `raw_url`（OneDrive CDN 直链）。但此接口对**中文文件名有 bug**（返回"object not found"），建议改用 `/api/fs/list`。
+
+```json
+// 请求体：
+{ "path": "/Onedrive/MoRanJiangHu/releases/latest.apk", "password": "" }
+```
+
+**4. 创建目录 — `POST /api/fs/mkdir`**
+
+```json
+{ "path": "/Onedrive/MoRanJiangHu/new-folder" }
+```
+
+**5. 删除文件 — `POST /api/fs/remove`**
+
+删除到 OneDrive 回收站，支持批量删除。
+
+```json
+{ "dir": "/Onedrive/MoRanJiangHu", "names": ["file1.png", "file2.png"] }
+```
+
+**6. 移动文件 — `POST /api/fs/move`**
+
+```json
+{ "src_dir": "/Onedrive/MoRanJiangHu", "dst_dir": "/Onedrive/MoRanJiangHu/archive", "names": ["file1.png"] }
+```
+
+### 代码中的使用方式
+
+- **预设图片**：调用 OpenList `/api/fs/list` 获取 preset-items 目录的 `{文件名 → sign}` 映射（缓存 1 小时），然后通过 `/p/` URL 代理下载图片。
+- **APK 下载**：调用 `/api/fs/list` 获取 releases 目录下 `latest.apk` 的 sign 值，然后重定向到 `/p/` 代理 URL。通过 `?provider=onedrive` 查询参数触发。
+
+### 重要注意事项
+
+- **不要使用 `/api/fs/get`** 处理文件名包含中文的情况——应使用 `/api/fs/list` 并按名称匹配。
+- **批量操作**（move/remove）每批应 ≤20 个文件，避免 `ECONNRESET` 超时。
+- OpenList 鉴权令牌会过期；如果代理调用返回"token is invalidated"，需要从 OpenList 管理面板重新生成令牌。
+- OneDrive 代理下载速度约 ~464 KB/s。目前是唯一的 APK 分发渠道。
 
 ## 物品图提示词过滤规则
 
@@ -707,25 +790,53 @@
   - MiMo 修改后，Codex 必须审查 diff，检查是否有无关改动或密钥泄露，运行必要测试/构建，并在汇报完成前直接修复残留问题。
   - 部署或发布工作只能在用户明确要求“部署/发布/上线”后委派；Codex 仍必须监督并执行本项目的发布、备份、验证和禁止自动部署规则。
 
-## 2026-06-24 B2 备用 APK 分发渠道
+## APK 分发架构总览（截至 2026-06-27，更新于 2026-06-27）
 
-- 备用 APK 分发域名：`https://obs1.bacon159.pp.ua`。
-- API 操作：
-  - `GET /` 列出对象，需要 Bearer token 鉴权。
-  - `GET /{path}` 下载对象，公开访问，不需要 token。
-  - `PUT /{path}` 上传对象，需要 Bearer token 鉴权。
-  - `DELETE /{path}` 删除对象，需要 Bearer token 鉴权。
-- 真实 B2 token 只能保存在本机用户/进程环境变量、`.env.production`、`.dev.vars` 或 Cloudflare Secrets 中。不要提交到仓库，不要打印到日志，不要放进截图，也不要写进客户更新说明。
-- 本地/Cloudflare 密钥变量：`MORAN_B2_DISTRIBUTION_TOKEN`。
-- 非敏感变量：
-  - `MORAN_B2_DISTRIBUTION_BASE_URL=https://obs1.bacon159.pp.ua`
-  - `MORAN_B2_DISTRIBUTION_RELEASE_PREFIX=moranjianghu`
-  - 可选超时：`MORAN_B2_DISTRIBUTION_TIMEOUT_MS`
-  - 可选保留版本数：`MORAN_B2_KEEP_VERSIONED_APKS`，默认 `5`。
-- B2 取代 Cloudflare R2，作为正常的 APK 二进制备用 provider。公开 manifest 应暴露同源地址，例如 `/api/apk/version/MoRanJiangHu-vX.apk?provider=b2`；除非某次发布明确选择 B2，否则 `preferredApkProvider` 仍保持 `hi168`。
-- R2 仅保留为旧版更新清单兼容路径（`https://download.bacon.de5.net/moranjianghu/latest.json`），除非用户明确废弃或重新启用，不要把 R2 默认加回正常 APK provider。
-- 用户明确发布或迁移 release 产物时，在构建 APK 后运行 `npm run release:b2`。脚本会把 `latest.apk`、`latest.json` 和最近保留的带版本号 APK 上传到 B2。
-- 成本控制规则：B2 只保留 `moranjianghu/MoRanJiangHu-v*.apk` 下最近 5 个带版本号 APK，加上滚动覆盖的 `latest.apk` 和 `latest.json`。每次 B2 发布/迁移时都应删除更旧的带版本号 APK。
-- 历史无代理测速记忆：已退役的 `https://obs.bacon159.pp.ua` 线路曾经下载 49,504,418 字节 APK 成功，约 35.65 秒，约 1.39 MB/s。当前启用的 B2 备用线路为 `https://obs1.bacon159.pp.ua`；需要重新实测当前线路后才能对速度下结论。
-- 无代理复测（2026-06-24 接入迁移后）：使用 `curl --noproxy "*"` 全量下载 `MoRanJiangHu-v1.0.523.apk` 连续两轮超时。首轮 240 秒仅下载 2,700,270/49,504,418 字节；重试 240 秒仅下载 523,758 字节。后续一次 30 秒 GET 拿到 4,087,854 字节但仍未完成，且字节范围探测没有按极小分片返回。
-- 最新无代理复测（2026-06-25 发布 `1.0.524` 后）：使用 `curl --noproxy "*"` 全量下载 `MoRanJiangHu-v1.0.524.apk` 成功完成，HTTP 200，49,505,642 字节，约 42.54 秒，约 1.16 MB/s，SHA-256 与发布 APK 一致。B2 可以作为已接入的备用 APK 对象存储渠道，但 provider 验证时响应头仍显示 Cloudflare 缓存绕过，因此除非后续缓存命中测试确认，不要对外描述成已验证的缓存加速/高速渠道。
+### 概述
+
+APK 分发系统采用两层架构：
+
+1. **Cloudflare KV** — 存储 release manifest（`release-manifest/latest.json`），作为版本元数据（versionName、versionCode、releaseNotes 等）的唯一真实来源。
+2. **B2 (obs1.bacon159.pp.ua)** — 主 APK 二进制托管。
+3. **OneDrive 经 OpenList 代理** — 备用 APK 二进制托管。下载通过 `openlist.bacon.de5.net/p/` 使用签名 URL 代理。APK 文件存储在 `/Onedrive/MoRanJiangHu/releases/latest.apk`。
+
+**已停用渠道**：hi168 S3（2026-06-28）、Cloudflare R2（完全停用，包括旧版 manifest 路径）。
+
+### APK 下载流程
+
+- `GET /api/apk/latest.json` — 从 KV 读取 manifest，动态构建 `apkUrls` 数组：默认 URL、稳定版本 URL、B2 URL 和 OneDrive URL（`?provider=onedrive`）。
+- `GET /api/apk/latest.apk` — 默认下载，重定向到 B2 或 OneDrive（经 OpenList 代理）。
+- `GET /api/apk/version/{file}` — 带版本号下载，重定向到 B2 或 OneDrive（经 OpenList 代理）。
+
+### Cloudflare Secrets（当前）
+
+- `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET` — GitHub OAuth
+- `GITHUB_NATIVE_CLIENT_ID`、`GITHUB_NATIVE_CLIENT_SECRET` — GitHub 原生 OAuth
+- `FANDOM_PRESET_GITHUB_TOKEN` — 用于 fandom 预设仓库访问的 GitHub token
+- `IMAGE_HOST_TOKEN` — 图床鉴权
+- `MORAN_OPENLIST_AUTH_TOKEN` — OpenList/AList API token，用于 OneDrive 代理
+- `ONLINE_ADMIN_PASSWORD` — 在线管理面板访问
+
+### OneDrive 数据布局
+
+```
+/Onedrive/MoRanJiangHu/
+├── apk/              — APK 二进制文件 (latest.apk, ~48.7MB)
+├── releases/         — 带版本号的发布 APK (~97MB)
+├── saves/            — 游戏存档包 (~9.5GB, 851 项)
+├── preset-items/     — 预设物品图片 + 缩略图 (~901MB, 496 项)
+│   └── thumbs/       — WebP 缩略图
+├── chunks/           — 存档同步分片
+├── codex-env/        — 加密的环境变量备份
+├── manifest-backups/ — Release manifest 备份
+└── e2e/              — 端到端测试数据
+```
+
+### 死代码与已移除引用
+
+- `functions/api/preset-image/[[path]].ts` 中仍包含 `tryLegacyS3()`，尝试从 hi168 S3 获取 `s3_` 模式的文件。由于 hi168 返回 403，此调用始终失败并静默回退到 OneDrive 代理路径。可在未来清理中安全移除。
+- 所有 `s3_` 前缀遗留图片文件已从 OneDrive 删除。预设图片注册表（`data/presetItemImages.ts`）仅使用新 URL 格式（`/api/preset-image/{name}.png`）。
+
+### 向其他 AI 助手分享此架构
+
+在让另一个 AI 助手（Cursor、Claude 等）参与本项目的文件分发或发布流程时，分享本文件中的"APK 分发架构总览（截至 2026-06-27，更新于 2026-06-27）"章节。它涵盖完整架构：KV manifest、B2 + OneDrive 双渠道、下载流程、Secrets 列表和 OneDrive 数据布局。

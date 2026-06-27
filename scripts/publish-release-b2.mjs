@@ -286,6 +286,26 @@ await uploadBytes({
   cacheControl: 'no-store,no-cache,max-age=0,must-revalidate'
 });
 
+// Sync manifest to Cloudflare KV (primary source for Worker reads).
+const kvManifestPath = path.join(os.tmpdir(), `moranjianghu-kv-manifest-${Date.now()}.json`);
+try {
+  fs.writeFileSync(kvManifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  const wranglerBin = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  const kvResult = spawnSync(wranglerBin, [
+    'wrangler', 'kv', 'key', 'put',
+    '--binding=RELEASE_MANIFEST',
+    `--path=${kvManifestPath}`,
+    'release-manifest/latest.json'
+  ], { cwd: rootDir, encoding: 'utf8', timeout: 60000 });
+  if (kvResult.status === 0) {
+    console.log('[KV] manifest written to RELEASE_MANIFEST/release-manifest/latest.json');
+  } else {
+    console.warn('[KV] manifest write failed (non-fatal):', (kvResult.stderr || kvResult.stdout || '').slice(0, 300));
+  }
+} finally {
+  fs.rmSync(kvManifestPath, { force: true });
+}
+
 const keepKeys = new Set(uploadedVersions.map((item) => item.key));
 const versionedKeyPattern = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/MoRanJiangHu-v[^/]+\\.apk$`);
 let deletedCount = 0;

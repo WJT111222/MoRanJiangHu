@@ -36,30 +36,11 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
             : `${baseUrl}/api/apk/latest.apk`;
         const stableManifestUrl = `${baseUrl}/api/apk/latest.json`;
         const latestApkUrl = `${baseUrl}/api/apk/latest.apk`;
-        const r2ApkUrl = versionedFileName
-            ? `${baseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=r2`
-            : `${baseUrl}/api/apk/latest.apk?provider=r2`;
-        const hi168ApkUrl = versionedFileName
-            ? `${baseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=hi168`
-            : `${baseUrl}/api/apk/latest.apk?provider=hi168`;
         const b2ApkUrl = versionedFileName
             ? `${baseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=b2`
             : `${baseUrl}/api/apk/latest.apk?provider=b2`;
+        const oneDriveApkUrl = `${baseUrl}/api/apk/latest.apk?provider=onedrive`;
         const latest = payload?.latest || {};
-        const manifestApkUrls = Array.isArray(latest.apkUrls)
-            ? latest.apkUrls.map((url: unknown) => String(url || '')).filter(Boolean)
-            : [];
-        const allowsR2Provider = String(latest.preferredApkProvider || '').trim() === 'r2'
-            || manifestApkUrls.some((url: string) => /[?&]provider=r2(?:&|$)/i.test(url))
-            || Boolean(String(latest.r2ApkUrl || '').trim());
-        const allowsB2Provider = String(latest.preferredApkProvider || '').trim() === 'b2'
-            || manifestApkUrls.some((url: string) => /[?&]provider=b2(?:&|$)/i.test(url))
-            || Boolean(String(latest.b2ApkUrl || '').trim());
-        const providerUrls = [
-            ...(allowsR2Provider ? [r2ApkUrl] : []),
-            hi168ApkUrl,
-            ...(allowsB2Provider ? [b2ApkUrl] : [])
-        ];
         const nextPayload = {
             ...payload,
             latest: {
@@ -69,11 +50,13 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
                 apkUrls: [
                     latestApkUrl,
                     stableApkUrl,
-                    ...providerUrls
+                    b2ApkUrl,
+                    oneDriveApkUrl
                 ].filter(Boolean),
-                r2ApkUrl: allowsR2Provider ? r2ApkUrl : '',
-                hi168ApkUrl,
-                b2ApkUrl: allowsB2Provider ? b2ApkUrl : '',
+                r2ApkUrl: '',
+                hi168ApkUrl: '',
+                b2ApkUrl,
+                oneDriveApkUrl,
                 latestApkUrl,
                 manifestUrl: stableManifestUrl
             }

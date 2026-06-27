@@ -40,10 +40,7 @@
 
 - Whenever publishing a new version, verify every public release entrypoint before ending the task.
 - Before the final public deploy/upload step for a release, refresh `releasePublishedAt` to the actual current local time, then run `npm run release:sync` again before building, uploading, deploying, or verifying. The displayed release time must represent the real final publish time, not the earlier version-bump or preparation time.
-- External release commands such as R2 upload, Wrangler deploy, APK download verification, and HTTPS endpoint checks must always be run with explicit timeouts. If a wrapper command can hang after partial success, split it into smaller upload/deploy/verify steps and confirm each public artifact independently instead of waiting indefinitely.
-- Cloudflare/Wrangler 部署命令（`wrangler deploy`、Worker 部署）应清除代理环境变量后执行，避免部署卡住。
-- Cloudflare/Wrangler R2 上传命令（`release:r2`、`wrangler r2 object put`）在本机**保留代理反而更快**，实测带代理秒完成，清空代理反而超时。R2 上传不要清空代理。
-- 总结：Worker 部署清代理，R2 上传留代理。
+- External release commands such as OneDrive APK upload, APK download verification, and HTTPS endpoint checks must always be run with explicit timeouts. If a wrapper command can hang after partial success, split it into smaller upload/deploy/verify steps and confirm each public artifact independently instead of waiting indefinitely.
 - Required checks include the website URL in `release.config.json`, the APK download URL, the update manifest URL, and any documented backup domains or guide URLs that are part of the release surface.
 - Current domain memory: the primary website domain is `https://msjh.bacon159.pp.ua/`; the backup website domain is `https://msjh.bacon.de5.net/`.
 - For the current project, always confirm whether both the primary domain `https://msjh.bacon159.pp.ua/` and the backup domain `https://msjh.bacon.de5.net/` have been deployed with the same release version as the APK/update manifest.
@@ -51,23 +48,20 @@
   - Correct version number matching the release
   - Accurate release timestamp (`releasePublishedAt`)
   - If version or timestamp is incorrect, the deployment is incomplete
-- If a release is uploaded to R2 but the website was not deployed, deploy the Cloudflare Worker/site as part of the same release flow or clearly report why it could not be deployed.
+- If a release is uploaded to OneDrive but the website was not deployed, deploy the website as part of the same release flow or clearly report why it could not be deployed.
 - After deployment, verify the live site and manifest over HTTPS instead of assuming local build output is live.
 - After every deployment and release backup push, check GitHub Actions CI for `ypq123456789/MoRanJiangHu` explicitly, not the upstream repository. Confirm the latest `CI` run for the pushed commit succeeds; if it fails, fetch the logs, fix when possible, and report the blocker before ending.
 
-## Legacy APK Update Manifest Rule
+## Legacy APK Update Manifest Rule (DECOMMISSIONED)
 
-- As long as any installed legacy APK still reads `https://download.bacon.de5.net/moranjianghu/latest.json`, every APK release must also sync the old R2/object-storage update manifest.
-- Preferred APK binary host is hi168 S3-compatible object storage. Do not upload the APK binary to Cloudflare R2 again when the same APK has already been uploaded to hi168 and the public download URL is available.
-- The legacy R2/download channel should publish or sync only the update manifest (`latest.json`) when possible, and that manifest should point `apkUrl`/versioned APK URLs at the hi168-hosted APK. Avoid duplicating `latest.apk` or versioned APK binaries in R2 just to make the legacy JSON work.
-- If an old installed APK can only download from `https://download.bacon.de5.net/moranjianghu/latest.apk` and cannot follow a hi168 URL from `latest.json`, report that compatibility blocker explicitly before deciding to upload an APK binary to R2 as a temporary fallback.
-- Keep the legacy channel available as a low-cost fallback even after most users upgrade to APKs that read the newer official manifest. Do not remove or skip it during releases unless the user explicitly retires the legacy update channel.
-- Release verification must include `https://download.bacon.de5.net/moranjianghu/latest.json` and the hi168 APK URL referenced by that manifest, in addition to the primary and backup website update manifests.
+- The legacy `download.bacon.de5.net` update manifest path was hosted on Cloudflare R2, which has been **fully decommissioned**. R2 is no longer available for any purpose.
+- Old installed APKs that read `https://download.bacon.de5.net/moranjianghu/latest.json` can no longer receive updates. Users must manually download the latest APK from the primary website.
+- All APK distribution now goes through **OneDrive only** via OpenList proxy.
 
 ## No Auto-Deploy Rule
 
 - **NEVER deploy without explicit user instruction.**
-- Only run `npm run worker:deploy` when the user explicitly says to deploy, publish, or release.
+- Only deploy when the user explicitly says to deploy, publish, or release.
 - When fixing bugs or making changes, only build locally (`npm run build`) and test, do not deploy.
 - If the user says "修改" (modify/fix), "修复" (fix), or "改" (change), do NOT deploy.
 - Only deploy when the user says "发布" (publish), "部署" (deploy), or "上线" (go live).
@@ -85,7 +79,7 @@
 
 - If the only meaningful change is documentation or static guide content, and the user explicitly asks to deploy without updating the version number, do not bump `versionName`, `versionCode`, or `releasePublishedAt`.
 - This exception applies to documentation-only changes such as `public/cnb-comfyui-guide.html`, changelog wording, README/AGENTS updates, or other customer-facing guide text that does not change app behavior, APK contents, update manifest, or runtime code.
-- For documentation-only deploys, still run a local build, deploy the website/Worker with proxy variables cleared, verify the updated public guide URL over HTTPS, and report that the version number was intentionally unchanged because it was a documentation-only deployment.
+- For documentation-only deploys, still run a local build, deploy the website with proxy variables cleared, verify the updated public guide URL over HTTPS, and report that the version number was intentionally unchanged because it was a documentation-only deployment.
 - This exception also applies to non-game-content support/link updates, such as homepage or release-modal support entries, invitation/referral links, benefit descriptions, sponsorship wording, or external help links, when the user explicitly says they do not belong to game content and asks to deploy without a version bump or release notes.
 - For future documentation-only deploy requests, follow this rule by default once the user explicitly asks to deploy.
 
@@ -98,14 +92,14 @@
 
 ## Local And Cloud Environment Variable Rule
 
-- Use local env files plus Cloudflare Wrangler Secrets for collaborative local/cloud development.
+- Use local env files plus Cloudflare Secrets for collaborative local/cloud development.
 - Keep real secrets only in local `.env.local`, `.env.production`, `.dev.vars`, user environment variables, or Cloudflare Secrets. Never commit OAuth client secrets, GitHub tokens, image-host tokens, object-storage credentials, or AI/API keys.
 - Commit only safe templates such as `.env.production.example` and `.dev.vars.example`.
 - Frontend build-time variables use the `VITE_` prefix and can be embedded into built assets, so only put public client IDs or public API base URLs there.
 - Cloudflare runtime secrets should be set with `npm run cf:secrets:bulk -- .env.production` or individual `wrangler secret put ...` commands.
 - Whenever environment variables are added, removed, or changed, refresh the local `.env.production`, re-encrypt it, and resync the encrypted bundle to object storage.
-- `wrangler.jsonc` should contain bindings and non-sensitive vars such as R2 bindings, key prefixes, static asset bindings, and public repository defaults; do not put runtime secrets in `wrangler.jsonc`.
-- Current required Cloudflare secrets include `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_NATIVE_CLIENT_ID`, `GITHUB_NATIVE_CLIENT_SECRET`, `FANDOM_PRESET_GITHUB_TOKEN`, and `IMAGE_HOST_TOKEN`.
+- `wrangler.jsonc` should contain bindings and non-sensitive vars such as KV bindings, key prefixes, static asset bindings, and public repository defaults; do not put runtime secrets in `wrangler.jsonc`.
+- Current required Cloudflare secrets include `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_NATIVE_CLIENT_ID`, `GITHUB_NATIVE_CLIENT_SECRET`, `FANDOM_PRESET_GITHUB_TOKEN`, `IMAGE_HOST_TOKEN`, `MORAN_OPENLIST_AUTH_TOKEN`, and `ONLINE_ADMIN_PASSWORD`.
 - Current public frontend build variables include `VITE_GITHUB_CLIENT_ID`, `VITE_GITHUB_NATIVE_CLIENT_ID`, and `VITE_SYNC_API_BASE_URL`.
 
 ## Shell Encoding Rule
@@ -128,7 +122,7 @@
 - On Windows, `command &` does NOT reliably detach a process in Git Bash/MSYS2. The Bash tool waits for exit, so it hangs forever.
 - **Correct pattern for infinite processes**: Use `powershell.exe -Command "Start-Process -FilePath <cmd> -ArgumentList <args> -WindowStyle Hidden"` to spawn a detached background process. Then verify with a quick HTTP/request check.
 - **Incorrect pattern**: `python -m http.server 4173 -d dist &` — this blocks the Bash tool indefinitely.
-- **Examples of infinite commands that MUST background**: `python -m http.server`, `npx vite preview`, `npm run dev`, `npx wrangler dev`, `tail -f`, any `watch` mode.
+- **Examples of infinite commands that MUST background**: `python -m http.server`, `npx vite preview`, `npm run dev`, `tail -f`, any `watch` mode.
 - **Examples of finite commands that run directly**: `npm run build`, `gradlew assembleRelease`, `npm run test:run`, `git push`.
 
 ## Root-Cause Bugfix Rule
@@ -321,21 +315,24 @@ If the task is "confirm this UI works" and the opening flow depends on external 
 
 ## Object Storage Sync Notes
 
-- The user may use hi168 S3-compatible object storage for save sync.
+- **hi168 S3 was decommissioned on 2026-06-28** and returns HTTP 403 AccessDenied. All data has been migrated to OneDrive.
+- The user now uses OneDrive (accessed via OpenList/AList proxy at `https://openlist.bacon.de5.net`) for save sync and data storage.
+- OneDrive data layout under `/Onedrive/MoRanJiangHu/`:
+  - `apk/` — APK binary (latest.apk, ~48.7MB)
+  - `releases/` — Versioned release APKs (~97MB)
+  - `saves/` — Game save packages (~9.5GB)
+  - `preset-items/` — Preset item images + thumbnails (~901MB, 496 items)
+  - `chunks/` — Save sync chunks
+  - `codex-env/` — Encrypted environment variable backups
+  - `manifest-backups/` — Release manifest backups
+  - `e2e/` — End-to-end test data
 - Keep object storage credentials only in local user environment variables; never write Access Key or Secret Key into repository files, commits, logs, release notes, or chat responses.
-- Local environment variable names:
+- Legacy hi168 environment variable names (still present but service is dead):
   - `MORAN_OSS_USERNAME`
   - `MORAN_OSS_ACCESS_KEY`
   - `MORAN_OSS_SECRET_KEY`
-  - `MORAN_OSS_ENDPOINT`
-  - `MORAN_OSS_BUCKET`
-- Current non-secret defaults:
-  - endpoint: `https://s3.hi168.com`
-  - bucket: `hi168-19275-07130td3`
-- hi168 uses an S3-compatible API and should be called with path-style URLs: `https://s3.hi168.com/<bucket>/<key>`.
-- The app-side object storage sync should use the `/api/object-storage-proxy` runtime endpoint, AWS Signature V4 signing, region `auto`, service `s3`, and the same manifest/chunk/incremental-sync semantics as WebDAV.
-- The storage prefix defaults to `MoRanJiangHu`; save packages live under `MoRanJiangHu/saves`, chunks under `MoRanJiangHu/chunks`, and the manifest is `MoRanJiangHu/manifest.json`.
-- For local end-to-end testing, load the credentials from user env vars, PUT a small object under `MoRanJiangHu/e2e/`, GET it back, verify content, then DELETE the test object.
+  - `MORAN_OSS_ENDPOINT` (was `https://s3.hi168.com`)
+  - `MORAN_OSS_BUCKET` (was `hi168-19275-07130td3`)
 
 ## 2026-05-17 Map Rewrite And Sync Memory
 
@@ -509,10 +506,10 @@ If the task is "confirm this UI works" and the opening flow depends on external 
 - Each build touched release metadata via `release:sync`; generated `data/releaseInfo.ts` and `public/release-info.json` were restored because this was not a release.
 - User confirmed the map NPC placement display was correct after the placement fix.
 
-## 2026-05-18 GitHub Actions Disabled And Direct Cloudflare Release Rule
+## 2026-05-18 GitHub Actions Disabled
 
-- GitHub Actions automatic CI and automatic Cloudflare Worker deploy are disabled. The workflow files should keep only `workflow_dispatch` manual triggers unless the user explicitly asks to re-enable automatic CI/deploy.
-- Do not rely on GitHub Actions for normal releases. Future release publishing should be performed from the local machine with direct Cloudflare commands.
+- GitHub Actions automatic CI is disabled. The workflow files should keep only `workflow_dispatch` manual triggers unless the user explicitly asks to re-enable automatic CI.
+- Do not rely on GitHub Actions for normal releases. Future release publishing should be performed from the local machine.
 - For Cloudflare deploys, clear proxy environment variables first and use explicit command timeouts, following the existing release deployment coverage rules.
 - Pushing to `main` is now only a source backup step; it should not be treated as the deployment mechanism.
 
@@ -660,16 +657,101 @@ If the task is "confirm this UI works" and the opening flow depends on external 
 
 ## Preset Item Image Storage Rule
 
-- Preset item images should be uploaded to hi168 S3 object storage, not 111666 or nodeimage.
-- S3 upload path: `MoRanJiangHu/preset-items/<item-name>.png`; use the stable item name so future replacements can overwrite the same object without redeploying code.
-- Public URL format: `https://s3.hi168.com/hi168-19275-07130td3/MoRanJiangHu/preset-items/<urlencoded-item-name>.png`
-- Preset feedback thumbnails use `MoRanJiangHu/preset-items/thumbs/<item-name>.webp`; card grids should load `thumbSrc`, while enlarged previews and registry entries should keep using the original PNG `src`.
-- Set preset image uploads to at least 24-hour browser/CDN cache, currently `Cache-Control: public, max-age=86400, stale-while-revalidate=604800`; after overwriting an object, refresh/purge the image cache if the old image is still visible.
-- Do not use old root-level hi168 object URLs such as `https://s3.hi168.com/hi168-19275-07130td3/s3_*.png` or `.jpg` for preset registry entries. In this project those direct links are not publicly open and commonly return HTTP 403, so regenerate or reupload them under `MoRanJiangHu/preset-items/`.
-- hi168 S3 does not require Referer headers (unlike 111666 which has anti-hotlink), so images load reliably in all contexts.
-- Upload uses AWS Signature V4 signing with path-style addressing, region `auto`, service `s3`.
-- **CRITICAL**: S3 PUT must include `x-amz-acl: public-read` header AND this header must be included in the signed headers. Without this, uploaded objects return HTTP 403. The `x-amz-acl` header must appear in the canonical request's signed headers list.
-- The `scripts/regenerate-preset-images-gpt-image2.mjs` script should be updated to support `--host=hi168` for S3 upload.
+- Preset item images are stored on OneDrive and served through OpenList.
+- **hi168 S3 was decommissioned on 2026-06-28** — old S3 URLs are dead.
+- Public URL format: `https://msjh.bacon159.pp.ua/api/preset-image/{urlencoded-name}.png` (full images) and `thumbs/{name}.webp` (thumbnails).
+- OpenList signed URL format (internal): `/p/Onedrive/MoRanJiangHu/preset-items/{name}?sign={sign}`.
+- Directory listing sign values are cached 1 hour; image CDN cache is 1 year.
+- When deploying, ensure `MORAN_OPENLIST_AUTH_TOKEN` Cloudflare Secret is up to date.
+- OpenList's `/api/fs/get` has a bug with Chinese filenames (object not found); use `/api/fs/list` to get sign mappings and construct `/p/` URLs instead.
+- Preset feedback thumbnails use `thumbs/<item-name>.webp`; card grids should load `thumbSrc`, while enlarged previews and registry entries should keep using the original PNG `src`.
+- Upload new preset images to OneDrive path: `/Onedrive/MoRanJiangHu/preset-items/<item-name>.png`.
+- The `scripts/regenerate-preset-images-gpt-image2.mjs` script should support `--host=onedrive` for OneDrive upload via OpenList API.
+
+## OpenList / OneDrive API Integration Guide (for AI Agents)
+
+All file storage that was previously on hi168 S3 has been migrated to **OneDrive**, accessed through an **OpenList (AList)** proxy server. Below is the practical guide for interacting with this system in code.
+
+### Architecture Overview
+
+```
+Client Request
+  → OpenList API (openlist.bacon.de5.net)
+    → OneDrive (actual file storage)
+```
+
+### Authentication
+
+- All OpenList API calls require the header: `Authorization: <token>` where token is stored in Cloudflare Secret `MORAN_OPENLIST_AUTH_TOKEN`.
+- Base URL defaults to `https://openlist.bacon.de5.net` (env var `MORAN_OPENLIST_BASE_URL`).
+
+### Key API Endpoints
+
+**1. List directory contents — `POST /api/fs/list`**
+
+This is the primary way to discover files and get signed download tokens.
+
+```json
+// Request body:
+{ "path": "/Onedrive/MoRanJiangHu/releases", "password": "", "page": 1, "per_page": 100, "refresh": false }
+
+// Response:
+{ "code": 200, "data": { "content": [
+  { "name": "latest.apk", "is_dir": false, "size": 48700000, "sign": "abc123..." },
+  ...
+]}}
+```
+
+Each file item has a `sign` field — this is the signed token needed for proxy downloads.
+
+**2. Proxy download — `GET /p/{onedrive-path}?sign={sign}`**
+
+Download a file through OpenList's proxy. The OneDrive storage driver **must have "web proxy" (网页代理) enabled** or this returns 403.
+
+```
+GET https://openlist.bacon.de5.net/p/Onedrive/MoRanJiangHu/releases/latest.apk?sign=abc123...
+```
+
+**3. Get file info — `POST /api/fs/get`**
+
+Returns file metadata including `raw_url` (direct OneDrive CDN link). However, this has a **bug with Chinese filenames** (returns "object not found"). Prefer `/api/fs/list` instead.
+
+```json
+// Request body:
+{ "path": "/Onedrive/MoRanJiangHu/releases/latest.apk", "password": "" }
+```
+
+**4. Create directory — `POST /api/fs/mkdir`**
+
+```json
+{ "path": "/Onedrive/MoRanJiangHu/new-folder" }
+```
+
+**5. Delete files — `POST /api/fs/remove`**
+
+Deletes to OneDrive's recycle bin. Supports batch deletion.
+
+```json
+{ "dir": "/Onedrive/MoRanJiangHu", "names": ["file1.png", "file2.png"] }
+```
+
+**6. Move files — `POST /api/fs/move`**
+
+```json
+{ "src_dir": "/Onedrive/MoRanJiangHu", "dst_dir": "/Onedrive/MoRanJiangHu/archive", "names": ["file1.png"] }
+```
+
+### How It's Used in Code
+
+- **Preset images**: OpenList `/api/fs/list` is called on the preset-items directory to build a `{filename → sign}` map (cached 1h), then image downloads are proxied via `/p/` URLs.
+- **APK downloads**: `/api/fs/list` is called on the releases directory to get the sign for `latest.apk`, then a redirect to the `/p/` proxy URL is returned. Triggered by `?provider=onedrive` query parameter.
+
+### Important Caveats
+
+- **Do NOT use `/api/fs/get`** for files with Chinese characters in their names — use `/api/fs/list` and match by name.
+- **Batch operations** (move/remove) should use batches of ≤20 items to avoid `ECONNRESET` timeouts.
+- The OpenList auth token can expire; if proxy calls return "token is invalidated", the token needs to be regenerated from the OpenList admin panel.
+- OneDrive proxy download speed is ~464 KB/s. This is currently the sole APK distribution channel.
 
 ## Item Image Prompt Filtering Rule
 
@@ -715,25 +797,53 @@ If the task is "confirm this UI works" and the opening flow depends on external 
   - After MiMo edits, Codex must inspect the diff, check for unrelated churn or secret leakage, run the required tests/builds, and directly repair any remaining problems before reporting completion.
   - Deployment or release work can be delegated only after the user explicitly asks to deploy/publish/go live, and Codex must still enforce the project's release, backup, verification, and no-auto-deploy rules.
 
-## 2026-06-24 B2 Backup APK Distribution Channel
+## APK Distribution Architecture (as of 2026-06-27, updated 2026-06-27)
 
-- Backup APK distribution domain: `https://obs1.bacon159.pp.ua`.
-- API operations:
-  - `GET /` lists objects and requires Bearer token authentication.
-  - `GET /{path}` downloads objects publicly without a token.
-  - `PUT /{path}` uploads objects and requires Bearer token authentication.
-  - `DELETE /{path}` deletes objects and requires Bearer token authentication.
-- Keep the real B2 token only in local user/process environment variables, `.env.production`, `.dev.vars`, or Cloudflare Secrets. Never commit it, print it in logs, include it in screenshots, or put it in customer changelogs.
-- Local/Cloudflare secret variable: `MORAN_B2_DISTRIBUTION_TOKEN`.
-- Non-secret variables:
-  - `MORAN_B2_DISTRIBUTION_BASE_URL=https://obs1.bacon159.pp.ua`
-  - `MORAN_B2_DISTRIBUTION_RELEASE_PREFIX=moranjianghu`
-  - Optional timeout: `MORAN_B2_DISTRIBUTION_TIMEOUT_MS`
-  - Optional retention count: `MORAN_B2_KEEP_VERSIONED_APKS`, default `5`.
-- B2 replaces Cloudflare R2 as the normal backup APK binary provider. Public manifests should expose same-origin URLs such as `/api/apk/version/MoRanJiangHu-vX.apk?provider=b2` and keep `preferredApkProvider` as `hi168` unless a release explicitly chooses B2.
-- R2 remains only for the legacy update manifest compatibility path (`https://download.bacon.de5.net/moranjianghu/latest.json`) unless the user explicitly retires or re-enables it. Do not add R2 back as a normal APK provider by default.
-- Use `npm run release:b2` after building the release APK when explicitly publishing or migrating release artifacts. The script uploads `latest.apk`, `latest.json`, and the latest retained versioned APKs to B2.
-- Cost-control rule: B2 should keep only the most recent 5 versioned APKs under `moranjianghu/MoRanJiangHu-v*.apk`, plus the moving `latest.apk` and `latest.json`. Older versioned APKs should be deleted during each B2 publish/migration run.
-- Historical no-proxy speed memory: the retired `https://obs.bacon159.pp.ua` route once downloaded a 49,504,418 byte APK in about 35.65 seconds, around 1.39 MB/s. The active B2 backup route is now `https://obs1.bacon159.pp.ua`; retest this active route before making any speed claim.
-- No-proxy retest on 2026-06-24 after B2 migration: full downloads of `MoRanJiangHu-v1.0.523.apk` with `curl --noproxy "*"` timed out twice. The first 240 second attempt downloaded only 2,700,270 of 49,504,418 bytes; the retry downloaded only 523,758 bytes in another 240 seconds. A later 30 second GET attempt downloaded 4,087,854 bytes but still did not complete, and byte-range probing was not honored as a tiny partial response.
-- Latest no-proxy retest on 2026-06-25 after publishing `1.0.524`: full download of `MoRanJiangHu-v1.0.524.apk` with `curl --noproxy "*"` completed successfully with HTTP 200, 49,505,642 bytes, about 42.54 seconds, about 1.16 MB/s, and SHA-256 matching the release APK. B2 can be used as the integrated backup APK object storage channel, but response headers still showed Cloudflare cache bypass during provider verification, so do not describe it as a proven cache-accelerated/high-speed channel unless a later cache-hit test confirms it.
+### Overview
+
+The APK distribution system uses a two-tier architecture:
+
+1. **Cloudflare KV** — Stores the release manifest (`release-manifest/latest.json`) as the single source of truth for version metadata (versionName, versionCode, releaseNotes, etc.).
+2. **B2 (obs1.bacon159.pp.ua)** — Primary APK binary host.
+3. **OneDrive via OpenList proxy** — Backup APK binary host. Downloads are proxied through `openlist.bacon.de5.net/p/` with signed URLs. APK files are stored at `/Onedrive/MoRanJiangHu/releases/latest.apk`.
+
+**Decommissioned channels**: hi168 S3 (2026-06-28), Cloudflare R2 (fully decommissioned, including legacy manifest path).
+
+### APK Download Flow
+
+- `GET /api/apk/latest.json` — Reads manifest from KV, dynamically constructs `apkUrls` array with: default URL, stable versioned URL, B2 URL, and OneDrive URL (`?provider=onedrive`).
+- `GET /api/apk/latest.apk` — Default download, redirects to B2 or OneDrive via OpenList proxy.
+- `GET /api/apk/version/{file}` — Versioned download, redirects to B2 or OneDrive via OpenList proxy.
+
+### Cloudflare Secrets (Current)
+
+- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` — GitHub OAuth
+- `GITHUB_NATIVE_CLIENT_ID`, `GITHUB_NATIVE_CLIENT_SECRET` — GitHub native OAuth
+- `FANDOM_PRESET_GITHUB_TOKEN` — GitHub token for fandom preset repo access
+- `IMAGE_HOST_TOKEN` — Image host authentication
+- `MORAN_OPENLIST_AUTH_TOKEN` — OpenList/AList API token for OneDrive proxy
+- `ONLINE_ADMIN_PASSWORD` — Online admin panel access
+
+### OneDrive Data Layout
+
+```
+/Onedrive/MoRanJiangHu/
+├── apk/              — APK binary (latest.apk, ~48.7MB)
+├── releases/         — Versioned release APKs (~97MB)
+├── saves/            — Game save packages (~9.5GB, 851 items)
+├── preset-items/     — Preset item images + thumbnails (~901MB, 496 items)
+│   └── thumbs/       — WebP thumbnails
+├── chunks/           — Save sync chunks
+├── codex-env/        — Encrypted environment variable backups
+├── manifest-backups/ — Release manifest backups
+└── e2e/              — End-to-end test data
+```
+
+### Dead Code And Removed References
+
+- `functions/api/preset-image/[[path]].ts` still contains `tryLegacyS3()` which attempts to fetch `s3_` pattern files from hi168 S3. Since hi168 returns 403, this always fails and silently falls through to the OneDrive proxy path. It can be safely removed in a future cleanup.
+- All `s3_` prefix legacy image files have been deleted from OneDrive. The preset image registry (`data/presetItemImages.ts`) uses only the new URL format (`/api/preset-image/{name}.png`).
+
+### Sharing This Architecture With Other AI Agents
+
+When onboarding another AI assistant (Cursor, Claude, etc.) to work on this project's file distribution or release pipeline, share the "APK Distribution Architecture (as of 2026-06-27, updated 2026-06-27)" section from this file. It covers the full architecture: KV manifest, B2 + OneDrive channels, download flow, secrets, and OneDrive data layout.
