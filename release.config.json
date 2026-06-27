@@ -1,20 +1,33 @@
 {
-  "versionCode": 528,
-  "versionName": "1.0.528",
+  "versionCode": 529,
+  "versionName": "1.0.529",
   "releaseChannel": "stable",
-  "releasePublishedAt": "2026-06-27T23:26:00+08:00",
+  "releasePublishedAt": "2026-06-28T01:54:08+08:00",
   "releaseNotes": [
-    "修复创意工坊社区贡献发布和查看失败的问题：登录账号后无法发布或浏览社区贡献的模式包和小说分解内容，根因为认证接口读取了错误的 D1 数据表，现已从正确的用户注册表认证。",
-    "修复小说分解分享 ZIP 下载可能返回空文件的问题：D1 存储后端无法返回二进制流，下载时检测并从文本内容重建 ZIP 二进制。",
-    "新增小说分解 AI 补全模式包功能：从小说分解数据集自动生成专属的货币、能力体系、组织、地图、NPC、生图口径和开局配置，生成本地模式包或贡献社区模式包时可自动携带 AI 补全的个性化设置。",
-    "修复 AI 回合中势力名称被占位名覆盖的问题：AI 部分变量更新可能把真实势力名替换为势力1等占位名，系统现在自动从回合前的真实数据中恢复势力名和功法名，避免名称丢失。",
-    "修复图片管理器中未生成图片错误显示为成功的问题：无生成状态的记录现在正确显示为未生成（灰色标签），统计计数不再把未生成图片计入成功数。",
-    "修复社交面板无法显示失败或进行中图片状态的问题：当图片生成失败或进行中时，UI 现在能正确显示对应状态而非默认隐藏。",
-    "修复 APK 端 NovelAI 图片生成结果为空的问题：改用 Capacitor 原生 HTTP 插件发送二进制请求，避免 Capacitor 劫持 XHR 后 arraybuffer 支持不完整导致的 ZIP 响应截断。",
+    "优化 APK 下载分发：新增 GitHub Release 备用下载通道，并内置多个 GitHub 加速代理地址，APK 端会自动测速选择最快路径。",
+    "修复 GitHub Release APK 资产命名，版本包会以 MoRanJiangHu-v版本号.apk 形式发布，便于稳定回溯和代理下载。",
+    "更新下载清单：默认保留 B2/官网代理通道，同时加入 GitHub、GitHub 加速和 OneDrive 备用入口，减少大陆无代理环境下下载失败或过慢的情况。",
     "官网：https://msjh.bacon159.pp.ua/",
-    "备用站：https://msjh.bacon.de5.net/"
+    "备用站：https://msjh.bacon.de5.net/",
+    "同步更新 Web、APK 与更新清单到 v1.0.529。"
   ],
   "releaseHistory": [
+    {
+      "versionName": "1.0.528",
+      "versionCode": 528,
+      "releasePublishedAt": "2026-06-27T23:26:00+08:00",
+      "releaseNotes": [
+        "修复创意工坊社区贡献发布和查看失败的问题：登录账号后无法发布或浏览社区贡献的模式包和小说分解内容，根因为认证接口读取了错误的 D1 数据表，现已从正确的用户注册表认证。",
+        "修复小说分解分享 ZIP 下载可能返回空文件的问题：D1 存储后端无法返回二进制流，下载时检测并从文本内容重建 ZIP 二进制。",
+        "新增小说分解 AI 补全模式包功能：从小说分解数据集自动生成专属的货币、能力体系、组织、地图、NPC、生图口径和开局配置，生成本地模式包或贡献社区模式包时可自动携带 AI 补全的个性化设置。",
+        "修复 AI 回合中势力名称被占位名覆盖的问题：AI 部分变量更新可能把真实势力名替换为势力1等占位名，系统现在自动从回合前的真实数据中恢复势力名和功法名，避免名称丢失。",
+        "修复图片管理器中未生成图片错误显示为成功的问题：无生成状态的记录现在正确显示为未生成（灰色标签），统计计数不再把未生成图片计入成功数。",
+        "修复社交面板无法显示失败或进行中图片状态的问题：当图片生成失败或进行中时，UI 现在能正确显示对应状态而非默认隐藏。",
+        "修复 APK 端 NovelAI 图片生成结果为空的问题：改用 Capacitor 原生 HTTP 插件发送二进制请求，避免 Capacitor 劫持 XHR 后 arraybuffer 支持不完整导致的 ZIP 响应截断。",
+        "官网：https://msjh.bacon159.pp.ua/",
+        "备用站：https://msjh.bacon.de5.net/"
+      ]
+    },
     {
       "versionName": "1.0.527",
       "versionCode": 527,
@@ -1129,12 +1142,12 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "修复开局、正文优化和变量生成链路对玩家额外提示词的执行优先级：禁名、新文风、人物塑造等长期设置会作为最高优先级规则持续生效，减少更新后被默认思维链覆盖的情况。",
-    "备用 APK 下载渠道从 Cloudflare R2 二进制备用线路切换为 B2/Cloudflare 缓存线路；更新清单继续保留 hi168 首选，并提供 B2 作为备用下载。",
-    "优化 APK 下载地址探测排序：测速差距不明显时保持清单顺序，避免备用线路因短暂 HEAD 响应误抢首选下载。",
+    "优化 APK 下载分发：新增 GitHub Release 备用下载通道，并内置多个 GitHub 加速代理地址，APK 端会自动测速选择最快路径。",
+    "修复 GitHub Release APK 资产命名，版本包会以 MoRanJiangHu-v版本号.apk 形式发布，便于稳定回溯和代理下载。",
+    "更新下载清单：默认保留 B2/官网代理通道，同时加入 GitHub、GitHub 加速和 OneDrive 备用入口，减少大陆无代理环境下下载失败或过慢的情况。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/",
-    "同步更新 Web、APK 与更新清单到 v1.0.524。"
+    "同步更新 Web、APK 与更新清单到 v1.0.529。"
   ],
-  "notes": "修复开局、正文优化和变量生成链路对玩家额外提示词的执行优先级：禁名、新文风、人物塑造等长期设置会作为最高优先级规则持续生效，减少更新后被默认思维链覆盖的情况。\n备用 APK 下载渠道从 Cloudflare R2 二进制备用线路切换为 B2/Cloudflare 缓存线路；更新清单继续保留 hi168 首选，并提供 B2 作为备用下载。\n优化 APK 下载地址探测排序：测速差距不明显时保持清单顺序，避免备用线路因短暂 HEAD 响应误抢首选下载。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/\n同步更新 Web、APK 与更新清单到 v1.0.524。"
+  "notes": "优化 APK 下载分发：新增 GitHub Release 备用下载通道，并内置多个 GitHub 加速代理地址，APK 端会自动测速选择最快路径。\n修复 GitHub Release APK 资产命名，版本包会以 MoRanJiangHu-v版本号.apk 形式发布，便于稳定回溯和代理下载。\n更新下载清单：默认保留 B2/官网代理通道，同时加入 GitHub、GitHub 加速和 OneDrive 备用入口，减少大陆无代理环境下下载失败或过慢的情况。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/\n同步更新 Web、APK 与更新清单到 v1.0.529。"
 }

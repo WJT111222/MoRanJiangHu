@@ -348,6 +348,7 @@ const installUpdateInNativeApp = async (manifest: UpdateManifest) => {
     // 从 URL 提取渠道名称
     const getChannelLabel = (url: string): string => {
         const lower = url.toLowerCase();
+        if (lower.includes('provider=github') || lower.includes('objects.githubusercontent.com') || lower.includes('github.com/ypq123456789/moranjianghu/releases')) return 'GitHub';
         if (lower.includes('provider=r2') || lower.includes('download.bacon.de5.net')) return 'R2';
         if (lower.includes('provider=hi168') || lower.includes('s3.hi168.com')) return 'S3';
         if (lower.includes('/api/apk/')) return 'CDN';

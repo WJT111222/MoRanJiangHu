@@ -9,6 +9,7 @@ const rootDir = path.resolve(__dirname, '..');
 const releaseInfo = JSON.parse(fs.readFileSync(path.join(rootDir, 'release.config.json'), 'utf8'));
 const websiteBaseUrl = String(process.env.MORAN_RELEASE_BENCHMARK_BASE_URL || releaseInfo.websiteUrl || '').replace(/\/+$/, '');
 const versionedFileName = `MoRanJiangHu-v${releaseInfo.versionName}.apk`;
+const githubDirectUrl = `https://github.com/ypq123456789/MoRanJiangHu/releases/download/v${releaseInfo.versionName}/${versionedFileName}`;
 const outputDir = path.join(rootDir, 'output');
 fs.mkdirSync(outputDir, { recursive: true });
 
@@ -18,19 +19,36 @@ if (!websiteBaseUrl) {
 
 const providers = [
   {
-    provider: 'hi168',
-    url: `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=hi168`
+    provider: 'b2',
+    label: 'B2 (obs1.bacon159.pp.ua)',
+    url: `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=b2`
   },
   {
-    provider: 'b2',
-    url: `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=b2`
+    provider: 'onenode',
+    label: 'CDN (Worker → B2)',
+    url: `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}`
+  },
+  {
+    provider: 'github-proxy',
+    label: 'GitHub (Worker 代理)',
+    url: `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=github`
+  },
+  {
+    provider: 'github-direct',
+    label: 'GitHub (直连)',
+    url: githubDirectUrl
+  },
+  {
+    provider: 'onedrive',
+    label: 'OneDrive (OpenList 代理)',
+    url: `${websiteBaseUrl}/api/apk/latest.apk?provider=onedrive`
   }
 ];
 
 const timeoutMs = Math.max(1000, Number(process.env.MORAN_APK_PROVIDER_BENCHMARK_TIMEOUT_MS || 120000));
 const expectedSize = Number(process.env.MORAN_APK_PROVIDER_BENCHMARK_EXPECTED_SIZE || 0);
 
-const download = async ({ provider, url }) => {
+const download = async ({ provider, label, url }) => {
   const target = path.join(outputDir, `apk-provider-benchmark-${provider}.apk`);
   try {
     fs.rmSync(target, { force: true });
@@ -41,17 +59,18 @@ const download = async ({ provider, url }) => {
     signal: AbortSignal.timeout(timeoutMs)
   });
   if (!response.ok) {
-    throw new Error(`${provider} download failed: HTTP ${response.status}`);
+    throw new Error(`${label} download failed: HTTP ${response.status}`);
   }
   const arrayBuffer = await response.arrayBuffer();
   const elapsedMs = performance.now() - started;
   const bytes = Buffer.from(arrayBuffer);
   fs.writeFileSync(target, bytes);
   if (expectedSize > 0 && bytes.byteLength !== expectedSize) {
-    throw new Error(`${provider} size mismatch: got ${bytes.byteLength}, expected ${expectedSize}`);
+    throw new Error(`${label} size mismatch: got ${bytes.byteLength}, expected ${expectedSize}`);
   }
   return {
     provider,
+    label,
     url,
     bytes: bytes.byteLength,
     elapsedMs: Math.round(elapsedMs),
@@ -67,6 +86,7 @@ for (const provider of providers) {
   } catch (error) {
     results.push({
       provider: provider.provider,
+      label: provider.label,
       url: provider.url,
       error: error?.message || String(error)
     });
@@ -76,7 +96,34 @@ for (const provider of providers) {
 const successful = results
   .filter((item) => !item.error)
   .sort((a, b) => b.mbps - a.mbps);
-const preferredApkProvider = successful[0]?.provider || 'hi168';
+const preferredApkProvider = successful[0]?.provider || 'b2';
+
+// ── 格式化输出表格 ──
+const labelWidth = Math.max(...providers.map(p => p.label.length), 10);
+const sizeWidth = 12;
+const timeWidth = 10;
+const speedWidth = 12;
+
+const formatRow = (label, size, time, speed) => {
+  return `  ${label.padEnd(labelWidth)} | ${size.padStart(sizeWidth)} | ${time.padStart(timeWidth)} | ${speed.padStart(speedWidth)}`;
+};
+
+console.log('\n┌─ APK Download Speed Benchmark ──────────────────────────────────────┐');
+console.log(formatRow('Provider', 'Size', 'Time', 'Speed'));
+console.log('  ' + '─'.repeat(labelWidth) + '-+-' + '─'.repeat(sizeWidth) + '-+-' + '─'.repeat(timeWidth) + '-+-' + '─'.repeat(speedWidth));
+
+for (const r of results) {
+  if (r.error) {
+    console.log(formatRow(r.label, '—', 'FAILED', '—'));
+    console.log(`    Error: ${r.error}`);
+  } else {
+    const sizeStr = r.bytes >= 1024 * 1024 ? `${(r.bytes / 1024 / 1024).toFixed(1)} MB` : `${(r.bytes / 1024).toFixed(0)} KB`;
+    const timeStr = `${r.elapsedMs} ms`;
+    const speedStr = `${r.mbps} Mbps`;
+    console.log(formatRow(r.label, sizeStr, timeStr, speedStr));
+  }
+}
+console.log('└──────────────────────────────────────────────────────────────────────┘');
 
 const report = {
   versionName: releaseInfo.versionName,
@@ -88,6 +135,5 @@ const report = {
 
 const reportPath = path.join(outputDir, `apk-provider-benchmark-v${releaseInfo.versionName}.json`);
 fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
-console.log(JSON.stringify(report, null, 2));
-console.log(`Preferred APK provider: ${preferredApkProvider}`);
+console.log(`\nPreferred APK provider: ${preferredApkProvider}`);
 console.log(`Report: ${reportPath}`);
