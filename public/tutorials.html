@@ -141,7 +141,7 @@
       <div class="grid">
         <article class="card wide">
           <h2>主剧情消息模式怎么选</h2>
-          <p>主剧情消息模式决定”玩家本回合输入”和”游戏提示词”用什么方式发给 AI。不同模型的习惯不一样：Gemini 更适合原本的组包方式，GPT 系列更喜欢最后一条是真实 <code>user</code>，DeepSeek 则更容易遇到 reasoning 泄漏、格式漂移或标签缺失，GLM 与 <code><thinking></code> 标签冲突需要改用 HTML 注释思维链，所以各自有专门的稳定策略。</p>
+          <p>主剧情消息模式决定”玩家本回合输入”和”游戏提示词”用什么方式发给 AI。不同模型的习惯不一样：Gemini 更适合原本的组包方式，GPT 系列更喜欢最后一条是真实 <code>user</code>，DeepSeek 则更容易遇到 reasoning 泄漏、格式漂移或标签缺失，GLM 与 <code>&lt;thinking&gt;</code> 标签冲突需要改用 HTML 注释思维链，所以各自有专门的稳定策略。</p>
           <p class="note">如果你不知道该选什么：Gemini 选 <code>Gemini模式</code>，OpenAI/GPT 兼容站选 <code>GPT兼容</code>，DeepSeek 先选 <code>DeepSeek标准续聊</code>，格式老坏再试 <code>DeepSeek锁格式</code>，智谱 GLM 先选 <code>GLM标准</code>，格式老坏再试 <code>GLM锁格式</code>。</p>
         </article>
 
@@ -210,7 +210,7 @@
           <p>锁格式是 GLM 的强约束模式。它会尝试用 Prefix/Prefill 让模型从固定标签开头继续写，并使用 HTML 注释形式的思维链引导，从而减少”忘记输出标签””乱加说明””Markdown 包裹结果”等问题。</p>
           <h3>什么时候用</h3>
           <ol class=”steps”>
-            <li>GLM标准经常缺少 <code><正文></code>、<code><短期记忆></code> 或 <code><命令></code>。</li>
+            <li>GLM标准经常缺少 <code>&lt;正文&gt;</code>、<code>&lt;短期记忆&gt;</code> 或 <code>&lt;命令&gt;</code>。</li>
             <li>模型内容能写好，但格式经常漂移。</li>
             <li>你使用智谱原生接口，或确认第三方兼容站支持 Prefix/Prefill。</li>
           </ol>
@@ -326,14 +326,14 @@
 
         <article class="card">
           <h2>HTML注释思维链</h2>
-          <p>GLM 模型与 <code><thinking></code> 标签存在冲突，会将其误认为 HTML 元素而拒绝输出或格式混乱。本策略改用 HTML 注释 <code><!-- ... --></code> 作为思维链容器，让 GLM 自然输出思考过程，系统在接收后自动转换回标准 <code><thinking></code> 格式供下游解析。</p>
+          <p>GLM 模型与 <code>&lt;thinking&gt;</code> 标签存在冲突，会将其误认为 HTML 元素而拒绝输出或格式混乱。本策略改用 HTML 注释 <code><!-- ... --></code> 作为思维链容器，让 GLM 自然输出思考过程，系统在接收后自动转换回标准 <code>&lt;thinking&gt;</code> 格式供下游解析。</p>
           <h3>推荐设置</h3>
           <ol class="steps">
             <li><strong>默认开启</strong>。GLM 模型建议始终启用 HTML 注释思维链。</li>
-            <li>如果你确认你的接口不是智谱 GLM 而是误选了 GLM 模式，可以关闭此选项，恢复使用标准 <code><thinking></code> 标签。</li>
-            <li>开启时锁格式会使用 <code><!--\n</code> 作为 Prefix 开头；关闭时退回 <code><thinking>\n</code>。</li>
+            <li>如果你确认你的接口不是智谱 GLM 而是误选了 GLM 模式，可以关闭此选项，恢复使用标准 <code>&lt;thinking&gt;</code> 标签。</li>
+            <li>开启时锁格式会使用 <code><!--\n</code> 作为 Prefix 开头；关闭时退回 <code>&lt;thinking&gt;\n</code>。</li>
           </ol>
-          <p class="note">这是 GLM 模式与 DeepSeek 模式的核心区别。DeepSeek 模型完全可以使用 <code><thinking></code> 标签，而 GLM 不能。</p>
+          <p class="note">这是 GLM 模式与 DeepSeek 模式的核心区别。DeepSeek 模型完全可以使用 <code>&lt;thinking&gt;</code> 标签，而 GLM 不能。</p>
         </article>
 
         <article class="card">

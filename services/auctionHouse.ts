@@ -331,6 +331,16 @@ const 获取物品行情倍率 = (item: 游戏物品 | any, 行情列表: 拍卖
 
 export const 计算物品市场BaseAmount = (item: 游戏物品 | any, 行情列表: 拍卖行情[] = []) => {
     const base = Math.max(1, Math.floor(读数(item?.价值, 100)));
+    // Warn if value seems too small for an item that should be priced in higher currency
+    // (e.g., "一百两银子" written as 100 instead of 100000 copper)
+    const name = typeof item?.名称 === 'string' ? item.名称 : '';
+    if (base < 1000 && name && /金|锭|元宝|银子|灵石|上品|中品/.test(name)) {
+        console.warn(
+            `[拍卖行] 物品"${name}"价值=${base}疑似单位错误：`
+            + `价值应以最低货币单位填写（如武侠用铜钱，一两银子=1000铜钱），`
+            + `若该物品值"一百两银子"则价值应为100000而非100`
+        );
+    }
     const qualityMultiplier = 1 + ((品质权重[item?.品质 as 物品品质] || 1) - 1) * 0.08;
     const market = 获取物品行情倍率(item, 行情列表);
     return Math.max(1, Math.floor(base * qualityMultiplier * market.multiplier));

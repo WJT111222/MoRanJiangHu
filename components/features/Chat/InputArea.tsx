@@ -248,6 +248,8 @@ const InputArea: React.FC<Props> = ({
     }, [isStreamingDefault]);
     const [expandedCommandStageId, setExpandedCommandStageId] = useState<string | null>(null);
     const [queueCollapsed, setQueueCollapsed] = useState(true);
+    const [mobileInputExpanded, setMobileInputExpanded] = useState(false);
+    const mobileTextareaRef = useRef<HTMLTextAreaElement>(null);
     const [showQuickRestartMenu, setShowQuickRestartMenu] = useState(false);
     const [errorModal, setErrorModal] = useState<{ open: boolean; title: string; content: string }>({
         open: false,
@@ -851,7 +853,7 @@ const InputArea: React.FC<Props> = ({
                                 <button
                                     type="button"
                                     onClick={() => setQueueCollapsed(true)}
-                                    className={`h-8 min-w-[15rem] max-w-full rounded-full border px-4 text-sm tracking-[0.08em] transition hover:bg-neutral-950 ${queueBadgeClass}`}
+                                    className={`h-8 min-w-[8rem] sm:min-w-[15rem] max-w-full rounded-full border px-4 text-sm tracking-[0.08em] transition hover:bg-neutral-950 ${queueBadgeClass}`}
                                     title="收起独立更新阶段队列"
                                 >
                                     <span className="inline-flex min-w-0 items-center justify-center gap-2">
@@ -866,7 +868,7 @@ const InputArea: React.FC<Props> = ({
                                 <button
                                     type="button"
                                     onClick={() => setQueueCollapsed(false)}
-                                    className={`h-9 min-w-[15rem] max-w-[calc(100vw-2rem)] rounded-full border px-4 text-sm tracking-[0.08em] transition hover:bg-neutral-950 ${queueBadgeClass}`}
+                                    className={`h-9 min-w-[8rem] sm:min-w-[15rem] max-w-[calc(100vw-2rem)] rounded-full border px-4 text-sm tracking-[0.08em] transition hover:bg-neutral-950 ${queueBadgeClass}`}
                                     title="展开独立更新阶段队列"
                                 >
                                     <span className="inline-flex min-w-0 items-center justify-center gap-2">
@@ -880,10 +882,22 @@ const InputArea: React.FC<Props> = ({
                             <div className="flex-1 min-w-0 rounded-lg border border-wuxia-gold/25 bg-neutral-950/95 p-3 space-y-2 max-h-[32svh] sm:max-h-[40vh] md:max-h-[58vh] overflow-y-auto overscroll-contain no-scrollbar">
                                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                                     <div className="text-wuxia-gold">{isOpeningQueue ? '开局初始化队列' : '独立更新阶段队列'}</div>
-                                    <div className="text-gray-400">
-                                        当前阶段：{currentRunningStage?.label || '无'}
-                                        {' | '}
-                                        上一阶段结果：{latestFinishedStage ? `${latestFinishedStage.label} ${取阶段状态文案(latestFinishedStage.progress?.phase)}` : '无'}
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-gray-400">
+                                            当前阶段：{currentRunningStage?.label || '无'}
+                                            {' | '}
+                                            上一阶段结果：{latestFinishedStage ? `${latestFinishedStage.label} ${取阶段状态文案(latestFinishedStage.progress?.phase)}` : '无'}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setQueueCollapsed(true)}
+                                            className="w-6 h-6 flex items-center justify-center rounded-full border border-gray-600/50 text-gray-400 hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 transition-colors shrink-0 sm:hidden"
+                                            title="关闭队列面板"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 gap-2">
@@ -1289,10 +1303,36 @@ const InputArea: React.FC<Props> = ({
                 </div>
 
                 {/* Input Field */}
-                <div className={`flex-1 min-w-0 bg-black/40 border border-gray-700/50 rounded-lg h-9 flex items-center px-2.5 transition-all shadow-inner sm:rounded-xl sm:h-11 sm:px-4 ${busy ? 'opacity-50 cursor-not-allowed' : 'focus-within:border-wuxia-gold/50 focus-within:bg-black/60'}`}>
+                <div className={`flex-1 min-w-0 bg-black/40 border border-gray-700/50 rounded-lg transition-all shadow-inner sm:rounded-xl sm:h-11 sm:px-4 sm:flex sm:items-center px-2.5 ${busy ? 'opacity-50 cursor-not-allowed' : 'focus-within:border-wuxia-gold/50 focus-within:bg-black/60'} ${mobileInputExpanded ? 'h-auto' : 'h-9'} sm:h-11`}>
+                    {/* Mobile: textarea with auto-grow */}
+                    <textarea
+                        ref={mobileTextareaRef}
+                        className="sm:hidden w-full bg-transparent text-[13px] text-paper-white font-serif placeholder-gray-600 focus:outline-none resize-none py-2 leading-[1.4]"
+                        placeholder={busy ? "等待处理中..." : "输入你的行动..."}
+                        value={content}
+                        onChange={(e) => {
+                            setContent(e.target.value);
+                            // Auto-grow: reset height then set to scrollHeight
+                            const el = e.target;
+                            el.style.height = 'auto';
+                            const maxH = mobileInputExpanded ? 144 : 72; // max 5 lines expanded, 2.5 lines collapsed
+                            el.style.height = Math.min(el.scrollHeight, maxH) + 'px';
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey && !busy) {
+                                e.preventDefault();
+                                void handleSend();
+                            }
+                        }}
+                        disabled={busy}
+                        rows={1}
+                        style={{ height: mobileInputExpanded ? undefined : 36, minHeight: 36, maxHeight: mobileInputExpanded ? 144 : 72 }}
+                        onBlur={() => { if (!content.trim()) setMobileInputExpanded(false); }}
+                    />
+                    {/* Desktop: input (unchanged) */}
                     <input
                         type="text"
-                        className="w-full bg-transparent text-[13px] sm:text-[15px] text-paper-white font-serif placeholder-gray-600 focus:outline-none"
+                        className="hidden sm:block w-full bg-transparent text-[15px] text-paper-white font-serif placeholder-gray-600 focus:outline-none"
                         placeholder={busy ? "等待处理中..." : "输入你的行动..."}
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
@@ -1300,6 +1340,23 @@ const InputArea: React.FC<Props> = ({
                         disabled={busy}
                     />
                 </div>
+
+                {/* Mobile: expand/collapse input toggle (hidden on desktop) */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        setMobileInputExpanded(!mobileInputExpanded);
+                        if (!mobileInputExpanded) {
+                            setTimeout(() => mobileTextareaRef.current?.focus(), 50);
+                        }
+                    }}
+                    className="sm:hidden w-8 h-9 shrink-0 flex items-center justify-center text-gray-400 hover:text-wuxia-gold transition-colors"
+                    title={mobileInputExpanded ? "折叠输入框" : "展开输入框"}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-5 h-5 transition-transform ${mobileInputExpanded ? 'rotate-180' : ''}`}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </button>
 
                 {/* Send / Stop Button */}
                 {loading || isPreparing || variableGenerationRunning || postStoryQueueRunning ? (
@@ -1314,7 +1371,7 @@ const InputArea: React.FC<Props> = ({
                         )}
                     <button 
                         onClick={postStoryQueueRunning ? handleStop : (variableGenerationRunning && onCancelVariableGeneration ? onCancelVariableGeneration : handleStop)}
-                        className="w-10 sm:w-12 h-9 sm:h-11 shrink-0 bg-wuxia-red text-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(163,24,24,0.3)] hover:bg-red-600 hover:scale-105 active:scale-95 transition-all"
+                        className="ml-1 w-10 sm:w-12 sm:ml-0 h-9 sm:h-11 shrink-0 bg-wuxia-red text-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(163,24,24,0.3)] hover:bg-red-600 hover:scale-105 active:scale-95 transition-all"
                         title={postStoryQueueRunning ? "强制终止AI推演" : (variableGenerationRunning ? "取消变量生成" : (recallRunning ? "取消检索" : "停止生成"))}
                     >
                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6">
@@ -1326,7 +1383,7 @@ const InputArea: React.FC<Props> = ({
                     <button 
                         onClick={() => { void handleSend(); }} 
                         disabled={!content.trim() || busy} 
-                        className="w-10 sm:w-12 h-9 sm:h-11 shrink-0 bg-wuxia-gold text-ink-black rounded-lg sm:rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(230,200,110,0.3)] hover:bg-white hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 disabled:shadow-none"
+                        className="ml-1 w-10 sm:w-12 sm:ml-0 h-9 sm:h-11 shrink-0 bg-wuxia-gold text-ink-black rounded-lg sm:rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(230,200,110,0.3)] hover:bg-white hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 disabled:shadow-none"
                         title="发送"
                     >
                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6">

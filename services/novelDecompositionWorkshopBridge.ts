@@ -390,6 +390,33 @@ const 合并AI补全到模式运行时配置 = (
             if (eco.currencyTiers.upperName) result.economy.currencyTiers.upperName = eco.currencyTiers.upperName;
             if (eco.currencyTiers.middleName) result.economy.currencyTiers.middleName = eco.currencyTiers.middleName;
             if (eco.currencyTiers.lowerName) result.economy.currencyTiers.lowerName = eco.currencyTiers.lowerName;
+        } else if (eco.currencyTiers && typeof eco.currencyTiers === 'string') {
+            // AI sometimes returns currencyTiers as a string like "金元宝/银子/铜钱"
+            const parts = (eco.currencyTiers as string).split(/[\/、,，]/).map((s: string) => s.trim()).filter(Boolean);
+            if (parts.length >= 3) {
+                result.economy.currencyTiers = { ...result.economy.currencyTiers };
+                result.economy.currencyTiers.upperName = parts[0];
+                result.economy.currencyTiers.middleName = parts[1];
+                result.economy.currencyTiers.lowerName = parts[2];
+                console.log('[AI补全] currencyTiers 从字符串解析:', eco.currencyTiers, '→', parts.slice(0, 3));
+            } else {
+                console.warn('[AI补全] currencyTiers 字符串分割不足3段，已跳过:', eco.currencyTiers);
+            }
+        } else if (Array.isArray(eco.currencyTiers) && eco.currencyTiers.length >= 3) {
+            // AI sometimes returns currencyTiers as an array like ["金元宝","银子","铜钱"]
+            result.economy.currencyTiers = { ...result.economy.currencyTiers };
+            result.economy.currencyTiers.upperName = String(eco.currencyTiers[0] || '');
+            result.economy.currencyTiers.middleName = String(eco.currencyTiers[1] || '');
+            result.economy.currencyTiers.lowerName = String(eco.currencyTiers[2] || '');
+            console.log('[AI补全] currencyTiers 从数组解析:', eco.currencyTiers);
+        } else if (eco.currencyTiers) {
+            console.warn('[AI补全] currencyTiers 类型无法识别，已跳过:', typeof eco.currencyTiers, eco.currencyTiers);
+        }
+        // Log other skipped economy fields for diagnostic
+        const knownEcoKeys = ['primaryCurrency', 'accountingUnit', 'exchangeRules', 'marketName', 'marketVerb', 'currencyTiers'];
+        const unknownEcoKeys = Object.keys(eco).filter(k => !knownEcoKeys.includes(k));
+        if (unknownEcoKeys.length > 0) {
+            console.warn('[AI补全] economy 中存在未合并的字段:', unknownEcoKeys);
         }
     }
 

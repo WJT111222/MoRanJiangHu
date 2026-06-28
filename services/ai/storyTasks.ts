@@ -2366,5 +2366,19 @@ const 解析小说模式包补全JSON = (rawText: string): Record<string, any> =
         throw new Error('AI 补全缺少必要字段（primaryCurrency 或 progressionNames），请重试。');
     }
 
+    // Diagnostic: log currencyTiers presence/type for debugging merge issues
+    if (hasEconomy) {
+        const tiers = parsed.economy.currencyTiers;
+        const tierType = tiers ? typeof tiers : 'undefined';
+        const tierIsArray = Array.isArray(tiers);
+        if (tiers && !tierIsArray && tierType !== 'object') {
+            console.warn('[AI补全] currencyTiers 类型异常（期望object，实际为' + tierType + '）:', tiers);
+        } else if (tiers && tierIsArray) {
+            console.log('[AI补全] currencyTiers 为数组格式，将在合并时自动转换:', tiers);
+        } else if (!tiers) {
+            console.log('[AI补全] economy 中未包含 currencyTiers 字段');
+        }
+    }
+
     return parsed;
 };

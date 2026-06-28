@@ -1011,38 +1011,47 @@ const 收集图床图片地址 = (
 };
 
 const 读取存档设置图片引用快照 = async (): Promise<{ referencedIds: Set<string>; directReferencedIds: Set<string>; remoteUrls: Set<string> }> => {
+    // Use cursor iteration instead of getAll() to reduce peak memory usage.
+    // getAll() loads all saves into a single array, doubling memory for large saves;
+    // cursor processes one record at a time and lets GC reclaim earlier entries.
     const db = await 初始化数据库();
-    const [saves, settings] = await Promise.all([
-        new Promise<any[]>((resolve, reject) => {
-            const transaction = db.transaction([STORE_NAME], 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.getAll();
-            request.onsuccess = () => resolve(Array.isArray(request.result) ? request.result : []);
-            request.onerror = () => reject(request.error);
-        }),
-        new Promise<Array<{ key: string; value: any }>>((resolve, reject) => {
-            const transaction = db.transaction([SETTINGS_STORE], 'readonly');
-            const store = transaction.objectStore(SETTINGS_STORE);
-            const request = store.getAll();
-            request.onsuccess = () => resolve(
-                (Array.isArray(request.result) ? request.result : [])
-                    .filter((item: any) => typeof item?.key === 'string')
-                    .map((item: any) => ({ key: item.key, value: item.value }))
-            );
-            request.onerror = () => reject(request.error);
-        })
-    ]);
-
     const referencedIds = new Set<string>();
     const remoteUrls = new Set<string>();
-    saves.forEach((save) => {
-        收集图片资源引用ID(save, referencedIds);
-        收集图床图片地址(save, remoteUrls);
+
+    // Iterate saves via cursor
+    await new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const cursorRequest = store.openCursor();
+        cursorRequest.onsuccess = () => {
+            const cursor = cursorRequest.result;
+            if (!cursor) { resolve(); return; }
+            const save = cursor.value;
+            收集图片资源引用ID(save, referencedIds);
+            收集图床图片地址(save, remoteUrls);
+            cursor.continue();
+        };
+        cursorRequest.onerror = () => reject(cursorRequest.error);
     });
-    settings.forEach((item) => {
-        收集图片资源引用ID(item?.value, referencedIds);
-        收集图床图片地址(item?.value, remoteUrls);
+
+    // Iterate settings via cursor
+    await new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction([SETTINGS_STORE], 'readonly');
+        const store = transaction.objectStore(SETTINGS_STORE);
+        const cursorRequest = store.openCursor();
+        cursorRequest.onsuccess = () => {
+            const cursor = cursorRequest.result;
+            if (!cursor) { resolve(); return; }
+            const item = cursor.value;
+            if (typeof item?.key === 'string') {
+                收集图片资源引用ID(item?.value, referencedIds);
+                收集图床图片地址(item?.value, remoteUrls);
+            }
+            cursor.continue();
+        };
+        cursorRequest.onerror = () => reject(cursorRequest.error);
     });
+
     const directReferencedIds = new Set(referencedIds);
     读取远程图片兜底资源ID集合().forEach((id) => referencedIds.add(id));
     return { referencedIds, directReferencedIds, remoteUrls };
@@ -1810,7 +1819,8 @@ export const 保存存档 = async (存档: Omit<存档结构, 'id'>): Promise<nu
             预估大小KB: Math.round(JSON.stringify(normalized).length / 1024)
         });
     }
-    const existingSaves = await 读取存档列表().catch(() => []);
+    // Use lightweight lineage view instead of full save list to avoid OOM on large saves
+    const existingSaves = await 读取存档谱系轻量视图().catch(() => []);
     const withLineage = 补全存档谱系元数据(normalized, existingSaves);
     const persistedSave = await 外置化图片字段(withLineage) as Omit<存档结构, 'id'>;
 
@@ -2576,31 +2586,43 @@ export const 清空存档数据 = async (): Promise<void> => {
 
 export const 删除最近自动存档 = async (): Promise<void> => {
     if (await 读取存档保护状态()) {
-        throw new Error('存档保护已开启，请先在“设置-数据存储”中关闭后再删除存档。');
+        throw new Error('存档保护已开启，请先在”设置-数据存储”中关闭后再删除存档。');
     }
     const db = await 初始化数据库();
+    // Use cursor to find latest auto save instead of getAll() to reduce memory spike.
+    // No 时间戳 index available, so iterate all and track the newest auto save by ID only.
+    let latestAutoId: number | null = null;
+    let latestAutoTimestamp = -1;
     await new Promise<void>((resolve, reject) => {
-        const transaction = db.transaction([STORE_NAME, SAVE_SUMMARIES_STORE], 'readwrite');
+        const transaction = db.transaction([STORE_NAME], 'readonly');
         const store = transaction.objectStore(STORE_NAME);
-        const summaryStore = transaction.objectStore(SAVE_SUMMARIES_STORE);
-        const request = store.getAll();
-
-        request.onsuccess = () => {
-            const allSaves: 存档结构[] = request.result;
-            const latestAuto = allSaves
-                .filter((s) => s.类型 === 'auto')
-                .sort((a, b) => b.时间戳 - a.时间戳)[0];
-            if (!latestAuto) {
+        const cursorRequest = store.openCursor();
+        cursorRequest.onsuccess = () => {
+            const cursor = cursorRequest.result;
+            if (!cursor) {
                 resolve();
                 return;
             }
-            const delReq = store.delete(latestAuto.id);
-            summaryStore.delete(latestAuto.id);
+            const save = cursor.value as 存档结构;
+            if (save.类型 === 'auto' && Number(save.时间戳 || 0) > latestAutoTimestamp) {
+                latestAutoTimestamp = Number(save.时间戳 || 0);
+                latestAutoId = save.id;
+            }
+            cursor.continue();
+        };
+        cursorRequest.onerror = () => reject(cursorRequest.error);
+    });
+    if (latestAutoId !== null) {
+        await new Promise<void>((resolve, reject) => {
+            const transaction = db.transaction([STORE_NAME, SAVE_SUMMARIES_STORE], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const summaryStore = transaction.objectStore(SAVE_SUMMARIES_STORE);
+            const delReq = store.delete(latestAutoId!);
+            summaryStore.delete(latestAutoId!);
             delReq.onsuccess = () => resolve();
             delReq.onerror = () => reject(delReq.error);
-        };
-        request.onerror = () => reject(request.error);
-    });
+        });
+    }
     await 清理未引用图片资源();
 };
 

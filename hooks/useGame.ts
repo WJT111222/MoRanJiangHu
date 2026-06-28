@@ -852,6 +852,12 @@ export const useGame = () => {
 
     const 推入重Roll快照 = (snapshot: 回合快照结构) => {
         回合快照栈Ref.current.push(snapshot);
+        // Cap snapshot stack to prevent unbounded memory growth;
+        // each snapshot contains a deep copy of game state (~13 fields).
+        const MAX_ROLL_SNAPSHOTS = 20;
+        if (回合快照栈Ref.current.length > MAX_ROLL_SNAPSHOTS) {
+            回合快照栈Ref.current = 回合快照栈Ref.current.slice(回合快照栈Ref.current.length - MAX_ROLL_SNAPSHOTS);
+        }
         同步重Roll计数();
     };
 
