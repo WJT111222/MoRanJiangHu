@@ -9,7 +9,7 @@ describe('APK B2 provider', () => {
             request: new Request('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.523.apk?provider=b2'),
             params: { file: 'MoRanJiangHu-v1.0.523.apk' },
             env: {
-                MORAN_B2_DISTRIBUTION_BASE_URL: 'https://obs1.bacon159.pp.ua',
+                MORAN_B2_DISTRIBUTION_BASE_URL: 'https://f004.backblazeb2.com/file/bacon111',
                 MORAN_B2_DISTRIBUTION_RELEASE_PREFIX: 'moranjianghu',
                 RELEASE_MANIFEST: {
                     get: async () => ({
@@ -28,7 +28,7 @@ describe('APK B2 provider', () => {
         } as any);
 
         expect(response.status).toBe(302);
-        expect(response.headers.get('Location')).toBe('https://obs1.bacon159.pp.ua/moranjianghu/MoRanJiangHu-v1.0.523.apk');
+        expect(response.headers.get('Location')).toBe('https://f004.backblazeb2.com/file/bacon111/moranjianghu/MoRanJiangHu-v1.0.523.apk');
         expect(response.headers.get('X-Moran-Apk-Source')).toBe('b2-redirect');
     });
 

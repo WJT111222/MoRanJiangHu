@@ -832,7 +832,7 @@ Upload size verification (2026-06-28):
 The APK distribution system uses a two-tier architecture:
 
 1. **Cloudflare KV** — Stores the release manifest (`release-manifest/latest.json`) as the single source of truth for version metadata (versionName, versionCode, releaseNotes, etc.).
-2. **B2 (obs1.bacon159.pp.ua)** — Primary APK binary host.
+2. **B2 (f004.backblazeb2.com)** — Primary APK binary host. Uses Backblaze native download URL `https://f004.backblazeb2.com/file/bacon111/{key}`. Direct B2 download has been benchmarked at ~11 MB/s from Chinese domestic connections without proxy, significantly faster than EdgeOne CDN mirrors (`obs1.cc.cd` / `obs1.bacon159.pp.ua`) which only achieved ~0.6 MB/s.
 3. **OneDrive via OpenList proxy** — Backup APK binary host. Downloads are proxied through `openlist.bacon.de5.net/p/` with signed URLs. APK files are stored at `/Onedrive/MoRanJiangHu/releases/latest.apk`.
 
 **Decommissioned channels**: hi168 S3 (2026-06-28), Cloudflare R2 (fully decommissioned, including legacy manifest path).

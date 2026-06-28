@@ -192,7 +192,7 @@ export const readB2ReleaseObjectPrefix = (env: any): string => (
 );
 
 export const buildB2ObjectUrl = (env: any, key: string): string => {
-    const baseUrl = readEnvString(env, 'MORAN_B2_DISTRIBUTION_BASE_URL', 'https://obs1.bacon159.pp.ua').replace(/\/+$/, '');
+    const baseUrl = readEnvString(env, 'MORAN_B2_DISTRIBUTION_BASE_URL', 'https://f004.backblazeb2.com/file/bacon111').replace(/\/+$/, '');
     return `${baseUrl}/${encodeS3Path(normalizeObjectKey(key))}`;
 };
 

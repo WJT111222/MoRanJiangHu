@@ -825,7 +825,7 @@ curl -X PUT "https://openlist.bacon.de5.net/api/fs/put" \
 APK 分发系统采用两层架构：
 
 1. **Cloudflare KV** — 存储 release manifest（`release-manifest/latest.json`），作为版本元数据（versionName、versionCode、releaseNotes 等）的唯一真实来源。
-2. **B2 (obs1.bacon159.pp.ua)** — 主 APK 二进制托管。
+2. **B2 (f004.backblazeb2.com)** — 主 APK 二进制托管。使用 Backblaze 原始下载 URL `https://f004.backblazeb2.com/file/bacon111/{key}`。国内无代理直连测速约 11 MB/s，远超 EdgeOne CDN 镜像（`obs1.cc.cd` / `obs1.bacon159.pp.ua`）的约 0.6 MB/s。
 3. **OneDrive 经 OpenList 代理** — 备用 APK 二进制托管。下载通过 `openlist.bacon.de5.net/p/` 使用签名 URL 代理。APK 文件存储在 `/Onedrive/MoRanJiangHu/releases/latest.apk`。
 
 **已停用渠道**：hi168 S3（2026-06-28）、Cloudflare R2（完全停用，包括旧版 manifest 路径）。
