@@ -35,6 +35,7 @@ import { 构建剧情风格助手提示词 } from '../../prompts/runtime/storySt
 import { 构建真实世界模式提示词 } from '../../prompts/runtime/realWorldMode';
 import { 构建运行时额外提示词 } from '../../prompts/runtime/nsfw';
 import { 获取DeepSeek主剧情兼容提示词 } from '../../prompts/runtime/deepseekMode';
+import { 获取GLM主剧情兼容提示词 } from '../../prompts/runtime/glmMode';
 import { 包装繁体任务提示, 获取繁体输出指令 } from '../../utils/traditionalChinese';
 import { 构建标签缺失补充提示 } from '../../utils/parseErrorHints';
 import { 构建世界演变COT提示词, 世界演变COT伪装历史消息提示词 } from '../../prompts/runtime/worldEvolutionCot';
@@ -740,14 +741,20 @@ export const 执行开场剧情生成工作流 = async (
         const openingTavernPresetModeEnabled = 酒馆预设模式可用(openingGameConfig);
         const openingDeepSeekMode = openingGameConfig.主剧情消息模式;
         const openingDeepSeekModeEnabled = openingDeepSeekMode === 'DeepSeek标准' || openingDeepSeekMode === 'DeepSeek锁格式';
+        const openingGLMModeEnabled = openingDeepSeekMode === 'GLM标准' || openingDeepSeekMode === 'GLM锁格式';
         const openingRuntimeGptMode = (
             openingGameConfig.启用GPT模式 === true
             || openingDeepSeekMode === 'GPT'
             || openingDeepSeekModeEnabled
+            || openingGLMModeEnabled
         );
         const openingDeepSeekPrefixMode = openingDeepSeekMode === 'DeepSeek锁格式'
             && openingGameConfig.DeepSeek策略?.开局策略 === '锁头开局'
             && openingGameConfig.DeepSeek策略?.启用Prefix能力探测 !== false;
+        const openingGLMPrefixMode = openingDeepSeekMode === 'GLM锁格式'
+            && openingGameConfig.GLM策略?.开局策略 === '锁头开局'
+            && openingGameConfig.GLM策略?.启用Prefix能力探测 !== false;
+        const openingGLMHTMLCommentThinking = openingGLMModeEnabled && openingGameConfig.GLM策略?.启用HTML注释思维链 !== false;
         const openingRealmPromptRaw = 启用修炼体系
             ? (openingPromptSnapshot.find((item) => item.id === 'core_realm')?.内容 || '').trim()
             : '';
@@ -892,7 +899,7 @@ export const 执行开场剧情生成工作流 = async (
             }, 420);
         }
 
-        const openingCotPseudoEnabled = openingDeepSeekModeEnabled ? false : openingGameConfig.启用COT伪装注入 !== false;
+        const openingCotPseudoEnabled = (openingDeepSeekModeEnabled || openingGLMModeEnabled) ? false : openingGameConfig.启用COT伪装注入 !== false;
         const openingLengthRequirementPrompt = openingContext.contextPieces.字数要求提示词
             || 构建字数要求提示词(1000);
         const openingDisclaimerRequirementPrompt = openingContext.contextPieces.免责声明输出提示词 || undefined;
@@ -918,6 +925,7 @@ export const 执行开场剧情生成工作流 = async (
             })
             : '';
         const openingDeepSeekModePrompt = 获取DeepSeek主剧情兼容提示词(openingGameConfig);
+        const openingGLMModePrompt = 获取GLM主剧情兼容提示词(openingGameConfig);
         const openingTraditionalChinesePrompt = 获取繁体输出指令(openingGameConfig);
         const openingCotPseudoPrompt = openingCotPseudoEnabled
             ? 构建COT伪装提示词(
@@ -1041,6 +1049,7 @@ export const 执行开场剧情生成工作流 = async (
             pushOpening('system', openingStyleAssistantPrompt);
             pushOpening('system', openingRealWorldModePrompt);
             pushOpening('system', openingDeepSeekModePrompt);
+            pushOpening('system', openingGLMModePrompt);
             pushOpening('system', openingTraditionalChinesePrompt);
             pushOpening('user', openingCombinedExtraPrompt);
             pushOpening('user', openingDisclaimerRequirementPrompt || '');
@@ -1054,6 +1063,9 @@ export const 执行开场剧情生成工作流 = async (
             }
             if (openingDeepSeekPrefixMode) {
                 openingOrderedMessages.push({ role: 'assistant', content: '<thinking>\n', prefix: true } as any);
+            }
+            if (openingGLMPrefixMode) {
+                openingOrderedMessages.push({ role: 'assistant', content: openingGLMHTMLCommentThinking ? '<!-- \n' : '<thinking>\n', prefix: true } as any);
             }
         }
 
@@ -1133,10 +1145,11 @@ export const 执行开场剧情生成工作流 = async (
                             validateTagCompleteness: openingGameConfig.启用标签检测完整性 === true,
                             enableTagRepair: openingGameConfig.启用标签修复 !== false,
                             requireActionOptionsTag: openingGameConfig.启用行动选项 !== false,
-                            prefixMode: openingDeepSeekPrefixMode,
-                            disableThinking: openingGameConfig.DeepSeek策略?.开局Thinking !== true,
-                            stripReasoning: openingGameConfig.DeepSeek策略?.开局Thinking !== true,
-                            includeReasoning: openingGameConfig.DeepSeek策略?.开局Thinking === true
+                            prefixMode: openingDeepSeekPrefixMode || openingGLMPrefixMode,
+                            disableThinking: (openingGameConfig.DeepSeek策略?.开局Thinking !== true) && (openingGameConfig.GLM策略?.开局Thinking !== true),
+                            stripReasoning: (openingGameConfig.DeepSeek策略?.开局Thinking !== true) && (openingGameConfig.GLM策略?.开局Thinking !== true),
+                            includeReasoning: (openingGameConfig.DeepSeek策略?.开局Thinking === true) || (openingGameConfig.GLM策略?.开局Thinking === true),
+                            glmHTMLCommentThinking: openingGLMHTMLCommentThinking
                         }
                     );
                 if (!useStreaming) {

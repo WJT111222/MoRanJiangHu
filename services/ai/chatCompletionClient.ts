@@ -2,6 +2,7 @@ import { registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 import type { 当前可用接口结构 } from '../../utils/apiConfig';
 import { isNativeCapacitorEnvironment } from '../../utils/nativeRuntime';
 import { 小米MiMo稳定输出预设 } from '../../prompts/providers/xiaomiMiMoStablePreset';
+import { GLM稳定输出预设 } from '../../prompts/providers/glmStablePreset';
 
 export type 通用消息角色 = 'system' | 'user' | 'assistant';
 
@@ -23,9 +24,10 @@ export type 模型请求附加选项 = {
     disableThinking?: boolean;
     stripReasoning?: boolean;
     prefixMode?: boolean;
+    glmHTMLCommentThinking?: boolean;
 };
 
-type 请求协议类型 = 'openai' | 'deepseek';
+type 请求协议类型 = 'openai' | 'deepseek' | 'glm';
 
 type 原生聊天流事件 = {
     requestId?: string;
@@ -220,8 +222,20 @@ export const 是否DeepSeek模型配置 = (apiConfig: 当前可用接口结构):
 
 export const 是否DeepSeek接口配置 = 是否DeepSeek模型配置;
 
+export const 是否GLM接口配置 = (apiConfig: 当前可用接口结构): boolean => {
+    if (apiConfig.供应商 === 'zhipu') return true;
+    const baseUrl = (apiConfig.baseUrl || '').trim().toLowerCase();
+    if (baseUrl.includes('bigmodel.cn')) return true;
+    const model = 标准化模型名(apiConfig.model || '');
+    if (!model) return false;
+    if (model.includes('glm')) return true;
+    return false;
+};
+
 const 解析请求协议类型 = (apiConfig: 当前可用接口结构): 请求协议类型 => {
-    return 是否DeepSeek原生接口配置(apiConfig) ? 'deepseek' : 'openai';
+    if (是否DeepSeek原生接口配置(apiConfig)) return 'deepseek';
+    if (是否GLM接口配置(apiConfig)) return 'glm';
+    return 'openai';
 };
 
 const 读取自定义最大输出Token = (apiConfig: 当前可用接口结构): number | undefined => {
@@ -555,6 +569,81 @@ const 应用DeepSeek消息兼容修正 = (
         }
     }
 
+    const last = normalized[normalized.length - 1];
+    if (last?.role === 'assistant' && last.prefix === true) return normalized;
+    const lastNonSystem = [...normalized].reverse().find(msg => msg.role !== 'system');
+    if (lastNonSystem && lastNonSystem.role !== 'user') {
+        normalized.push({
+            role: 'user',
+            content: '请继续执行上一条任务，并严格按既定输出协议完成回复。'
+        });
+    }
+
+    return normalized;
+};
+
+const 应用GLM消息兼容修正 = (
+    messages: 通用消息[],
+    protocol: 请求协议类型
+): 通用消息[] => {
+    if (protocol !== 'glm') return messages;
+    const normalized = 规范化文本补全消息链(messages, { 保留System: true, 合并同角色: true });
+
+    // GLM 不支持尾部非 prefix assistant 消息 — 移除尾部非 prefix assistant
+    while (normalized.length > 0) {
+        const tail = normalized[normalized.length - 1];
+        if (tail.role === 'assistant' && tail.prefix !== true) {
+            normalized.pop();
+            continue;
+        }
+        break;
+    }
+
+    // GLM 对首条非 system 消息为 assistant 更敏感 — 首条非 system 的 assistant 转为 user
+    const firstNonSystemIndex = normalized.findIndex(msg => msg.role !== 'system');
+    if (firstNonSystemIndex >= 0) {
+        const firstNonSystem = normalized[firstNonSystemIndex];
+        const hasUserAfter = normalized.slice(firstNonSystemIndex + 1).some(msg => msg.role === 'user');
+        if (firstNonSystem.role === 'assistant' && firstNonSystem.prefix !== true && !hasUserAfter) {
+            normalized[firstNonSystemIndex] = {
+                role: 'user',
+                content: firstNonSystem.content
+            };
+        }
+    }
+
+    // GLM 对连续 assistant 消息更敏感：合并 assistant-before-only-user 模式
+    const nonSystemMessages = normalized.filter(msg => msg.role !== 'system');
+    const userIndexes = normalized
+        .map((msg, index) => ({ msg, index }))
+        .filter(item => item.msg.role === 'user')
+        .map(item => item.index);
+    const assistantBeforeOnlyUser = nonSystemMessages
+        .filter(msg => msg.role === 'assistant' && msg.prefix !== true)
+        .map(msg => msg.content)
+        .filter(Boolean);
+
+    if (userIndexes.length === 1 && assistantBeforeOnlyUser.length > 0) {
+        const userIndex = userIndexes[0];
+        const userMessage = normalized[userIndex];
+        normalized[userIndex] = {
+            ...userMessage,
+            content: [
+                '【前置任务说明】',
+                assistantBeforeOnlyUser.join('\n\n'),
+                '',
+                '【当前用户触发】',
+                userMessage.content
+            ].join('\n').trim()
+        };
+        for (let index = normalized.length - 1; index >= 0; index--) {
+            if (index !== userIndex && normalized[index].role === 'assistant' && normalized[index].prefix !== true) {
+                normalized.splice(index, 1);
+            }
+        }
+    }
+
+    // 末尾必须为 user 角色消息（prefix assistant 除外）
     const last = normalized[normalized.length - 1];
     if (last?.role === 'assistant' && last.prefix === true) return normalized;
     const lastNonSystem = [...normalized].reverse().find(msg => msg.role !== 'system');
@@ -1466,7 +1555,7 @@ const 请求OpenAI家族文本 = async (
     const enableStream = !!streamOptions?.stream;
     let useStream = enableStream;
     let downgradedFromStream = false;
-    let usePrefixMode = requestOptions?.prefixMode === true && protocol === 'deepseek';
+    let usePrefixMode = requestOptions?.prefixMode === true && (protocol === 'deepseek' || protocol === 'glm');
     let requestMessages = messages;
     if (是否小米MiMo接口配置(apiConfig)) {
         const firstSystemIndex = requestMessages.findIndex(message => message.role === 'system' && message.content.trim().length > 0);
@@ -1478,6 +1567,20 @@ const 请求OpenAI家族文本 = async (
         } else {
             requestMessages = [
                 { role: 'system', content: 小米MiMo稳定输出预设 },
+                ...requestMessages
+            ];
+        }
+    }
+    if (是否GLM接口配置(apiConfig)) {
+        const firstSystemIndex = requestMessages.findIndex(message => message.role === 'system' && message.content.trim().length > 0);
+        if (firstSystemIndex >= 0) {
+            requestMessages = requestMessages.map((message, index) => index === firstSystemIndex
+                ? { ...message, content: `${GLM稳定输出预设}\n\n${message.content}`.trim() }
+                : message
+            );
+        } else {
+            requestMessages = [
+                { role: 'system', content: GLM稳定输出预设 },
                 ...requestMessages
             ];
         }
@@ -1693,8 +1796,11 @@ export const 请求模型文本 = async (
         ? requestedResponseFormat
         : undefined;
     const normalizedMessages = 应用Claude兼容末尾User修正(
-        应用DeepSeek消息兼容修正(
-            应用强制JSON消息修正(messages, effectiveResponseFormat),
+        应用GLM消息兼容修正(
+            应用DeepSeek消息兼容修正(
+                应用强制JSON消息修正(messages, effectiveResponseFormat),
+                protocol
+            ),
             protocol
         ),
         apiConfig

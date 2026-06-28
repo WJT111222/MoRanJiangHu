@@ -98,7 +98,7 @@
     <section class="hero">
       <span class="badge">MO RAN JIANG HU GUIDE</span>
       <h1>墨色江湖教程中心</h1>
-      <p class="lead">常用教程都放在这里。遇到“世界书导入后没反应”“多端同步怎么配”“ComfyUI 后端怎么启动”“GPT Image2 怎么用 API Key 生图”“预设图怎么反馈”“DeepSeek 模式怎么选”等问题，可以直接切换下面的选项卡查看。</p>
+      <p class=”lead”>常用教程都放在这里。遇到”世界书导入后没反应””多端同步怎么配””ComfyUI 后端怎么启动””GPT Image2 怎么用 API Key 生图””预设图怎么反馈””DeepSeek 模式怎么选””GLM 模式怎么选”等问题，可以直接切换下面的选项卡查看。</p>
       <div class="tabs" role="tablist" aria-label="教程分类">
         <button class="tab" type="button" data-tab="worldbook" aria-selected="true">世界书导入</button>
         <button class="tab" type="button" data-tab="aimode" aria-selected="false">AI模型模式</button>
@@ -141,8 +141,8 @@
       <div class="grid">
         <article class="card wide">
           <h2>主剧情消息模式怎么选</h2>
-          <p>主剧情消息模式决定“玩家本回合输入”和“游戏提示词”用什么方式发给 AI。不同模型的习惯不一样：Gemini 更适合原本的组包方式，GPT 系列更喜欢最后一条是真实 <code>user</code>，DeepSeek 则更容易遇到 reasoning 泄漏、格式漂移或标签缺失，所以有专门的稳定策略。</p>
-          <p class="note">如果你不知道该选什么：Gemini 选 <code>Gemini模式</code>，OpenAI/GPT 兼容站选 <code>GPT兼容</code>，DeepSeek 先选 <code>DeepSeek标准续聊</code>，格式老坏再试 <code>DeepSeek锁格式</code>。</p>
+          <p>主剧情消息模式决定”玩家本回合输入”和”游戏提示词”用什么方式发给 AI。不同模型的习惯不一样：Gemini 更适合原本的组包方式，GPT 系列更喜欢最后一条是真实 <code>user</code>，DeepSeek 则更容易遇到 reasoning 泄漏、格式漂移或标签缺失，GLM 与 <code><thinking></code> 标签冲突需要改用 HTML 注释思维链，所以各自有专门的稳定策略。</p>
+          <p class="note">如果你不知道该选什么：Gemini 选 <code>Gemini模式</code>，OpenAI/GPT 兼容站选 <code>GPT兼容</code>，DeepSeek 先选 <code>DeepSeek标准续聊</code>，格式老坏再试 <code>DeepSeek锁格式</code>，智谱 GLM 先选 <code>GLM标准</code>，格式老坏再试 <code>GLM锁格式</code>。</p>
         </article>
 
         <article class="card">
@@ -190,10 +190,34 @@
             <li>模型内容能写好，但格式经常漂移。</li>
             <li>你使用 DeepSeek 原生接口，或确认第三方兼容站支持 Prefix/Prefill。</li>
           </ol>
-          <p class="note warn">锁格式不是“更聪明”模式，而是“更守格式”模式。如果接口不支持 Prefix，会自动降级为标准续聊；如果文风变硬或接口报错，可以切回标准续聊。</p>
+          <p class=”note warn”>锁格式不是”更聪明”模式，而是”更守格式”模式。如果接口不支持 Prefix，会自动降级为标准续聊；如果文风变硬或接口报错，可以切回标准续聊。</p>
         </article>
 
-        <article class="card wide">
+        <article class=”card”>
+          <h2>GLM标准</h2>
+          <p>这是智谱 GLM 推荐优先尝试的模式。它会使用真实玩家输入作为最后一条 <code>user</code>，默认关闭 COT 伪装注入，注入 GLM 专用稳定提示词，并自动处理 GLM 特有的 HTML 注释思维链。</p>
+          <h3>什么时候用</h3>
+          <ol class=”steps”>
+            <li>你使用智谱 GLM-4、GLM-4-Plus、GLM-4-Flash 或智谱兼容接口。</li>
+            <li>你不确定当前接口是否支持 Prefix/Prefill。</li>
+            <li>你希望先保证兼容性，不想一上来就用实验性锁格式。</li>
+          </ol>
+          <p class=”note”>智谱 GLM 玩家建议先用标准模式。如果正文正常、标签完整，就不用切锁格式。</p>
+        </article>
+
+        <article class=”card”>
+          <h2>GLM锁格式</h2>
+          <p>锁格式是 GLM 的强约束模式。它会尝试用 Prefix/Prefill 让模型从固定标签开头继续写，并使用 HTML 注释形式的思维链引导，从而减少”忘记输出标签””乱加说明””Markdown 包裹结果”等问题。</p>
+          <h3>什么时候用</h3>
+          <ol class=”steps”>
+            <li>GLM标准经常缺少 <code><正文></code>、<code><短期记忆></code> 或 <code><命令></code>。</li>
+            <li>模型内容能写好，但格式经常漂移。</li>
+            <li>你使用智谱原生接口，或确认第三方兼容站支持 Prefix/Prefill。</li>
+          </ol>
+          <p class=”note warn”>锁格式不是”更聪明”模式，而是”更守格式”模式。如果接口不支持 Prefix，会自动降级为标准模式；如果文风变硬或接口报错，可以切回GLM标准。</p>
+        </article>
+
+        <article class=”card wide”>
           <h2>DeepSeek 主线稳定性策略详解</h2>
           <p>这些选项只在 <code>DeepSeek标准续聊</code> 或 <code>DeepSeek锁格式</code> 下显示。新手可以保持默认；遇到格式问题时，再按下面说明调整。</p>
         </article>
@@ -296,6 +320,81 @@
         </article>
 
         <article class="card wide">
+          <h2>GLM 主线稳定性策略详解</h2>
+          <p>这些选项只在 <code>GLM标准</code> 或 <code>GLM锁格式</code> 下显示。新手可以保持默认；遇到格式问题时，再按下面说明调整。</p>
+        </article>
+
+        <article class="card">
+          <h2>HTML注释思维链</h2>
+          <p>GLM 模型与 <code><thinking></code> 标签存在冲突，会将其误认为 HTML 元素而拒绝输出或格式混乱。本策略改用 HTML 注释 <code><!-- ... --></code> 作为思维链容器，让 GLM 自然输出思考过程，系统在接收后自动转换回标准 <code><thinking></code> 格式供下游解析。</p>
+          <h3>推荐设置</h3>
+          <ol class="steps">
+            <li><strong>默认开启</strong>。GLM 模型建议始终启用 HTML 注释思维链。</li>
+            <li>如果你确认你的接口不是智谱 GLM 而是误选了 GLM 模式，可以关闭此选项，恢复使用标准 <code><thinking></code> 标签。</li>
+            <li>开启时锁格式会使用 <code><!--\n</code> 作为 Prefix 开头；关闭时退回 <code><thinking>\n</code>。</li>
+          </ol>
+          <p class="note">这是 GLM 模式与 DeepSeek 模式的核心区别。DeepSeek 模型完全可以使用 <code><thinking></code> 标签，而 GLM 不能。</p>
+        </article>
+
+        <article class="card">
+          <h2>GLM 开局策略</h2>
+          <p>开局策略控制第 0 回合（新存档第一段剧情）是否直接使用 GLM 的稳定模式。</p>
+          <h3>选项解释</h3>
+          <ol class="steps">
+            <li><code>禁止开局，稳定模型起盘后接管</code>：不让 GLM 负责最复杂的开局起盘，适合追求稳定的新手。</li>
+            <li><code>标准开局</code>：开局也使用 GLM 标准方式。</li>
+            <li><code>锁头开局（实验）</code>：开局也尝试锁格式 Prefix，适合排查开局格式老坏的问题。</li>
+          </ol>
+          <p class="note">推荐默认使用"禁止开局"。开局要初始化角色、世界、第一幕，任务比普通续聊更复杂，稳定优先。</p>
+        </article>
+
+        <article class="card">
+          <h2>GLM Prefix能力探测</h2>
+          <p>与 DeepSeek 相同，GLM 锁格式也依赖 Prefix/Prefill 能力。智谱原生接口通常支持，但很多第三方兼容站虽然模型名叫 GLM，却不支持 Prefix 字段。</p>
+          <h3>建议</h3>
+          <ol class="steps">
+            <li>建议一直开启。开启后系统会尝试判断当前接口能不能用 Prefix。</li>
+            <li>不能用时自动降级成标准模式，避免玩家手动试错。</li>
+            <li>如果你确认接口支持 Prefix，开启可以避免多余探测请求。</li>
+          </ol>
+        </article>
+
+        <article class="card">
+          <h2>输出健康度检测 / 阈值</h2>
+          <p>GLM 模式的输出健康度检测与 DeepSeek 共用同一套机制：检查必需标签是否存在、正文是否为空或被污染、命令段是否可解析等。</p>
+          <h3>阈值调节</h3>
+          <ol class="steps">
+            <li>锁格式阈值默认 <code>85</code>：低于此分会触发锁格式策略。</li>
+            <li>救场阈值默认 <code>60</code>：低于此分会调用 GLM 稳定救场模型重写。</li>
+            <li>调节逻辑与 DeepSeek 相同：锁格式阈值越高越严格，救场阈值越高越容易触发救场。</li>
+          </ol>
+        </article>
+
+        <article class="card">
+          <h2>续聊Thinking / 开局Thinking</h2>
+          <p>GLM 模型的 Thinking 选项控制是否允许模型输出显式推理过程。开启时，GLM 会通过 HTML 注释思维链输出思考内容；关闭时，思维链会被禁用。</p>
+          <h3>推荐设置</h3>
+          <ol class="steps">
+            <li>普通玩家建议关闭。</li>
+            <li>如果出现"思考内容混进正文"，必须关闭。</li>
+            <li>如果你想让开局或复杂剧情推理更充分，可以尝试开启，但要观察格式是否变差。</li>
+          </ol>
+          <p class="note">开局Thinking只影响第 0 回合；续聊Thinking影响后续正常游玩回合。</p>
+        </article>
+
+        <article class="card">
+          <h2>GLM稳定救场模型</h2>
+          <p>稳定救场模型在"接口配置中心"里设置（绿色边框面板）。当 GLM 主模型输出健康度太低时，用另一个模型帮忙修复或重写格式。</p>
+          <h3>怎么填</h3>
+          <ol class="steps">
+            <li>如果只填"稳定救场使用模型"，API 地址和密钥留空，会复用当前主接口。</li>
+            <li>如果你有另一个更稳定的接口，可以单独填写 API 地址和 API 密钥。</li>
+            <li>主模型用 <code>glm-4-plus</code> 时，救场模型可以先试 <code>glm-4-flash</code>。</li>
+          </ol>
+          <p class="note warn">救场模型不是必填。只有你经常遇到坏格式、空回复、标签缺失时，再开启它。</p>
+        </article>
+
+        <article class="card wide">
           <h2>玩家快速决策表</h2>
           <ol class="steps">
             <li>用 Gemini：选择 <code>Gemini模式</code>。</li>
@@ -304,6 +403,10 @@
             <li>DeepSeek 经常缺标签或乱加说明：改成 <code>DeepSeek锁格式</code>，保持 <code>Prefix能力探测</code> 开启。</li>
             <li>DeepSeek 输出经常坏到不能解析：开启 <code>输出健康度检测</code>，必要时配置 <code>稳定救场模型</code>。</li>
             <li>看到思考过程混进正文：关闭 <code>续聊Thinking</code> 和 <code>开局Thinking</code>。</li>
+            <li>用智谱 GLM：先选择 <code>GLM标准</code>。</li>
+            <li>GLM 经常缺标签或格式混乱：改成 <code>GLM锁格式</code>，保持 <code>HTML注释思维链</code> 开启。</li>
+            <li>GLM 输出坏到不能解析：开启 <code>输出健康度检测</code>，必要时配置 <code>GLM稳定救场模型</code>。</li>
+            <li>GLM 思考内容混进正文：关闭 <code>续聊Thinking</code> 和 <code>开局Thinking</code>。</li>
           </ol>
         </article>
       </div>

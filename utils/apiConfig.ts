@@ -49,7 +49,8 @@ export const 请求协议覆盖标签: Record<请求协议覆盖类型, string> 
     openai: 'OpenAI 协议',
     gemini: 'Gemini 协议',
     claude: 'Claude 协议',
-    deepseek: 'DeepSeek 协议'
+    deepseek: 'DeepSeek 协议',
+    glm: '智谱 GLM 协议'
 };
 
 const GPT_IMAGE_2_通用正面提示词 = 'best quality, masterpiece, very aesthetic, amazing quality, highres, absurdres, ultra detailed, 8k, premium quality key visual, cinematic rendering, high-end character key art, polished digital painting, luxury visual quality, delicate skin shading, natural luminous skin, realistic material response, silk gloss, metal highlights, glass-like reflections, jewel-like sparkle, soft glow, dramatic rim lighting, cinematic lighting, volumetric light, atmospheric depth, shallow depth of field, rich color grading, elegant composition, clean composition, immersive atmosphere, refined details, smooth polished rendering, cover art quality, ultra high definition rendering, rich detail, clear subject focus';
@@ -694,6 +695,10 @@ export const 默认功能模型占位: 功能模型占位配置结构 = {
     DeepSeek稳定模型使用模型: '',
     DeepSeek稳定模型API地址: '',
     DeepSeek稳定模型API密钥: '',
+    GLM稳定模型救场开关: false,
+    GLM稳定模型使用模型: '',
+    GLM稳定模型API地址: '',
+    GLM稳定模型API密钥: '',
     剧情回忆独立模型开关: false,
     剧情回忆静默确认: false,
     剧情回忆完整原文条数N: 20,
@@ -1280,7 +1285,7 @@ const 标准化兼容方案 = (value: unknown): OpenAI兼容方案类型 => {
 };
 
 const 标准化协议覆盖 = (value: unknown): 请求协议覆盖类型 => {
-    if (value === 'auto' || value === 'openai' || value === 'gemini' || value === 'claude' || value === 'deepseek') {
+    if (value === 'auto' || value === 'openai' || value === 'gemini' || value === 'claude' || value === 'deepseek' || value === 'glm') {
         return value;
     }
     return 'auto';
@@ -1435,6 +1440,11 @@ const 标准化功能模型占位 = (raw: any): 功能模型占位配置结构 =
         DeepSeek稳定模型使用模型: 读取字符串(raw?.DeepSeek稳定模型使用模型),
         DeepSeek稳定模型API地址: 读取字符串(raw?.DeepSeek稳定模型API地址),
         DeepSeek稳定模型API密钥: 读取字符串(raw?.DeepSeek稳定模型API密钥),
+        GLM稳定模型救场开关: raw?.GLM稳定模型救场开关 === true
+            || String(raw?.GLM稳定模型救场开关).trim().toLowerCase() === 'true',
+        GLM稳定模型使用模型: 读取字符串(raw?.GLM稳定模型使用模型),
+        GLM稳定模型API地址: 读取字符串(raw?.GLM稳定模型API地址),
+        GLM稳定模型API密钥: 读取字符串(raw?.GLM稳定模型API密钥),
         剧情回忆独立模型开关: Boolean(raw?.剧情回忆独立模型开关),
         剧情回忆静默确认: Boolean(raw?.剧情回忆静默确认),
         剧情回忆完整原文条数N: Math.max(1, Number(raw?.剧情回忆完整原文条数N) || 20),

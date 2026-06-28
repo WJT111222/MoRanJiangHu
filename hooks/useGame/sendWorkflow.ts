@@ -1396,6 +1396,8 @@ export const 执行主剧情发送工作流 = async (
             tavernPresetModeEnabled,
             runtimeCotPseudoEnabled,
             deepSeekPrefixMode,
+            glmPrefixMode,
+            glmHTMLCommentThinking,
             lengthRequirementPrompt,
             disclaimerRequirementPrompt,
             outputProtocolPrompt,
@@ -1526,10 +1528,11 @@ export const 执行主剧情发送工作流 = async (
                             validateDialogueFormat: true,
                             requireActionOptionsTag: runtimeGameConfig.启用行动选项 !== false,
                             errorDetailLimit: Number.POSITIVE_INFINITY,
-                            prefixMode: deepSeekPrefixMode,
-                            disableThinking: runtimeGameConfig.DeepSeek策略?.续聊Thinking !== true,
-                            stripReasoning: runtimeGameConfig.DeepSeek策略?.续聊Thinking !== true,
-                            includeReasoning: runtimeGameConfig.DeepSeek策略?.续聊Thinking === true
+                            prefixMode: deepSeekPrefixMode || glmPrefixMode,
+                            disableThinking: (runtimeGameConfig.DeepSeek策略?.续聊Thinking !== true) && (runtimeGameConfig.GLM策略?.续聊Thinking !== true),
+                            stripReasoning: (runtimeGameConfig.DeepSeek策略?.续聊Thinking !== true) && (runtimeGameConfig.GLM策略?.续聊Thinking !== true),
+                            includeReasoning: (runtimeGameConfig.DeepSeek策略?.续聊Thinking === true) || (runtimeGameConfig.GLM策略?.续聊Thinking === true),
+                            glmHTMLCommentThinking: glmHTMLCommentThinking
                         }
                     );
 

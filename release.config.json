@@ -1,17 +1,33 @@
 {
-  "versionCode": 529,
-  "versionName": "1.0.529",
+  "versionCode": 530,
+  "versionName": "1.0.530",
   "releaseChannel": "stable",
-  "releasePublishedAt": "2026-06-28T01:54:08+08:00",
+  "releasePublishedAt": "2026-06-28T11:00:00+08:00",
   "releaseNotes": [
-    "优化 APK 下载分发：新增 GitHub Release 备用下载通道，并内置多个 GitHub 加速代理地址，APK 端会自动测速选择最快路径。",
-    "修复 GitHub Release APK 资产命名，版本包会以 MoRanJiangHu-v版本号.apk 形式发布，便于稳定回溯和代理下载。",
-    "更新下载清单：默认保留 B2/官网代理通道，同时加入 GitHub、GitHub 加速和 OneDrive 备用入口，减少大陆无代理环境下下载失败或过慢的情况。",
+    "新增 GLM 模式专属适配：主剧情消息模式新增「GLM标准续聊」和「GLM锁格式」两个选项，专门为智谱 GLM 系列模型优化。",
+    "GLM HTML 注释思维链：GLM 模式下思维链使用 HTML 注释 <!-- ... --> 替代 <thinking> 标签，避免与 GLM 原生思考机制冲突，系统自动转换识别。",
+    "GLM 稳定救场模型：新增独立 GLM 救场模型配置，锁格式模式多次解析失败时自动切换到救场模型继续生成，减少卡死。",
+    "GLM 策略子面板：支持 HTML 注释思维链开关、开局策略选择、续聊/开局 Thinking 选项、输出健康度阈值调整等完整策略参数。",
+    "智谱供应商自动识别：API 设置选择「智谱」后自动注入 GLM 稳定预设和 glm 协议参数，开箱即用。",
+    "GLM <math> 标签清理：自动清理 GLM 模型可能输出的 <math> 数学公式残留，避免 LaTeX 公式污染正文或干扰标签解析。",
+    "AI 模型模式教程新增 GLM 指引：帮助中心 AI 模式页新增 GLM 标准/锁格式选择建议、HTML 注释思维链原理、Prefix 能力探测说明和稳定救场使用指南。",
     "官网：https://msjh.bacon159.pp.ua/",
-    "备用站：https://msjh.bacon.de5.net/",
-    "同步更新 Web、APK 与更新清单到 v1.0.529。"
+    "备用站：https://msjh.bacon.de5.net/"
   ],
   "releaseHistory": [
+    {
+      "versionName": "1.0.529",
+      "versionCode": 529,
+      "releasePublishedAt": "2026-06-28T01:54:08+08:00",
+      "releaseNotes": [
+        "优化 APK 下载分发：新增 GitHub Release 备用下载通道，并内置多个 GitHub 加速代理地址，APK 端会自动测速选择最快路径。",
+        "修复 GitHub Release APK 资产命名，版本包会以 MoRanJiangHu-v版本号.apk 形式发布，便于稳定回溯和代理下载。",
+        "更新下载清单：默认保留 B2/官网代理通道，同时加入 GitHub、GitHub 加速和 OneDrive 备用入口，减少大陆无代理环境下下载失败或过慢的情况。",
+        "官网：https://msjh.bacon159.pp.ua/",
+        "备用站：https://msjh.bacon.de5.net/",
+        "同步更新 Web、APK 与更新清单到 v1.0.529。"
+      ]
+    },
     {
       "versionName": "1.0.528",
       "versionCode": 528,
@@ -1142,12 +1158,15 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "优化 APK 下载分发：新增 GitHub Release 备用下载通道，并内置多个 GitHub 加速代理地址，APK 端会自动测速选择最快路径。",
-    "修复 GitHub Release APK 资产命名，版本包会以 MoRanJiangHu-v版本号.apk 形式发布，便于稳定回溯和代理下载。",
-    "更新下载清单：默认保留 B2/官网代理通道，同时加入 GitHub、GitHub 加速和 OneDrive 备用入口，减少大陆无代理环境下下载失败或过慢的情况。",
+    "新增 GLM 模式专属适配：主剧情消息模式新增「GLM标准续聊」和「GLM锁格式」两个选项，专门为智谱 GLM 系列模型优化。",
+    "GLM HTML 注释思维链：GLM 模式下思维链使用 HTML 注释 <!-- ... --> 替代 <thinking> 标签，避免与 GLM 原生思考机制冲突，系统自动转换识别。",
+    "GLM 稳定救场模型：新增独立 GLM 救场模型配置，锁格式模式多次解析失败时自动切换到救场模型继续生成，减少卡死。",
+    "GLM 策略子面板：支持 HTML 注释思维链开关、开局策略选择、续聊/开局 Thinking 选项、输出健康度阈值调整等完整策略参数。",
+    "智谱供应商自动识别：API 设置选择「智谱」后自动注入 GLM 稳定预设和 glm 协议参数，开箱即用。",
+    "GLM <math> 标签清理：自动清理 GLM 模型可能输出的 <math> 数学公式残留，避免 LaTeX 公式污染正文或干扰标签解析。",
+    "AI 模型模式教程新增 GLM 指引：帮助中心 AI 模式页新增 GLM 标准/锁格式选择建议、HTML 注释思维链原理、Prefix 能力探测说明和稳定救场使用指南。",
     "官网：https://msjh.bacon159.pp.ua/",
-    "备用站：https://msjh.bacon.de5.net/",
-    "同步更新 Web、APK 与更新清单到 v1.0.529。"
+    "备用站：https://msjh.bacon.de5.net/"
   ],
-  "notes": "优化 APK 下载分发：新增 GitHub Release 备用下载通道，并内置多个 GitHub 加速代理地址，APK 端会自动测速选择最快路径。\n修复 GitHub Release APK 资产命名，版本包会以 MoRanJiangHu-v版本号.apk 形式发布，便于稳定回溯和代理下载。\n更新下载清单：默认保留 B2/官网代理通道，同时加入 GitHub、GitHub 加速和 OneDrive 备用入口，减少大陆无代理环境下下载失败或过慢的情况。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/\n同步更新 Web、APK 与更新清单到 v1.0.529。"
+  "notes": "新增 GLM 模式专属适配：主剧情消息模式新增「GLM标准续聊」和「GLM锁格式」两个选项，专门为智谱 GLM 系列模型优化。\nGLM HTML 注释思维链：GLM 模式下思维链使用 HTML 注释 <!-- ... --> 替代 <thinking> 标签，避免与 GLM 原生思考机制冲突，系统自动转换识别。\nGLM 稳定救场模型：新增独立 GLM 救场模型配置，锁格式模式多次解析失败时自动切换到救场模型继续生成，减少卡死。\nGLM 策略子面板：支持 HTML 注释思维链开关、开局策略选择、续聊/开局 Thinking 选项、输出健康度阈值调整等完整策略参数。\n智谱供应商自动识别：API 设置选择「智谱」后自动注入 GLM 稳定预设和 glm 协议参数，开箱即用。\nGLM <math> 标签清理：自动清理 GLM 模型可能输出的 <math> 数学公式残留，避免 LaTeX 公式污染正文或干扰标签解析。\nAI 模型模式教程新增 GLM 指引：帮助中心 AI 模式页新增 GLM 标准/锁格式选择建议、HTML 注释思维链原理、Prefix 能力探测说明和稳定救场使用指南。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/"
 }

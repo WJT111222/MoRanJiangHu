@@ -86,7 +86,7 @@ const 规范化主剧情消息模式 = (
     value: unknown,
     fallback: 游戏设置结构['主剧情消息模式']
 ): 游戏设置结构['主剧情消息模式'] => (
-    value === 'Gemini模式' || value === 'GPT' || value === 'DeepSeek标准' || value === 'DeepSeek锁格式'
+    value === 'Gemini模式' || value === 'GPT' || value === 'DeepSeek标准' || value === 'DeepSeek锁格式' || value === 'GLM标准' || value === 'GLM锁格式'
         ? value
         : value === 'Gemini默认' || value === '默认'
             ? 'Gemini模式'
@@ -96,6 +96,18 @@ const 规范化主剧情消息模式 = (
 const 默认DeepSeek策略: 游戏设置结构['DeepSeek策略'] = {
     开局策略: '禁止开局',
     启用接管摘要: true,
+    启用Prefix能力探测: true,
+    启用输出健康度检测: true,
+    健康度锁格式阈值: 85,
+    健康度救场阈值: 60,
+    续聊Thinking: false,
+    开局Thinking: false
+};
+
+const 默认GLM策略: 游戏设置结构['GLM策略'] = {
+    开局策略: '禁止开局',
+    启用接管摘要: true,
+    启用HTML注释思维链: true,
     启用Prefix能力探测: true,
     启用输出健康度检测: true,
     健康度锁格式阈值: 85,
@@ -124,6 +136,30 @@ const 规范化DeepSeek策略 = (
     return {
         开局策略: openingStrategy,
         启用接管摘要: 读取布尔(source.启用接管摘要, fallbackSource.启用接管摘要 !== false),
+        启用Prefix能力探测: 读取布尔(source.启用Prefix能力探测, fallbackSource.启用Prefix能力探测 !== false),
+        启用输出健康度检测: 读取布尔(source.启用输出健康度检测, fallbackSource.启用输出健康度检测 !== false),
+        健康度锁格式阈值: 约束百分比(source.健康度锁格式阈值, fallbackSource.健康度锁格式阈值 ?? 85),
+        健康度救场阈值: 约束百分比(source.健康度救场阈值, fallbackSource.健康度救场阈值 ?? 60),
+        续聊Thinking: 读取布尔(source.续聊Thinking, fallbackSource.续聊Thinking === true),
+        开局Thinking: 读取布尔(source.开局Thinking, fallbackSource.开局Thinking === true)
+    };
+};
+
+const 规范化GLM策略 = (
+    value: unknown,
+    fallback: 游戏设置结构['GLM策略'] = 默认GLM策略
+): 游戏设置结构['GLM策略'] => {
+    const source = value && typeof value === 'object'
+        ? value as Partial<游戏设置结构['GLM策略']>
+        : {};
+    const fallbackSource = fallback || 默认GLM策略;
+    const openingStrategy = source.开局策略 === '标准开局' || source.开局策略 === '锁头开局' || source.开局策略 === '禁止开局'
+        ? source.开局策略
+        : fallbackSource.开局策略;
+    return {
+        开局策略: openingStrategy,
+        启用接管摘要: 读取布尔(source.启用接管摘要, fallbackSource.启用接管摘要 !== false),
+        启用HTML注释思维链: 读取布尔(source.启用HTML注释思维链, fallbackSource.启用HTML注释思维链 !== false),
         启用Prefix能力探测: 读取布尔(source.启用Prefix能力探测, fallbackSource.启用Prefix能力探测 !== false),
         启用输出健康度检测: 读取布尔(source.启用输出健康度检测, fallbackSource.启用输出健康度检测 !== false),
         健康度锁格式阈值: 约束百分比(source.健康度锁格式阈值, fallbackSource.健康度锁格式阈值 ?? 85),
@@ -179,6 +215,7 @@ export const 默认游戏设置: 游戏设置结构 = {
     启用GPT模式: false,
     主剧情消息模式: 'Gemini模式',
     DeepSeek策略: 默认DeepSeek策略,
+    GLM策略: 默认GLM策略,
     启用女主剧情规划: true,
     启用防止说话: true,
     启用真实世界模式: false,
@@ -285,6 +322,7 @@ export const 规范化游戏设置 = (
         启用GPT模式: 读取布尔(source.启用GPT模式, fallback.启用GPT模式 === true),
         主剧情消息模式: 规范化主剧情消息模式(source.主剧情消息模式, fallback.主剧情消息模式 || 'Gemini模式'),
         DeepSeek策略: 规范化DeepSeek策略(source.DeepSeek策略, fallback.DeepSeek策略 || 默认DeepSeek策略),
+        GLM策略: 规范化GLM策略(source.GLM策略, fallback.GLM策略 || 默认GLM策略),
         启用女主剧情规划: 读取布尔(source.启用女主剧情规划, fallback.启用女主剧情规划 !== false),
         启用防止说话: 读取布尔(source.启用防止说话, fallback.启用防止说话 !== false),
         启用真实世界模式: 读取布尔(source.启用真实世界模式, fallback.启用真实世界模式 === true),

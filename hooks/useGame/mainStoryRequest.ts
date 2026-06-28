@@ -18,6 +18,7 @@ import { 构建剧情风格助手提示词 } from '../../prompts/runtime/storySt
 import { 构建真实世界模式提示词 } from '../../prompts/runtime/realWorldMode';
 import { 构建运行时额外提示词 } from '../../prompts/runtime/nsfw';
 import { 获取DeepSeek主剧情兼容提示词 } from '../../prompts/runtime/deepseekMode';
+import { 获取GLM主剧情兼容提示词 } from '../../prompts/runtime/glmMode';
 import {
     世界书本体槽位
 } from '../../utils/worldbook';
@@ -84,6 +85,8 @@ export type 主剧情请求构建结果 = {
     runtimeCotPseudoEnabled: boolean;
     deepSeekMode: 游戏设置结构['主剧情消息模式'];
     deepSeekPrefixMode: boolean;
+    glmPrefixMode: boolean;
+    glmHTMLCommentThinking: boolean;
     lengthRequirementPrompt: string;
     disclaimerRequirementPrompt?: string;
     outputProtocolPrompt: string;
@@ -126,9 +129,12 @@ export const 构建主剧情请求参数 = (
     const tavernPresetModeEnabled = 酒馆预设模式可用(runtimeGameConfig);
     const deepSeekMode = runtimeGameConfig.主剧情消息模式;
     const deepSeekMainModeEnabled = deepSeekMode === 'DeepSeek标准' || deepSeekMode === 'DeepSeek锁格式';
-    const runtimeGptMode = runtimeGameConfig.启用GPT模式 === true || runtimeGameConfig.主剧情消息模式 === 'GPT' || deepSeekMainModeEnabled;
-    const runtimeCotPseudoEnabled = deepSeekMainModeEnabled ? false : runtimeGameConfig.启用COT伪装注入 !== false;
+    const glmModeEnabled = deepSeekMode === 'GLM标准' || deepSeekMode === 'GLM锁格式';
+    const runtimeGptMode = runtimeGameConfig.启用GPT模式 === true || runtimeGameConfig.主剧情消息模式 === 'GPT' || deepSeekMainModeEnabled || glmModeEnabled;
+    const runtimeCotPseudoEnabled = (deepSeekMainModeEnabled || glmModeEnabled) ? false : runtimeGameConfig.启用COT伪装注入 !== false;
     const deepSeekPrefixMode = deepSeekMode === 'DeepSeek锁格式' && runtimeGameConfig.DeepSeek策略?.启用Prefix能力探测 !== false;
+    const glmPrefixMode = deepSeekMode === 'GLM锁格式' && runtimeGameConfig.GLM策略?.启用Prefix能力探测 !== false;
+    const glmHTMLCommentThinking = glmModeEnabled && runtimeGameConfig.GLM策略?.启用HTML注释思维链 !== false;
     const lengthRequirementPrompt = params.builtContext.contextPieces.字数要求提示词;
     const disclaimerRequirementPrompt = params.builtContext.contextPieces.免责声明输出提示词 || undefined;
     const outputProtocolPrompt = params.builtContext.contextPieces.输出协议提示词;
@@ -152,6 +158,7 @@ export const 构建主剧情请求参数 = (
         })
         : '';
     const deepSeekModePrompt = 获取DeepSeek主剧情兼容提示词(runtimeGameConfig);
+    const glmModePrompt = 获取GLM主剧情兼容提示词(runtimeGameConfig);
     const traditionalChinesePrompt = 获取繁体输出指令(runtimeGameConfig);
     const cotPseudoPrompt = runtimeCotPseudoEnabled
         ? 构建COT伪装提示词(
@@ -188,12 +195,13 @@ export const 构建主剧情请求参数 = (
 	            latestUserInput: latestUserInputForTavern,
 	            playerName: params.playerRole?.姓名 || '',
 	            playerRole: params.playerRole,
-	            worldbookExtraTexts: [
-	                // 仅保留玩家显式设置的偏好和兼容性项
-	                deepSeekModePrompt,           // DeepSeek 兼容格式（玩家主动选择）
-	                traditionalChinesePrompt,      // 繁体中文输出（玩家主动选择）
-	                tavernRuntimeExtraPrompt,      // 玩家自定义额外提示词
-	            ],
+		            worldbookExtraTexts: [
+		                // 仅保留玩家显式设置的偏好和兼容性项
+		                deepSeekModePrompt,           // DeepSeek 兼容格式（玩家主动选择）
+		                glmModePrompt,                // GLM 兼容格式（玩家主动选择）
+		                traditionalChinesePrompt,      // 繁体中文输出（玩家主动选择）
+		                tavernRuntimeExtraPrompt,      // 玩家自定义额外提示词
+		            ],
 	            overrideStoryAppendPrompt: novelDecompositionPrompt
 	        });
         tavernMessages.forEach((message, index) => {
@@ -261,6 +269,7 @@ export const 构建主剧情请求参数 = (
         pushEntry('style_assistant', '剧情风格助手消息', '系统', 'system', styleAssistantPrompt);
         pushEntry('real_world_mode', '真实世界模式消息', '系统', 'system', realWorldModePrompt);
         pushEntry('deepseek_mode', 'DeepSeek兼容模式', '系统', 'system', deepSeekModePrompt);
+        pushEntry('glm_mode', 'GLM兼容模式', '系统', 'system', glmModePrompt);
         pushEntry('traditional_chinese', '繁体中文输出要求', '系统', 'system', traditionalChinesePrompt);
         pushEntry('extra_prompt', '额外要求提示词', '用户', 'user', normalizedRuntimeExtraPrompt);
         pushEntry('disclaimer_requirement', '免责声明输出要求', '用户', 'user', disclaimerRequirementPrompt || '');
@@ -309,6 +318,16 @@ export const 构建主剧情请求参数 = (
                 { prefix: true }
             );
         }
+        if (glmPrefixMode) {
+            pushEntry(
+                'glm_prefix',
+                'GLM锁格式Prefix',
+                '助手',
+                'assistant',
+                glmHTMLCommentThinking ? '<!-- \n' : '<thinking>\n',
+                { prefix: true }
+            );
+        }
     }
 
     const orderedMessages = messageEntries.map((entry) => ({
@@ -324,6 +343,8 @@ export const 构建主剧情请求参数 = (
         runtimeCotPseudoEnabled,
         deepSeekMode,
         deepSeekPrefixMode,
+        glmPrefixMode,
+        glmHTMLCommentThinking,
         lengthRequirementPrompt,
         disclaimerRequirementPrompt,
         outputProtocolPrompt,

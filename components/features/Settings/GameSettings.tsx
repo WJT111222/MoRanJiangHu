@@ -73,7 +73,9 @@ const GameSettings: React.FC<Props> = ({ settings, onSave, gameInitialTime, curr
         { value: 'Gemini模式', label: 'Gemini模式', description: '沿用项目原始 Gemini 组包方式。' },
         { value: 'GPT', label: 'GPT兼容', description: '最后一条 user 使用真实玩家输入。' },
         { value: 'DeepSeek标准', label: 'DeepSeek标准续聊', description: 'DeepSeek 推荐续聊模式，关闭伪装思考，真实 user 直发。' },
-        { value: 'DeepSeek锁格式', label: 'DeepSeek锁格式', description: '使用 prefix/prefill 锁定 <正文> 开头；接口不支持时会自动回退到标准模式。' }
+        { value: 'DeepSeek锁格式', label: 'DeepSeek锁格式', description: '使用 prefix/prefill 锁定 <正文> 开头；接口不支持时会自动回退到标准模式。' },
+        { value: 'GLM标准', label: 'GLM标准续聊', description: 'GLM/智谱 推荐续聊模式，使用 HTML 注释思维链，关闭伪装思考。' },
+        { value: 'GLM锁格式', label: 'GLM锁格式', description: '锁定 HTML 注释思维链开头；接口不支持时会自动回退到标准模式。' }
     ];
     const 字数不足处理选项: Array<{ value: NonNullable<游戏设置结构['字数不足处理方式']>; label: string; description: string }> = [
         { value: '重新生成', label: '字数不足时重新生成', description: '默认。正文明显短于字数要求时会进入扩写、重试或恢复流程；小幅不足会直接容错提示。' },
@@ -90,7 +92,19 @@ const GameSettings: React.FC<Props> = ({ settings, onSave, gameInitialTime, curr
         续聊Thinking: false,
         开局Thinking: false
     };
+    const 当前GLM策略 = form.GLM策略 || {
+        开局策略: '禁止开局',
+        启用接管摘要: true,
+        启用HTML注释思维链: true,
+        启用Prefix能力探测: true,
+        启用输出健康度检测: true,
+        健康度锁格式阈值: 85,
+        健康度救场阈值: 60,
+        续聊Thinking: false,
+        开局Thinking: false
+    };
     const 当前为DeepSeek模式 = 当前主剧情消息模式 === 'DeepSeek标准' || 当前主剧情消息模式 === 'DeepSeek锁格式';
+    const 当前为GLM模式 = 当前主剧情消息模式 === 'GLM标准' || 当前主剧情消息模式 === 'GLM锁格式';
     const 解析百分比输入 = (value: string, fallback: number): number => {
         const parsed = Number(value);
         if (!Number.isFinite(parsed)) return fallback;
@@ -265,7 +279,7 @@ const GameSettings: React.FC<Props> = ({ settings, onSave, gameInitialTime, curr
                             const nextMode = value as 游戏设置结构['主剧情消息模式'];
                             实时应用更新({
                                 主剧情消息模式: nextMode,
-                                启用GPT模式: nextMode === 'GPT' || nextMode === 'DeepSeek标准' || nextMode === 'DeepSeek锁格式'
+                                启用GPT模式: nextMode === 'GPT' || nextMode === 'DeepSeek标准' || nextMode === 'DeepSeek锁格式' || nextMode === 'GLM标准' || nextMode === 'GLM锁格式'
                             });
                         }
                     })}
@@ -372,7 +386,119 @@ const GameSettings: React.FC<Props> = ({ settings, onSave, gameInitialTime, curr
                             />
                         </div>
                     </div>
-                    <div className="text-xs text-gray-500">稳定模型救场配置在“接口配置中心”的 DeepSeek 稳定救场模型中设置；未配置时会退回稳定提示词救场。</div>
+                    <div className="text-xs text-gray-500">{'稳定模型救场配置在「接口配置中心」的 DeepSeek 稳定救场模型中设置；未配置时会退回稳定提示词救场。'}</div>
+                </div>
+            )}
+
+            {当前为GLM模式 && (
+                <div className="space-y-3 rounded-md border border-green-400/30 bg-green-950/20 p-4">
+                    <div>
+                        <div className="text-sm text-wuxia-gold font-bold">GLM 主线稳定性策略</div>
+                        <div className="text-xs text-gray-400 mt-1">{"针对智谱 GLM 系列模型的兼容优化；使用 HTML 注释思维链替代 <thinking> 标签，避免与 GLM 原生思考机制冲突。"}</div>
+                    </div>
+                    <label className="block space-y-1">
+                        <span className="text-xs text-gray-300">开局策略</span>
+                        <select
+                            value={当前GLM策略.开局策略 || '禁止开局'}
+                            onChange={(event) => 实时应用更新({
+                                GLM策略: {
+                                    ...当前GLM策略,
+                                    开局策略: event.target.value as 游戏设置结构['GLM策略']['开局策略']
+                                }
+                            })}
+                            className="w-full bg-black/50 border border-green-400/30 p-2 text-white outline-none rounded-md"
+                        >
+                            <option value="禁止开局">禁止开局，稳定模型起盘后接管</option>
+                            <option value="标准开局">标准开局</option>
+                            <option value="锁头开局">锁头开局（实验）</option>
+                        </select>
+                    </label>
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="text-xs text-gray-300">接管摘要</div>
+                        <ToggleSwitch
+                            checked={当前GLM策略.启用接管摘要 !== false}
+                            onChange={(next) => 实时应用更新({ GLM策略: { ...当前GLM策略, 启用接管摘要: next } })}
+                            ariaLabel="切换GLM接管摘要"
+                        />
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="text-xs text-gray-300">HTML注释思维链</div>
+                        <ToggleSwitch
+                            checked={当前GLM策略.启用HTML注释思维链 !== false}
+                            onChange={(next) => 实时应用更新({ GLM策略: { ...当前GLM策略, 启用HTML注释思维链: next } })}
+                            ariaLabel="切换GLM HTML注释思维链"
+                        />
+                    </div>
+                    <div className="text-xs text-gray-500">{"启用后，思维链将使用 HTML 注释 <!-- ... --> 替代 <thinking> 标签，避免与 GLM 原生思考机制冲突。"}</div>
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="text-xs text-gray-300">Prefix能力探测</div>
+                        <ToggleSwitch
+                            checked={当前GLM策略.启用Prefix能力探测 !== false}
+                            onChange={(next) => 实时应用更新({ GLM策略: { ...当前GLM策略, 启用Prefix能力探测: next } })}
+                            ariaLabel="切换GLM Prefix能力探测"
+                        />
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="text-xs text-gray-300">输出健康度检测</div>
+                        <ToggleSwitch
+                            checked={当前GLM策略.启用输出健康度检测 !== false}
+                            onChange={(next) => 实时应用更新({ GLM策略: { ...当前GLM策略, 启用输出健康度检测: next } })}
+                            ariaLabel="切换GLM输出健康度检测"
+                        />
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                        <label className="block space-y-1">
+                            <span className="text-xs text-gray-300">锁格式阈值</span>
+                            <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={当前GLM策略.健康度锁格式阈值 ?? 85}
+                                onChange={(event) => 实时应用更新({
+                                    GLM策略: {
+                                        ...当前GLM策略,
+                                        健康度锁格式阈值: 解析百分比输入(event.target.value, 85)
+                                    }
+                                })}
+                                className="w-full bg-black/50 border border-green-400/30 p-2 text-white outline-none rounded-md"
+                            />
+                        </label>
+                        <label className="block space-y-1">
+                            <span className="text-xs text-gray-300">救场阈值</span>
+                            <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={当前GLM策略.健康度救场阈值 ?? 60}
+                                onChange={(event) => 实时应用更新({
+                                    GLM策略: {
+                                        ...当前GLM策略,
+                                        健康度救场阈值: 解析百分比输入(event.target.value, 60)
+                                    }
+                                })}
+                                className="w-full bg-black/50 border border-green-400/30 p-2 text-white outline-none rounded-md"
+                            />
+                        </label>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                        <div className="flex items-center justify-between gap-4 rounded-md border border-green-400/20 bg-black/20 p-3">
+                            <div className="text-xs text-gray-300">续聊Thinking</div>
+                            <ToggleSwitch
+                                checked={当前GLM策略.续聊Thinking === true}
+                                onChange={(next) => 实时应用更新({ GLM策略: { ...当前GLM策略, 续聊Thinking: next } })}
+                                ariaLabel="切换GLM续聊Thinking"
+                            />
+                        </div>
+                        <div className="flex items-center justify-between gap-4 rounded-md border border-green-400/20 bg-black/20 p-3">
+                            <div className="text-xs text-gray-300">开局Thinking</div>
+                            <ToggleSwitch
+                                checked={当前GLM策略.开局Thinking === true}
+                                onChange={(next) => 实时应用更新({ GLM策略: { ...当前GLM策略, 开局Thinking: next } })}
+                                ariaLabel="切换GLM开局Thinking"
+                            />
+                        </div>
+                    </div>
+                    <div className="text-xs text-gray-500">稳定模型救场配置在「接口配置中心」的 GLM 稳定救场模型中设置；未配置时会退回稳定提示词救场。</div>
                 </div>
             )}
 

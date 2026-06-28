@@ -466,6 +466,37 @@ const 提取标签载荷列表_含空内容 = (text: string, tag: string): strin
     return payloads;
 };
 
+/**
+ * 将 GLM HTML 注释思维链 <!-- ... --> 转换为标准 <thinking>...</thinking> 格式，
+ * 使后续解析流程无需感知 GLM 特殊格式。
+ * 仅在文本开头或助手前缀后紧接 <!-- 时触发转换，避免误转正文中的合法 HTML 注释。
+ */
+const 转换HTML注释思维链 = (text: string): string => {
+    if (!text || typeof text !== 'string') return text;
+    // 匹配助手前缀后面的 <!-- ... --> 思维链块
+    // GLM 会用 <!-- --> 包裹思考内容，可能出现在文本开头或 assistant prefix 之后
+    const htmlCommentThinkingRegex = /^(?:<!--\s*)([\s\S]*?)(?:\s*-->\s*\n*)/;
+    const match = text.match(htmlCommentThinkingRegex);
+    if (match) {
+        const thinkingContent = match[1] || '';
+        const rest = text.slice(match[0].length);
+        return `<thinking>\n${thinkingContent.trim()}\n</thinking>\n${rest}`;
+    }
+    return text;
+};
+
+/**
+ * 清理 GLM 模型特有的 <math>...</math> 标签（数学公式残留），
+ * 避免 LaTeX 公式污染正文或干扰标签协议解析。
+ */
+const 清理GLMMath标签 = (text: string): string => {
+    if (!text || typeof text !== 'string') return text;
+    return text
+        .replace(/<math[\s>][\s\S]*?<\/math>/gi, '')
+        .replace(/<math[\s>][\s\S]*?(?=<正文>|<短期记忆>|<命令>|<行动选项>|$)/gi, '')
+        .replace(/<\/math>/gi, '');
+};
+
 export const 提取首尾思考区段 = (text: string): { thinking: string; textWithoutThinking: string; matched: boolean } => {
     const source = typeof text === 'string' ? text : '';
     if (!source) return { thinking: '', textWithoutThinking: '', matched: false };
@@ -1722,16 +1753,18 @@ const 归一化JSON结构响应 = (raw: any): GameResponse => {
 export const parseStoryRawText = (content: string, options?: StoryParseOptions): GameResponse => {
     const parseOptions = 规范化解析选项(options || 默认解析选项);
     const rawText = typeof content === 'string' ? content : '';
+    // 预处理：将 GLM HTML 注释思维链转换为标准 <thinking> 格式
+    const preprocessedText = 转换HTML注释思维链(清理GLMMath标签(rawText));
     const declaredNames = 解析角色名单标签(
-        提取首个标签内容(rawText, '角色名单', { 兼容错误闭合: true })
-        || 提取首个标签内容(rawText, 'rolelist')
-        || 提取首个标签内容(rawText, 'speakers')
-        || 提取首个标签内容(rawText, 'cast')
-        || 提取残缺角色名单标签(rawText)
+        提取首个标签内容(preprocessedText, '角色名单', { 兼容错误闭合: true })
+        || 提取首个标签内容(preprocessedText, 'rolelist')
+        || 提取首个标签内容(preprocessedText, 'speakers')
+        || 提取首个标签内容(preprocessedText, 'cast')
+        || 提取残缺角色名单标签(preprocessedText)
         || '');
     const normalizedText = parseOptions.enableTagRepair
-        ? 修复思考区后半段标签协议文本(rawText)
-        : rawText;
+        ? 修复思考区后半段标签协议文本(preprocessedText)
+        : preprocessedText;
 
     if (parseOptions.validateTagCompleteness) {
         const issues = 检测标签完整性问题(normalizedText, parseOptions);

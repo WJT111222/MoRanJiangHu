@@ -222,6 +222,7 @@ const ApiSettings: React.FC<Props> = ({ settings, onSave }) => {
         return 匹配模型输出推荐(主剧情解析模型);
     }, [主剧情解析模型]);
     const 是否DeepSeek模式 = /deepseek/i.test(主剧情解析模型);
+    const 是否GLM模式 = /glm/i.test(主剧情解析模型);
     const 是否MiMo模式 = activeConfig?.供应商 === 'mimo_api'
         || activeConfig?.供应商 === 'mimo_token_plan'
         || 主剧情BaseUrl.toLowerCase().includes('xiaomimimo.com');
@@ -872,6 +873,81 @@ const ApiSettings: React.FC<Props> = ({ settings, onSave }) => {
                                 }))}
                                 placeholder="留空复用主接口密钥"
                                 className="w-full rounded-md border border-cyan-500/20 bg-black/50 p-3 text-white outline-none transition-all focus:border-cyan-300"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {是否GLM模式 && (
+                <div className="space-y-4 rounded-md border border-green-500/20 bg-green-950/10 p-4">
+                    <div>
+                        <h4 className="font-bold font-serif text-green-200">GLM 稳定救场模型</h4>
+                        <div className="text-[11px] text-gray-400">主线健康度低于救场阈值时使用。可只填模型名并复用当前 Base URL/API Key，也可单独填写地址和密钥。</div>
+                    </div>
+                    <label className="flex items-center justify-between gap-3 text-xs text-gray-300">
+                        <span>启用稳定模型救场</span>
+                        <input
+                            type="checkbox"
+                            checked={form.功能模型占位.GLM稳定模型救场开关 === true}
+                            onChange={(event) => setForm((prev) => ({
+                                ...prev,
+                                功能模型占位: {
+                                    ...prev.功能模型占位,
+                                    GLM稳定模型救场开关: event.target.checked,
+                                    GLM稳定模型使用模型: (prev.功能模型占位.GLM稳定模型使用模型 || '').trim() || 主剧情解析模型 || ''
+                                }
+                            }))}
+                            className="h-4 w-4 accent-green-400"
+                        />
+                    </label>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-300">稳定救场使用模型</label>
+                        <input
+                            type="text"
+                            value={form.功能模型占位.GLM稳定模型使用模型 || ''}
+                            onChange={(event) => setForm((prev) => ({
+                                ...prev,
+                                功能模型占位: {
+                                    ...prev.功能模型占位,
+                                    GLM稳定模型使用模型: event.target.value
+                                }
+                            }))}
+                            placeholder={主剧情解析模型 || '例如 glm-4-flash'}
+                            className="w-full rounded-md border border-green-500/20 bg-black/50 p-3 text-white outline-none transition-all focus:border-green-300"
+                        />
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-300">稳定救场 API 地址（可选）</label>
+                            <input
+                                type="text"
+                                value={form.功能模型占位.GLM稳定模型API地址 || ''}
+                                onChange={(event) => setForm((prev) => ({
+                                    ...prev,
+                                    功能模型占位: {
+                                        ...prev.功能模型占位,
+                                        GLM稳定模型API地址: event.target.value
+                                    }
+                                }))}
+                                placeholder={activeConfig?.baseUrl || '留空复用主接口地址'}
+                                className="w-full rounded-md border border-green-500/20 bg-black/50 p-3 text-white outline-none transition-all focus:border-green-300"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-300">稳定救场 API 密钥（可选）</label>
+                            <input
+                                type="password"
+                                value={form.功能模型占位.GLM稳定模型API密钥 || ''}
+                                onChange={(event) => setForm((prev) => ({
+                                    ...prev,
+                                    功能模型占位: {
+                                        ...prev.功能模型占位,
+                                        GLM稳定模型API密钥: event.target.value
+                                    }
+                                }))}
+                                placeholder="留空复用主接口密钥"
+                                className="w-full rounded-md border border-green-500/20 bg-black/50 p-3 text-white outline-none transition-all focus:border-green-300"
                             />
                         </div>
                     </div>

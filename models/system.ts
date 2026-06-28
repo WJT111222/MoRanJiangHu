@@ -32,13 +32,26 @@ export type 接口供应商类型 = 'gemini' | 'claude' | 'openai' | 'deepseek' 
 
 export type OpenAI兼容方案类型 = 'custom' | 'siliconflow' | 'together' | 'groq';
 
-export type 请求协议覆盖类型 = 'auto' | 'openai' | 'gemini' | 'claude' | 'deepseek';
-export type 主剧情消息模式类型 = 'Gemini模式' | 'GPT' | 'DeepSeek标准' | 'DeepSeek锁格式';
+export type 请求协议覆盖类型 = 'auto' | 'openai' | 'gemini' | 'claude' | 'deepseek' | 'glm';
+export type 主剧情消息模式类型 = 'Gemini模式' | 'GPT' | 'DeepSeek标准' | 'DeepSeek锁格式' | 'GLM标准' | 'GLM锁格式';
 export type DeepSeek开局策略类型 = '禁止开局' | '标准开局' | '锁头开局';
+export type GLM开局策略类型 = '禁止开局' | '标准开局' | '锁头开局';
 
 export interface DeepSeek策略结构 {
     开局策略: DeepSeek开局策略类型;
     启用接管摘要: boolean;
+    启用Prefix能力探测: boolean;
+    启用输出健康度检测: boolean;
+    健康度锁格式阈值: number;
+    健康度救场阈值: number;
+    续聊Thinking: boolean;
+    开局Thinking: boolean;
+}
+
+export interface GLM策略结构 {
+    开局策略: GLM开局策略类型;
+    启用接管摘要: boolean;
+    启用HTML注释思维链: boolean;
     启用Prefix能力探测: boolean;
     启用输出健康度检测: boolean;
     健康度锁格式阈值: number;
@@ -255,6 +268,10 @@ export interface 功能模型占位配置结构 {
     DeepSeek稳定模型使用模型: string;
     DeepSeek稳定模型API地址: string;
     DeepSeek稳定模型API密钥: string;
+    GLM稳定模型救场开关: boolean;
+    GLM稳定模型使用模型: string;
+    GLM稳定模型API地址: string;
+    GLM稳定模型API密钥: string;
     剧情回忆独立模型开关: boolean;
     剧情回忆静默确认: boolean;
     剧情回忆完整原文条数N: number;
@@ -955,6 +972,7 @@ export interface 游戏设置结构 {
     启用GPT模式: boolean; // Main-story normal mode: send current user input directly as the user trigger message
     主剧情消息模式: 主剧情消息模式类型; // Main-story prompt/message compatibility mode
     DeepSeek策略: DeepSeek策略结构; // DeepSeek main-story stability strategy
+    GLM策略: GLM策略结构; // GLM main-story stability strategy
     启用女主剧情规划: boolean; // Inject heroine planning prompts as optional addon
     启用防止说话: boolean; // Inject NoControl prompt to avoid speaking for player
     启用真实世界模式: boolean; // Inject realism guardrails so the world can reject, punish, or kill the protagonist
