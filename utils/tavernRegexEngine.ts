@@ -93,6 +93,7 @@ const 是否包含HTML渲染 = (script: 酒馆正则脚本结构): boolean => {
     const findRegex = script.findRegex || '';
     const replaceString = script.replaceString || '';
     return /<[a-z][\s\S]*?>/i.test(replaceString)
+        || /<!--|<!\s*--?/i.test(replaceString)
         || /<(?:details|summary|html|body|style|script|div|span|button|section|article)\b/i.test(findRegex);
 };
 
@@ -387,7 +388,7 @@ export const 对AI输出执行酒馆正则 = (
     const classifiedScripts = 提取并分类正则脚本(extensions);
     return 执行酒馆正则替换(text, classifiedScripts, {
         placement: 2, // AI_OUTPUT
-        skipSafetyTypes: ['选项渲染'], // 选项栏走单独路径
+        skipSafetyTypes: ['选项渲染', 'HTML美化', 'JS交互', '仍跳过'],
         isMarkdown: options?.isMarkdown ?? true,
         chatDepth: options?.chatDepth,
         macroResolver: options?.macroResolver,

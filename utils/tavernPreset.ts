@@ -84,6 +84,7 @@ const 是否包含HTML渲染 = (script: any): boolean => {
     const findRegex = 读取文本(script?.findRegex);
     const replaceString = 读取文本(script?.replaceString);
     return /<[a-z][\s\S]*?>/i.test(replaceString)
+        || /<!--|<!\s*--?/i.test(replaceString)
         || /<(?:details|summary|html|body|style|script|div|span|button|section|article)\b/i.test(findRegex);
 };
 

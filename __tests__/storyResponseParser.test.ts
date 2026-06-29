@@ -416,6 +416,26 @@ describe('storyResponseParser', () => {
         expect(parsed.logs.map(item => item.text).join('\n')).not.toContain('判定值 22 / 难度 15');
     });
 
+    it('strips HTML comment fragments leaked by tavern presets from body instead of retrying a complete story', () => {
+        const parsed = parseStoryRawText([
+            '<正文>',
+            '【旁白】竹林深处，隐隐有兵刃交击之声和厉喝声顺着湿热的风飘了过来。',
+            '<!',
+            '-- 结尾停留在冲突即将爆发的边缘，留白恰到好处，引人遐想。',
+            '-->',
+            '【旁白】奥姑微微侧过头，帷帽下的双眸中闪过一抹锐利的锋芒。',
+            '</正文>',
+            '<短期记忆>竹林深处传来冲突声，奥姑察觉异样。</短期记忆>'
+        ].join('\n'), { validateDialogueFormat: true });
+
+        const body = parsed.logs.map(item => item.text).join('\n');
+        expect(body).toContain('竹林深处');
+        expect(body).toContain('奥姑微微侧过头');
+        expect(body).not.toContain('<!');
+        expect(body).not.toContain('-->');
+        expect(body).not.toContain('结尾停留');
+    });
+
     it('parses <角色名单> tag and passes declared names to dialogue validation', () => {
         const parsed = parseStoryRawText([
             '<角色名单>',

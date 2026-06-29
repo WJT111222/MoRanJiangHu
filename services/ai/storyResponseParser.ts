@@ -349,7 +349,54 @@ const 清理正文残留协议内容 = (body: string): string => {
         if (isNonBodyProtocolHeader) break;
         lines.push(rawLine);
     }
-    return 清理正文初始化泄露内容(lines.join('\n')).trim();
+    return 清理正文初始化泄露内容(清理正文HTML注释残片(lines.join('\n'))).trim();
+};
+
+const 清理正文HTML注释残片 = (body: string): string => {
+    const source = (body || '').replace(/\r\n/g, '\n');
+    if (!source.trim()) return '';
+    const result: string[] = [];
+    let inComment = false;
+
+    for (const rawLine of source.split('\n')) {
+        let line = rawLine;
+        let guard = 0;
+        while (line.length > 0 && guard < 20) {
+            guard += 1;
+            if (inComment) {
+                const endIndex = line.indexOf('-->');
+                if (endIndex < 0) {
+                    line = '';
+                    break;
+                }
+                line = line.slice(endIndex + 3);
+                inComment = false;
+                continue;
+            }
+
+            const htmlCommentStart = line.search(/<!--|<!\s*$/);
+            if (htmlCommentStart < 0) break;
+            const before = line.slice(0, htmlCommentStart);
+            const afterStart = line.slice(htmlCommentStart);
+            const endIndex = afterStart.indexOf('-->');
+            if (endIndex < 0) {
+                line = before;
+                inComment = true;
+                break;
+            }
+            line = `${before}${afterStart.slice(endIndex + 3)}`;
+        }
+
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        if (/^--(?:\s|>|$)/.test(trimmed)) {
+            inComment = !trimmed.includes('-->');
+            continue;
+        }
+        result.push(line);
+    }
+
+    return result.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 };
 
 const 初始化泄露标题规则 = /^(?:#{1,6}\s*)?\d+[.、]\s*(角色初始化|环境初始化|社交初始化|门派与任务初始化)(?:\s*[（(][^）)]*[）)])?\s*[:：]?\s*$/;
