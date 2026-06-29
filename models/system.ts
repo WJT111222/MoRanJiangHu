@@ -921,12 +921,85 @@ export interface WorldMapDiyDraft {
 
 export type SaveType = 'manual' | 'auto';
 
+/** 正则脚本放置位置（与 SillyTavern regex_placement 枚举对齐） */
+export type 酒馆正则放置位置 =
+    | 0  // MD_DISPLAY (DEPRECATED)
+    | 1  // USER_INPUT — 对用户输入执行
+    | 2  // AI_OUTPUT — 对 AI 输出执行
+    | 3  // SLASH_COMMAND — 对斜杠命令输出执行
+    | 5  // WORLD_INFO — 对世界书条目执行
+    | 6; // REASONING — 对推理/思维块执行
+
+/** 正则脚本宏替换模式（与 SillyTavern substitute_find_regex 枚举对齐） */
+export type 酒馆正则宏替换模式 =
+    | 0  // NONE — 不做宏替换
+    | 1  // RAW — 原始替换
+    | 2; // ESCAPED — 转义后替换
+
+/** 正则脚本数据结构（与 SillyTavern RegexScriptData 对齐） */
+export interface 酒馆正则脚本结构 {
+    id: string;
+    scriptName: string;
+    findRegex: string;
+    replaceString: string;
+    trimStrings: string[];
+    placement: 酒馆正则放置位置[];
+    disabled: boolean;
+    markdownOnly: boolean;
+    promptOnly: boolean;
+    runOnEdit: boolean;
+    substituteRegex: 酒馆正则宏替换模式;
+    minDepth: number;
+    maxDepth: number;
+}
+
+/** 正则脚本安全分类（5 级） */
+export type 酒馆正则脚本安全类型 =
+    | '安全清理'     // 纯正则替换，不含 HTML/JS
+    | '选项渲染'     // 匹配 <options>/<branches> 并渲染选项按钮
+    | 'HTML美化'     // 包含 HTML 但不含 <script>/JS
+    | 'JS交互'       // 含 <script>/JS/DOM 操作，但可桥接到沙箱 iframe 渲染
+    | '仍跳过';      // 含不可桥接操作（外部脚本加载/网络请求/复杂存储 API），完全跳过
+
+/** 正则脚本在本项目中的执行状态 */
+export type 酒馆正则脚本执行状态 =
+    | '已安全执行'       // 安全清理脚本：正则替换已直接执行
+    | '已适配为选项按钮'  // 选项渲染脚本：转为本项目的安全回合按钮
+    | 'HTML美化已执行'    // HTML 美化：正则替换执行，HTML 由渲染器安全处理
+    | 'iframe沙箱已渲染'  // JS 交互脚本：正则替换执行，产出在沙箱 iframe 中渲染
+    | '已跳过';           // 仍跳过脚本：含不可桥接操作，完全跳过
+
+/** 带安全分类的正则脚本条目 */
+export interface 酒馆正则脚本分类条目 {
+    script: 酒馆正则脚本结构;
+    safetyType: 酒馆正则脚本安全类型;
+    /** 本项目中该脚本的实际执行状态 */
+    executionStatus?: 酒馆正则脚本执行状态;
+}
+
+/** 沙箱 iframe 与 React 之间的桥接动作协议 */
+export type 酒馆沙箱动作类型 = 'inject_text' | 'send_text' | 'resize' | 'get_theme' | 'ready';
+
+export interface 酒馆沙箱动作 {
+    type: 'tavern_sandbox';
+    action: 酒馆沙箱动作类型;
+    /** inject_text/send_text 时为要注入/发送的文本 */
+    value?: string;
+    /** resize 时为请求的 iframe 高度（px） */
+    height?: number;
+}
+
 export interface 酒馆预设提示词结构 {
     identifier: string;
     name?: string;
     role: 酒馆预设消息角色类型;
     content: string;
     system_prompt?: boolean;
+    marker?: boolean;
+    injection_position?: number;   // 0=相对, 1=绝对深度
+    injection_depth?: number;
+    injection_order?: number;
+    enabled?: boolean;
 }
 
 export interface 酒馆预设顺序项结构 {
@@ -939,13 +1012,92 @@ export interface 酒馆预设顺序结构 {
     order: 酒馆预设顺序项结构[];
 }
 
+/** Instruct 模板结构（与 SillyTavern Instruct Mode 对齐） */
+export interface Instruct模板结构 {
+    name: string;
+    input_sequence: string;
+    output_sequence: string;
+    input_suffix: string;
+    output_suffix: string;
+    system_sequence: string;
+    system_suffix: string;
+    stop_sequence: string;
+    wrap: boolean;
+    macro: boolean;
+    names_behavior: 'force' | 'surround' | 'none';
+    activation_regex?: string;
+    first_input_sequence?: string;
+    first_output_sequence?: string;
+    last_input_sequence?: string;
+    last_output_sequence?: string;
+    last_system_sequence?: string;
+    story_string_prefix?: string;
+    story_string_suffix?: string;
+    skip_examples?: boolean;
+    user_alignment_message?: string;
+    system_same_as_user?: boolean;
+    sequences_as_stop_strings?: boolean;
+}
+
+/** Context 模板结构（与 SillyTavern Context Template 对齐） */
+export interface Context模板结构 {
+    name: string;
+    story_string: string;
+    example_separator: string;
+    chat_start: string;
+    use_stop_strings?: boolean;
+    names_as_stop_strings?: boolean;
+    story_string_position?: number;
+    story_string_depth?: number;
+    story_string_role?: number;
+    always_force_name2?: boolean;
+    trim_sentences?: boolean;
+    single_line?: boolean;
+}
+
+/** 系统提示词模板结构（与 SillyTavern System Prompt Preset 对齐） */
+export interface SystemPrompt模板结构 {
+    name: string;
+    content: string;
+    post_history: string;
+}
+
+/** Reasoning 格式模板结构（与 SillyTavern Reasoning Template 对齐） */
+export interface Reasoning模板结构 {
+    name: string;
+    prefix: string;
+    suffix: string;
+    separator: string;
+}
+
+/** 预设内含的生成参数（从 OpenAI preset 中提取） */
+export interface 酒馆预设生成参数结构 {
+    temperature?: number;
+    top_p?: number;
+    top_k?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
+    repetition_penalty?: number;
+    max_tokens?: number;
+    max_context?: number;
+    stream?: boolean;
+    assistant_prefill?: string;
+    continue_prefill?: boolean;
+    custom_prompt_post_processing?: string;
+}
+
 export interface 酒馆预设兼容性结构 {
     正则脚本总数: number;
     安全清理脚本数: number;
     选项渲染脚本数: number;
     仅保留元数据脚本数: number;
-    跳过脚本数: number;
+    HTML美化脚本数: number;
+    JS交互脚本数: number;
+    仍跳过脚本数: number;
+    /** @deprecated 使用 仍跳过脚本数 代替 */
+    危险跳过脚本数: number;
     说明: string[];
+    已分类脚本列表?: 酒馆正则脚本分类条目[];
 }
 
 export interface 酒馆预设结构 {
@@ -953,6 +1105,11 @@ export interface 酒馆预设结构 {
     prompt_order: 酒馆预设顺序结构[];
     extensions?: Record<string, unknown>;
     兼容性?: 酒馆预设兼容性结构;
+    instruct?: Instruct模板结构;
+    context?: Context模板结构;
+    sysprompt?: SystemPrompt模板结构;
+    reasoning?: Reasoning模板结构;
+    generationParams?: 酒馆预设生成参数结构;
 }
 
 export interface 酒馆预设条目结构 {

@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { JudgmentThoughtBlock, NPC结构, 视觉设置结构 } from '../../../types';
+import type { 酒馆沙箱动作 } from '../../../models/system';
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
 import { 构建区域文字样式 } from '../../../utils/visualSettings';
 import { 获取图片展示地址, 获取图片资源文本地址 } from '../../../utils/imageAssets';
@@ -8,6 +9,9 @@ import { 根据差额校正判定结果 } from '../../../utils/judgmentFormat';
 import { 获取物品已选图标地址 } from '../../../utils/itemImage';
 import { getRarityNameClass, getRarityStyles } from '../../ui/rarityStyles';
 import { IconHeart, IconEye, IconBattery, IconShield, IconCompass, IconExplosion, IconDice, IconCoins } from '../../ui/Icons';
+
+// 懒加载沙箱 iframe 组件（非酒馆模式零开销）
+const SandboxedCard = lazy(() => import('./SandboxedCard'));
 
 type JudgmentModifier = {
     key: string;
@@ -1189,4 +1193,67 @@ export const JudgmentRenderer: React.FC<{ text: string; thoughtBlock?: JudgmentT
             {isCrit && <div className={`absolute inset-0 w-full sm:w-11/12 md:w-5/6 lg:w-3/4 mx-auto rounded-xl bg-gradient-to-r ${isNsfw ? 'from-pink-500/20' : 'from-wuxia-gold/20'} to-transparent blur-md -z-10`}></div>}
         </div>
     );
+};
+
+// ─── 酒馆预设 HTML 渲染器 ───
+
+/** 沙箱 iframe 加载中的占位 UI */
+const SandboxedCardSkeleton: React.FC = () => (
+    <div className="w-full my-1 px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg animate-pulse">
+        <div className="h-4 bg-white/10 rounded w-3/4 mb-2" />
+        <div className="h-4 bg-white/10 rounded w-1/2" />
+    </div>
+);
+
+/**
+ * 酒馆预设 HTML 内容渲染器
+ *
+ * 根据 htmlRenderMode 选择渲染方式：
+ * - 'sandbox': 含 <script> 的 JS 交互产出 → 沙箱 iframe
+ * - 'purify': 仅 HTML 美化产出 → DOMPurify 清洗后 dangerouslySetInnerHTML
+ */
+export const TavernHtmlRenderer: React.FC<{
+    /** DOMPurify 清洗后的安全 HTML */
+    htmlContent: string;
+    /** 渲染模式 */
+    htmlRenderMode: 'sandbox' | 'purify';
+    /** 沙箱桥接动作回调 */
+    onTavernAction?: (action: 酒馆沙箱动作) => void;
+    /** 额外 CSS 类名 */
+    className?: string;
+}> = ({ htmlContent, htmlRenderMode, onTavernAction, className = '' }) => {
+    // 沙箱 iframe 模式（含 JS 交互）
+    if (htmlRenderMode === 'sandbox' && onTavernAction) {
+        return (
+            <Suspense fallback={<SandboxedCardSkeleton />}>
+                <SandboxedCard
+                    htmlContent={htmlContent}
+                    onAction={onTavernAction}
+                    className={className}
+                />
+            </Suspense>
+        );
+    }
+
+    // DOMPurify 清洗后的安全 HTML 渲染
+    if (htmlRenderMode === 'purify') {
+        return (
+            <div
+                className={`tavern-html-content w-full my-1 px-4 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg prose prose-invert prose-sm max-w-none ${className}`}
+                dangerouslySetInnerHTML={{ __html: htmlContent }}
+            />
+        );
+    }
+
+    // fallback: 沙箱模式但没有 onTavernAction，降级为文本显示
+    if (htmlRenderMode === 'sandbox') {
+        return (
+            <div className="tavern-html-fallback w-full my-1 px-4 py-2 bg-white/5 backdrop-blur-sm border border-amber-500/30 rounded-lg">
+                <p className="text-[11px] text-amber-400/80 mb-1">🔗 酒馆 JS 交互卡片（桥接未连接）</p>
+                <pre className="text-xs text-gray-300/60 whitespace-pre-wrap max-h-32 overflow-auto">{htmlContent}</pre>
+            </div>
+        );
+    }
+
+    return null;
 };

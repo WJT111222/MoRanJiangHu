@@ -1987,6 +1987,35 @@ const App: React.FC = () => {
         setChatDraftRequest({ text: draft, token: chatDraftTokenRef.current });
         actions.pushNotification({ title: '已写入输入框', message: '行动文本已放入对话框，可直接发送或继续编辑。', tone: 'success' });
     }, [actions]);
+
+    // ─── 酒馆沙箱桥接回调 ───
+    const handleTavernAction = React.useCallback((action: { type: string; action: string; value?: string; height?: number }) => {
+        if (action.type !== 'tavern_sandbox') return;
+        switch (action.action) {
+            case 'inject_text':
+                // 注入文本到输入框（不立即发送）
+                if (action.value) insertChatDraft(action.value);
+                break;
+            case 'send_text':
+                // 注入文本并立即发送
+                if (action.value) {
+                    chatDraftTokenRef.current += 1;
+                    setChatDraftRequest({ text: action.value, token: chatDraftTokenRef.current });
+                    // 延迟发送让 InputArea 先接收 draft
+                    setTimeout(() => {
+                        const sendBtn = document.querySelector('[data-send-button]') as HTMLButtonElement | null;
+                        sendBtn?.click();
+                    }, 100);
+                }
+                break;
+            case 'resize':
+            case 'get_theme':
+            case 'ready':
+                // 这些由 SandboxedCard 组件内部处理，App 层不需要额外逻辑
+                break;
+        }
+    }, [insertChatDraft]);
+
     const handleLearnSectBook = React.useCallback((book: any) => {
         if (!book?.id) return;
         const currentSkills = Array.isArray(state.角色?.功法列表) ? state.角色.功法列表 : [];
@@ -3225,6 +3254,7 @@ const App: React.FC = () => {
                                     suppressAutoScrollToken={meta.chatScrollSuppressToken}
                                     forceScrollToken={meta.chatForceScrollToken}
                                     variableGenerationRunning={meta.variableGenerationRunning}
+                                    onTavernAction={handleTavernAction}
                                 />
                                 <InputArea 
                                     onSend={actions.handleSend} 

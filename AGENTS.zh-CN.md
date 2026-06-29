@@ -99,7 +99,7 @@
 - Cloudflare 运行时密钥应通过 `npm run cf:secrets:bulk -- .env.production` 或单个 `wrangler secret put ...` 命令设置。
 - 每次环境变量新增、删除或修改后，都要刷新本机 `.env.production`，重新加密，并把加密包同步到对象存储。
 - `wrangler.jsonc` 只放绑定和非敏感变量，例如 KV 绑定、键名前缀、静态资源绑定、公开仓库默认值；不要把运行时密钥写进 `wrangler.jsonc`。
-- 当前需要的 Cloudflare secrets 包括 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`、`GITHUB_NATIVE_CLIENT_ID`、`GITHUB_NATIVE_CLIENT_SECRET`、`FANDOM_PRESET_GITHUB_TOKEN`、`IMAGE_HOST_TOKEN`、`MORAN_OPENLIST_AUTH_TOKEN` 和 `ONLINE_ADMIN_PASSWORD`。
+- 当前需要的 Cloudflare secrets 包括 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`、`GITHUB_NATIVE_CLIENT_ID`、`GITHUB_NATIVE_CLIENT_SECRET`、`FANDOM_PRESET_GITHUB_TOKEN`、`IMAGE_HOST_TOKEN`、`MORAN_OPENLIST_AUTH_TOKEN`、`ONLINE_ADMIN_PASSWORD`、`MORAN_B2_APPLICATION_KEY_ID`、`MORAN_B2_APPLICATION_KEY` 和 `MORAN_B2_BUCKET_ID`。
 - 当前公开前端构建变量包括 `VITE_GITHUB_CLIENT_ID`、`VITE_GITHUB_NATIVE_CLIENT_ID`、`VITE_SYNC_API_BASE_URL`。
 
 ## 根因级 Bug 修复规则
@@ -818,14 +818,14 @@ curl -X PUT "https://openlist.bacon.de5.net/api/fs/put" \
   - MiMo 修改后，Codex 必须审查 diff，检查是否有无关改动或密钥泄露，运行必要测试/构建，并在汇报完成前直接修复残留问题。
   - 部署或发布工作只能在用户明确要求“部署/发布/上线”后委派；Codex 仍必须监督并执行本项目的发布、备份、验证和禁止自动部署规则。
 
-## APK 分发架构总览（截至 2026-06-27，更新于 2026-06-27）
+## APK 分发架构总览（截至 2026-06-29，更新于 2026-06-29）
 
 ### 概述
 
 APK 分发系统采用两层架构：
 
 1. **Cloudflare KV** — 存储 release manifest（`release-manifest/latest.json`），作为版本元数据（versionName、versionCode、releaseNotes 等）的唯一真实来源。
-2. **B2 (f004.backblazeb2.com)** — 主 APK 二进制托管。使用 Backblaze 原始下载 URL `https://f004.backblazeb2.com/file/bacon111/{key}`。国内无代理直连测速约 11 MB/s，远超 EdgeOne CDN 镜像（`obs1.cc.cd` / `obs1.bacon159.pp.ua`）的约 0.6 MB/s。
+2. **B2 (f004.backblazeb2.com)** — 主 APK 二进制托管。B2 桶 `bacon111` 已改为 **allPrivate**（私有）；下载需要通过 `b2_authorize_account` + `b2_get_download_authorization` 获取授权令牌。Worker 获取令牌（全局缓存）后 302 重定向用户到带 `?Authorization=xxx` 的 B2 URL。这保留了完整 B2 CDN 速度（国内约 11 MB/s），同时桶仍为私有。
 3. **OneDrive 经 OpenList 代理** — 备用 APK 二进制托管。下载通过 `openlist.bacon.de5.net/p/` 使用签名 URL 代理。APK 文件存储在 `/Onedrive/MoRanJiangHu/releases/latest.apk`。
 
 **已停用渠道**：hi168 S3（2026-06-28）、Cloudflare R2（完全停用，包括旧版 manifest 路径）。
@@ -833,8 +833,19 @@ APK 分发系统采用两层架构：
 ### APK 下载流程
 
 - `GET /api/apk/latest.json` — 从 KV 读取 manifest，动态构建 `apkUrls` 数组：默认 URL、稳定版本 URL、B2 URL 和 OneDrive URL（`?provider=onedrive`）。
-- `GET /api/apk/latest.apk` — 默认下载，重定向到 B2 或 OneDrive（经 OpenList 代理）。
-- `GET /api/apk/version/{file}` — 带版本号下载，重定向到 B2 或 OneDrive（经 OpenList 代理）。
+- `GET /api/apk/latest.apk` — 默认下载：Worker 获取 B2 下载授权令牌，然后 302 重定向到授权 B2 URL。使用 `?provider=onedrive` 时回退到 OneDrive。
+- `GET /api/apk/version/{file}` — 带版本号下载：同样的 B2 授权重定向逻辑。
+
+### B2 授权下载（私有桶）
+
+B2 桶于 2026-06-29 从公开切换为 `allPrivate`。直接友好 URL 现在返回 401。
+
+**授权流程**（在 `functions/api/apk/_shared.ts` 中）：
+1. `authorizeB2Account()` — 用 `MORAN_B2_APPLICATION_KEY_ID` + `MORAN_B2_APPLICATION_KEY` 调用 `b2_authorize_account`。结果全局缓存 23 小时。
+2. `getB2DownloadAuthorization(prefix)` — 用 `MORAN_B2_BUCKET_ID` 调用 `b2_get_download_authorization`。结果全局缓存到过期前 1 分钟（最长 1 小时）。
+3. `buildB2ApkRedirect()` — 在 B2 友好 URL 后追加 `?Authorization={token}` 并返回 302 重定向。
+
+当 B2 密钥缺失时，回退到旧的公开桶 302 重定向（向后兼容）。
 
 ### Cloudflare Secrets（当前）
 
@@ -844,6 +855,9 @@ APK 分发系统采用两层架构：
 - `IMAGE_HOST_TOKEN` — 图床鉴权
 - `MORAN_OPENLIST_AUTH_TOKEN` — OpenList/AList API token，用于 OneDrive 代理
 - `ONLINE_ADMIN_PASSWORD` — 在线管理面板访问
+- `MORAN_B2_APPLICATION_KEY_ID` — Backblaze B2 应用密钥 ID，用于授权 APK 下载
+- `MORAN_B2_APPLICATION_KEY` — Backblaze B2 应用密钥，用于授权 APK 下载
+- `MORAN_B2_BUCKET_ID` — Backblaze B2 桶 ID（`bacon111` 对应 `d272e1a35f86fc9296e0061d`）
 
 ### OneDrive 数据布局
 
@@ -867,4 +881,4 @@ APK 分发系统采用两层架构：
 
 ### 向其他 AI 助手分享此架构
 
-在让另一个 AI 助手（Cursor、Claude 等）参与本项目的文件分发或发布流程时，分享本文件中的"APK 分发架构总览（截至 2026-06-27，更新于 2026-06-27）"章节。它涵盖完整架构：KV manifest、B2 + OneDrive 双渠道、下载流程、Secrets 列表和 OneDrive 数据布局。
+在让另一个 AI 助手（Cursor、Claude 等）参与本项目的文件分发或发布流程时，分享本文件中的"APK 分发架构总览（截至 2026-06-29，更新于 2026-06-29）"章节。它涵盖完整架构：KV manifest、B2 授权下载（私有桶）、OneDrive 渠道、下载流程、Secrets 列表和 OneDrive 数据布局。

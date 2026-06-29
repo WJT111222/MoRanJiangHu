@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { 游戏设置结构, 酒馆预设结构 } from '../../../types';
+import { 游戏设置结构, 酒馆预设结构, 接口设置结构, 酒馆正则脚本执行状态 } from '../../../types';
 import ToggleSwitch from '../../ui/ToggleSwitch';
 import GameButton from '../../ui/GameButton';
 import { parseJsonWithRepair } from '../../../utils/jsonRepair';
@@ -10,6 +10,9 @@ import { 内置酒馆预设列表, 加载内置酒馆预设 } from '../../../dat
 interface Props {
     settings: 游戏设置结构;
     onSave: (settings: 游戏设置结构) => void;
+    /** 可选的接口配置，用于"应用预设参数"按钮 */
+    apiConfig?: 接口设置结构;
+    onSaveApi?: (config: 接口设置结构) => void;
 }
 
 const 生成预设ID = (): string => `preset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -25,7 +28,7 @@ const 解析角色ID = (preset: 酒馆预设结构 | null | undefined, value: un
     return 获取酒馆预设顺序(preset, null)?.character_id ?? null;
 };
 
-const TavernPresetSettings: React.FC<Props> = ({ settings, onSave }) => {
+const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, onSaveApi }) => {
     const [form, setForm] = useState<游戏设置结构>(settings);
     const [showOnlyEnabled, setShowOnlyEnabled] = useState(false);
     const [expandedItemKey, setExpandedItemKey] = useState<string | null>(null);
@@ -178,6 +181,54 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave }) => {
         更新当前条目({ 预设: nextPreset });
     };
 
+    /** 切换正则脚本的 disabled 状态 */
+    const 切换正则脚本启用 = (scriptId: string, disabled: boolean) => {
+        const currentPreset = selectedEntry?.预设 || null;
+        if (!currentPreset) return;
+
+        // 1. 更新 extensions.regex_scripts 中的原始脚本 disabled 字段
+        let nextExtensions = currentPreset.extensions;
+        if (nextExtensions) {
+            const ext = { ...nextExtensions } as Record<string, unknown>;
+            const scripts = (ext as any)?.regex_scripts;
+            if (Array.isArray(scripts)) {
+                const nextScripts = scripts.map((s: any) => {
+                    if (s?.id !== scriptId) return s;
+                    return { ...s, disabled };
+                });
+                ext.regex_scripts = nextScripts;
+                nextExtensions = ext;
+            }
+        }
+
+        // 2. 更新兼容性.已分类脚本列表 中对应脚本的 disabled 字段
+        let nextCompat = currentPreset.兼容性;
+        if (nextCompat?.已分类脚本列表) {
+            nextCompat = {
+                ...nextCompat,
+                已分类脚本列表: nextCompat.已分类脚本列表.map((entry) => {
+                    if (entry.script.id !== scriptId) return entry;
+                    return {
+                        ...entry,
+                        script: { ...entry.script, disabled },
+                    };
+                }),
+            };
+        }
+
+        // 3. 更新统计数字
+        const allScripts = nextCompat?.已分类脚本列表 || [];
+        const disabledCount = allScripts.filter(e => e.script.disabled).length;
+        const enabledCount = allScripts.length - disabledCount;
+
+        const nextPreset: 酒馆预设结构 = {
+            ...currentPreset,
+            ...(nextExtensions ? { extensions: nextExtensions } : {}),
+            ...(nextCompat ? { 兼容性: nextCompat } : {}),
+        };
+        更新当前条目({ 预设: nextPreset });
+    };
+
     const 更新当前条目名称 = (value: string) => {
         const nextName = value.trim();
         if (!selectedEntry || !nextName || nextName === selectedEntry.名称) return;
@@ -244,6 +295,49 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave }) => {
         const safeName = (selectedEntry?.名称 || 'tavern_preset').replace(/[\\/:*?"<>|]+/g, '_');
         导出JSON文件(`${safeName}.json`, preset);
         setMessage('当前酒馆预设已导出。');
+    };
+
+    /** 导出为 SillyTavern Master Export 格式 */
+    const 导出MasterExport格式 = () => {
+        if (!preset) {
+            setMessage('没有可导出的预设。');
+            return;
+        }
+        const safeName = (selectedEntry?.名称 || 'tavern_preset').replace(/[\\/:*?"<>|]+/g, '_');
+        const masterExport: Record<string, unknown> = {};
+
+        // 核心预设（prompts + prompt_order + extensions + generationParams）
+        const presetCore: Record<string, unknown> = {
+            prompts: preset.prompts,
+            prompt_order: preset.prompt_order,
+        };
+        if (preset.extensions) presetCore.extensions = preset.extensions;
+        if (preset.generationParams) {
+            // 还原为原始字段名
+            const gp = preset.generationParams;
+            if (gp.temperature !== undefined) presetCore.temperature = gp.temperature;
+            if (gp.top_p !== undefined) presetCore.top_p = gp.top_p;
+            if (gp.top_k !== undefined) presetCore.top_k = gp.top_k;
+            if (gp.frequency_penalty !== undefined) presetCore.frequency_penalty = gp.frequency_penalty;
+            if (gp.presence_penalty !== undefined) presetCore.presence_penalty = gp.presence_penalty;
+            if (gp.repetition_penalty !== undefined) presetCore.repetition_penalty = gp.repetition_penalty;
+            if (gp.max_tokens !== undefined) presetCore.openai_max_tokens = gp.max_tokens;
+            if (gp.max_context !== undefined) presetCore.openai_max_context = gp.max_context;
+            if (gp.stream !== undefined) presetCore.stream_openai = gp.stream;
+            if (gp.assistant_prefill !== undefined) presetCore.assistant_prefill = gp.assistant_prefill;
+            if (gp.continue_prefill !== undefined) presetCore.continue_prefill = gp.continue_prefill;
+            if (gp.custom_prompt_post_processing !== undefined) presetCore.custom_prompt_post_processing = gp.custom_prompt_post_processing;
+        }
+        masterExport.preset = presetCore;
+
+        // 子模板
+        if (preset.instruct) masterExport.instruct = preset.instruct;
+        if (preset.context) masterExport.context = preset.context;
+        if (preset.sysprompt) masterExport.sysprompt = preset.sysprompt;
+        if (preset.reasoning) masterExport.reasoning = preset.reasoning;
+
+        导出JSON文件(`${safeName}_MasterExport.json`, masterExport);
+        setMessage('已导出 Master Export 格式（含 Instruct/Context/Sysprompt/Reasoning 模板）。');
     };
 
     const 删除当前预设 = () => {
@@ -355,6 +449,15 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave }) => {
                         disabled={!preset}
                     >
                         导出当前预设
+                    </GameButton>
+                    <GameButton
+                        onClick={导出MasterExport格式}
+                        variant="secondary"
+                        className="px-4 py-2 text-xs"
+                        disabled={!preset}
+                        title="导出为 SillyTavern Master Export 格式，包含 Instruct/Context/Sysprompt/Reasoning 模板"
+                    >
+                        Master Export
                     </GameButton>
                     <GameButton
                         onClick={删除当前预设}
@@ -479,30 +582,310 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave }) => {
             {preset?.兼容性 && (
                 <div className="rounded-md border border-wuxia-cyan/25 bg-wuxia-cyan/5 p-3 space-y-2">
                     <div className="text-xs font-bold text-wuxia-cyan">酒馆预设兼容状态</div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] text-gray-300">
-                        <div className="rounded border border-gray-700/70 bg-black/30 p-2">
-                            <div className="text-gray-500">正则脚本</div>
-                            <div className="text-wuxia-gold font-bold">{preset.兼容性.正则脚本总数}</div>
-                        </div>
-                        <div className="rounded border border-gray-700/70 bg-black/30 p-2">
-                            <div className="text-gray-500">安全清理</div>
-                            <div className="text-sky-300 font-bold">{preset.兼容性.安全清理脚本数}</div>
-                        </div>
-                        <div className="rounded border border-gray-700/70 bg-black/30 p-2">
-                            <div className="text-gray-500">安全选项栏</div>
-                            <div className="text-emerald-300 font-bold">{preset.兼容性.选项渲染脚本数}</div>
-                        </div>
-                        <div className="rounded border border-gray-700/70 bg-black/30 p-2">
-                            <div className="text-gray-500">仅保留不执行</div>
-                            <div className="text-amber-300 font-bold">{preset.兼容性.仅保留元数据脚本数}</div>
-                        </div>
-                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-7 gap-2 text-[11px] text-gray-300">
+	                        <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+	                            <div className="text-gray-500">正则脚本</div>
+	                            <div className="text-wuxia-gold font-bold">{preset.兼容性.正则脚本总数}</div>
+	                        </div>
+	                        <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+	                            <div className="text-gray-500">✅ 安全清理</div>
+	                            <div className="text-sky-300 font-bold">{preset.兼容性.安全清理脚本数}</div>
+	                        </div>
+	                        <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+	                            <div className="text-gray-500">🔘 选项渲染</div>
+	                            <div className="text-emerald-300 font-bold">{preset.兼容性.选项渲染脚本数}</div>
+	                        </div>
+	                        <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+	                            <div className="text-gray-500">🎨 HTML美化</div>
+	                            <div className="text-purple-300 font-bold">{preset.兼容性.HTML美化脚本数 ?? 0}</div>
+	                        </div>
+	                        <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+	                            <div className="text-gray-500">🔗 JS交互</div>
+	                            <div className="text-amber-300 font-bold">{preset.兼容性.JS交互脚本数 ?? preset.兼容性.危险跳过脚本数 ?? 0}</div>
+	                        </div>
+	                        <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+	                            <div className="text-gray-500">⚠️ 仍跳过</div>
+	                            <div className="text-red-300 font-bold">{preset.兼容性.仍跳过脚本数 ?? 0}</div>
+	                        </div>
+	                        <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+	                            <div className="text-gray-500">📋 仅元数据</div>
+	                            <div className="text-gray-300 font-bold">{preset.兼容性.仅保留元数据脚本数}</div>
+	                        </div>
+	                    </div>
+
+                    {preset.兼容性.已分类脚本列表 && preset.兼容性.已分类脚本列表.length > 0 && (
+                        <details className="mt-2">
+                            <summary className="text-[11px] text-gray-400 cursor-pointer hover:text-gray-200 transition-colors">
+                                查看正则脚本详情（{preset.兼容性.已分类脚本列表.length} 个）
+                            </summary>
+                            <div className="mt-2 space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar">
+                                {preset.兼容性.已分类脚本列表.map((entry, idx) => {
+                                    const safetyColorMap: Record<string, string> = {
+                                        '安全清理': 'text-sky-300',
+                                        '选项渲染': 'text-emerald-300',
+                                        'HTML美化': 'text-purple-300',
+                                        'JS交互': 'text-amber-300',
+                                        '仍跳过': 'text-red-300',
+                                    };
+                                    const safetyIconMap: Record<string, string> = {
+                                        '安全清理': '✅',
+                                        '选项渲染': '🔘',
+                                        'HTML美化': '🎨',
+                                        'JS交互': '🔗',
+                                        '仍跳过': '⚠️',
+                                    };
+                                    const color = safetyColorMap[entry.safetyType] || 'text-gray-400';
+                                    const icon = safetyIconMap[entry.safetyType] || '📋';
+                                    const placements = (entry.script.placement || [])
+                                        .map((p: number) => {
+                                            const names: Record<number, string> = { 1: '用户输入', 2: 'AI输出', 3: '斜杠命令', 5: '世界书', 6: '推理' };
+                                            return names[p] || p;
+                                        })
+                                        .join(', ');
+                                    const statusText = entry.executionStatus || '';
+                                    const statusColorMap: Record<string, string> = {
+                                        '已安全执行': 'text-sky-400',
+                                        '已适配为选项按钮': 'text-emerald-400',
+                                        'HTML美化已执行': 'text-purple-400',
+                                        'iframe沙箱已渲染': 'text-amber-400',
+                                        '已跳过': 'text-red-400',
+                                    };
+                                    const statusColor = statusColorMap[statusText] || 'text-gray-500';
+                                    return (
+                                        <div key={entry.script.id || idx} className="flex items-center gap-2 text-[10px] text-gray-400 py-0.5 group">
+                                            <button
+                                                type="button"
+                                                onClick={() => 切换正则脚本启用(entry.script.id, !entry.script.disabled)}
+                                                className={`flex-shrink-0 w-4 h-4 rounded border transition-colors ${
+                                                    entry.script.disabled
+                                                        ? 'border-gray-600 bg-black/30 text-gray-600'
+                                                        : 'border-sky-500/60 bg-sky-500/20 text-sky-400'
+                                                }`}
+                                                title={entry.script.disabled ? '点击启用该脚本' : '点击禁用该脚本'}
+                                                aria-label={`切换 ${entry.script.scriptName} 启用状态`}
+                                            >
+                                                {!entry.script.disabled && (
+                                                    <svg viewBox="0 0 16 16" className="w-3 h-3 mx-auto" fill="currentColor">
+                                                        <path d="M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2.5-2.5a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z"/>
+                                                    </svg>
+                                                )}
+                                            </button>
+                                            <span>{icon}</span>
+                                            <span className={`truncate max-w-[140px] ${color}`} title={entry.script.scriptName}>
+                                                {entry.script.scriptName}
+                                            </span>
+                                            <span className="text-gray-600 flex-shrink-0">
+                                                [{placements || '无placement'}]
+                                            </span>
+                                            <span className={`${statusColor} flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity`}>
+                                                {statusText}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </details>
+                    )}
+
                     <div className="space-y-1">
                         {preset.兼容性.说明.map((item, index) => (
                             <div key={index} className="text-[11px] text-gray-400 leading-relaxed">
                                 {item}
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {preset?.generationParams && Object.keys(preset.generationParams).length > 0 && (
+                <div className="rounded-md border border-wuxia-gold/20 bg-wuxia-gold/5 p-3 space-y-2">
+                    <div className="text-xs font-bold text-wuxia-gold">预设生成参数建议</div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] text-gray-300">
+                        {preset.generationParams.temperature !== undefined && (
+                            <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+                                <div className="text-gray-500">Temperature</div>
+                                <div className="text-white font-bold">{preset.generationParams.temperature}</div>
+                            </div>
+                        )}
+                        {preset.generationParams.top_p !== undefined && (
+                            <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+                                <div className="text-gray-500">Top P</div>
+                                <div className="text-white font-bold">{preset.generationParams.top_p}</div>
+                            </div>
+                        )}
+                        {preset.generationParams.frequency_penalty !== undefined && (
+                            <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+                                <div className="text-gray-500">Freq Penalty</div>
+                                <div className="text-white font-bold">{preset.generationParams.frequency_penalty}</div>
+                            </div>
+                        )}
+                        {preset.generationParams.presence_penalty !== undefined && (
+                            <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+                                <div className="text-gray-500">Pres Penalty</div>
+                                <div className="text-white font-bold">{preset.generationParams.presence_penalty}</div>
+                            </div>
+                        )}
+                        {preset.generationParams.max_tokens !== undefined && (
+                            <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+                                <div className="text-gray-500">Max Tokens</div>
+                                <div className="text-white font-bold">{preset.generationParams.max_tokens}</div>
+                            </div>
+                        )}
+                        {preset.generationParams.max_context !== undefined && (
+                            <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+                                <div className="text-gray-500">Max Context</div>
+                                <div className="text-white font-bold">{preset.generationParams.max_context}</div>
+                            </div>
+                        )}
+                        {preset.generationParams.assistant_prefill && (
+                            <details className="col-span-2 md:col-span-4">
+                                <summary className="text-[11px] text-gray-400 cursor-pointer hover:text-gray-200">
+                                    Assistant Prefill
+                                </summary>
+                                <div className="mt-1 text-[11px] text-gray-300 bg-black/30 rounded p-2 whitespace-pre-wrap break-all max-h-20 overflow-y-auto custom-scrollbar">
+                                    {preset.generationParams.assistant_prefill}
+                                </div>
+                            </details>
+                        )}
+                    </div>
+                    <div className="text-[11px] text-gray-500">
+                        💡 这些参数为预设作者的建议值，可一键应用到当前接口配置。
+                    </div>
+                    {apiConfig && onSaveApi && preset.generationParams && (
+                        <GameButton
+                            onClick={() => {
+                                const gp = preset.generationParams!;
+                                const activeId = apiConfig.activeConfigId;
+                                const updatedConfigs = apiConfig.configs.map((cfg) => {
+                                    if (cfg.id !== activeId) return cfg;
+                                    return {
+                                        ...cfg,
+                                        ...(gp.temperature !== undefined ? { temperature: gp.temperature } : {}),
+                                        ...(gp.top_p !== undefined ? { topP: gp.top_p } : {}),
+                                        ...(gp.max_tokens !== undefined ? { maxTokens: gp.max_tokens } : {}),
+                                    };
+                                });
+                                onSaveApi({ ...apiConfig, configs: updatedConfigs });
+                                setMessage('✅ 预设参数已应用到当前接口（Temperature/Top P/Max Tokens）。');
+                            }}
+                            variant="secondary"
+                            className="px-4 py-2 text-xs"
+                        >
+                            应用预设参数到当前接口
+                        </GameButton>
+                    )}
+                    {(!apiConfig || !onSaveApi) && (
+                        <div className="text-[11px] text-gray-500">
+                            ⚙️ 请在 API 设置中手动配置对应参数。
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {(preset?.instruct || preset?.context || preset?.sysprompt || preset?.reasoning) && (
+                <div className="rounded-md border border-wuxia-gold/20 bg-wuxia-gold/5 p-3 space-y-2">
+                    <div className="text-xs font-bold text-wuxia-gold">附加模板</div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] text-gray-300">
+                        {preset.instruct && (
+                            <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+                                <div className="text-gray-500">Instruct 模板</div>
+                                <div className="text-white font-bold">{preset.instruct.name}</div>
+                            </div>
+                        )}
+                        {preset.context && (
+                            <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+                                <div className="text-gray-500">Context 模板</div>
+                                <div className="text-white font-bold">{preset.context.name}</div>
+                            </div>
+                        )}
+                        {preset.sysprompt && (
+                            <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+                                <div className="text-gray-500">System Prompt</div>
+                                <div className="text-white font-bold">{preset.sysprompt.name}</div>
+                            </div>
+                        )}
+                        {preset.reasoning && (
+                            <div className="rounded border border-gray-700/70 bg-black/30 p-2">
+                                <div className="text-gray-500">Reasoning</div>
+                                <div className="text-white font-bold">{preset.reasoning.name}</div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Instruct 序列详情 */}
+                    {preset.instruct && (
+                        <details className="mt-1">
+                            <summary className="text-[11px] text-gray-400 cursor-pointer hover:text-gray-200 transition-colors">
+                                Instruct 序列详情
+                            </summary>
+                            <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-1.5 text-[10px]">
+                                {preset.instruct.input_sequence && (
+                                    <div className="bg-black/30 rounded p-1.5 border border-gray-700/50">
+                                        <span className="text-sky-300">input:</span>
+                                        <span className="text-gray-300 ml-1">{preset.instruct.input_sequence.length > 30 ? preset.instruct.input_sequence.slice(0, 30) + '…' : preset.instruct.input_sequence}</span>
+                                    </div>
+                                )}
+                                {preset.instruct.output_sequence && (
+                                    <div className="bg-black/30 rounded p-1.5 border border-gray-700/50">
+                                        <span className="text-emerald-300">output:</span>
+                                        <span className="text-gray-300 ml-1">{preset.instruct.output_sequence.length > 30 ? preset.instruct.output_sequence.slice(0, 30) + '…' : preset.instruct.output_sequence}</span>
+                                    </div>
+                                )}
+                                {preset.instruct.system_sequence && (
+                                    <div className="bg-black/30 rounded p-1.5 border border-gray-700/50">
+                                        <span className="text-amber-300">system:</span>
+                                        <span className="text-gray-300 ml-1">{preset.instruct.system_sequence.length > 30 ? preset.instruct.system_sequence.slice(0, 30) + '…' : preset.instruct.system_sequence}</span>
+                                    </div>
+                                )}
+                                <div className="bg-black/30 rounded p-1.5 border border-gray-700/50">
+                                    <span className="text-gray-400">names:</span>
+                                    <span className="text-gray-300 ml-1">{preset.instruct.names_behavior || 'none'}</span>
+                                </div>
+                                <div className="bg-black/30 rounded p-1.5 border border-gray-700/50">
+                                    <span className="text-gray-400">wrap:</span>
+                                    <span className="text-gray-300 ml-1">{preset.instruct.wrap !== false ? '是' : '否'}</span>
+                                </div>
+                                {preset.instruct.system_same_as_user && (
+                                    <div className="bg-black/30 rounded p-1.5 border border-gray-700/50">
+                                        <span className="text-gray-400">system同user:</span>
+                                        <span className="text-gray-300 ml-1">是</span>
+                                    </div>
+                                )}
+                            </div>
+                        </details>
+                    )}
+
+                    {/* Reasoning 模板详情 */}
+                    {preset.reasoning && (
+                        <details className="mt-1">
+                            <summary className="text-[11px] text-gray-400 cursor-pointer hover:text-gray-200 transition-colors">
+                                Reasoning 格式详情
+                            </summary>
+                            <div className="mt-1 grid grid-cols-1 md:grid-cols-3 gap-1.5 text-[10px]">
+                                {preset.reasoning.prefix && (
+                                    <div className="bg-black/30 rounded p-1.5 border border-gray-700/50">
+                                        <span className="text-purple-300">prefix:</span>
+                                        <span className="text-gray-300 ml-1">{preset.reasoning.prefix.length > 40 ? preset.reasoning.prefix.slice(0, 40) + '…' : preset.reasoning.prefix}</span>
+                                    </div>
+                                )}
+                                {preset.reasoning.suffix && (
+                                    <div className="bg-black/30 rounded p-1.5 border border-gray-700/50">
+                                        <span className="text-purple-300">suffix:</span>
+                                        <span className="text-gray-300 ml-1">{preset.reasoning.suffix.length > 40 ? preset.reasoning.suffix.slice(0, 40) + '…' : preset.reasoning.suffix}</span>
+                                    </div>
+                                )}
+                                {preset.reasoning.separator && (
+                                    <div className="bg-black/30 rounded p-1.5 border border-gray-700/50">
+                                        <span className="text-purple-300">separator:</span>
+                                        <span className="text-gray-300 ml-1">{preset.reasoning.separator.length > 40 ? preset.reasoning.separator.slice(0, 40) + '…' : preset.reasoning.separator}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </details>
+                    )}
+
+                    <div className="text-[11px] text-gray-500">
+                        ✅ 模板已自动集成：Instruct 用序列包装消息，Context 构建故事字符串，Sysprompt 替代主/post-history 系统提示词，Reasoning 解析和格式化思维块。
                     </div>
                 </div>
             )}

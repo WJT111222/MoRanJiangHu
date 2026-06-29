@@ -1,5 +1,6 @@
 import React from 'react';
 import { 聊天记录结构, NPC结构, 视觉设置结构 } from '../../../types';
+import type { 酒馆沙箱动作 } from '../../../models/system';
 import TurnItem from './TurnItem';
 import { 构建区域文字样式 } from '../../../utils/visualSettings';
 import BookLoader from '../../ui/BookLoader';
@@ -21,6 +22,8 @@ interface Props {
     suppressAutoScrollToken?: number;
     forceScrollToken?: number;
     variableGenerationRunning?: boolean;
+    /** 酒馆沙箱桥接回调：注入文本到输入框 / 发送消息 */
+    onTavernAction?: (action: 酒馆沙箱动作) => void;
 }
 
 type 流式草稿显示结构 = {
@@ -92,7 +95,7 @@ const 解析流式草稿显示 = (content: string): 流式草稿显示结构 => 
     };
 };
 
-const ChatList: React.FC<Props> = ({ history, loading, scrollRef, onUpdateHistory, onPolishTurn, visualConfig, socialList, playerProfile, onOpenNpcDetail, inventoryItems, onOpenInventoryItem, renderCount = 10, suppressAutoScrollToken, forceScrollToken, variableGenerationRunning = false }) => {
+const ChatList: React.FC<Props> = ({ history, loading, scrollRef, onUpdateHistory, onPolishTurn, visualConfig, socialList, playerProfile, onOpenNpcDetail, inventoryItems, onOpenInventoryItem, renderCount = 10, suppressAutoScrollToken, forceScrollToken, variableGenerationRunning = false, onTavernAction }) => {
     const normalizedRenderCount = Number.isFinite(renderCount) ? Math.max(1, Math.floor(renderCount)) : 10;
     const chatStyle = 构建区域文字样式(visualConfig, '聊天');
     const 紧凑字号 = 'var(--ui-compact-font-size, 14px)';
@@ -483,6 +486,7 @@ const ChatList: React.FC<Props> = ({ history, loading, scrollRef, onUpdateHistor
                                     inventoryItems={inventoryItems}
                                     onOpenInventoryItem={onOpenInventoryItem}
                                     variableGenerationPending={variableGenerationRunning && absoluteIdx === latestTurnAnchorIndex}
+                                    onTavernAction={onTavernAction}
                                 />
                             </div>
                         );

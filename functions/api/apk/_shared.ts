@@ -196,24 +196,128 @@ export const buildB2ObjectUrl = (env: any, key: string): string => {
     return `${baseUrl}/${encodeS3Path(normalizeObjectKey(key))}`;
 };
 
-export const buildB2ApkRedirect = (
+// ---------- B2 Authorized Download (private bucket support) ----------
+
+/** Global cache for b2_authorize_account result (valid 24h, refresh at 23h). */
+let b2AuthCache: { apiUrl: string; authToken: string; expiresAt: number } | null = null;
+
+/** Global cache for download authorization token (valid up to 1h). */
+let b2DownloadAuthCache: { token: string; prefix: string; expiresAt: number } | null = null;
+
+/**
+ * Call b2_authorize_account and cache the result.
+ * Returns null if credentials are missing or the call fails.
+ */
+const authorizeB2Account = async (env: any): Promise<{ apiUrl: string; authToken: string } | null> => {
+    if (b2AuthCache && Date.now() < b2AuthCache.expiresAt) {
+        return b2AuthCache;
+    }
+    const keyId = env?.MORAN_B2_APPLICATION_KEY_ID;
+    const key = env?.MORAN_B2_APPLICATION_KEY;
+    if (!keyId || !key) return null;
+
+    try {
+        const res = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
+            headers: { 'Authorization': `Basic ${btoa(`${keyId}:${key}`)}` },
+        });
+        if (!res.ok) return null;
+        const json = await res.json() as any;
+        if (!json?.apiUrl || !json?.authorizationToken) return null;
+        b2AuthCache = {
+            apiUrl: json.apiUrl,
+            authToken: json.authorizationToken,
+            expiresAt: Date.now() + 23 * 3600 * 1000, // refresh 1h before expiry
+        };
+        return b2AuthCache;
+    } catch {
+        return null;
+    }
+};
+
+/**
+ * Call b2_get_download_authorization for a fileNamePrefix and cache the result.
+ * Returns null if credentials are missing or the call fails.
+ */
+const getB2DownloadAuthorization = async (env: any, keyPrefix: string): Promise<string | null> => {
+    if (b2DownloadAuthCache && b2DownloadAuthCache.prefix === keyPrefix && Date.now() < b2DownloadAuthCache.expiresAt) {
+        return b2DownloadAuthCache.token;
+    }
+    const auth = await authorizeB2Account(env);
+    if (!auth) return null;
+    const bucketId = env?.MORAN_B2_BUCKET_ID;
+    if (!bucketId) return null;
+
+    try {
+        const res = await fetch(`${auth.apiUrl}/b2api/v2/b2_get_download_authorization`, {
+            method: 'POST',
+            headers: { 'Authorization': auth.authToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                bucketId,
+                fileNamePrefix: keyPrefix,
+                validDurationInSeconds: 3600,
+            }),
+        });
+        if (!res.ok) return null;
+        const json = await res.json() as any;
+        if (!json?.authorizationToken) return null;
+        const validSeconds = Math.min(json.validDurationInSeconds || 3600, 3540); // refresh 1min before expiry
+        b2DownloadAuthCache = {
+            token: json.authorizationToken,
+            prefix: keyPrefix,
+            expiresAt: Date.now() + validSeconds * 1000,
+        };
+        return b2DownloadAuthCache.token;
+    } catch {
+        return null;
+    }
+};
+
+/**
+ * Build B2 APK redirect. When B2 application keys are configured (private bucket),
+ * acquires a download authorization token and appends it to the download URL.
+ * Falls back to public URL when keys are absent (backward compatible).
+ */
+export const buildB2ApkRedirect = async (
     env: any,
     key: string,
     fileName: string,
     cacheControl = APK_VERSIONED_CACHE_CONTROL
-): Response => (
-    new Response(null, {
+): Promise<Response> => {
+    const baseUrl = buildB2ObjectUrl(env, key);
+
+    // Try private bucket authorized download
+    const prefix = readB2ReleaseObjectPrefix(env);
+    const downloadToken = await getB2DownloadAuthorization(env, `${prefix}/`);
+
+    if (downloadToken) {
+        const separator = baseUrl.includes('?') ? '&' : '?';
+        const authorizedUrl = `${baseUrl}${separator}Authorization=${encodeURIComponent(downloadToken)}`;
+        return new Response(null, {
+            status: 302,
+            headers: {
+                Location: authorizedUrl,
+                'Content-Type': 'application/vnd.android.package-archive',
+                'Cache-Control': cacheControl,
+                'Content-Disposition': `attachment; filename="${fileName}"`,
+                'X-Moran-Apk-Source': 'b2-authorized',
+                ...APK_CORS_HEADERS
+            }
+        });
+    }
+
+    // Fallback: public bucket direct redirect (backward compatible)
+    return new Response(null, {
         status: 302,
         headers: {
-            Location: buildB2ObjectUrl(env, key),
+            Location: baseUrl,
             'Content-Type': 'application/vnd.android.package-archive',
             'Cache-Control': cacheControl,
             'Content-Disposition': `attachment; filename="${fileName}"`,
             'X-Moran-Apk-Source': 'b2-redirect',
             ...APK_CORS_HEADERS
         }
-    })
-);
+    });
+};
 
 // ---------- OneDrive APK fallback (via OpenList proxy) ----------
 

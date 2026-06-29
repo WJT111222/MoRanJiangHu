@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { GameLog, GameResponse, NPC结构, 视觉设置结构 } from '../../../types';
-import { NarratorRenderer, CharacterRenderer, JudgmentRenderer, RewardRenderer } from './MessageRenderers';
+import { NarratorRenderer, CharacterRenderer, JudgmentRenderer, RewardRenderer, TavernHtmlRenderer } from './MessageRenderers';
+import type { 酒馆沙箱动作 } from '../../../models/system';
 import GameButton from '../../ui/GameButton';
 import { 构建区域文字样式 } from '../../../utils/visualSettings';
 import { 规范化可渲染对白日志 } from '../../../utils/dialogueLogNormalizer';
@@ -27,6 +28,8 @@ interface Props {
     onOpenInventoryItem?: (itemRef: string) => void;
     turnAnchorRef?: React.Ref<HTMLDivElement>;
     variableGenerationPending?: boolean;
+    /** 酒馆沙箱桥接回调：注入文本到输入框 / 发送消息 */
+    onTavernAction?: (action: 酒馆沙箱动作) => void;
 }
 
 const 格式化日志原始片段 = (log?: Partial<GameLog> | null): string => {
@@ -106,7 +109,8 @@ const TurnItem: React.FC<Props> = ({
     inventoryItems,
     onOpenInventoryItem,
     turnAnchorRef,
-    variableGenerationPending = false
+    variableGenerationPending = false,
+    onTavernAction,
 }) => {
     const formatRawJson = (raw?: string) => raw || '（该回合未记录原始文本）';
 
@@ -650,7 +654,31 @@ const TurnItem: React.FC<Props> = ({
                     const textStartsWithJudgment = Boolean(textJudgmentPrefix);
                     const openThisRawLog = () => toggleRawLogPreview(idx);
                     let renderedLog: React.ReactNode;
-                    if (是否奖励日志(rawSender, rawText)) {
+
+                    // 优先检测酒馆预设 HTML 产出
+                    const htmlContent = (log as any).htmlContent as string | undefined;
+                    const htmlRenderMode = (log as any).htmlRenderMode as 'sandbox' | 'purify' | undefined;
+                    if (htmlContent && htmlRenderMode) {
+                        renderedLog = (
+                            <TavernHtmlRenderer
+                                htmlContent={htmlContent}
+                                htmlRenderMode={htmlRenderMode}
+                                onTavernAction={onTavernAction}
+                            />
+                        );
+                        // 如果 htmlContent 之外还有文本内容，也渲染文本
+                        if (rawText.trim() && !((log as any).htmlContent === rawText)) {
+                            renderedLog = (
+                                <React.Fragment>
+                                    {rawSender === '旁白'
+                                        ? <NarratorRenderer text={rawText} visualConfig={visualConfig} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} socialList={socialList} playerProfile={playerProfile} onOpenNpcDetail={onOpenNpcDetail} onOpenRawResponse={openThisRawLog} />
+                                        : <CharacterRenderer sender={rawSender} text={rawText} visualConfig={visualConfig} socialList={socialList} playerProfile={playerProfile} onOpenNpcDetail={onOpenNpcDetail} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} onOpenRawResponse={openThisRawLog} />
+                                    }
+                                    <TavernHtmlRenderer htmlContent={htmlContent} htmlRenderMode={htmlRenderMode} onTavernAction={onTavernAction} />
+                                </React.Fragment>
+                            );
+                        }
+                    } else if (是否奖励日志(rawSender, rawText)) {
                         renderedLog = <RewardRenderer text={rawText} visualConfig={visualConfig} onOpenRawResponse={openThisRawLog} />;
                     } else if (rawSender === '旁白' && !textStartsWithJudgment) {
                         renderedLog = <NarratorRenderer text={rawText} visualConfig={visualConfig} inventoryItems={inventoryItems} onOpenInventoryItem={onOpenInventoryItem} socialList={socialList} playerProfile={playerProfile} onOpenNpcDetail={onOpenNpcDetail} onOpenRawResponse={openThisRawLog} />;

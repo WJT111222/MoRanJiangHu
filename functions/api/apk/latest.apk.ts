@@ -33,7 +33,7 @@ const handleLatestApkRequest = async ({ request, env }: any): Promise<Response> 
             if (githubResponse) return githubResponse;
             return buildTextResponse('GitHub Release APK not available', 502);
         }
-        return buildB2ApkRedirect(env, key, fileName, APK_LATEST_CACHE_CONTROL);
+        return await buildB2ApkRedirect(env, key, fileName, APK_LATEST_CACHE_CONTROL);
     } catch (error: any) {
         return buildTextResponse(error?.message || 'APK redirect failed', 502);
     }

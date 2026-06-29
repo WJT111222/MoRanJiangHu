@@ -52,7 +52,7 @@ const handleVersionedApkRequest = async (context: any, _method: 'GET' | 'HEAD'):
         }
 
         const key = normalizeObjectKey(`${readReleaseObjectPrefix(env)}/${fileName}`);
-        return buildB2ApkRedirect(env, key, fileName);
+        return await buildB2ApkRedirect(env, key, fileName);
     } catch (error: any) {
         return buildTextResponse(error?.message || 'Versioned APK download failed', 502);
     }

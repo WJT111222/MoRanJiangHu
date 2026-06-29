@@ -29,6 +29,10 @@ export interface GameLog {
     sender: string;
     text: string;
     rawText?: string; // Optional debug source for the rendered bubble only.
+    /** 酒馆预设 JS交互/HTML美化 脚本产出的 HTML 内容，由沙箱 iframe 或 DOMPurify 安全渲染 */
+    htmlContent?: string;
+    /** htmlContent 的渲染模式：'sandbox' = iframe 沙箱, 'purify' = DOMPurify 清洗后渲染 */
+    htmlRenderMode?: 'sandbox' | 'purify';
 }
 
 export interface JudgmentThoughtBlock {

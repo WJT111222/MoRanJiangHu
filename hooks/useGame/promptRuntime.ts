@@ -14,13 +14,29 @@ import {
     核心_思维链_同人NTL女主规划版
 } from '../../prompts/core/cotHeroine';
 import { 写作_防止说话 } from '../../prompts/writing/noControl';
-import { 获取酒馆预设顺序 } from '../../utils/tavernPreset';
+import { 获取酒馆预设顺序, 获取预设已分类正则脚本 } from '../../utils/tavernPreset';
+import { 对世界书执行酒馆正则, 对用户输入执行酒馆正则 } from '../../utils/tavernRegexEngine';
+import {
+    系统提示词模板有效,
+    获取主系统提示词,
+    获取PostHistory提示词,
+    使用Instruct模板格式化消息,
+    使用Context模板构建故事字符串,
+    获取ChatStart文本,
+    使用Reasoning模板格式化,
+    从文本解析推理块,
+    替换模板宏,
+    预设包含附加模板,
+} from '../../utils/tavernTemplateEngine';
+import type { Instruct格式化消息 } from '../../utils/tavernTemplateEngine';
 import { 按功能开关过滤提示词内容 } from '../../utils/promptFeatureToggles';
 import { 提取响应规划文本 } from './thinkingContext';
 import { 变量命令提示词ID集合 } from '../../prompts/runtime/promptOwnership';
 
 type 消息角色 = 'system' | 'user' | 'assistant';
-type 内部消息来源 = 'preset' | 'worldbook' | 'history' | 'latest_input' | 'persona';
+type 内部消息来源 = 'preset' | 'worldbook' | 'history' | 'latest_input' | 'persona'
+    | 'sysprompt_main' | 'sysprompt_post_history' | 'context_story_string'
+    | 'context_chat_start' | 'instruct_wrapped';
 
 type 内部酒馆消息 = {
     role: 消息角色;
@@ -513,6 +529,112 @@ const 应用酒馆消息后处理 = (
     return merged;
 };
 
+/**
+ * Instruct 模板后处理：当预设包含 instruct 模板时，
+ * 将内部消息列表转换为带序列包装的纯文本消息列表。
+ *
+ * 行为对齐 SillyTavern formatInstructModeChat:
+ * - 用 input_sequence / output_sequence / system_sequence 包装消息
+ * - 支持 names_behavior (force/surround/none)
+ * - 支持 first/last 序列
+ * - 支持 system_same_as_user
+ * - 合并连续同角色消息后，再用 instruct 序列包装
+ */
+const 应用Instruct模板后处理 = (
+    messages: 内部酒馆消息[],
+    instruct: import('../../models/system').Instruct模板结构,
+    options: {
+        playerName?: string;
+        charName?: string;
+        后处理模式: NonNullable<游戏设置结构['酒馆提示词后处理']>;
+    }
+): 酒馆消息[] => {
+    // 1. 先应用基础后处理（角色映射和合并）
+    const baseMessages = 应用酒馆消息后处理(messages, options.后处理模式);
+
+    // 2. 如果 instruct 的 input_sequence 和 output_sequence 都为空，
+    // 则 instruct 模板实际不生效，直接返回基础消息
+    const hasInputSeq = Boolean((instruct.input_sequence || '').trim());
+    const hasOutputSeq = Boolean((instruct.output_sequence || '').trim());
+    const hasSystemSeq = Boolean((instruct.system_sequence || '').trim());
+    if (!hasInputSeq && !hasOutputSeq && !hasSystemSeq) {
+        return baseMessages;
+    }
+
+    // 3. 将合并后的消息转换为 Instruct 格式化消息
+    const instructMessages: Instruct格式化消息[] = baseMessages.map((msg, idx, arr) => {
+        // 判断首末位置
+        const isFirstUser = msg.role === 'user'
+            && !arr.slice(0, idx).some((m) => m.role === 'user');
+        const isLastUser = msg.role === 'user'
+            && !arr.slice(idx + 1).some((m) => m.role === 'user');
+        const isLastAssistant = msg.role === 'assistant'
+            && !arr.slice(idx + 1).some((m) => m.role === 'assistant');
+
+        return {
+            role: msg.role as 'system' | 'user' | 'assistant',
+            content: msg.content,
+            senderName: msg.role === 'user' ? options.playerName : options.charName,
+            isFirstUser,
+            isLastUser,
+            isLastAssistant,
+        };
+    });
+
+    // 4. 使用 instruct 模板格式化
+    const formattedLines = 使用Instruct模板格式化消息({
+        messages: instructMessages,
+        instruct,
+        vars: {
+            userName: options.playerName || '',
+            charName: options.charName || '',
+        },
+    });
+
+    // 5. Instruct 模式输出为单条文本列表，每条一个角色片段
+    // 将所有行合并为一个 system 消息（Instruct 模式通常用于补全式 API）
+    // 但保留角色切换边界：相邻同 role 行合并，角色切换时分割
+    const result: 酒馆消息[] = [];
+    let currentRole: 消息角色 | null = null;
+    let currentParts: string[] = [];
+
+    // Instruct 模式下同一行列表实际已包含角色标记，
+    // 所以我们根据 instruct 序列标记判断消息角色
+    const inputSeq = (instruct.input_sequence || '').trim();
+    const outputSeq = (instruct.output_sequence || '').trim();
+    const sysSeq = (instruct.system_same_as_user ? inputSeq : (instruct.system_sequence || '')).trim();
+
+    formattedLines.forEach((line) => {
+        if (!line.trim()) return;
+        // 根据行首序列判断角色
+        let detectedRole: 消息角色 = 'system';
+        if (outputSeq && line.startsWith(outputSeq)) {
+            detectedRole = 'assistant';
+        } else if (inputSeq && line.startsWith(inputSeq)) {
+            detectedRole = 'user';
+        } else if (sysSeq && line.startsWith(sysSeq)) {
+            detectedRole = 'system';
+        }
+
+        if (currentRole !== null && currentRole !== detectedRole) {
+            // 角色切换，flush
+            if (currentParts.length > 0) {
+                result.push({ role: currentRole, content: currentParts.join('\n') });
+            }
+            currentParts = [];
+        }
+        currentRole = detectedRole;
+        currentParts.push(line.trim());
+    });
+
+    // flush 最后一段
+    if (currentRole !== null && currentParts.length > 0) {
+        result.push({ role: currentRole, content: currentParts.join('\n') });
+    }
+
+    return result;
+};
+
 export const 构建运行时提示词池 = (
     promptPool: 提示词结构[],
     config: 游戏设置结构,
@@ -674,8 +796,19 @@ export const 构建酒馆预设消息链 = (params: {
         .filter(Boolean)
         .join('\n\n')
         .trim();
+
+    // ─── 酒馆正则引擎：对世界书内容和用户输入执行安全的正则替换 ───
+    const classifiedRegexScripts = 获取预设已分类正则脚本(preset);
+    const regexEnabledWorldbookText = classifiedRegexScripts.length > 0
+        ? 对世界书执行酒馆正则(combinedWorldbookText, preset.extensions as Record<string, unknown> | undefined)
+        : combinedWorldbookText;
+
     const historyMessages = 构建酒馆聊天历史消息(params.chatHistory);
-    const latestInput = (params.latestUserInput || '').trim();
+    const rawLatestInput = (params.latestUserInput || '').trim();
+    const regexEnabledLatestInput = classifiedRegexScripts.length > 0 && rawLatestInput
+        ? 对用户输入执行酒馆正则(rawLatestInput, preset.extensions as Record<string, unknown> | undefined)
+        : rawLatestInput;
+    const latestInput = regexEnabledLatestInput;
     const playerName = (params.playerName || '').trim();
     const playerRole = params.playerRole || null;
     const playerAge = typeof playerRole?.年龄 === 'number' && Number.isFinite(playerRole.年龄)
@@ -696,6 +829,57 @@ export const 构建酒馆预设消息链 = (params: {
     const charCardDescription = typeof params.config?.酒馆角色卡描述 === 'string'
         ? params.config.酒馆角色卡描述
         : '';
+    // ─── 模板系统：提取 Instruct / Context / Sysprompt / Reasoning ───
+    const instruct = preset.instruct || null;
+    const contextTemplate = preset.context || null;
+    const sysprompt = preset.sysprompt || null;
+    const reasoningTemplate = preset.reasoning || null;
+    const hasInstruct = Boolean(instruct);
+    const hasSysprompt = 系统提示词模板有效(sysprompt);
+    const hasContext = Boolean(contextTemplate);
+    const hasReasoning = Boolean(reasoningTemplate?.prefix && reasoningTemplate?.suffix);
+
+    // ─── Sysprompt: 主系统提示词和 post_history ───
+    const syspromptMain = hasSysprompt ? 获取主系统提示词(sysprompt) : '';
+    const syspromptPostHistory = hasSysprompt ? 获取PostHistory提示词(sysprompt) : '';
+
+    // ─── Context Template: 故事字符串与 chat_start ───
+    let contextStoryString = '';
+    let contextChatStart = '';
+    if (hasContext && contextTemplate) {
+        contextStoryString = 使用Context模板构建故事字符串({
+            context: contextTemplate,
+            vars: {
+                persona: playerProfile || '',
+                charDescription: charCardDescription,
+                worldInfoBefore: regexEnabledWorldbookText,
+                userName: playerName,
+                charName: charCardDescription,
+            },
+        });
+        contextChatStart = 获取ChatStart文本(contextTemplate);
+    }
+
+    // ─── Reasoning: 解析历史消息中可能存在的推理块 ───
+    const resolveHistoryReasoning = (msg: { role: string; content: string }): { role: string; content: string; reasoning?: string } => {
+        if (!hasReasoning || msg.role !== 'assistant') return msg;
+        const parsed = 从文本解析推理块({
+            text: msg.content,
+            template: reasoningTemplate,
+            strict: false,
+        });
+        if (!parsed) return msg;
+        // 将推理块合并回文本（用模板格式包装）
+        const { formatted } = 使用Reasoning模板格式化({
+            reasoning: parsed.reasoning,
+            content: parsed.content,
+            template: reasoningTemplate,
+            vars: { userName: playerName, charName: charCardDescription },
+        });
+        return { role: msg.role, content: formatted, reasoning: parsed.reasoning };
+    };
+    const historyWithReasoning = historyMessages.map(resolveHistoryReasoning);
+
     const 历史已包含最新输入 = (): boolean => {
         if (!latestInput) return false;
         for (let i = historyMessages.length - 1; i >= 0; i -= 1) {
@@ -706,23 +890,157 @@ export const 构建酒馆预设消息链 = (params: {
         return false;
     };
     const messages: 内部酒馆消息[] = [];
+    /** 绝对深度注入项：injection_position=1 的提示词需在 chatHistory 之后按深度插入 */
+    const absoluteInjectionItems: Array<{
+        role: 消息角色;
+        content: string;
+        depth: number;
+        order: number;
+    }> = [];
     let worldbookInjected = false;
     let chatHistoryInjected = false;
     let latestInputInjected = false;
+    let syspromptMainInjected = false;
+    let syspromptPostHistoryInjected = false;
+    let contextStoryStringInjected = false;
+    let contextChatStartInjected = false;
 
     enabledOrderSlots.forEach((slot) => {
         const identifier = typeof slot.identifier === 'string' ? slot.identifier.trim() : '';
         if (!identifier) return;
 
+        // ─── Sysprompt 'main' 标识符：用 sysprompt.content 替代 ───
+        if (identifier === 'main' || identifier === 'system_prompt' || identifier === 'sysprompt') {
+            if (hasSysprompt && syspromptMain) {
+                messages.push({ role: 'system', content: syspromptMain, source: 'sysprompt_main' });
+                syspromptMainInjected = true;
+                return;
+            }
+            // 无 sysprompt 模板 → 使用预设中的内容
+            const prompt = promptMap.get(identifier);
+            const rawContent = typeof prompt?.content === 'string' ? prompt.content : '';
+            const resolved = 替换酒馆预设变量({
+                content: rawContent,
+                latestUserInput: latestInput,
+                playerName,
+                charCardDescription,
+                cotPrompt: resolvedCotPrompt,
+                formatPrompt: params.context.contextPieces.格式提示词
+            });
+            const content = resolved.content;
+            if (content) {
+                const role = prompt?.role === 'user' || prompt?.role === 'assistant' ? prompt.role : 'system';
+                messages.push({ role, content, source: 'preset' });
+            }
+            return;
+        }
+
+        // ─── Sysprompt 'jailbreak' / 'post_history' 标识符：用 sysprompt.post_history 替代 ───
+        if (identifier === 'jailbreak' || identifier === 'post_history' || identifier === 'postHistoryInstructions') {
+            if (hasSysprompt && syspromptPostHistory) {
+                messages.push({ role: 'system', content: syspromptPostHistory, source: 'sysprompt_post_history' });
+                syspromptPostHistoryInjected = true;
+                return;
+            }
+            const prompt = promptMap.get(identifier);
+            const rawContent = typeof prompt?.content === 'string' ? prompt.content : '';
+            const resolved = 替换酒馆预设变量({
+                content: rawContent,
+                latestUserInput: latestInput,
+                playerName,
+                charCardDescription,
+                cotPrompt: resolvedCotPrompt,
+                formatPrompt: params.context.contextPieces.格式提示词
+            });
+            const content = resolved.content;
+            if (content) {
+                const role = prompt?.role === 'user' || prompt?.role === 'assistant' ? prompt.role : 'system';
+                messages.push({ role, content, source: 'preset' });
+            }
+            return;
+        }
+
+        // ─── Context 'story_string' 标识符：用 context template 替代 ───
+        if (identifier === 'story_string' || identifier === 'storyString') {
+            if (hasContext && contextStoryString) {
+                const prompt = promptMap.get(identifier);
+                const role = prompt?.role === 'user' || prompt?.role === 'assistant' ? prompt.role : 'system';
+                messages.push({ role, content: contextStoryString, source: 'context_story_string' });
+                contextStoryStringInjected = true;
+                return;
+            }
+        }
+
+        // ─── charDescription / charPersonality：角色卡字段源映射 ───
+        if (identifier === 'charDescription' || identifier === 'characterDescription' || identifier === 'char_description') {
+            if (hasContext && contextStoryString) {
+                // context template 已包含角色描述 → 合并
+                const prompt = promptMap.get(identifier);
+                const role = prompt?.role === 'user' || prompt?.role === 'assistant' ? prompt.role : 'system';
+                messages.push({ role, content: contextStoryString, source: 'context_story_string' });
+                contextStoryStringInjected = true;
+                return;
+            }
+            // 无 context template → 使用角色卡描述
+            if (charCardDescription) {
+                const prompt = promptMap.get(identifier);
+                const role = prompt?.role === 'user' || prompt?.role === 'assistant' ? prompt.role : 'system';
+                messages.push({ role, content: charCardDescription, source: 'preset' });
+                return;
+            }
+            return;
+        }
+        if (identifier === 'charPersonality' || identifier === 'characterPersonality' || identifier === 'char_personality') {
+            // 角色性格描述 — 来自 charCardDescription 的简要提取，暂用角色卡描述
+            if (charCardDescription) {
+                const prompt = promptMap.get(identifier);
+                const role = prompt?.role === 'user' || prompt?.role === 'assistant' ? prompt.role : 'system';
+                // 优先使用预设中自带的 content
+                const presetContent = typeof prompt?.content === 'string' ? prompt.content.trim() : '';
+                const content = presetContent || charCardDescription;
+                if (content) messages.push({ role, content, source: 'preset' });
+            }
+            return;
+        }
+        if (identifier === 'scenario' || identifier === 'scenarioDescription') {
+            // 场景/开局设定 — 来自 世界背景 or 世界书摘要
+            const worldPrompt = params.context.contextPieces.worldPrompt || '';
+            const otherPrompts = worldbookOtherPrompts || params.context.contextPieces.otherPrompts || '';
+            const scenarioText = [worldPrompt, otherPrompts].filter(Boolean).join('\n\n').trim();
+            if (scenarioText) {
+                const prompt = promptMap.get(identifier);
+                const role = prompt?.role === 'user' || prompt?.role === 'assistant' ? prompt.role : 'system';
+                messages.push({ role, content: scenarioText, source: 'preset' });
+                return;
+            }
+            // 使用预设自带内容
+            const presetContent = typeof promptMap.get(identifier)?.content === 'string' ? promptMap.get(identifier)!.content.trim() : '';
+            if (presetContent) {
+                const prompt = promptMap.get(identifier)!;
+                const role = prompt.role === 'user' || prompt.role === 'assistant' ? prompt.role : 'system';
+                messages.push({ role, content: presetContent, source: 'preset' });
+            }
+            return;
+        }
+
+        // ─── Context 'chat_start' 标识符 ───
+        if (identifier === 'chat_start' || identifier === 'chatStart') {
+            if (hasContext && contextChatStart) {
+                messages.push({ role: 'system', content: contextChatStart, source: 'context_chat_start' });
+                contextChatStartInjected = true;
+                return;
+            }
+        }
+
         if (identifier === 'worldInfoBefore' || identifier === 'worldInfoAfter') {
-            if (!worldbookInjected && combinedWorldbookText) {
-                messages.push({ role: 'system', content: combinedWorldbookText, source: 'worldbook' });
+            if (!worldbookInjected && regexEnabledWorldbookText) {
+                messages.push({ role: 'system', content: regexEnabledWorldbookText, source: 'worldbook' });
                 worldbookInjected = true;
             }
             return;
         }
         if (identifier === 'chatHistory') {
-            historyMessages.forEach((msg) => messages.push({ ...msg, source: 'history' }));
+            historyWithReasoning.forEach((msg) => messages.push({ role: msg.role as 消息角色, content: msg.content, source: 'history' }));
             if (历史已包含最新输入()) latestInputInjected = true;
             chatHistoryInjected = true;
             return;
@@ -757,18 +1075,102 @@ export const 构建酒馆预设消息链 = (params: {
         if (!content) return;
         if (resolved.usedLatestInput) latestInputInjected = true;
         const role = prompt?.role === 'user' || prompt?.role === 'assistant' ? prompt.role : 'system';
+
+        // ─── 绝对深度注入 (injection_position=1) ───
+        if (prompt?.injection_position === 1) {
+            const depth = typeof prompt.injection_depth === 'number' && Number.isFinite(prompt.injection_depth)
+                ? Math.max(0, Math.floor(prompt.injection_depth))
+                : 4;
+            const order = typeof prompt.injection_order === 'number' && Number.isFinite(prompt.injection_order)
+                ? Math.floor(prompt.injection_order)
+                : 100;
+            absoluteInjectionItems.push({ role, content, depth, order });
+            return;
+        }
+
+        // 默认：按相对顺序追加
         messages.push({ role, content, source: 'preset' });
     });
 
-    if (!worldbookInjected && combinedWorldbookText) {
-        messages.push({ role: 'system', content: combinedWorldbookText, source: 'worldbook' });
+    // ─── 注入遗漏的组件（兜底） ───
+    if (!syspromptMainInjected && hasSysprompt && syspromptMain) {
+        messages.unshift({ role: 'system', content: syspromptMain, source: 'sysprompt_main' });
+    }
+    if (!contextStoryStringInjected && hasContext && contextStoryString) {
+        // 插入到世界书之前或最前面
+        const worldbookIdx = messages.findIndex((m) => m.source === 'worldbook');
+        if (worldbookIdx >= 0) {
+            messages.splice(worldbookIdx, 0, { role: 'system', content: contextStoryString, source: 'context_story_string' });
+        } else {
+            messages.unshift({ role: 'system', content: contextStoryString, source: 'context_story_string' });
+        }
+    }
+    if (!worldbookInjected && regexEnabledWorldbookText) {
+        messages.push({ role: 'system', content: regexEnabledWorldbookText, source: 'worldbook' });
     }
     if (!chatHistoryInjected) {
-        historyMessages.forEach((msg) => messages.push({ ...msg, source: 'history' }));
+        // chat_start 应在历史之前
+        if (!contextChatStartInjected && hasContext && contextChatStart) {
+            messages.push({ role: 'system', content: contextChatStart, source: 'context_chat_start' });
+            contextChatStartInjected = true;
+        }
+        historyWithReasoning.forEach((msg) => messages.push({ role: msg.role as 消息角色, content: msg.content, source: 'history' }));
         if (历史已包含最新输入()) latestInputInjected = true;
+    } else if (!contextChatStartInjected && hasContext && contextChatStart) {
+        // chatHistory 已注入但 chat_start 未注入 → 在 chatHistory 之前找位置
+        const chatHistIdx = messages.findIndex((m) => m.source === 'history');
+        if (chatHistIdx >= 0) {
+            messages.splice(chatHistIdx, 0, { role: 'system', content: contextChatStart, source: 'context_chat_start' });
+        } else {
+            // 找不到 history → 直接 push
+            messages.push({ role: 'system', content: contextChatStart, source: 'context_chat_start' });
+        }
     }
     if (!latestInputInjected && latestInput) {
         messages.push({ role: 'user', content: latestInput, source: 'latest_input' });
+    }
+    // post_history 在聊天历史和最新输入之后注入
+    if (!syspromptPostHistoryInjected && hasSysprompt && syspromptPostHistory) {
+        messages.push({ role: 'system', content: syspromptPostHistory, source: 'sysprompt_post_history' });
+    }
+
+    // ─── 绝对深度注入：将 injection_position=1 的提示词按深度插入聊天历史 ───
+    if (absoluteInjectionItems.length > 0) {
+        // 找到聊天历史区域的起始和结束位置
+        const historyStart = messages.findIndex((m) => m.source === 'history');
+        const historyEnd = messages.findLastIndex((m) => m.source === 'history');
+        const historyCount = historyStart >= 0 && historyEnd >= 0 ? (historyEnd - historyStart + 1) : 0;
+
+        if (historyCount > 0) {
+            // 按 order 排序，相同 order 按原始顺序
+            const sorted = [...absoluteInjectionItems].sort((a, b) => a.order - b.order);
+
+            sorted.forEach((item) => {
+                // depth=0 表示聊天历史最末尾，depth=4 表示倒数第4条之前
+                const insertIdx = Math.max(0, historyCount - item.depth);
+                // 在消息链中，history 区域的起始位置 + insertIdx
+                const targetIdx = historyStart + Math.min(insertIdx, historyCount);
+                messages.splice(targetIdx, 0, {
+                    role: item.role,
+                    content: item.content,
+                    source: 'preset' as 内部消息来源,
+                });
+            });
+        } else {
+            // 没有聊天历史 → 直接追加到末尾
+            absoluteInjectionItems.forEach((item) => {
+                messages.push({ role: item.role, content: item.content, source: 'preset' as 内部消息来源 });
+            });
+        }
+    }
+
+    // ─── Instruct 模板：当预设包含 instruct 时，对消息链进行序列包装 ───
+    if (hasInstruct && instruct) {
+        return 应用Instruct模板后处理(messages, instruct, {
+            playerName,
+            charName: charCardDescription,
+            后处理模式: params.config?.酒馆提示词后处理 || '未选择',
+        });
     }
 
     return 应用酒馆消息后处理(messages, params.config?.酒馆提示词后处理 || '未选择');

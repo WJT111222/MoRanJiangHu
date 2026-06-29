@@ -1,7 +1,7 @@
 {
   "name": "墨色江湖---无尽武林",
   "private": true,
-  "version": "1.0.538",
+  "version": "1.0.539",
   "type": "module",
   "scripts": {
     "cnb:sync": "node scripts/cnb-image-backend-sync.mjs",
@@ -44,6 +44,8 @@
     "@capacitor/browser": "^8.0.3",
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",
+    "@types/dompurify": "^3.0.5",
+    "dompurify": "^3.4.11",
     "fflate": "^0.8.2",
     "js-tiktoken": "^1.0.21",
     "node": "^25.6.1",
