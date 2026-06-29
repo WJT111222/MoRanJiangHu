@@ -21,6 +21,7 @@ import type {
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
 import { 获取图片展示地址, 获取图片资源文本地址, 是否存在本地图片副本, 格式化本地图片描述 } from '../../../utils/imageAssets';
 import ToggleSwitch from '../../ui/ToggleSwitch';
+import DataUrlSafeImage from '../../ui/DataUrlSafeImage';
 import { 获取命中模型词组转化器预设, 规范化接口设置 } from '../../../utils/apiConfig';
 import { 自动场景横屏尺寸选项, 自动场景竖屏尺寸选项 } from '../../../utils/imageSizeOptions';
 import { IconScroll } from '../../ui/Icons';
@@ -2693,7 +2694,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                             </button>
                                         </div>
                                         {imageSrc ? (
-                                            <img src={imageSrc} alt={`${selectedNpc.姓名}${item.label}`} className="w-full flex-1 aspect-square object-cover rounded border border-fuchsia-900/30" />
+                                            <DataUrlSafeImage src={imageSrc} alt={`${selectedNpc.姓名}${item.label}`} className="w-full flex-1 aspect-square object-cover rounded border border-fuchsia-900/30" />
                                         ) : (
                                             <div className="w-full flex-1 aspect-square rounded border border-dashed border-fuchsia-900/30 bg-black/20 flex items-center justify-center text-xs text-gray-600 font-serif">
                                                 暂无图片
@@ -2728,7 +2729,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                 className="block"
                                 onClick={() => 打开图片查看器(selectedNpcPreviewImage, `${selectedNpc?.姓名 || '角色'} 预览图`)}
                             >
-                                <img src={selectedNpcPreviewImage} alt={selectedNpc?.姓名 || '头像'} className="max-h-[400px] max-w-full object-contain drop-shadow-[0_0_20px_rgba(212,175,55,0.2)]" />
+                                <DataUrlSafeImage src={selectedNpcPreviewImage} alt={selectedNpc?.姓名 || '头像'} className="max-h-[400px] max-w-full object-contain drop-shadow-[0_0_20px_rgba(212,175,55,0.2)]" />
                             </button>
                         ) : (
                             <div className="text-center">
@@ -2882,7 +2883,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                                         className="block w-full h-full"
                                                         onClick={() => 打开图片查看器(imageSrc, `${record.NPC姓名} ${获取NPC构图文案(result.构图, result.部位)}`)}
                                                     >
-                                                        <img src={imageSrc} alt={`${record.NPC姓名} 图片`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+                                                        <DataUrlSafeImage src={imageSrc} alt={`${record.NPC姓名} 图片`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
                                                     </button>
                                                 ) : (
                                                     <div className="text-xs text-gray-500 font-serif">图片不可用</div>
@@ -3124,7 +3125,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                         {imageSrc && (
                                             <div className="mb-3 flex justify-center">
                                                 <div className="w-32 h-32 rounded border border-cyan-300/20 bg-black/50 overflow-hidden flex items-center justify-center">
-                                                    <img src={imageSrc} alt={item.物品名称 || '物品图'} className="max-w-full max-h-full object-contain" loading="lazy" />
+                                                    <DataUrlSafeImage src={imageSrc} alt={item.物品名称 || '物品图'} className="max-w-full max-h-full object-contain" loading="lazy" />
                                                 </div>
                                             </div>
                                         )}
@@ -3200,7 +3201,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                         {(() => { const sceneImg = 获取图片展示地址(task as any); return sceneImg ? (
                                             <div className="mb-3 flex justify-center">
                                                 <div className="w-40 h-28 rounded border border-wuxia-gold/20 bg-black/50 overflow-hidden flex items-center justify-center">
-                                                    <img src={sceneImg} alt={task.摘要 || '场景图'} className="max-w-full max-h-full object-contain" loading="lazy" />
+                                                    <DataUrlSafeImage src={sceneImg} alt={task.摘要 || '场景图'} className="max-w-full max-h-full object-contain" loading="lazy" />
                                                 </div>
                                             </div>
                                         ) : null; })()}
@@ -3280,7 +3281,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                     {(() => { const npcImg = 获取图片展示地址(task as any); return npcImg ? (
                                         <div className="mb-3 flex justify-center">
                                             <div className="w-32 h-32 rounded-full border border-wuxia-gold/20 bg-black/50 overflow-hidden flex items-center justify-center">
-                                                <img src={npcImg} alt={task.NPC姓名 || 'NPC头像'} className="max-w-full max-h-full object-contain" loading="lazy" />
+                                                <DataUrlSafeImage src={npcImg} alt={task.NPC姓名 || 'NPC头像'} className="max-w-full max-h-full object-contain" loading="lazy" />
                                             </div>
                                         </div>
                                     ) : null; })()}
@@ -3380,7 +3381,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                 title="点击查看图片大图"
                             >
                                 <div className="flex-1 bg-[radial-gradient(circle_at_center,#1a1a1c,black)] flex items-center justify-center relative overflow-hidden">
-                                     <img src={获取图片展示地址(当前壁纸记录)} alt="当前壁纸" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+                                     <DataUrlSafeImage src={获取图片展示地址(当前壁纸记录)} alt="当前壁纸" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
                                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded border border-wuxia-gold/40 bg-wuxia-gold/20 backdrop-blur-sm text-[10px] text-wuxia-gold shadow-[0_0_10px_rgba(212,175,55,0.3)]">
                                          当前使用中
                                      </div>
@@ -3671,7 +3672,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                             <div key={imageId || result.生成时间} className="rounded border border-wuxia-gold/20 bg-black/40 overflow-hidden flex flex-col hover:border-wuxia-gold/50 hover:shadow-[0_4px_20px_rgba(212,175,55,0.15)] transition-all duration-300 group">
                                                 <div className="aspect-[16/9] bg-[radial-gradient(circle_at_center,#1a1a1c,black)] border-b border-wuxia-gold/10 flex items-center justify-center relative overflow-hidden">
                                                     {imageSrc ? (
-                                                        <img src={imageSrc} alt={result?.摘要 || '场景'} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+                                                        <DataUrlSafeImage src={imageSrc} alt={result?.摘要 || '场景'} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
                                                     ) : (
                                                         <div className="text-xs text-gray-500 font-serif">图片不可用</div>
                                                     )}
@@ -3845,7 +3846,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                                         className="w-full h-full block text-left"
                                                         title="查看大图"
                                                     >
-                                                        <img src={imageSrc} alt={result?.摘要 || '场景'} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+                                                        <DataUrlSafeImage src={imageSrc} alt={result?.摘要 || '场景'} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
                                                     </button>
                                                 ) : (
                                                     <div className="text-xs text-gray-500 font-serif">图片不可用</div>
@@ -3977,7 +3978,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                                         className="w-full h-full block text-left"
                                                         title="查看大图"
                                                     >
-                                                        <img src={imageSrc} alt={`${result.物品名称} 图片`} className="w-full h-full object-contain p-4 transition-transform duration-700 group-hover:scale-[1.03]" />
+                                                        <DataUrlSafeImage src={imageSrc} alt={`${result.物品名称} 图片`} className="w-full h-full object-contain p-4 transition-transform duration-700 group-hover:scale-[1.03]" />
                                                     </button>
                                                 ) : (
                                                     <div className="text-xs text-gray-500 font-serif">图片不可用</div>
@@ -4102,7 +4103,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                                     className="w-full h-full block text-left"
                                                     title="查看大图"
                                                 >
-                                                    <img src={imageSrc} alt={`${record.NPC姓名} 图片`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+                                                    <DataUrlSafeImage src={imageSrc} alt={`${record.NPC姓名} 图片`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
                                                 </button>
                                             ) : (
                                                     <div className="text-xs text-gray-500 font-serif">图片不可用</div>
@@ -4552,7 +4553,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                                     <div className="flex gap-3 items-center">
                                                         <div className={`w-20 h-14 rounded border overflow-hidden bg-black/60 flex items-center justify-center ${isSelected ? 'border-wuxia-gold/60' : 'border-wuxia-gold/20'}`}>
                                                             {coverSrc ? (
-                                                                <img src={coverSrc} alt={preset.名称} className="w-full h-full object-cover" />
+                                                                <DataUrlSafeImage src={coverSrc} alt={preset.名称} className="w-full h-full object-cover" />
                                                             ) : (
                                                                 <div className="text-[10px] text-gray-500">无封面</div>
                                                             )}
@@ -4579,7 +4580,7 @@ const ImageManagerModal: React.FC<Props> = ({
                                                 <label className="text-[11px] text-wuxia-gold/60 uppercase tracking-wider block">封面</label>
                                                 <div className="rounded border border-wuxia-gold/20 bg-black/40 aspect-[4/3] overflow-hidden flex items-center justify-center">
                                                     {pngPresetDraft.封面 ? (
-                                                        <img src={获取图片资源文本地址(pngPresetDraft.封面)} alt={pngPresetDraft.名称} className="w-full h-full object-cover" />
+                                                        <DataUrlSafeImage src={获取图片资源文本地址(pngPresetDraft.封面)} alt={pngPresetDraft.名称} className="w-full h-full object-cover" />
                                                     ) : (
                                                         <div className="text-[10px] text-gray-500">未设置封面</div>
                                                     )}
@@ -5296,7 +5297,7 @@ const ImageManagerModal: React.FC<Props> = ({
                         className="relative inline-flex w-fit max-w-[85vw] max-h-[94vh] rounded-lg overflow-hidden border border-wuxia-gold/30 shadow-[0_0_60px_rgba(212,175,55,0.25)]"
                         onClick={(event) => event.stopPropagation()}
                     >
-                        <img src={imageViewer.src} alt={imageViewer.alt} className="max-w-[85vw] max-h-[94vh] object-contain bg-black" />
+                        <DataUrlSafeImage src={imageViewer.src} alt={imageViewer.alt} className="max-w-[85vw] max-h-[94vh] object-contain bg-black" />
                         <button
                             type="button"
                             className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center rounded-full bg-red-600/90 hover:bg-red-500 border-2 border-white/80 text-white shadow-[0_0_20px_rgba(220,38,38,0.6)] transition-all hover:scale-110"

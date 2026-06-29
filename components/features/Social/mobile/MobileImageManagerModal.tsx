@@ -23,6 +23,7 @@ import type {
 import { use图片资源回源预取 } from '../../../../hooks/useImageAssetPrefetch';
 import { 获取图片展示地址, 获取图片资源文本地址, 是否存在本地图片副本, 格式化本地图片描述 } from '../../../../utils/imageAssets';
 import ToggleSwitch from '../../../ui/ToggleSwitch';
+import DataUrlSafeImage from '../../../ui/DataUrlSafeImage';
 import { 获取命中模型词组转化器预设, 规范化接口设置 } from '../../../../utils/apiConfig';
 import { 自动场景横屏尺寸选项, 自动场景竖屏尺寸选项 } from '../../../../utils/imageSizeOptions';
 import { 获取本地图片图床迁移状态, 订阅本地图片图床迁移状态 } from '../../../../services/dbService';
@@ -1140,7 +1141,7 @@ const ManualTabContent: React.FC<TabProps> = ({ socialList, cultivationSystemEna
                                         </button>
                                     </div>
                                     {imageSrc ? (
-                                        <img src={imageSrc} alt={`${selectedNpc.姓名}${item.label}`} className="w-full aspect-square object-cover rounded border border-pink-900/30 bg-black/60 shadow-inner" />
+                                        <DataUrlSafeImage src={imageSrc} alt={`${selectedNpc.姓名}${item.label}`} className="w-full aspect-square object-cover rounded border border-pink-900/30 bg-black/60 shadow-inner" />
                                     ) : (
                                         <div className="w-full aspect-square rounded border border-dashed border-pink-900/30 bg-pink-950/10 flex items-center justify-center text-[11px] text-pink-200/30 text-center font-serif px-3">
                                             暂无图片
@@ -1255,7 +1256,7 @@ const LibraryTabContent: React.FC<TabProps> = ({
                                                     className="block w-full"
                                                     onClick={() => 打开图片查看器(src, `${group.npc.姓名} ${获取NPC构图文案(img.构图, img.部位)}`)}
                                                 >
-                                                    <img src={src} className="w-full rounded border border-[#d4af37]/30" alt={group.npc.姓名} />
+                                                    <DataUrlSafeImage src={src} className="w-full rounded border border-[#d4af37]/30" alt={group.npc.姓名} />
                                                 </button>
                                                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent h-1/3 pointer-events-none rounded-b"></div>
                                             </div>
@@ -1607,7 +1608,7 @@ const SceneTabContent: React.FC<TabProps> = ({
                         className="relative block w-full text-left group"
                         onClick={() => 打开图片查看器(获取图片展示地址(currentWallpaper), currentWallpaper?.摘要 || '当前场景壁纸')}
                     >
-                        <img src={获取图片展示地址(currentWallpaper)} alt="当前壁纸" className="w-full rounded border border-wuxia-gold/30 shadow-[0_0_15px_rgba(212,175,55,0.1)]" />
+                        <DataUrlSafeImage src={获取图片展示地址(currentWallpaper)} alt="当前壁纸" className="w-full rounded border border-wuxia-gold/30 shadow-[0_0_15px_rgba(212,175,55,0.1)]" />
                         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent h-1/3 pointer-events-none rounded-b"></div>
                         <div className="absolute inset-0 rounded flex items-center justify-center bg-black/0 group-active:bg-black/20 transition-colors">
                             <div className="rounded-full border border-wuxia-gold/40 bg-black/55 px-3 py-2 text-[11px] text-wuxia-gold shadow-[0_0_12px_rgba(212,175,55,0.15)]">
@@ -1667,7 +1668,7 @@ const SceneTabContent: React.FC<TabProps> = ({
                                 <div className="absolute inset-0 bg-gradient-to-b from-wuxia-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                                 {src ? (
                                     <div className="relative">
-                                        <img src={src} className="w-full rounded border border-wuxia-gold/20" alt={item?.摘要 || '场景壁纸'} />
+                                        <DataUrlSafeImage src={src} className="w-full rounded border border-wuxia-gold/20" alt={item?.摘要 || '场景壁纸'} />
                                         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent h-1/3 pointer-events-none rounded-b"></div>
                                     </div>
                                 ) : (
@@ -1730,7 +1731,7 @@ const SceneTabContent: React.FC<TabProps> = ({
                         className="relative inline-flex w-fit max-w-[94vw] max-h-[92vh] rounded-lg overflow-hidden border border-[#d4af37]/20 shadow-[0_0_40px_rgba(212,175,55,0.18)]"
                         onClick={(event) => event.stopPropagation()}
                     >
-                        <img src={imageViewer.src} alt={imageViewer.alt} className="max-w-[94vw] max-h-[92vh] object-contain bg-black" />
+                        <DataUrlSafeImage src={imageViewer.src} alt={imageViewer.alt} className="max-w-[94vw] max-h-[92vh] object-contain bg-black" />
                     </div>
                 </div>
             )}
@@ -1773,7 +1774,7 @@ const QueueTabContent: React.FC<TabProps> = ({ queue, sceneQueue, itemImageSeque
                                 <span className='font-bold text-cyan-100 tracking-widest truncate'>{item.物品名称 || '物品生图'}</span>
                                 <span className={`text-[10px] px-2 py-0.5 rounded border tracking-widest ${队列状态样式[从图片状态推导队列状态(item.状态)]}`}>{获取图片状态文案(item)}</span>
                             </div>
-                            {imageSrc && <img src={imageSrc} alt={item.物品名称 || '物品图片'} className="w-full max-h-52 object-contain rounded border border-cyan-300/10 bg-black/40 p-2" />}
+                            {imageSrc && <DataUrlSafeImage src={imageSrc} alt={item.物品名称 || '物品图片'} className="w-full max-h-52 object-contain rounded border border-cyan-300/10 bg-black/40 p-2" />}
                             <div className='text-[10px] text-cyan-100/60 relative z-10'>{格式化时间(item.生成时间)} / {item.物品类型 || '未分类'} / {item.物品品质 || '未知品质'} / {item.来源位置 || '未知来源'}</div>
                             <div className="text-cyan-100/60 relative z-10">{item.错误信息 || (imageSrc ? '图片已返回并写入历史。' : '等待图片后端返回或本地化。')}</div>
                             {渲染生图调试链路(item.调试链路)}
@@ -1876,7 +1877,7 @@ const HistoryTabContent: React.FC<TabProps> = ({
                             <div className='border-t border-cyan-300/20 pt-3 mt-3 space-y-2'>
                                 {imageSrc && (
                                     <button type="button" onClick={() => 打开图片查看器(imageSrc, `${result.物品名称} 图片`)} className="w-full block text-left">
-                                        <img src={imageSrc} alt='物品图片' className='w-full rounded border border-cyan-300/20 bg-black/40 object-contain p-2 shadow-[0_0_15px_rgba(34,211,238,0.08)]' />
+                                        <DataUrlSafeImage src={imageSrc} alt='物品图片' className='w-full rounded border border-cyan-300/20 bg-black/40 object-contain p-2 shadow-[0_0_15px_rgba(34,211,238,0.08)]' />
                                     </button>
                                 )}
                                 <div className='text-cyan-100/60 text-[10px]'>{格式化时间(result.生成时间)} / {result.物品类型 || '未分类'} / {result.物品品质 || '未知品质'} / {result.来源位置 || '未知来源'}</div>
@@ -1910,7 +1911,7 @@ const HistoryTabContent: React.FC<TabProps> = ({
                                         onClick={() => 打开图片查看器(imageSrc, result.摘要 || '场景图片')}
                                         className="w-full block text-left"
                                     >
-                                        <img src={imageSrc} alt='场景图片' className='w-full rounded border border-[#d4af37]/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]' />
+                                        <DataUrlSafeImage src={imageSrc} alt='场景图片' className='w-full rounded border border-[#d4af37]/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]' />
                                     </button>
                                 )}
                                 <div className='text-[#A67C00]/60 text-[10px]'>{格式化时间(result.生成时间)}</div>
@@ -1963,7 +1964,7 @@ const HistoryTabContent: React.FC<TabProps> = ({
                                         onClick={() => 打开图片查看器(imageSrc, `${entry.npcRecord.NPC姓名} 图片`)}
                                         className="w-full block text-left"
                                     >
-                                        <img src={imageSrc} alt='NPC图片' className='w-full rounded border border-[#d4af37]/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]' />
+                                        <DataUrlSafeImage src={imageSrc} alt='NPC图片' className='w-full rounded border border-[#d4af37]/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]' />
                                     </button>
                                 )}
                                 <div className='text-[#A67C00]/60 text-[10px]'>{格式化时间(result.生成时间)}</div>
@@ -2021,7 +2022,7 @@ const HistoryTabContent: React.FC<TabProps> = ({
                         className="relative inline-flex w-fit max-w-[94vw] max-h-[92vh] rounded-lg overflow-hidden border border-[#d4af37]/20 shadow-[0_0_40px_rgba(212,175,55,0.18)]"
                         onClick={(event) => event.stopPropagation()}
                     >
-                        <img src={imageViewer.src} alt={imageViewer.alt} className="max-w-[94vw] max-h-[92vh] object-contain bg-black" />
+                        <DataUrlSafeImage src={imageViewer.src} alt={imageViewer.alt} className="max-w-[94vw] max-h-[92vh] object-contain bg-black" />
                     </div>
                 </div>
             )}
@@ -2727,7 +2728,7 @@ const PresetsTabContent: React.FC<TabProps> = ({
                                         <div className="flex items-center gap-2">
                                             <div className={`w-16 h-12 rounded border overflow-hidden bg-black/60 flex items-center justify-center ${isSelected ? 'border-wuxia-gold/60' : 'border-wuxia-gold/20'}`}>
                                                 {coverSrc ? (
-                                                    <img src={coverSrc} alt={preset.名称} className="w-full h-full object-cover" />
+                                                    <DataUrlSafeImage src={coverSrc} alt={preset.名称} className="w-full h-full object-cover" />
                                                 ) : (
                                                     <div className="text-[10px] text-gray-500">无封面</div>
                                                 )}
@@ -2768,7 +2769,7 @@ const PresetsTabContent: React.FC<TabProps> = ({
                             <label className={小标题样式}>封面</label>
                             <div className="rounded border border-wuxia-gold/20 bg-black/40 aspect-[4/3] overflow-hidden flex items-center justify-center">
                                 {pngPresetDraft.封面 ? (
-                                    <img src={获取图片资源文本地址(pngPresetDraft.封面)} alt={pngPresetDraft.名称} className="w-full h-full object-cover" />
+                                    <DataUrlSafeImage src={获取图片资源文本地址(pngPresetDraft.封面)} alt={pngPresetDraft.名称} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="text-[10px] text-gray-500">未设置封面</div>
                                 )}
