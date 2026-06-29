@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { generateImageByPrompt, persistImageAssetLocally } from '../services/ai/image';
+import { 默认画师串预设列表 } from '../utils/apiConfig';
 
 vi.mock('../services/dbService', () => ({
     保存图片资源: vi.fn(async () => 'wuxia-asset://saved-image')
@@ -11,6 +12,15 @@ afterEach(() => {
 });
 
 describe('Grok2Api image generation compatibility', () => {
+    it('keeps GPT Image 2 default negative presets free of moderation-triggering NSFW words', () => {
+        const gptImagePresets = 默认画师串预设列表.filter((preset) => preset.id.startsWith('gpt_image2_'));
+        expect(gptImagePresets.length).toBeGreaterThan(0);
+
+        for (const preset of gptImagePresets) {
+            expect(preset.负面提示词).not.toMatch(/\b(?:nsfw|nude|naked|explicit|sexualized|fetish)\b/i);
+        }
+    });
+
     it('does not force base64 response_format for regular GPT image compatible providers', async () => {
         let requestBody: any = null;
         vi.stubGlobal('fetch', vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -41,6 +51,42 @@ describe('Grok2Api image generation compatibility', () => {
         expect(requestBody).not.toHaveProperty('response_format');
         expect(requestBody.moderation).toBe('auto');
         expect(result.图片URL).toBe('https://image.example/gpt-result.png');
+    });
+
+    it('does not send NSFW words in non-NSFW GPT image prompts even when user presets contain them', async () => {
+        let requestBody: any = null;
+        vi.stubGlobal('fetch', vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+            requestBody = JSON.parse(String(init?.body || '{}'));
+            return new Response(JSON.stringify({
+                data: [
+                    { url: 'https://image.example/gpt-result.png' }
+                ]
+            }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' }
+            });
+        }));
+
+        await generateImageByPrompt('peaceful bamboo courtyard, nude nsfw text should be stripped', {
+            id: 'gpt-image',
+            名称: 'GPT Image',
+            供应商: 'openai_compatible',
+            协议覆盖: 'auto',
+            baseUrl: 'https://image.example',
+            apiKey: 'test-key',
+            model: 'gpt-image-2',
+            图片后端类型: 'openai',
+            图片接口路径: '/v1/images/generations',
+            图片响应格式: 'url'
+        } as any, undefined, {
+            构图: '场景',
+            附加负面提示词: 'nsfw, nude, explicit, sexualized, fetish, watermark'
+        });
+
+        expect(requestBody.prompt).toContain('peaceful bamboo courtyard');
+        expect(requestBody.prompt).not.toContain('Negative prompt:');
+        expect(requestBody.prompt).not.toContain('watermark');
+        expect(requestBody.prompt).not.toMatch(/\b(?:nsfw|nude|naked|explicit|sexualized|fetish)\b/i);
     });
 
     it('prefers base64 data when an image response also contains a temporary URL', async () => {

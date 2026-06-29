@@ -4515,7 +4515,7 @@ export const generateSceneImagePrompt = async (
 // 在未开启 NSFW 模式时，从正向提示词中移除会被生图 API 误解为成人内容的标签。
 // 问题背景：部分词组转化器或 NPC 外观描述可能包含 "breast" "cleavage" "nude" 等词，
 // 即使是描述正常着装（如盔甲胸部护板），中转 API 的内容审核也会因这些词拒绝请求。
-const 非NSFW正向提示词禁用标签正则 = /\b(?:nsfw|nude|naked|topless|bottomless|nipples?|areolae?|genital(?:ia|s)?|penis|vagina|vulva|clitoris|anus|anal|pussy|cock|dick|porn|hentai|erotic|sexual|sex\s*(?:ual)?\s*(?:act|intercourse|content)?|explicit|pornographic|masturbat(?:e|ion)|orgasm|cum|semen|ejaculat(?:e|ion))\b/gi;
+const 非NSFW正向提示词禁用标签正则 = /\b(?:nsfw|nude|naked|topless|bottomless|nipples?|areolae?|genital(?:ia|s)?|penis|vagina|vulva|clitoris|anus|anal|pussy|cock|dick|porn|hentai|erotic|sexual|sexualized|fetish|sex\s*(?:ual)?\s*(?:act|intercourse|content)?|explicit|pornographic|masturbat(?:e|ion)|orgasm|cum|semen|ejaculat(?:e|ion))\b/gi;
 
 const 净化非NSFW正向提示词 = (prompt: string): string => {
     if (!prompt) return prompt;
@@ -4544,6 +4544,8 @@ export const generateImageByPrompt = async (
     // 非 NSFW 模式下，从正向提示词中剥离已知的成人/敏感词，避免正常着装和普通场景被生图 API 误判拦截。
     const nsfwModeEnabled = options?.启用NSFW模式 === true;
     const normalizedPrompt = nsfwModeEnabled ? normalizedPromptRaw : 净化非NSFW正向提示词(normalizedPromptRaw);
+    const negativePromptTextRaw = promptBundle.最终负向提示词;
+    const negativePromptText = nsfwModeEnabled ? negativePromptTextRaw : 净化非NSFW正向提示词(negativePromptTextRaw);
 
     const responseFormat: 图片响应格式类型 = apiConfig.图片响应格式 === 'b64_json' || apiConfig.图片响应格式 === 'base64'
         ? apiConfig.图片响应格式
@@ -4569,8 +4571,11 @@ export const generateImageByPrompt = async (
     })();
     const isPucodingImageEndpoint = /(^|\.)pucoding\.com$/i.test(originalBaseHost)
         || /\/api\/pucoding-image\/v1\/images\//i.test(endpointInfo?.pathname || '');
-    const negativePromptText = promptBundle.最终负向提示词;
-    const promptWithInlineNegative = promptBundle.带内联负面提示词的正向提示词;
+    const promptWithInlineNegative = isGptImageModel
+        ? normalizedPrompt
+        : nsfwModeEnabled
+            ? promptBundle.带内联负面提示词的正向提示词
+            : 为不支持独立负面字段的模型附加负面提示词(normalizedPrompt, negativePromptText);
     const shouldSkipBaseNegative = options?.跳过基础负面提示词 === true;
     const size = promptBundle.尺寸;
     const width = promptBundle.宽度;
