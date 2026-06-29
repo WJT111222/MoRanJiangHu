@@ -289,6 +289,12 @@ export const 获取图片展示地址 = (asset?: 图片资源结构 | null): str
     return '';
 };
 
+export const 获取图片安全预览地址 = (asset?: 图片资源结构 | null): string => {
+    const local = 读取文本(asset?.本地路径);
+    if (是否图片资源引用(local)) return local;
+    return 获取图片展示地址(asset);
+};
+
 export const 图片资源记录含可恢复地址 = (asset?: 图片资源结构 | null): boolean => {
     if (!asset || typeof asset !== 'object') return false;
     const local = 读取文本(asset?.本地路径);

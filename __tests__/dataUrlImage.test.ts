@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     base64图片DataUrl转Blob,
     估算Base64DataUrl字节数,
+    解析图片预览源,
     是否Base64图片DataUrl,
     需要转为ObjectUrl展示
 } from '../utils/dataUrlImage';
@@ -31,5 +32,12 @@ describe('dataUrlImage', () => {
         expect(blob.type).toBe('image/png');
         expect(blob.size).toBe(3);
         expect(await blob.text()).toBe('ABC');
+    });
+
+    it('把应用内图片资源引用解析为真实 Data URL，供大图预览继续转 Blob URL', async () => {
+        const dataUrl = 'data:image/png;base64,QUJD';
+        const readAsset = async (ref: string) => (ref === 'wuxia-asset://local-large' ? dataUrl : '');
+
+        await expect(解析图片预览源('wuxia-asset://local-large', readAsset)).resolves.toBe(dataUrl);
     });
 });

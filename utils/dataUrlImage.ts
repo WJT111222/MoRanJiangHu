@@ -1,6 +1,7 @@
 export const DATA_URL_IMAGE_OBJECT_URL_THRESHOLD = 512 * 1024;
 
 const DATA_URL_PATTERN = /^data:([^;,]+);base64,(.*)$/is;
+const WUXIA_ASSET_URL_PATTERN = /^wuxia-asset:\/\/.+/i;
 
 export const 是否Base64图片DataUrl = (value: unknown): value is string => (
     typeof value === 'string' && /^data:image\/[^;,]+;base64,/i.test(value)
@@ -18,6 +19,22 @@ export const 需要转为ObjectUrl展示 = (
     value: unknown,
     threshold = DATA_URL_IMAGE_OBJECT_URL_THRESHOLD
 ): value is string => 是否Base64图片DataUrl(value) && 估算Base64DataUrl字节数(value) >= threshold;
+
+export const 是否应用内图片资源引用 = (value: unknown): value is string => (
+    typeof value === 'string' && WUXIA_ASSET_URL_PATTERN.test(value.trim())
+);
+
+export const 解析图片预览源 = async (
+    value: unknown,
+    readAsset: (ref: string) => Promise<string>
+): Promise<string | undefined> => {
+    if (!是否应用内图片资源引用(value)) {
+        return typeof value === 'string' ? value : undefined;
+    }
+    const ref = value.trim();
+    const dataUrl = (await readAsset(ref).catch(() => '')).trim();
+    return 是否Base64图片DataUrl(dataUrl) ? dataUrl : ref;
+};
 
 export const base64图片DataUrl转Blob = (dataUrl: string): Blob => {
     const matched = dataUrl.match(DATA_URL_PATTERN);

@@ -3,6 +3,7 @@ import { 提取图片资源引用列表 } from '../hooks/useImageAssetPrefetch';
 import {
     创建图片资源引用,
     获取图片资源文本地址,
+    获取图片安全预览地址,
     清空图片资源缓存,
     注册图片资源缓存,
     注册远程图片兜底引用,
@@ -51,5 +52,15 @@ describe('imageAssets', () => {
 
         expect(获取图片资源文本地址(fallbackRef)).toBe(remoteUrl);
         expect(图片资源记录含可恢复地址({ 本地路径: fallbackRef })).toBe(true);
+    });
+
+    it('safe preview keeps local asset refs so DataUrlSafeImage can load the real image from IndexedDB', () => {
+        const remoteUrl = 'https://image.bacon159.pp.ua/api/v1/file/gallery-preview.png';
+        const fallbackRef = 创建图片资源引用('gallery-preview-local');
+        清空图片资源缓存();
+        注册远程图片兜底引用(remoteUrl, fallbackRef);
+
+        expect(获取图片资源文本地址(fallbackRef)).toBe(remoteUrl);
+        expect(获取图片安全预览地址({ 本地路径: fallbackRef, 图片URL: remoteUrl })).toBe(fallbackRef);
     });
 });

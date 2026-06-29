@@ -21,7 +21,7 @@ import type {
     PNG画风预设结构
 } from '../../../../types';
 import { use图片资源回源预取 } from '../../../../hooks/useImageAssetPrefetch';
-import { 获取图片展示地址, 获取图片资源文本地址, 是否存在本地图片副本, 格式化本地图片描述 } from '../../../../utils/imageAssets';
+import { 获取图片安全预览地址 as 获取图片展示地址, 获取图片资源文本地址, 是否存在本地图片副本, 格式化本地图片描述 } from '../../../../utils/imageAssets';
 import ToggleSwitch from '../../../ui/ToggleSwitch';
 import DataUrlSafeImage from '../../../ui/DataUrlSafeImage';
 import { 获取命中模型词组转化器预设, 规范化接口设置 } from '../../../../utils/apiConfig';
