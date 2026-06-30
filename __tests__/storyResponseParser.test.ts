@@ -26,6 +26,42 @@ describe('storyResponseParser', () => {
         ]);
     });
 
+    it('does not render Izumi state blocks or status lines as quick action options', () => {
+        const parsed = parseStoryRawText([
+            '<正文>',
+            '【旁白】你推开门，外面的天空阴沉。',
+            '</正文>',
+            '<短期记忆>主角与俞月荷发现外界异常。</短期记忆>',
+            '<current_event>',
+            '当前主线任务:MQ.1_生化危机生存挑战',
+            '当前支线事件:SQ.1_探索民宅安全状况',
+            '最新使用支线事件编号:SQ.1',
+            '</current_event>',
+            '<progress>',
+            'PG.1',
+            '时间推进:1:01:01:00:00 -> 1:01:01:08:15',
+            '</progress>',
+            '<options>',
+            '>选项一：检查门外走廊',
+            '<current_event>',
+            '当前主线任务:MQ.1_生化危机生存挑战',
+            '</current_event>',
+            '<progress>',
+            'PG.1',
+            '</progress>',
+            '>选项二：询问俞月荷是否受伤',
+            '</options>'
+        ].join('\n'));
+
+        const body = parsed.logs.map(item => item.text).join('\n');
+        expect(body).not.toContain('current_event');
+        expect(body).not.toContain('当前主线任务');
+        expect(parsed.action_options).toEqual([
+            '检查门外走廊',
+            '询问俞月荷是否受伤'
+        ]);
+    });
+
     it('does not expose malformed closing action tag as a quick action', () => {
         const parsed = parseStoryRawText([
             '<正文>',
