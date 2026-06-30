@@ -690,6 +690,7 @@ Client Request
 
 - All OpenList API calls require the header: `Authorization: <token>` where token is stored in Cloudflare Secret `MORAN_OPENLIST_AUTH_TOKEN`.
 - Base URL defaults to `https://openlist.bacon.de5.net` (env var `MORAN_OPENLIST_BASE_URL`).
+- For uploads that need to bypass Cloudflare, use the direct AList/OpenList origin `http://159.138.7.126:5244` as the API base URL. Public downloads and website-facing URLs should still use the documented public domains unless the task explicitly requires direct-origin testing.
 
 ### Key API Endpoints
 
@@ -766,7 +767,7 @@ Deletes to OneDrive's recycle bin. Supports batch deletion.
 **Always use `/api/fs/put` (PUT + raw body) for uploading files:**
 
 ```bash
-curl -X PUT "https://openlist.bacon.de5.net/api/fs/put" \
+curl -X PUT "http://159.138.7.126:5244/api/fs/put" \
   -H "Authorization: $MORAN_OPENLIST_AUTH_TOKEN" \
   -H "Content-Type: application/vnd.android.package-archive" \
   -H "File-Path: /Onedrive/MoRanJiangHu/releases/latest.apk" \
@@ -779,6 +780,7 @@ Required upload parameters:
 3. **Body is raw binary stream**, not multipart form data.
 4. **`/Onedrive/` must use capital O** — lowercase `/onedrive/` causes `storage not found` error.
 5. **`Content-Type` should be the actual file MIME type** (e.g., `application/vnd.android.package-archive` for APK).
+6. **Prefer direct-origin upload base URL `http://159.138.7.126:5244`** when Cloudflare interferes with OpenList uploads; do not expose this as a public customer-facing download URL.
 
 Upload size verification (2026-06-28):
 - 5MB PUT: ✅ 3.4s (~1.5 MB/s)
@@ -895,3 +897,24 @@ When B2 credentials are missing, falls back to the old public-bucket 302 redirec
 ### Sharing This Architecture With Other AI Agents
 
 When onboarding another AI assistant (Cursor, Claude, etc.) to work on this project's file distribution or release pipeline, share the "APK Distribution Architecture (as of 2026-06-29, updated 2026-06-29)" section from this file. It covers the full architecture: KV manifest, B2 authorized download (private bucket), OneDrive channels, download flow, secrets, and OneDrive data layout.
+
+## Cloud Studio ComfyUI Backend Migration Notes
+
+- CNB is now only a temporary migration source for the ComfyUI image backend and is expected to be abandoned after the free GPU period ends.
+- The Cloud Studio target backend repository is the private GitHub repository `ypq123456789/comfyui-cloudstudio-msjh`.
+- The local Cloud Studio backend workspace is `F:/code/comfyui-cloudstudio-msjh`; the old CNB source workspace is `F:/code/comfyui-ql-cnb-fix` and should not be modified for new Cloud Studio work unless explicitly requested.
+- Cloud Studio import flow:
+  1. Import `ypq123456789/comfyui-cloudstudio-msjh` into Cloud Studio from GitHub.
+  2. Open the workspace terminal.
+  3. Run `bash cloudstudio_start.sh`.
+  4. Open/preview port `8188` in Cloud Studio.
+  5. If automatic public URL detection fails, set `CLOUDSTUDIO_IMAGE_BACKEND_URL` to the 8188 preview URL and run `bash cloudstudio_sync.sh`.
+- Cloud Studio environment variable names:
+  - `CLOUDSTUDIO_TOKEN` — Cloud Studio account/API token. Keep it only in local user environment variables or Cloud Studio Secrets; never commit it.
+  - `CLOUDSTUDIO_IMAGE_BACKEND_URL` — public 8188 ComfyUI preview URL when auto-detection fails.
+  - `CLOUDSTUDIO_IMAGE_BACKEND_CONNECT_TOKEN` — user-facing auto-connect token for filtering the discovered backend in MoRanJiangHu.
+  - `CLOUDSTUDIO_IMAGE_BACKEND_PORT` — ComfyUI port, default `8188`.
+  - `MSJH_IMAGE_BACKEND_SYNC_URL` — registry endpoint, default `/api/image-backend/sync` on the public website.
+  - `MSJH_IMAGE_BACKEND_SYNC_TOKEN` — backend registry sync token. Store as a secret, never in repo.
+- MoRanJiangHu frontend should use the generic cloud backend registry path `/api/image-backend/sync`; keep `/api/image-backend/cnb-sync` only as backward compatibility.
+- Do not record real Cloud Studio tokens, sync tokens, or preview URLs that contain secrets in AGENTS files, commits, logs, screenshots, or customer changelogs.

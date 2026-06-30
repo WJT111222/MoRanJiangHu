@@ -11,6 +11,7 @@ const CORS_HEADERS = {
 type SyncPayload = {
     customerId?: string;
     backendType: string;
+    provider?: string;
     port: number;
     url: string;
     healthUrl?: string;
@@ -93,7 +94,12 @@ const isAllowedSyncUrl = (value: string, allowAnyUrl: boolean): boolean => {
         const url = new URL(value);
         if (!/^https?:$/i.test(url.protocol)) return false;
         if (allowAnyUrl) return true;
-        return /(^|\.)cnb\.run$/i.test(url.hostname);
+        return /(^|\.)cnb\.run$/i.test(url.hostname)
+            || /(^|\.)cnb\.space$/i.test(url.hostname)
+            || /(^|\.)cloudstudio\.net$/i.test(url.hostname)
+            || /(^|\.)cloudstudio\.com$/i.test(url.hostname)
+            || /(^|\.)cloudstudio\.club$/i.test(url.hostname)
+            || /(^|\.)coding\.net$/i.test(url.hostname);
     } catch {
         return false;
     }
@@ -169,6 +175,7 @@ const sanitizePayload = async (body: any, allowAnyUrl: boolean): Promise<SyncPay
     return {
         customerId: readString(body?.customerId) || undefined,
         backendType,
+        provider: readString(body?.provider || body?.source) || undefined,
         port,
         url: normalizedUrl,
         healthUrl: normalizeSyncUrl(String(body?.healthUrl || '')) || undefined,

@@ -220,10 +220,11 @@ const buildRegistryUrl = (customUrl?: string): string => {
     const normalized = normalizeUrl(customUrl || '');
     if (normalized) {
         return normalized.includes('/api/image-backend/cnb-sync')
+            || normalized.includes('/api/image-backend/sync')
             ? normalized
-            : `${normalized}/api/image-backend/cnb-sync`;
+            : `${normalized}/api/image-backend/sync`;
     }
-    return buildSyncApiUrl('/api/image-backend/cnb-sync');
+    return buildSyncApiUrl('/api/image-backend/sync');
 };
 
 export const fetchDiscoveredImageBackends = async (
@@ -264,5 +265,6 @@ export const fetchDiscoveredImageBackends = async (
 export const buildDiscoveredBackendLabel = (item: 发现图片后端记录结构): string => {
     const title = item.label?.trim() || item.customerId?.trim() || item.workspace?.trim() || item.url;
     const suffix = item.port ? `:${item.port}` : '';
-    return `${title}${suffix}`;
+    const provider = item.provider?.trim();
+    return provider ? `${title}${suffix} · ${provider}` : `${title}${suffix}`;
 };

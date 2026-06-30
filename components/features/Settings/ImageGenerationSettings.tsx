@@ -1870,18 +1870,18 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                         <div className="flex items-center justify-between gap-3">
                             <div>
                                 <div className="flex items-center gap-2 text-base font-bold text-emerald-200">
-                                    <span>自动发现 ComfyUI 后端</span>
+                                    <span>云端 ComfyUI 后端</span>
                                     <button
                                         type="button"
                                         onClick={() => { void openExternalUrl(CNB_GUIDE_URL); }}
                                         className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-emerald-400/30 bg-black/20 text-xs text-emerald-200 transition-colors hover:border-emerald-300 hover:text-white"
-                                        aria-label="如何构建属于自己的 CNB ComfyUI 后端"
-                                        title="如何构建属于自己的 CNB ComfyUI 后端"
+                                        aria-label="如何构建属于自己的云端 ComfyUI 后端"
+                                        title="如何构建属于自己的云端 ComfyUI 后端"
                                     >
                                         ?
                                     </button>
                                 </div>
-                                <div className="mt-1 text-xs leading-6 text-emerald-100/70">后端启动后向注册表上报 8188 地址，这里会自动拉取在线列表，选择后会直接回填到 API 地址。</div>
+                                <div className="mt-1 text-xs leading-6 text-emerald-100/70">Cloud Studio 后端启动后向注册表上报 8188 地址，这里会自动拉取在线列表，选择后会直接回填到 API 地址。</div>
                             </div>
                             <GameButton
                                 onClick={() => void refreshDiscoveredBackends()}
@@ -1899,17 +1899,17 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                                     type="text"
                                     value={form.功能模型占位.图片后端注册表地址}
                                     onChange={(e) => updatePlaceholder('图片后端注册表地址', e.target.value)}
-                                    placeholder="留空则使用当前站点 /api/image-backend/cnb-sync"
+                                    placeholder="留空则使用当前站点 /api/image-backend/sync"
                                     className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 text-white outline-none transition-all focus:border-emerald-400"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-emerald-200">CNB 用户名称</label>
+                                <label className="text-sm font-bold text-emerald-200">自动连接口令</label>
                                 <input
                                     type="text"
                                     value={form.功能模型占位.图片后端自动连接口令}
                                     onChange={(e) => updatePlaceholder('图片后端自动连接口令', e.target.value)}
-                                    placeholder="填写 CNB 个人主页头像下方的用户名称"
+                                    placeholder="填写 Cloud Studio 上报脚本里的连接口令"
                                     className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 text-white outline-none transition-all focus:border-emerald-400"
                                 />
                             </div>
@@ -1933,7 +1933,8 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                                 当前 ComfyUI 域名：<code>{selectedDiscoveredBackend.url}</code>
                                 {selectedDiscoveredBackend.workspace ? <> · 工作区：<code>{selectedDiscoveredBackend.workspace}</code></> : null}
                                 {selectedDiscoveredBackend.lastHeartbeatAt ? <> · 最近心跳：<code>{selectedDiscoveredBackend.lastHeartbeatAt}</code></> : null}
-                                {selectedDiscoveredBackend.connectTokenMatched ? <> · 用户名称已匹配</> : null}
+                                {selectedDiscoveredBackend.provider ? <> · 来源：<code>{selectedDiscoveredBackend.provider}</code></> : null}
+                                {selectedDiscoveredBackend.connectTokenMatched ? <> · 口令已匹配</> : null}
                             </div>
                         )}
                         {discoveryError && (
@@ -2653,6 +2654,7 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                                             <div className="rounded-xl border border-sky-500/20 bg-black/20 px-4 py-3 text-xs leading-6 text-sky-100">
                                                 当前已选：<code>{selectedSceneDiscoveredBackend.url}</code>
                                                 {selectedSceneDiscoveredBackend.workspace ? <> · 工作区：<code>{selectedSceneDiscoveredBackend.workspace}</code></> : null}
+                                                {selectedSceneDiscoveredBackend.provider ? <> · 来源：<code>{selectedSceneDiscoveredBackend.provider}</code></> : null}
                                             </div>
                                         )}
                                     </div>

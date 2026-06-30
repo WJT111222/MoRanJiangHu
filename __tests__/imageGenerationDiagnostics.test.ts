@@ -21,9 +21,9 @@ describe('imageGenerationDiagnostics', () => {
         const message = 构建ComfyUI连接失败提示('https://cnb-demo-001.cnb.space/', new Error('Failed to fetch'));
 
         expect(message).toContain('ComfyUI 连接失败');
-        expect(message).toContain('CNB 的 VS Code 页面保持打开');
+        expect(message).toContain('Cloud Studio 工作区页面保持打开');
         expect(message).toContain('--enable-cors-header "*"');
-        expect(message).toContain('https://cnb-xxxx-xxxx-001.cnb.space/?folder=/workspace');
+        expect(message).toContain('cloudstudio_sync.sh');
         expect(message).toContain('原始错误：Failed to fetch');
     });
 
@@ -33,7 +33,7 @@ describe('imageGenerationDiagnostics', () => {
         expect(message).toContain('本机 ComfyUI');
         expect(message).toContain('手机/APK 里误填了 127.0.0.1');
         expect(message).toContain('电脑的局域网 IP');
-        expect(message).not.toContain('CNB 的 VS Code 页面保持打开');
+        expect(message).not.toContain('Cloud Studio 工作区页面保持打开');
     });
 
     it('uses LAN deployment wording for private ComfyUI addresses', () => {
@@ -42,7 +42,7 @@ describe('imageGenerationDiagnostics', () => {
         expect(message).toContain('局域网 IP');
         expect(message).toContain('防火墙');
         expect(message).toContain('--listen 0.0.0.0');
-        expect(message).not.toContain('CNB 工作区页面地址');
+        expect(message).not.toContain('Cloud Studio 工作区页面');
     });
 
     it('uses backend-specific wording for SD WebUI', () => {
@@ -92,7 +92,7 @@ describe('imageGenerationDiagnostics', () => {
         }
     });
 
-    it('builds CNB ComfyUI runtime proxy endpoints for fallback requests', () => {
+    it('builds cloud ComfyUI runtime proxy endpoints for fallback requests', () => {
         const originalWindow = (globalThis as any).window;
         (globalThis as any).window = {
             location: {
@@ -106,6 +106,8 @@ describe('imageGenerationDiagnostics', () => {
                 .toBe('https://msjh.bacon159.pp.ua/api/image-backend/comfyui-proxy/prompt?url=https%3A%2F%2Fgiexocxqpl-8188.cnb.run');
             expect(构建ComfyUI运行时代理端点('https://giexocxqpl-8188.cnb.run', '/view?filename=a.png&type=output'))
                 .toBe('https://msjh.bacon159.pp.ua/api/image-backend/comfyui-proxy/view?filename=a.png&type=output&url=https%3A%2F%2Fgiexocxqpl-8188.cnb.run');
+            expect(构建ComfyUI运行时代理端点('https://e0afc88e07c84c1bb0a21081e3274fc7--8188.ap-shanghai2.cloudstudio.club/', '/prompt'))
+                .toBe('https://msjh.bacon159.pp.ua/api/image-backend/comfyui-proxy/prompt?url=https%3A%2F%2Fe0afc88e07c84c1bb0a21081e3274fc7--8188.ap-shanghai2.cloudstudio.club');
             expect(构建ComfyUI运行时代理端点('https://example.com', '/prompt'))
                 .toBe('https://example.com/prompt');
         } finally {
@@ -113,7 +115,7 @@ describe('imageGenerationDiagnostics', () => {
         }
     });
 
-    it('routes CNB ComfyUI proxy through the public site inside native APK', () => {
+    it('routes cloud ComfyUI proxy through the public site inside native APK', () => {
         const originalWindow = (globalThis as any).window;
         (globalThis as any).window = {
             location: {

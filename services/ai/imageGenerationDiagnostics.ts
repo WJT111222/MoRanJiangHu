@@ -38,7 +38,7 @@ export const 翻译连接测试错误 = (error: any, context?: { baseUrl?: strin
     }
 
     if (/failed to fetch|networkerror|network error|load failed|fetch failed|cors|cross-origin|refused|timeout|abort|econnrefused|enotfound|certificate|ssl/.test(lower)) {
-        return `${backendLabel}连接失败。可能是服务器没有启动、地址或端口填错、网络不可达、浏览器跨域拦截，或本地/云端后端已经休眠。${baseUrl}\n建议先在浏览器打开该地址确认能访问；如果是 CNB/ComfyUI，请保持 VS Code 工作区页面一直打开，并确认后端开启了 CORS。${raw ? `\n原始错误：${raw}` : ''}`;
+        return `${backendLabel}连接失败。可能是服务器没有启动、地址或端口填错、网络不可达、浏览器跨域拦截，或本地/云端后端已经休眠。${baseUrl}\n建议先在浏览器打开该地址确认能访问；如果是 Cloud Studio/云端 ComfyUI，请保持工作区页面一直打开，并确认后端开启了 CORS。${raw ? `\n原始错误：${raw}` : ''}`;
     }
 
     if (/401|unauthorized|invalid api key|invalid_api_key|incorrect api key|permission denied/.test(lower)) {
@@ -92,7 +92,8 @@ const 识别ComfyUI地址类型 = (baseUrlRaw: string): ComfyUI地址类型 => {
     try {
         const url = new URL((baseUrlRaw || '').trim());
         const host = url.hostname.toLowerCase();
-        if (/(^|\.)cnb\.run$/i.test(host) || /(^|\.)cnb\.space$/i.test(host)) return 'cnb';
+        if (/(^|\.)cnb\.run$/i.test(host) || /(^|\.)cnb\.space$/i.test(host)
+            || /(^|\.)cloudstudio\.net$/i.test(host) || /(^|\.)cloudstudio\.com$/i.test(host) || /(^|\.)cloudstudio\.club$/i.test(host) || /(^|\.)coding\.net$/i.test(host)) return 'cnb';
         if (host === 'localhost' || host.endsWith('.localhost') || host === '::1' || /^127\./.test(host)) return 'loopback';
         if (判断局域网主机(host)) return 'lan';
         return /^https?:$/i.test(url.protocol) ? 'public' : 'unknown';
@@ -117,9 +118,9 @@ const 构建ComfyUI连接失败排查说明 = (baseUrl: string): string[] => {
     }
     if (addressType === 'cnb') {
         return [
-            '可能原因：服务器未启动、地址已失效、CNB 工作区或 VS Code 页面被关闭导致后端休眠、浏览器被跨域限制拦截，或 ComfyUI 启动时没有开启 CORS。',
-            '请确认：1. CNB 的 VS Code 页面保持打开并在线；2. 自动发现列表里的 8188 地址仍可访问；3. ComfyUI 启动参数包含 --listen 0.0.0.0 --enable-cors-header "*"；4. 如果刚重启过后端，请刷新列表后重新选择地址。',
-            'CNB 工作区页面地址通常类似：https://cnb-xxxx-xxxx-001.cnb.space/?folder=/workspace。'
+            '可能原因：云端 ComfyUI 工作区未启动、地址已失效、Cloud Studio 工作区页面被关闭导致后端休眠、浏览器被跨域限制拦截，或 ComfyUI 启动时没有开启 CORS。',
+            '请确认：1. Cloud Studio 工作区页面保持打开并在线；2. 自动发现列表里的 8188 地址仍可访问；3. ComfyUI 启动参数包含 --listen 0.0.0.0 --enable-cors-header "*"；4. 如果刚重启过后端，请刷新列表后重新选择地址。',
+            'Cloud Studio 需要在端口/预览面板开放 8188，并让 cloudstudio_sync.sh 上报公网预览地址。'
         ];
     }
     return [
@@ -139,7 +140,12 @@ const 判断可走ComfyUI运行时代理 = (baseUrlRaw: string): boolean => {
     try {
         const url = new URL((baseUrlRaw || '').trim());
         return /^https?:$/i.test(url.protocol)
-            && (/(^|\.)cnb\.run$/i.test(url.hostname) || /(^|\.)cnb\.space$/i.test(url.hostname));
+            && (/(^|\.)cnb\.run$/i.test(url.hostname)
+                || /(^|\.)cnb\.space$/i.test(url.hostname)
+                || /(^|\.)cloudstudio\.net$/i.test(url.hostname)
+                || /(^|\.)cloudstudio\.com$/i.test(url.hostname)
+                || /(^|\.)cloudstudio\.club$/i.test(url.hostname)
+                || /(^|\.)coding\.net$/i.test(url.hostname));
     } catch {
         return false;
     }
@@ -284,7 +290,7 @@ export const 构建ComfyUI精确连接失败提示 = async (baseUrlRaw: string, 
             corsHeader
                 ? `服务端当前返回的 CORS 头：Access-Control-Allow-Origin=${corsHeader}`
                 : '服务端探测可访问，但没有看到 Access-Control-Allow-Origin 响应头。',
-            '处理办法：重启 ComfyUI，并确保启动参数包含 --listen 0.0.0.0 --enable-cors-header "*"；如果使用 CNB，请保持 VS Code / workspace 页面打开。',
+            '处理办法：重启 ComfyUI，并确保启动参数包含 --listen 0.0.0.0 --enable-cors-header "*"；如果使用 Cloud Studio，请保持工作区页面打开。',
             rawMessage ? `浏览器原始错误：${rawMessage}` : ''
         ].filter(Boolean).join('\n');
     }
@@ -315,12 +321,12 @@ export const 构建ComfyUI精确连接失败提示 = async (baseUrlRaw: string, 
                 ? '域名解析失败，地址可能已失效或复制错了。'
                 : probe.reason === 'tls_error'
                     ? 'HTTPS/TLS 证书异常，浏览器和服务器无法建立安全连接。'
-                    : '远程探测也无法连到该地址，后端大概率未启动、CNB 工作区已关闭/休眠，或地址已失效。';
+                : '远程探测也无法连到该地址，后端大概率未启动、Cloud Studio 工作区已关闭/休眠，或地址已失效。';
         return [
             `ComfyUI 服务器不可达，当前地址：${baseUrl}。`,
             `最可能原因：${reasonText}`,
-            '处理办法：打开并保持 CNB 的 VS Code / workspace 页面在线，确认 ComfyUI 已启动到 8188 端口；然后回到游戏刷新自动发现列表，重新选择最新地址。',
-            'CNB 工作区页面地址通常类似：https://cnb-xxxx-xxxx-001.cnb.space/?folder=/workspace。',
+            '处理办法：打开并保持 Cloud Studio 工作区页面在线，确认 ComfyUI 已启动到 8188 端口；然后回到游戏刷新自动发现列表，重新选择最新地址。',
+            'Cloud Studio 需要在端口/预览面板开放 8188，并由 cloudstudio_sync.sh 上报公网预览地址。',
             probe.error ? `远程探测错误：${probe.error}` : '',
             rawMessage ? `浏览器原始错误：${rawMessage}` : ''
         ].filter(Boolean).join('\n');
@@ -337,8 +343,8 @@ export const 构建ComfyUI精确连接失败提示 = async (baseUrlRaw: string, 
         }
         return [
             `ComfyUI 连接失败，当前地址：${baseUrl}。`,
-            '当前在 APK 内，已尝试远程诊断但没有拿到明确结果。最常见原因仍是 CNB 工作区页面关闭导致后端休眠，或地址已经变化。',
-            '请打开 CNB 的 VS Code / workspace 页面保活，刷新自动发现列表后重新选择地址。',
+            '当前在 APK 内，已尝试远程诊断但没有拿到明确结果。最常见原因仍是 Cloud Studio 工作区页面关闭导致后端休眠，或地址已经变化。',
+            '请打开 Cloud Studio 工作区页面保活，刷新自动发现列表后重新选择地址。',
             rawMessage ? `原始错误：${rawMessage}` : ''
         ].filter(Boolean).join('\n');
     }

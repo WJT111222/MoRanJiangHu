@@ -238,6 +238,7 @@ export interface 发现图片后端记录结构 {
     customerId?: string;
     label: string;
     backendType: 文生图后端类型 | 'comfyui';
+    provider?: string;
     port: number;
     url: string;
     healthUrl?: string;
