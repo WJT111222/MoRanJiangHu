@@ -28,7 +28,11 @@ const isAllowedProbeUrl = (value: string, allowAnyUrl: boolean): boolean => {
         if (!/^https?:$/i.test(url.protocol)) return false;
         if (allowAnyUrl) return true;
         return /(^|\.)cnb\.run$/i.test(url.hostname)
-            || /^(127\.0\.0\.1|localhost)$/i.test(url.hostname) === false && /(^|\.)cnb\.space$/i.test(url.hostname);
+            || (/^(127\.0\.0\.1|localhost)$/i.test(url.hostname) === false && /(^|\.)cnb\.space$/i.test(url.hostname))
+            || /(^|\.)cloudstudio\.net$/i.test(url.hostname)
+            || /(^|\.)cloudstudio\.com$/i.test(url.hostname)
+            || /(^|\.)cloudstudio\.club$/i.test(url.hostname)
+            || /(^|\.)coding\.net$/i.test(url.hostname);
     } catch {
         return false;
     }
