@@ -105,7 +105,7 @@
         <button class="tab" type="button" data-tab="sync" aria-selected="false">多端同步</button>
         <button class="tab" type="button" data-tab="gptimage2" aria-selected="false">GPT Image2生图</button>
         <button class="tab" type="button" data-tab="presetfeedback" aria-selected="false">预设图反馈</button>
-        <button class="tab" type="button" data-tab="comfy" aria-selected="false">CNB ComfyUI</button>
+        <button class="tab" type="button" data-tab="comfy" aria-selected="false">云端 ComfyUI</button>
         <button class="tab" type="button" data-tab="cnbmodel" aria-selected="false">CNB 模型贡献</button>
       </div>
     </section>
@@ -435,7 +435,7 @@
             <li>想用较低成本测试自动 NPC 生图、场景生图或物品图。</li>
             <li>设备不方便长期挂本地生图环境。</li>
           </ol>
-          <p class="note">如果你已经有稳定的本地 ComfyUI 或 CNB ComfyUI，可以继续使用原方案；API Key 方案更偏向“开箱即用”。</p>
+          <p class="note">如果你已经有稳定的本地 ComfyUI 或 Cloud Studio ComfyUI，可以继续使用原方案；API Key 方案更偏向“开箱即用”。</p>
         </article>
       </div>
     </section>
@@ -507,32 +507,67 @@
     <section id="comfy" class="panel">
       <div class="grid">
         <article class="card wide">
-          <h2>如何构建自己的 CNB ComfyUI 后端</h2>
-          <p>注册并登录 CNB 后，Fork 指定仓库，进入工作区等待自动启动，再在墨色江湖里填写自己的 CNB 用户名称，即可自动连接自己的 ComfyUI。</p>
+          <h2>如何构建自己的 Cloud Studio ComfyUI 后端</h2>
+          <p>打开 Cloud Studio 并登录，优先使用墨色江湖专用分享应用点击“复刻”，选择 GPU T4 和 VS Code 布局，进入工作区终端运行启动脚本，即可把自己的 8188 后端上报到墨色江湖。</p>
           <p class="note warn">本教程只适用于墨色江湖 bacon159 二创版。主入口：<a href="https://msjh.bacon159.pp.ua/">https://msjh.bacon159.pp.ua/</a>；备用入口：<a href="https://msjh.bacon.de5.net/">https://msjh.bacon.de5.net/</a>。</p>
         </article>
         <article class="card">
-          <h2>启动步骤</h2>
+          <h2>一键复刻应用</h2>
+          <p><a href="https://cloudstudio.net/a/36536744045981696?channel=share&amp;sharetype=URL" target="_blank" rel="noreferrer"><img src="https://cs-res.codehub.cn/common/assets/icon-badge.svg" alt="Cloud Studio Template" /></a></p>
           <ol class="steps">
-            <li>打开 <code>https://cnb.cool/bacon159-2026/comfyui-ql</code> 并 Fork 到自己账号。</li>
-            <li>进入自己的 Fork，点击右上角橙色 <code>启动 L40 预装环境</code>。</li>
-            <li>等待终端出现 <code>ComfyUI 8188 ready</code>、<code>Detected ComfyUI URL</code>、<code>initial sync ok</code>。</li>
-            <li>保持 CNB 工作区页面打开，用于保活。</li>
-            <li>回到墨色江湖“自动发现 ComfyUI 后端”，填写 CNB 个人主页头像下方的用户名称并刷新列表。</li>
+            <li>打开 <a href="https://cloudstudio.net/a/36536744045981696?channel=share&amp;sharetype=URL" target="_blank" rel="noreferrer">墨色江湖 Cloud Studio ComfyUI 分享应用</a>。</li>
+            <li>登录后点击页面里的“复刻”，把应用复制到自己的 Cloud Studio 账号下。</li>
+            <li>资源规格选择 GPU，默认建议 <code>T4</code>；编辑器布局选择 <code>VS Code</code>。</li>
+            <li>复刻完成后进入工作区，打开终端继续初始化。</li>
+            <li>如果分享页不可用，再手动从 Git 仓库导入：<code>https://github.com/ypq123456789/comfyui-cloudstudio-msjh.git</code>。</li>
           </ol>
         </article>
         <article class="card">
-          <h2>用户名称位置</h2>
-          <p>打开 CNB 个人主页，看左侧头像下方的中文用户名称。这个名称就是游戏里的“CNB 用户名称”。</p>
-          <img class="guide-image" src="assets/tutorial/cnb-user-name-guide.png" alt="CNB 用户名称位置示意图" />
+          <h2>核时成本</h2>
+          <ol class="steps">
+            <li>先打开 <a href="https://cloudstudio.net" target="_blank" rel="noreferrer">https://cloudstudio.net</a> 并登录。</li>
+            <li>初次绑定腾讯云账号通常可以获得 <code>20</code> 核时。</li>
+            <li>每天签到通常可以获得 <code>2</code> 核时。</li>
+            <li>最便宜的 GPU 规格建议选 <code>T4</code>，约 <code>1.2</code> 核时可运行 <code>1</code> 小时。</li>
+          </ol>
+          <p class="note">核时规则可能随 Cloud Studio 活动调整，创建前以页面实际显示为准。</p>
+        </article>
+        <article class="card">
+          <h2>第一次拉取仓库</h2>
+          <p>如果 Cloud Studio 打开后显示 <code>/workspace</code> 是空仓库，终端里执行下面命令，把 GitHub 的 main 分支切出来。</p>
+          <pre><code>cd /workspace
+git remote add origin https://github.com/ypq123456789/comfyui-cloudstudio-msjh.git 2&gt;/dev/null || git remote set-url origin https://github.com/ypq123456789/comfyui-cloudstudio-msjh.git
+git fetch origin main
+git checkout -B main FETCH_HEAD</code></pre>
+          <p class="note">如果后续 GitHub 仓库有更新，在同一个工作区执行 <code>git pull --ff-only origin main</code> 即可同步。</p>
+        </article>
+        <article class="card">
+          <h2>启动 ComfyUI</h2>
+          <ol class="steps">
+            <li>在 Cloud Studio 终端确认当前目录是 <code>/workspace</code>。</li>
+            <li>执行 <code>cd /workspace &amp;&amp; PORT=8188 bash cloudstudio_start.sh</code>。</li>
+            <li>等待终端出现 <code>Device: cuda:0 Tesla T4</code> 和 <code>To see the GUI go to: http://0.0.0.0:8188</code>。</li>
+            <li>脚本会自动启动注册表同步，看到 <code>Detected ComfyUI URL</code> 后说明已经识别 8188 公网预览地址。</li>
+            <li>在 Cloud Studio 端口预览里打开 <code>8188</code>，确认 ComfyUI 页面能访问。</li>
+          </ol>
+        </article>
+        <article class="card">
+          <h2>连接墨色江湖</h2>
+          <ol class="steps">
+            <li>终端会输出 <code>Copy this auto connect token into MoRanJiangHu settings</code>。</li>
+            <li>复制下一行的连接口令；默认会优先使用 Cloud Studio 的账号级标识，每个玩家应当不同。</li>
+            <li>回到墨色江湖，打开设置里的“云端 ComfyUI 后端”。</li>
+            <li>把连接口令填进去，点击刷新在线后端列表。</li>
+            <li>选中自己的 <code>cloudstudio</code> 后端后保存，后续生图会走这个 8188 地址。</li>
+          </ol>
         </article>
         <article class="card wide">
-          <h2>常见启动问题</h2>
-          <p>如果终端最后停在 <code>torch.AcceleratorError: CUDA error: uncorrectable ECC error encountered</code>，通常是 CNB 分配到的 GPU 节点异常。建议关闭当前工作区后重新创建或重启 L40 工作区；仍然报错时，把报错发给 CodeBuddy 或 CNB 反馈。</p>
-          <p>如果终端明确报错，才尝试手动执行：</p>
-          <pre><code>cd /workspace && \
-npm install && \
-npm run cnb:start -- "python main.py --listen 0.0.0.0 --port 8188 --enable-cors-header '*'"</code></pre>
+          <h2>常见问题</h2>
+          <p>如果最后出现 <code>curl: (22) The requested URL returned error: 405</code>，通常是同步脚本访问时主站 Worker 还没有切到新版接口，或边缘节点仍是旧路由。ComfyUI 本身已经启动成功，稍等片刻后执行 <code>bash cloudstudio_sync.sh</code> 重新上报即可。</p>
+          <p>如果脚本没有自动识别预览地址，先在 Cloud Studio 打开 8188 预览，把浏览器里的公网地址复制出来，再执行：</p>
+          <pre><code>export CLOUDSTUDIO_IMAGE_BACKEND_URL="你的8188预览地址"
+bash cloudstudio_sync.sh</code></pre>
+          <p class="note">如果多名玩家复刻同一个仓库，不要共用连接口令。需要手动指定时，可以设置 <code>CLOUDSTUDIO_IMAGE_BACKEND_CONNECT_TOKEN</code> 为自己的短口令。</p>
         </article>
       </div>
     </section>
