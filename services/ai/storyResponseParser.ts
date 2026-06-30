@@ -30,6 +30,18 @@ const 转义正则片段 = (value: string): string => value.replace(/[.*+?^${}()
 const 协议标签列表 = ['thinking', '角色名单', '剧情规划', '变量规划', '正文', '短期记忆', '命令', '行动选项', '动态世界', 'judge'] as const;
 const 协议标签集合 = new Set<string>(协议标签列表);
 const 协议固定必填标签 = ['正文', '短期记忆'] as const;
+const 酒馆元标签列表 = [
+    'current_event',
+    'progress',
+    'tucao',
+    'konatan_planning',
+    'setup',
+    'status',
+    'state',
+    'metadata'
+] as const;
+const 酒馆元标签集合 = new Set<string>(酒馆元标签列表);
+const 酒馆状态行规则 = /^(?:当前主线任务|当前支线事件|最新使用支线事件编号|时间推进)\s*[:：]/;
 const 默认解析选项: Required<StoryParseOptions> = {
     validateTagCompleteness: false,
     enableTagRepair: true,
@@ -130,6 +142,27 @@ const 归一化协议标签名 = (tagName: string): 协议标签 | '' => {
     if (!raw) return '';
     if (协议标签集合.has(raw)) return raw as 协议标签;
     return 协议标签别名映射[归一化标签名键(raw)] || '';
+};
+
+const 归一化酒馆元标签名 = (tagName: string): string => (
+    (tagName || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]/g, '_')
+);
+
+const 是否酒馆元标签名 = (tagName: string): boolean => (
+    酒馆元标签集合.has(归一化酒馆元标签名(tagName))
+);
+
+const 剥离酒馆元标签区块 = (text: string): string => {
+    let stripped = (text || '').replace(/\r\n/g, '\n');
+    for (const tag of 酒馆元标签列表) {
+        const escapedTag = 转义正则片段(tag);
+        stripped = stripped.replace(new RegExp(`<\\s*${escapedTag}\\s*>[\\s\\S]*?<\\s*/\\s*${escapedTag}\\s*>`, 'gi'), '\n');
+        stripped = stripped.replace(new RegExp(`<\\s*/?\\s*${escapedTag}\\s*>`, 'gi'), '\n');
+    }
+    return stripped;
 };
 
 const 提取标题区块内容 = (text: string): Partial<Record<可标题恢复标签, string>> => {
@@ -317,7 +350,7 @@ const 提取候选命令文本 = (text: string): string => {
 };
 
 const 提取候选正文文本 = (text: string): string => {
-    let stripped = (text || '').replace(/\r\n/g, '\n');
+    let stripped = 剥离酒馆元标签区块(text || '');
     for (const tag of ['剧情规划', '变量规划', '短期记忆', '命令', '行动选项', '动态世界', 'judge']) {
         const escapedTag = 转义正则片段(tag);
         stripped = stripped.replace(new RegExp(`<\\s*${escapedTag}\\s*>[\\s\\S]*?<\\s*/\\s*${escapedTag}\\s*>`, 'gi'), '\n');
@@ -330,12 +363,13 @@ const 提取候选正文文本 = (text: string): string => {
         .map(line => line.trim())
         .filter(Boolean)
         .filter(line => !/^<[^>]+>$/.test(line))
+        .filter(line => !酒馆状态行规则.test(line))
         .filter(line => !Object.values(协议标题匹配规则).some(rule => rule.test(line)));
     return lines.join('\n').trim();
 };
 
 const 清理正文残留协议内容 = (body: string): string => {
-    let stripped = (body || '').replace(/\r\n/g, '\n');
+    let stripped = 剥离酒馆元标签区块(body || '');
     for (const tag of ['剧情规划', '变量规划', '短期记忆', '命令', '行动选项', '动态世界']) {
         const escapedTag = 转义正则片段(tag);
         stripped = stripped.replace(new RegExp(`<\\s*${escapedTag}\\s*>[\\s\\S]*?<\\s*/\\s*${escapedTag}\\s*>`, 'gi'), '\n');
@@ -346,7 +380,7 @@ const 清理正文残留协议内容 = (body: string): string => {
         const isNonBodyProtocolHeader = (Object.keys(协议标题匹配规则) as 可标题恢复标签[])
             .filter((tag) => tag !== '正文')
             .some((tag) => 协议标题匹配规则[tag].test(line));
-        if (isNonBodyProtocolHeader) break;
+        if (isNonBodyProtocolHeader || 酒馆状态行规则.test(line)) break;
         lines.push(rawLine);
     }
     return 清理正文初始化泄露内容(清理正文HTML注释残片(lines.join('\n'))).trim();
@@ -1577,6 +1611,14 @@ const 解析行动选项块 = (optionsBlock: string): string[] => {
     const text = (optionsBlock || '').trim();
     if (!text) return [];
     const 协议标签行正则 = /^<\s*\/?\s*(?:thinking|think|正文|短期记忆|变量规划|剧情规划|行动选项|命令|动态世界|judge)\s*[\]>]\s*$/i;
+    const 单行标签正则 = /^<\s*\/?\s*([A-Za-z0-9_-]+)\s*[\]>]\s*$/i;
+    const isIzumiStateLine = (line: string): boolean => {
+        const tagMatch = line.match(单行标签正则);
+        if (tagMatch && 是否酒馆元标签名(tagMatch[1] || '')) return true;
+        if (酒馆状态行规则.test(line)) return true;
+        if (/^PG\.\d+(?:\.\d+)?$/i.test(line)) return true;
+        return false;
+    };
     return text
         .replace(/\r\n/g, '\n')
         .split('\n')
@@ -1588,6 +1630,7 @@ const 解析行动选项块 = (optionsBlock: string): string[] => {
             .replace(/^>\s*(?:选项|option|choice)\s*(?:[一二三四五六七八九十\d]+)?\s*[:：]\s*/i, '')
             .trim())
         .filter(line => !协议标签行正则.test(line))
+        .filter(line => !isIzumiStateLine(line))
         .filter(Boolean);
 };
 
