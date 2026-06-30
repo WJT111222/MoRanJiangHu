@@ -57,6 +57,17 @@ const GPT_IMAGE_2_通用正面提示词 = 'best quality, masterpiece, very aesth
 const GPT_IMAGE_2_通用负面提示词 = 'lowres, worst quality, low quality, normal quality, blurry, jpeg artifacts, watermark, signature, text, logo, bad anatomy, bad hands, bad fingers, extra fingers, missing fingers, fused fingers, deformed hands, long neck, bad face, asymmetrical eyes, cross-eyed, deformed body, extra limbs, missing limbs, duplicate person, cropped head, out of frame, messy background, flat lighting, dull colors, overexposed, underexposed, plastic skin, waxy skin, uncanny face, dead eyes, rough sketch, unfinished, low-end cartoon, flat cel shading, simple coloring, casual snapshot, live-action photo, studio photo, phone photo';
 const GPT_IMAGE_2_场景正面提示词 = 'plain single image, clean composition, uncluttered visual presentation, natural subject focus, clear silhouette, blank unlabeled surfaces, label-free visual design, logo-free visual design, inscription-free object surfaces, premium environment key visual, cinematic lighting, dramatic rim lighting, volumetric light, bright crystal-like sparkles, glowing magical particles, delicate texture rendering, elegant cinematic composition, highly detailed materials, atmospheric depth, 8k resolution';
 const GPT_IMAGE_2_场景负面提示词 = 'lowres, bad anatomy, bad hands, extra fingers, blurry, watermark, text, people, person, human, man, woman, boy, girl, child, silhouette, crowd, face, eyes, hands, body, character, portrait, 1girl, 1boy, 1man, 1woman, typography, letters, words, numbers, caption, label, labels, plaque, sign, inscription, readable inscription, pseudo text, fake text, gibberish text, Chinese characters, English letters, carved words, engraved words, engraved Chinese characters, vertical calligraphy, calligraphy, glyphs, runes, ideograms, seal, stamp, signature, username, logo, artist name, web address, url, copyright, subtitle, subtitles, title, poster text, comic text, manga text, dialogue text, speech bubble, dialogue box, word balloon, UI overlay, interface text, date stamp, QR code, barcode, poster layout, magazine cover, comic page, comic panel, manga panel, callout, text box, white oval bubble, black outline bubble, overlay, title card';
+const GPT_IMAGE_2_仙侠线稿玉版平涂正面提示词 = [
+    'xianxia half-body character portrait, single character, head to upper waist, calm elegant cultivator presence, face as the clear visual center',
+    'line-art first illustration logic, refined thin cool gray-blue linework, visible contour lines, facial lines, hair strand lines, clothing fold lines, accessory structure lines',
+    'flat-color first rendering, clean solid color blocks, crisp color boundaries, minimal small hard-edged structural shadows, no volume built by gradients',
+    'warm ivory skin, warm white and pale peach skin palette, subtle blush and subsurface warmth on cheeks, ears, nose bridge and under eyes, skin color separated from the cool linework system',
+    'hair organized by linework rather than shine, clear layered hair strands, sharp hair edges, dark flat base color, no glossy hair highlights',
+    'restrained xianxia costume design, clear collar and lapel layers, light silk and gauze shapes, sparse cloud, lotus, sword or sect motifs, simple silver-blue hairpin or small ornament',
+    'classical paper background, warm beige or pale blue-gray paper tone, one clean restrained circular pattern behind the character, generous negative space, no complex scenery',
+    'quiet distant gaze, relaxed half-open eyes, delicate natural eyelashes, soft cold and tranquil mood, refined character design sheet finish'
+].join(', ');
+const GPT_IMAGE_2_仙侠线稿玉版平涂负面提示词 = 'Avoid photorealism, live-action photo, heavy painterly rendering, semi-painterly rendering, commercial concept art lighting, cinematic lighting, watercolor, ink wash, airbrush gradients, soft-focus rendering, volumetric shading, glossy hair highlights, realistic hair rendering, weak or missing linework, multicolor linework, complex scenery, crowded jewelry, dense chains, dense beads, text, watermark, logo, extra people, cropped face, blurry face, blurry hair, muddy colors, gray dead skin';
 const GPT_IMAGE_2_顶级CG模型提示词 = [
     '目标：把输入整理成清晰、可执行、稳定的 GPT Image 2 图像生成提示词。',
     '不限定题材，不做世界观切换；时代、服装、场景完全服从用户输入，只统一画面质感。',
@@ -146,6 +157,16 @@ export const 默认画师串预设列表: 画师串预设结构[] = [
         画师串: '',
         正面提示词: GPT_IMAGE_2_通用正面提示词,
         负面提示词: GPT_IMAGE_2_通用负面提示词,
+        createdAt: 0,
+        updatedAt: 0
+    },
+    {
+        id: 'gpt_image2_xianxia_lineart_flat_npc',
+        名称: 'GPT Image 2 · 仙侠线稿玉版平涂风',
+        适用范围: 'npc',
+        画师串: '',
+        正面提示词: GPT_IMAGE_2_仙侠线稿玉版平涂正面提示词,
+        负面提示词: GPT_IMAGE_2_仙侠线稿玉版平涂负面提示词,
         createdAt: 0,
         updatedAt: 0
     }

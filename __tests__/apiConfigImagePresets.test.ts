@@ -1,7 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { 获取生图画师串预设, 获取词组转化器预设上下文, 获取文生图接口配置, 规范化接口设置 } from '../utils/apiConfig';
+import { 默认画师串预设列表, 获取生图画师串预设, 获取词组转化器预设上下文, 获取文生图接口配置, 规范化接口设置 } from '../utils/apiConfig';
 
 describe('image artist prompt presets', () => {
+    it('provides a GPT xianxia line-art flat-color NPC preset without raw template placeholders', () => {
+        const preset = 默认画师串预设列表.find((item) => item.id === 'gpt_image2_xianxia_lineart_flat_npc');
+
+        expect(preset).toBeTruthy();
+        expect(preset?.名称).toBe('GPT Image 2 · 仙侠线稿玉版平涂风');
+        expect(preset?.适用范围).toBe('npc');
+        expect(preset?.画师串).toBe('');
+        expect(preset?.正面提示词).toContain('xianxia half-body character portrait');
+        expect(preset?.正面提示词).toContain('line-art first');
+        expect(preset?.正面提示词).toContain('warm ivory skin');
+        expect(preset?.正面提示词).toContain('classical paper background');
+        expect(preset?.正面提示词).not.toMatch(/\$\{[^}]+\}/);
+        expect(preset?.负面提示词).toContain('Avoid photorealism');
+        expect(preset?.负面提示词).toContain('watermark');
+        expect(preset?.负面提示词).not.toMatch(/\$\{[^}]+\}/);
+    });
+
     it('adds GPT image presets to new and legacy image settings', () => {
         const settings = 规范化接口设置({
             功能模型占位: {
