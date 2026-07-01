@@ -27,7 +27,8 @@ describe('planning prompts', () => {
         expect(systemPrompt).toContain('已有事实、角色身份边界、后宫/后院/妻妾等特殊场景和玩家明确要求优先于比例');
 
         expect(userPrompt).toContain('世界观/NPC系统男女比例或性别比例设定');
-        expect(userPrompt).toContain('当前世界/NPC系统男女比例：1:9');
+        expect(userPrompt).toContain('【规划性别比例约束】');
+        expect(userPrompt).toContain('当前开局配置性别比例：1:9');
         expect(userPrompt).toContain('按该比例保持新增人物池分布');
     });
 
