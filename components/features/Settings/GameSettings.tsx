@@ -12,6 +12,7 @@ interface Props {
     journeyDayCount?: number;
     onRepairGameInitialTime?: (nextTime: string) => 游戏初始时间修复结果 | Promise<游戏初始时间修复结果>;
     requestConfirm?: (options: { title?: string; message: string; confirmText?: string; cancelText?: string; danger?: boolean }) => Promise<boolean>;
+    性别比例演变预设?: boolean;
 }
 
 type 游戏初始时间修复结果 = { ok: boolean; message: string; value?: string };
@@ -41,7 +42,7 @@ export const 提交游戏初始时间修复 = async (params: {
     return params.onRepair(canonical);
 };
 
-const GameSettings: React.FC<Props> = ({ settings, onSave, gameInitialTime, currentGameTime, journeyDayCount, onRepairGameInitialTime, requestConfirm }) => {
+const GameSettings: React.FC<Props> = ({ settings, onSave, gameInitialTime, currentGameTime, journeyDayCount, onRepairGameInitialTime, requestConfirm, 性别比例演变预设 }) => {
     const [form, setForm] = useState<游戏设置结构>(settings);
     const [wordCountDraft, setWordCountDraft] = useState(() => String(settings.字数要求 ?? ''));
     const [initialTimeDraft, setInitialTimeDraft] = useState('');
@@ -926,6 +927,26 @@ const GameSettings: React.FC<Props> = ({ settings, onSave, gameInitialTime, curr
                 </div>
             </div>
 
+            <div className="space-y-3 rounded-md border border-wuxia-gold/20 bg-black/30 p-4">
+                <div className="flex items-center justify-between gap-4">
+                    <div>
+                        <div className="text-sm text-wuxia-cyan font-bold">性别比例自动演变</div>
+                        <div className="text-xs text-gray-400 mt-1">开启后，世界演变环节会根据剧情自动调整性别比例（世界级+地点级），并生成对应的个体性转命令；关闭后性别比例不受AI自动调整。</div>
+                        {性别比例演变预设 != null && (
+                            <div className="text-xs text-amber-400/80 mt-1">
+                                ⚙ 创意工坊叙事要求已锁定为{性别比例演变预设 ? '开启' : '关闭'}，此开关暂不可调整
+                            </div>
+                        )}
+                    </div>
+                    <ToggleSwitch
+                        checked={性别比例演变预设 != null ? 性别比例演变预设 : form.性别比例自动演变 === true}
+                        onChange={性别比例演变预设 != null ? undefined : (next) => 实时应用更新({ 性别比例自动演变: next })}
+                        disabled={性别比例演变预设 != null}
+                        ariaLabel="切换性别比例自动演变"
+                    />
+                </div>
+            </div>
+
             <div className="space-y-2">
                 <label className="text-sm text-wuxia-cyan font-bold">额外要求提示词 (Custom Prompt)</label>
                 <textarea 
@@ -942,6 +963,104 @@ const GameSettings: React.FC<Props> = ({ settings, onSave, gameInitialTime, curr
                     className="w-full h-32 bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-3 text-white outline-none rounded-md transition-all resize-none custom-scrollbar"
                     placeholder="在此输入需要追加到 Prompt 最后的特殊指令，例如：'严禁使用现代词汇'..."
                 />
+            </div>
+
+            <div className="pt-6 border-t border-wuxia-gold/20 mt-8 space-y-4">
+                <div className="text-base font-bold text-wuxia-gold">叙事平静值</div>
+                <div className="text-xs text-gray-400">监控连续无剧情波折的回合数。当平静计数达到最低触发阈值后，按等分区段向 AI 注入推进文本，引导剧情自然发展。AI 输出 <code className="text-wuxia-cyan">&lt;情节事件&gt;</code> 标签（介入/退出/结束→归零，延续→+1，无标签→+2）驱动计数器。</div>
+
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="text-sm text-wuxia-cyan font-bold">启用叙事平静值</div>
+                        <div className="text-xs text-gray-500 mt-1">开启后每回合检测 AI 输出的情节事件标签并更新平静计数。</div>
+                    </div>
+                    <ToggleSwitch
+                        checked={form.叙事平静值配置?.启用 === true}
+                        onChange={(next) => 实时应用更新({ 叙事平静值配置: { ...(form.叙事平静值配置 || {}), 启用: next } })}
+                        ariaLabel="切换叙事平静值"
+                    />
+                </div>
+
+                {form.叙事平静值配置?.启用 === true && (
+                    <div className="space-y-3 pl-2 border-l-2 border-wuxia-gold/10">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div>
+                                <label className="text-xs text-gray-400">无标签增量</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={10}
+                                    value={form.叙事平静值配置?.无标签增量 ?? 2}
+                                    onChange={(e) => 实时应用更新({ 叙事平静值配置: { ...(form.叙事平静值配置 || {}), 无标签增量: Math.max(1, Number(e.target.value) || 2) } })}
+                                    className="w-full bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-2 text-white outline-none rounded-md transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400">延续增量</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={10}
+                                    value={form.叙事平静值配置?.延续增量 ?? 1}
+                                    onChange={(e) => 实时应用更新({ 叙事平静值配置: { ...(form.叙事平静值配置 || {}), 延续增量: Math.max(1, Number(e.target.value) || 1) } })}
+                                    className="w-full bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-2 text-white outline-none rounded-md transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400">上限</label>
+                                <input
+                                    type="number"
+                                    min={10}
+                                    max={99}
+                                    value={form.叙事平静值配置?.上限 ?? 32}
+                                    onChange={(e) => 实时应用更新({ 叙事平静值配置: { ...(form.叙事平静值配置 || {}), 上限: Math.max(10, Number(e.target.value) || 32) } })}
+                                    className="w-full bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-2 text-white outline-none rounded-md transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400">最低触发阈值</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={50}
+                                    value={form.叙事平静值配置?.最低触发阈值 ?? 12}
+                                    onChange={(e) => 实时应用更新({ 叙事平静值配置: { ...(form.叙事平静值配置 || {}), 最低触发阈值: Math.max(1, Number(e.target.value) || 12) } })}
+                                    className="w-full bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-2 text-white outline-none rounded-md transition-all"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs text-gray-400">阈值文本（从最低触发阈值到上限等分段落，每段一个推进提示）</label>
+                            {(form.叙事平静值配置?.阈值文本 || []).map((text, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 w-8 shrink-0">第{i + 1}段</span>
+                                    <input
+                                        type="text"
+                                        value={text}
+                                        onChange={(e) => {
+                                            const next = [...(form.叙事平静值配置?.阈值文本 || [])];
+                                            next[i] = e.target.value;
+                                            实时应用更新({ 叙事平静值配置: { ...(form.叙事平静值配置 || {}), 阈值文本: next } });
+                                        }}
+                                        className="flex-1 bg-black/50 border-2 border-transparent focus:border-wuxia-gold p-2 text-white text-sm outline-none rounded-md transition-all"
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            const next = (form.叙事平静值配置?.阈值文本 || []).filter((_, idx) => idx !== i);
+                                            实时应用更新({ 叙事平静值配置: { ...(form.叙事平静值配置 || {}), 阈值文本: next } });
+                                        }}
+                                        className="text-xs text-red-400 hover:text-red-300 px-2 shrink-0"
+                                    >删除</button>
+                                </div>
+                            ))}
+                            <button
+                                onClick={() => 实时应用更新({ 叙事平静值配置: { ...(form.叙事平静值配置 || {}), 阈值文本: [...(form.叙事平静值配置?.阈值文本 || []), ''] } })}
+                                className="text-xs text-wuxia-cyan hover:text-wuxia-gold transition-colors"
+                            >+ 添加段落</button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="pt-6 border-t border-wuxia-gold/20 mt-8 flex justify-end">

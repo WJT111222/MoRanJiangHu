@@ -42,4 +42,30 @@ describe('GitHub OAuth APK 回调兜底', () => {
         });
         expect(windowOpen).not.toHaveBeenCalled();
     });
+
+    it('备用域名网页端使用备用 GitHub OAuth App 和备用域名回调地址', () => {
+        const result = __githubOAuthTestUtils.resolveWebOAuthClientForTest({
+            currentOrigin: 'https://msjh.bacon.de5.net',
+            primaryClientId: 'primary-client',
+            backupClientId: 'backup-client'
+        });
+
+        expect(result.clientId).toBe('backup-client');
+        expect(result.clientType).toBe('web_backup');
+        expect(result.redirectUri).toBe('https://msjh.bacon.de5.net/oauth/github/callback');
+        expect(result.expectedCallbackUris).toEqual(['https://msjh.bacon.de5.net/oauth/github/callback']);
+    });
+
+    it('主域名网页端继续使用主 GitHub OAuth App 和主域名回调地址', () => {
+        const result = __githubOAuthTestUtils.resolveWebOAuthClientForTest({
+            currentOrigin: 'https://msjh.bacon159.pp.ua',
+            primaryClientId: 'primary-client',
+            backupClientId: 'backup-client'
+        });
+
+        expect(result.clientId).toBe('primary-client');
+        expect(result.clientType).toBe('web');
+        expect(result.redirectUri).toBe('https://msjh.bacon159.pp.ua/oauth/github/callback');
+        expect(result.expectedCallbackUris).toEqual(['https://msjh.bacon159.pp.ua/oauth/github/callback']);
+    });
 });

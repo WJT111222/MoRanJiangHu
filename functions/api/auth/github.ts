@@ -13,14 +13,26 @@ export async function onRequestPost({ request, env }: any) {
         }
 
         const usingNativeClient = clientType === 'native';
-        const clientId = usingNativeClient ? env.GITHUB_NATIVE_CLIENT_ID : env.GITHUB_CLIENT_ID;
-        const clientSecret = usingNativeClient ? env.GITHUB_NATIVE_CLIENT_SECRET : env.GITHUB_CLIENT_SECRET;
+        const usingBackupWebClient = clientType === 'web_backup';
+        const clientId = usingNativeClient
+            ? env.GITHUB_NATIVE_CLIENT_ID
+            : usingBackupWebClient
+                ? env.GITHUB_BACKUP_CLIENT_ID
+                : env.GITHUB_CLIENT_ID;
+        const clientSecret = usingNativeClient
+            ? env.GITHUB_NATIVE_CLIENT_SECRET
+            : usingBackupWebClient
+                ? env.GITHUB_BACKUP_CLIENT_SECRET
+                : env.GITHUB_CLIENT_SECRET;
 
         if (!clientId || !clientSecret) {
+            const missingMessage = usingNativeClient
+                ? 'Missing GITHUB_NATIVE_CLIENT_ID or GITHUB_NATIVE_CLIENT_SECRET env variables in Cloudflare'
+                : usingBackupWebClient
+                    ? 'Missing GITHUB_BACKUP_CLIENT_ID or GITHUB_BACKUP_CLIENT_SECRET env variables in Cloudflare'
+                    : 'Missing GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET env variables in Cloudflare';
             return buildAuthJsonResponse({
-                error: usingNativeClient
-                    ? 'Missing GITHUB_NATIVE_CLIENT_ID or GITHUB_NATIVE_CLIENT_SECRET env variables in Cloudflare'
-                    : 'Missing GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET env variables in Cloudflare'
+                error: missingMessage
             }, 500);
         }
 

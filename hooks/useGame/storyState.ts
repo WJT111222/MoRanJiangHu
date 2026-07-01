@@ -62,6 +62,45 @@ const 取数字 = (value: any, fallback = 0): number => {
     return Number.isFinite(next) ? next : fallback;
 };
 
+const 规范化性别比例 = (value: any) => {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed || undefined;
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const keys = ['男', '女', '男娘', '扶她'] as const;
+    const normalized: Record<string, number> = {};
+    let hasValue = false;
+    keys.forEach((key) => {
+        const raw = Number(value[key]);
+        const safeValue = Number.isFinite(raw) && raw >= 0 ? raw : 0;
+        normalized[key] = safeValue;
+        if (safeValue > 0) hasValue = true;
+    });
+    return hasValue ? normalized : undefined;
+};
+
+const 规范化主角参与度 = (value: any): number => {
+    const next = Number(value);
+    if (Number.isFinite(next)) {
+        if (next < 0) return 0;
+        if (next > 1) return 1;
+        return next;
+    }
+    return 0;
+};
+
+const 推导触发距离 = (参与度: number): '远处' | '附近' | '当场' => {
+    if (参与度 <= 0.2) return '远处';
+    if (参与度 <= 0.5) return '附近';
+    return '当场';
+};
+
+const 规范化触发距离 = (value: any, 参与度: number): '远处' | '附近' | '当场' | undefined => {
+    if (value === '远处' || value === '附近' || value === '当场') return value;
+    return 推导触发距离(参与度);
+};
+
 const 生成稳定哈希 = (text: string): number => {
     let hash = 2166136261;
     for (let i = 0; i < text.length; i += 1) {
@@ -1847,8 +1886,9 @@ export const 创建开场空白世界 = (): 世界数据结构 => ({
     地图人物: [],
     势力列表: [],
     势力互动历史: [],
-    拍卖行待投放物品: []
-});
+     拍卖行待投放物品: [],
+     性别比例: undefined
+ });
 
 export const 规范化世界状态 = (raw?: any): 世界数据结构 => {
     const world = raw && typeof raw === 'object' ? raw : {};
@@ -1886,7 +1926,10 @@ export const 规范化世界状态 = (raw?: any): 世界数据结构 => {
                     关联地点: 取字符串数组(item?.关联地点),
                     关联分解组: 取数字数组(item?.关联分解组),
                     关联分歧线: 取字符串数组(item?.关联分歧线),
-                    当前状态: 取文本(item?.当前状态)
+                    当前状态: 取文本(item?.当前状态),
+                    主角参与度: 规范化主角参与度(item?.主角参与度),
+                    触发距离: 规范化触发距离(item?.触发距离, 规范化主角参与度(item?.主角参与度)),
+                    关系强度: typeof item?.关系强度 === 'number' && Number.isFinite(item.关系强度) ? Math.max(0, Math.min(1, item.关系强度)) : undefined
                 }))
                 .filter((item) => item.事件名 || item.事件说明)
             : [],
@@ -1904,7 +1947,10 @@ export const 规范化世界状态 = (raw?: any): 世界数据结构 => {
                     关联势力: 取字符串数组(item?.关联势力),
                     关联地点: 取字符串数组(item?.关联地点),
                     关联分解组: 取数字数组(item?.关联分解组),
-                    关联分歧线: 取字符串数组(item?.关联分歧线)
+                    关联分歧线: 取字符串数组(item?.关联分歧线),
+                    主角参与度: 规范化主角参与度(item?.主角参与度),
+                    触发距离: 规范化触发距离(item?.触发距离, 规范化主角参与度(item?.主角参与度)),
+                    关系强度: typeof item?.关系强度 === 'number' && Number.isFinite(item.关系强度) ? Math.max(0, Math.min(1, item.关系强度)) : undefined
                 }))
                 .filter((item) => item.事件名 || item.事件说明)
             : [],
@@ -1922,7 +1968,8 @@ export const 规范化世界状态 = (raw?: any): 世界数据结构 => {
                     关联势力: 取字符串数组(item?.关联势力),
                     关联地点: 取字符串数组(item?.关联地点),
                     关联分解组: 取数字数组(item?.关联分解组),
-                    关联分歧线: 取字符串数组(item?.关联分歧线)
+                    关联分歧线: 取字符串数组(item?.关联分歧线),
+                    主角参与度: typeof item?.主角参与度 === 'number' && Number.isFinite(item.主角参与度) ? Math.max(0, Math.min(1, item.主角参与度)) : undefined
                 }))
                 .filter((item) => item.事件名 || item.事件说明)
             : [],
@@ -1938,7 +1985,9 @@ export const 规范化世界状态 = (raw?: any): 世界数据结构 => {
                     关联分解组: 取数字数组(item?.关联分解组),
                     关联分歧线: 取字符串数组(item?.关联分歧线),
                     沉淀内容: 取字符串数组(item?.沉淀内容),
-                    当前状态: 取文本(item?.当前状态)
+                    当前状态: 取文本(item?.当前状态),
+                    主角参与度: typeof item?.主角参与度 === 'number' && Number.isFinite(item.主角参与度) ? Math.max(0, Math.min(1, item.主角参与度)) : undefined,
+                    触发距离: 规范化触发距离(item?.触发距离, typeof item?.主角参与度 === 'number' && Number.isFinite(item.主角参与度) ? Math.max(0, Math.min(1, item.主角参与度)) : 0)
                 }))
                 .filter((item) => item.镜头标题 || item.镜头内容)
             : [],
@@ -1983,7 +2032,8 @@ export const 规范化世界状态 = (raw?: any): 世界数据结构 => {
         // 势力系统：标准化处理，确保每个势力项结构完整
         势力列表: 标准化势力列表(world?.势力列表),
         势力互动历史: Array.isArray(world?.势力互动历史) ? world.势力互动历史 : [],
-        拍卖行待投放物品: Array.isArray(world?.拍卖行待投放物品) ? world.拍卖行待投放物品 : []
+        拍卖行待投放物品: Array.isArray(world?.拍卖行待投放物品) ? world.拍卖行待投放物品 : [],
+        性别比例: 规范化性别比例(world?.性别比例)
     };
 
     // 不再调用补齐——旧坐标系统已废弃，新地图系统不需要空间坐标补全
@@ -2530,6 +2580,10 @@ export const 创建开场基础状态 = (charData: 角色数据结构, worldConf
     };
     const 社交 = 修复开局伙伴社交列表([], openingConfig, 角色);
     const 世界 = 创建开场空白世界();
+    // 注入开局性别比例到世界层，作为世界性别比例的初始值
+    if (openingConfig?.modeRuntimeProfile?.npc?.genderRatio) {
+        世界.性别比例 = openingConfig.modeRuntimeProfile.npc.genderRatio as any;
+    }
     const 地图草稿层级 = Array.isArray(worldConfig?.mapDiyDraft?.nodes) && worldConfig.mapDiyDraft.nodes.length > 0
         ? buildWorldMapLayersFromDraft(worldConfig.mapDiyDraft)
         : [];

@@ -15,7 +15,7 @@ const DEFAULT_NATIVE_APP_LINK = 'https://msjh.bacon159.pp.ua/oauth/github/callba
 const DEFAULT_NATIVE_DEEP_LINK = 'com.moranjianghu.game://oauth/github/callback';
 
 type GitHubOAuthSessionStatus = 'idle' | 'waiting' | 'exchanging' | 'success' | 'error';
-type GitHubOAuthClientType = 'web' | 'native';
+type GitHubOAuthClientType = 'web' | 'web_backup' | 'native';
 
 export type GitHubOAuthSessionState = {
     status: GitHubOAuthSessionStatus;
@@ -146,6 +146,10 @@ const normalizeCallbackUris = (value: unknown) => (
         : []
 );
 
+const normalizeOAuthClientType = (value: unknown): GitHubOAuthClientType => (
+    value === 'native' || value === 'web_backup' ? value : 'web'
+);
+
 const readPendingOAuthState = (): PendingOAuthState | null => {
     try {
         const raw = localStorage.getItem(OAUTH_STATE_KEY);
@@ -155,7 +159,7 @@ const readPendingOAuthState = (): PendingOAuthState | null => {
         const state = readEnvString(parsed.state);
         const redirectUri = readEnvString(parsed.redirectUri);
         const createdAt = Number(parsed.createdAt);
-        const clientType = parsed.clientType === 'native' ? 'native' : 'web';
+        const clientType = normalizeOAuthClientType(parsed.clientType);
         const expectedCallbackUris = normalizeCallbackUris(parsed.expectedCallbackUris);
 
         if (!state || !redirectUri || !Number.isFinite(createdAt)) {
@@ -212,7 +216,7 @@ const decodePendingOAuthState = (value: string): PendingOAuthState | null => {
         const state = readEnvString(parsed.state);
         const redirectUri = readEnvString(parsed.redirectUri);
         const createdAt = Number(parsed.createdAt);
-        const clientType = parsed.clientType === 'native' ? 'native' : 'web';
+        const clientType = normalizeOAuthClientType(parsed.clientType);
         const expectedCallbackUris = normalizeCallbackUris(parsed.expectedCallbackUris);
         if (!state || !redirectUri || !Number.isFinite(createdAt)) return null;
         return {
@@ -316,6 +320,43 @@ const shouldUseNativeDirectRedirect = () => (
     readEnvString((import.meta as any).env?.VITE_GITHUB_OAUTH_USE_DIRECT_DEEP_LINK).toLowerCase() === 'true'
 );
 
+const resolveWebOAuthClient = ({
+    currentOrigin,
+    primaryClientId,
+    backupClientId,
+    primaryOrigin,
+    backupOrigin
+}: {
+    currentOrigin: string;
+    primaryClientId: string;
+    backupClientId?: string;
+    primaryOrigin?: string;
+    backupOrigin?: string;
+}) => {
+    const normalizedCurrentOrigin = currentOrigin.replace(/\/+$/, '');
+    const normalizedPrimaryOrigin = readEnvString(primaryOrigin).replace(/\/+$/, '') || 'https://msjh.bacon159.pp.ua';
+    const normalizedBackupOrigin = readEnvString(backupOrigin).replace(/\/+$/, '') || 'https://msjh.bacon.de5.net';
+    const useBackupClient = normalizedCurrentOrigin === normalizedBackupOrigin && readEnvString(backupClientId).length > 0;
+    const currentCallbackUri = new URL(WEB_CALLBACK_PATH, currentOrigin).toString();
+    return {
+        clientId: useBackupClient ? readEnvString(backupClientId) : primaryClientId,
+        clientType: useBackupClient ? 'web_backup' : 'web',
+        redirectUri: currentCallbackUri,
+        expectedCallbackUris: [currentCallbackUri]
+    } as const;
+};
+
+const getWebOAuthClient = (primaryClientId: string) => {
+    const currentOrigin = typeof window === 'undefined' ? 'https://msjh.bacon159.pp.ua' : window.location.origin;
+    return resolveWebOAuthClient({
+        currentOrigin,
+        primaryClientId,
+        backupClientId: (import.meta as any).env?.VITE_GITHUB_BACKUP_CLIENT_ID,
+        primaryOrigin: (import.meta as any).env?.VITE_GITHUB_PRIMARY_ORIGIN,
+        backupOrigin: (import.meta as any).env?.VITE_GITHUB_BACKUP_ORIGIN
+    });
+};
+
 const getWebRedirectUri = () => {
     if (typeof window === 'undefined') return WEB_CALLBACK_PATH;
     return new URL(WEB_CALLBACK_PATH, window.location.origin).toString();
@@ -330,11 +371,12 @@ export function useGitHubOAuth() {
 
     const isNativeApp = isNativeCapacitorEnvironment();
     const webGitHubClientId = readEnvString((import.meta as any).env?.VITE_GITHUB_CLIENT_ID);
+    const webOAuthClient = !isNativeApp ? getWebOAuthClient(webGitHubClientId) : null;
     const nativeGitHubClientId = readEnvString((import.meta as any).env?.VITE_GITHUB_NATIVE_CLIENT_ID);
     const hasNativeGitHubClientId = nativeGitHubClientId.length > 0;
     const nativeDirectRedirectEnabled = isNativeApp && hasNativeGitHubClientId && shouldUseNativeDirectRedirect();
     const oauthClientType: GitHubOAuthClientType = nativeDirectRedirectEnabled ? 'native' : 'web';
-    const githubClientId = oauthClientType === 'native' ? nativeGitHubClientId : webGitHubClientId;
+    const githubClientId = oauthClientType === 'native' ? nativeGitHubClientId : (webOAuthClient?.clientId || webGitHubClientId);
     const hasGitHubOAuthClientId = githubClientId.length > 0;
     const syncApiBaseUrl = useMemo(() => getSyncApiBaseUrl(), []);
     const missingNativeSyncApiBaseUrl = isNativeApp && isMissingNativeSyncApiBaseUrl();
@@ -578,20 +620,22 @@ export function useGitHubOAuth() {
         }
 
         const useNativeDirectCallback = isNativeApp && oauthClientType === 'native' && shouldUseNativeDirectRedirect();
+        const webOAuthClient = !isNativeApp ? getWebOAuthClient(webGitHubClientId) : null;
         const redirectUri = !isNativeApp
-            ? getWebRedirectUri()
+            ? webOAuthClient?.redirectUri || getWebRedirectUri()
             : useNativeDirectCallback
                 ? getNativeDirectRedirectUri()
                 : getNativeBridgeRedirectUri();
         const expectedCallbackUris = !isNativeApp
-            ? [redirectUri]
+            ? webOAuthClient?.expectedCallbackUris || [redirectUri]
             : useNativeDirectCallback
                 ? [redirectUri]
                 : [redirectUri, getNativeDirectRedirectUri()];
+        const resolvedClientType = !isNativeApp ? (webOAuthClient?.clientType || 'web') : oauthClientType;
         const state = buildOAuthState(isNativeApp);
         const authorizationUrl = new URL(GITHUB_OAUTH_AUTHORIZE_URL);
 
-        authorizationUrl.searchParams.set('client_id', githubClientId);
+        authorizationUrl.searchParams.set('client_id', !isNativeApp ? (webOAuthClient?.clientId || githubClientId) : githubClientId);
         authorizationUrl.searchParams.set('redirect_uri', redirectUri);
         authorizationUrl.searchParams.set('scope', GITHUB_OAUTH_SCOPE);
         authorizationUrl.searchParams.set('state', state);
@@ -600,7 +644,7 @@ export function useGitHubOAuth() {
         writePendingOAuthState({
             state,
             redirectUri,
-            clientType: oauthClientType,
+            clientType: resolvedClientType,
             expectedCallbackUris,
             createdAt: Date.now()
         });
@@ -640,7 +684,7 @@ export function useGitHubOAuth() {
         } finally {
             setIsLoggingIn(false);
         }
-    }, [githubClientId, isNativeApp, missingNativeSyncApiBaseUrl, oauthClientType]);
+    }, [githubClientId, isNativeApp, missingNativeSyncApiBaseUrl, oauthClientType, webGitHubClientId]);
 
     return {
         token,
@@ -663,5 +707,6 @@ export function useGitHubOAuth() {
 export const __githubOAuthTestUtils = {
     buildNativeBridgeDeepLink,
     createFallbackPendingStateFromCallback,
-    openGitHubAuthPageForTest: openGitHubAuthPage
+    openGitHubAuthPageForTest: openGitHubAuthPage,
+    resolveWebOAuthClientForTest: resolveWebOAuthClient
 };
