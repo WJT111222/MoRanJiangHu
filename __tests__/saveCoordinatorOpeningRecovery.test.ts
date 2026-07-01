@@ -67,6 +67,7 @@ const createDeps = () => ({
     创建空门派状态: () => ({}),
     创建开场空白剧情: () => ({}),
     应用并同步记忆系统: vi.fn(),
+    设置叙事平静值: vi.fn(),
     获取当前视觉设置: () => ({}),
     setHasSave: vi.fn(),
     setGameConfig: vi.fn(),
