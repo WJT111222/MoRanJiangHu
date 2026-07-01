@@ -37,6 +37,16 @@ type TokenExchangeResponse = {
     error?: string;
 };
 
+type GitHubOAuthRuntimeConfig = {
+    githubClientId?: string;
+    githubBackupClientId?: string;
+};
+
+type ResolvedGitHubOAuthClientIds = {
+    webGitHubClientId: string;
+    backupGitHubClientId: string;
+};
+
 const createIdleOAuthSession = (): GitHubOAuthSessionState => ({
     status: 'idle',
     authorizationUrl: '',
@@ -346,12 +356,27 @@ const resolveWebOAuthClient = ({
     } as const;
 };
 
-const getWebOAuthClient = (primaryClientId: string) => {
+const resolveGitHubOAuthClientIds = ({
+    buildWebClientId,
+    buildBackupClientId,
+    runtimeWebClientId,
+    runtimeBackupClientId
+}: {
+    buildWebClientId: string;
+    buildBackupClientId?: string;
+    runtimeWebClientId?: string;
+    runtimeBackupClientId?: string;
+}): ResolvedGitHubOAuthClientIds => ({
+    webGitHubClientId: readEnvString(buildWebClientId) || readEnvString(runtimeWebClientId),
+    backupGitHubClientId: readEnvString(buildBackupClientId) || readEnvString(runtimeBackupClientId)
+});
+
+const getWebOAuthClient = (primaryClientId: string, backupClientId?: string) => {
     const currentOrigin = typeof window === 'undefined' ? 'https://msjh.bacon159.pp.ua' : window.location.origin;
     return resolveWebOAuthClient({
         currentOrigin,
         primaryClientId,
-        backupClientId: (import.meta as any).env?.VITE_GITHUB_BACKUP_CLIENT_ID,
+        backupClientId,
         primaryOrigin: (import.meta as any).env?.VITE_GITHUB_PRIMARY_ORIGIN,
         backupOrigin: (import.meta as any).env?.VITE_GITHUB_BACKUP_ORIGIN
     });
@@ -367,11 +392,20 @@ export function useGitHubOAuth() {
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [oauthSession, setOAuthSession] = useState<GitHubOAuthSessionState>(createIdleOAuthSession);
+    const [runtimeConfig, setRuntimeConfig] = useState<GitHubOAuthRuntimeConfig | null>(null);
     const handledCallbackUrlRef = useRef('');
 
     const isNativeApp = isNativeCapacitorEnvironment();
-    const webGitHubClientId = readEnvString((import.meta as any).env?.VITE_GITHUB_CLIENT_ID);
-    const webOAuthClient = !isNativeApp ? getWebOAuthClient(webGitHubClientId) : null;
+    const buildWebGitHubClientId = readEnvString((import.meta as any).env?.VITE_GITHUB_CLIENT_ID);
+    const buildBackupGitHubClientId = readEnvString((import.meta as any).env?.VITE_GITHUB_BACKUP_CLIENT_ID);
+    const runtimeConfigLoaded = isNativeApp || buildWebGitHubClientId.length > 0 || runtimeConfig !== null;
+    const { webGitHubClientId, backupGitHubClientId } = resolveGitHubOAuthClientIds({
+        buildWebClientId: buildWebGitHubClientId,
+        buildBackupClientId: buildBackupGitHubClientId,
+        runtimeWebClientId: runtimeConfig?.githubClientId,
+        runtimeBackupClientId: runtimeConfig?.githubBackupClientId
+    });
+    const webOAuthClient = !isNativeApp ? getWebOAuthClient(webGitHubClientId, backupGitHubClientId) : null;
     const nativeGitHubClientId = readEnvString((import.meta as any).env?.VITE_GITHUB_NATIVE_CLIENT_ID);
     const hasNativeGitHubClientId = nativeGitHubClientId.length > 0;
     const nativeDirectRedirectEnabled = isNativeApp && hasNativeGitHubClientId && shouldUseNativeDirectRedirect();
@@ -571,6 +605,41 @@ export function useGitHubOAuth() {
     }, [handleOAuthCallback]);
 
     useEffect(() => {
+        if (isNativeApp || buildWebGitHubClientId) {
+            return;
+        }
+
+        let released = false;
+        const loadRuntimeConfig = async () => {
+            try {
+                const response = await fetch(buildSyncApiUrl('/api/auth/github-config'), {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP Error ${response.status}`);
+                }
+                const data = await parseJsonResponse<GitHubOAuthRuntimeConfig>(response);
+                if (!released) {
+                    setRuntimeConfig({
+                        githubClientId: readEnvString(data.githubClientId),
+                        githubBackupClientId: readEnvString(data.githubBackupClientId)
+                    });
+                }
+            } catch {
+                if (!released) {
+                    setRuntimeConfig({});
+                }
+            }
+        };
+
+        void loadRuntimeConfig();
+
+        return () => {
+            released = true;
+        };
+    }, [buildWebGitHubClientId, isNativeApp]);
+
+    useEffect(() => {
         if (!isNativeApp) return;
 
         let released = false;
@@ -606,7 +675,9 @@ export function useGitHubOAuth() {
         if (!githubClientId) {
             const message = isNativeApp
                 ? '未配置可用的 GitHub OAuth Client ID。请至少提供 VITE_GITHUB_CLIENT_ID，或为 APK 单独提供 VITE_GITHUB_NATIVE_CLIENT_ID。'
-                : '未配置 VITE_GITHUB_CLIENT_ID 环境变量。';
+                : runtimeConfigLoaded
+                    ? '未配置 VITE_GITHUB_CLIENT_ID 环境变量，且 Worker 运行时也没有提供 GITHUB_CLIENT_ID。'
+                    : '正在读取 GitHub OAuth 运行时配置，请稍后再试。';
             setError(message);
             alert(message);
             return;
@@ -620,7 +691,7 @@ export function useGitHubOAuth() {
         }
 
         const useNativeDirectCallback = isNativeApp && oauthClientType === 'native' && shouldUseNativeDirectRedirect();
-        const webOAuthClient = !isNativeApp ? getWebOAuthClient(webGitHubClientId) : null;
+        const webOAuthClient = !isNativeApp ? getWebOAuthClient(webGitHubClientId, backupGitHubClientId) : null;
         const redirectUri = !isNativeApp
             ? webOAuthClient?.redirectUri || getWebRedirectUri()
             : useNativeDirectCallback
@@ -684,7 +755,7 @@ export function useGitHubOAuth() {
         } finally {
             setIsLoggingIn(false);
         }
-    }, [githubClientId, isNativeApp, missingNativeSyncApiBaseUrl, oauthClientType, webGitHubClientId]);
+    }, [backupGitHubClientId, githubClientId, isNativeApp, missingNativeSyncApiBaseUrl, oauthClientType, runtimeConfigLoaded, webGitHubClientId]);
 
     return {
         token,
@@ -695,6 +766,7 @@ export function useGitHubOAuth() {
         setError,
         isNativeApp,
         hasGitHubOAuthClientId,
+        isGitHubOAuthConfigLoading: !runtimeConfigLoaded,
         oauthSession,
         reopenAuthorizationPage,
         syncApiBaseUrl,
@@ -708,5 +780,6 @@ export const __githubOAuthTestUtils = {
     buildNativeBridgeDeepLink,
     createFallbackPendingStateFromCallback,
     openGitHubAuthPageForTest: openGitHubAuthPage,
-    resolveWebOAuthClientForTest: resolveWebOAuthClient
+    resolveWebOAuthClientForTest: resolveWebOAuthClient,
+    resolveGitHubOAuthClientIdsForTest: resolveGitHubOAuthClientIds
 };

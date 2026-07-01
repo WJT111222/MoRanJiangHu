@@ -196,11 +196,36 @@ export const 校验主剧情正文最低字数 = (response: GameResponse, minLen
     const shortage = 获取主剧情正文不足信息(response, minLength);
     if (!shortage) return;
     if (shortage.withinTolerance) return;
-    throw new textAIService.StoryResponseParseError(
+    const error = new textAIService.StoryResponseParseError(
         `${shortage.message}请完整重写本回合正文，并保持标签协议完整。`,
         rawText,
         shortage.message
     );
+    (error as any).reasonType = 'body_length_shortage';
+    (error as any).bodyLengthShortage = shortage;
+    throw error;
+};
+
+export const 是否正文字数不足错误 = (error: any): boolean => (
+    error?.reasonType === 'body_length_shortage'
+    || Boolean(error?.bodyLengthShortage)
+    || /正文(?:过短|略短)/.test(String(error?.parseDetail || error?.message || ''))
+);
+
+export const 提取自动重试原因文本 = (error: any): string => {
+    if (是否正文字数不足错误(error)) {
+        return '正文过短，正在补足正文';
+    }
+    if (error instanceof textAIService.StoryResponseParseError || error?.name === 'StoryResponseParseError') {
+        return '解析失败，正在重新生成';
+    }
+    if (typeof error?.message === 'string' && error.message.trim()) {
+        return error.message.trim();
+    }
+    if (typeof error === 'string' && error.trim()) {
+        return error.trim();
+    }
+    return '请求失败，正在重试';
 };
 
 export const 校验响应未命中女性姓名黑名单 = (
@@ -1499,8 +1524,10 @@ export const 执行主剧情发送工作流 = async (
                 }
             },
             action: async (attempt, lastError) => {
+                const lastErrorIsBodyLengthShortage = 是否正文字数不足错误(lastError);
                 const protocolRetryPrompt = (
                     attempt > 1
+                    && !lastErrorIsBodyLengthShortage
                     && runtimeGameConfig.启用标签协议失败自动回炉 !== false
                     && (lastError instanceof textAIService.StoryResponseParseError || lastError?.name === 'StoryResponseParseError')
                 )
@@ -1510,14 +1537,21 @@ export const 执行主剧情发送工作流 = async (
                     )
                     : '';
                 const retryFormatPrompt = attempt > 1
-                    ? [
+                    ? (lastErrorIsBodyLengthShortage ? [
+                        '【自动重试正文补足】',
+                        `上一版被拒绝原因：${lastError?.parseDetail || lastError?.message || '正文低于字数要求'}`,
+                        '请完整重新生成本回合，不要只输出补丁。',
+                        `硬性要求：<正文> 内可见正文必须达到至少 ${runtimeGameConfig.字数要求} 字。`,
+                        '优先补充动作过程、感官反馈、环境承接、NPC反应、结果余波和必要对白；不要压缩成总结、提纲或清单。',
+                        '仍需保持 <正文>、<短期记忆>、<命令> 等标签协议完整闭合。'
+                    ].join('\n') : [
                         '【自动重试格式修正】',
                         `上一版被拒绝原因：${lastError?.parseDetail || lastError?.message || '正文协议不合格'}`,
                         '请完整重新生成本回合，不要只输出补丁。',
                         '硬性要求：<正文> 内所有角色对白必须单独成行，并以【角色名】开头；没有【角色名】的行只能写旁白、动作、环境或判定。',
                         '硬性要求：【角色名】只能是真实人物/NPC/临时龙套名；双手、指尖、眼睛、嘴唇、长剑、茶盏、衣袖、声音、气息、灵气、剑光等身体部位、物件或抽象对象必须写入【旁白】。',
                         '如果一句话是某个角色说出口的内容，不允许写成无标签普通段落。'
-                    ].join('\n')
+                    ].join('\n'))
                     : '';
                 const requestStory = (
                     signal: AbortSignal,

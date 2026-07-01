@@ -68,4 +68,28 @@ describe('GitHub OAuth APK 回调兜底', () => {
         expect(result.redirectUri).toBe('https://msjh.bacon159.pp.ua/oauth/github/callback');
         expect(result.expectedCallbackUris).toEqual(['https://msjh.bacon159.pp.ua/oauth/github/callback']);
     });
+
+    it('构建时 Client ID 缺失时使用 Worker 运行时公开配置兜底', () => {
+        const result = __githubOAuthTestUtils.resolveGitHubOAuthClientIdsForTest({
+            buildWebClientId: '',
+            buildBackupClientId: '',
+            runtimeWebClientId: 'runtime-primary-client',
+            runtimeBackupClientId: 'runtime-backup-client'
+        });
+
+        expect(result.webGitHubClientId).toBe('runtime-primary-client');
+        expect(result.backupGitHubClientId).toBe('runtime-backup-client');
+    });
+
+    it('构建时 Client ID 已注入时优先使用构建配置', () => {
+        const result = __githubOAuthTestUtils.resolveGitHubOAuthClientIdsForTest({
+            buildWebClientId: 'build-primary-client',
+            buildBackupClientId: 'build-backup-client',
+            runtimeWebClientId: 'runtime-primary-client',
+            runtimeBackupClientId: 'runtime-backup-client'
+        });
+
+        expect(result.webGitHubClientId).toBe('build-primary-client');
+        expect(result.backupGitHubClientId).toBe('build-backup-client');
+    });
 });

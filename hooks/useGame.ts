@@ -54,7 +54,7 @@ import {
     应用记忆压缩结果,
     记忆压缩任务结构
 } from './useGame/memoryUtils';
-import { 执行主剧情发送工作流 } from './useGame/sendWorkflow';
+import { 执行主剧情发送工作流, 提取自动重试原因文本 } from './useGame/sendWorkflow';
 import { 执行正文润色 as 执行正文润色工作流 } from './useGame/bodyPolish';
 import { 构建上下文快照数据 } from './useGame/contextSnapshot';
 import { 执行响应命令处理 } from './useGame/responseCommandProcessor';
@@ -2722,16 +2722,7 @@ export const useGame = () => {
     };
 
     const 提取自动重试原因 = (error: any): string => {
-        if (error instanceof textAIService.StoryResponseParseError || error?.name === 'StoryResponseParseError') {
-            return '解析失败，正在重新生成';
-        }
-        if (typeof error?.message === 'string' && error.message.trim()) {
-            return error.message.trim();
-        }
-        if (typeof error === 'string' && error.trim()) {
-            return error.trim();
-        }
-        return '请求失败，正在重试';
+        return 提取自动重试原因文本(error);
     };
 
     const 是否可自动重试错误 = (error: any): boolean => {

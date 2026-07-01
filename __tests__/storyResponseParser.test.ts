@@ -84,6 +84,24 @@ describe('storyResponseParser', () => {
         ]);
     });
 
+    it('accepts narrative event tags between body and short memory', () => {
+        const parsed = parseStoryRawText([
+            '<正文>',
+            '【旁白】风声掠过檐角，你按住桌上的旧信，听见楼下有人低声议论城外的夜雨。',
+            '</正文>',
+            '<情节事件>延续：夜雨客栈</情节事件>',
+            '<短期记忆>主角在客栈等待，并听见楼下议论。</短期记忆>'
+        ].join('\n'), { validateTagCompleteness: true });
+
+        expect(parsed.logs).toEqual([
+            {
+                sender: '旁白',
+                text: '风声掠过檐角，你按住桌上的旧信，听见楼下有人低声议论城外的夜雨。'
+            }
+        ]);
+        expect(parsed.shortTerm).toBe('主角在客栈等待，并听见楼下议论。');
+    });
+
     it('does not fold variable plan or short memory into body fallback', () => {
         const parsed = parseStoryRawText([
             '<变量规划>',

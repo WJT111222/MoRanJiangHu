@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { 校验响应人称一致性, 校验响应未泄露名器档案名称, 校验主剧情正文最低字数, 获取主剧情正文不足信息, 统计正文字符数 } from '../hooks/useGame/sendWorkflow';
+import { 校验响应人称一致性, 校验响应未泄露名器档案名称, 校验主剧情正文最低字数, 获取主剧情正文不足信息, 提取自动重试原因文本, 是否正文字数不足错误, 统计正文字符数 } from '../hooks/useGame/sendWorkflow';
 import { 净化角色对白行, 评估润色长度结果, 检测文章优化协议确认污染, 解析正文日志文本 } from '../hooks/useGame/bodyPolish';
 import { 清理润色正文输出 } from '../services/ai/storyTasks';
 import { 构建主剧情请求参数, type 主剧情系统上下文 } from '../hooks/useGame/mainStoryRequest';
@@ -22,6 +22,22 @@ describe('主剧情正文字数校验', () => {
                 { sender: '旁白', text: '太短了。' }
             ]
         }, 50, '<正文>太短了。</正文>')).toThrow(/正文过短/);
+    });
+
+    it('正文过短错误会被识别为字数不足而不是标签协议失败', () => {
+        let captured: any = null;
+        try {
+            校验主剧情正文最低字数({
+                logs: [
+                    { sender: '旁白', text: '太短了。' }
+                ]
+            }, 80, '<正文>太短了。</正文>');
+        } catch (error) {
+            captured = error;
+        }
+
+        expect(是否正文字数不足错误(captured)).toBe(true);
+        expect(提取自动重试原因文本(captured)).toBe('正文过短，正在补足正文');
     });
 
     it('正文低于设置字数时返回可供文章优化接管的不足信息', () => {
