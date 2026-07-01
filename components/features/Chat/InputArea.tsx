@@ -771,36 +771,6 @@ const InputArea: React.FC<Props> = ({
     };
 
     useEffect(() => {
-        const hasQueueProgress = [
-            polishProgress,
-            openingPolishProgress,
-            effectiveVariableGenerationProgress,
-            effectiveWorldEvolutionProgress,
-            effectivePlanningProgress,
-            effectiveMapUpdateProgress
-        ].some((item) => 队列阶段运行中(item?.phase) || item?.phase === 'done' || item?.phase === 'error' || item?.phase === 'skipped' || item?.phase === 'cancelled');
-        const hasRunningQueueStage = [
-            polishProgress,
-            openingPolishProgress,
-            effectiveVariableGenerationProgress,
-            effectiveWorldEvolutionProgress,
-            effectivePlanningProgress,
-            effectiveMapUpdateProgress
-        ].some((item) => 队列阶段运行中(item?.phase));
-        if (hasQueueProgress && (hasRunningQueueStage || postStoryQueueRunning)) {
-            // 不再自动展开面板，保持收缩状态让用户手动点开
-        }
-    }, [
-        postStoryQueueRunning,
-        polishProgress?.phase,
-        openingPolishProgress?.phase,
-        effectiveVariableGenerationProgress?.phase,
-        effectiveWorldEvolutionProgress?.phase,
-        effectivePlanningProgress?.phase,
-        effectiveMapUpdateProgress?.phase
-    ]);
-
-    useEffect(() => {
         const hasMainQueueError = [
             polishProgress,
             openingPolishProgress,
@@ -907,8 +877,7 @@ const InputArea: React.FC<Props> = ({
                                         const progress = stage.progress;
                                         const phase = progress?.phase;
                                         const isRunningStage = Boolean(phase && 队列阶段运行中(phase));
-                                        const fullRawText = progress?.rawText || '';
-                                        const rawText = fullRawText;
+                                        const rawText = progress?.rawText || '';
                                         const progressText = progress?.text;
                                         const originalCommandTexts = Array.isArray((progress as { commandTexts?: string[] } | null)?.commandTexts)
                                             ? ((progress as { commandTexts?: string[] }).commandTexts || [])
@@ -1004,7 +973,7 @@ const InputArea: React.FC<Props> = ({
                                                         {rawText && (
                                                             <button
                                                                 type="button"
-                                                                onClick={() => { void 复制队列文本(fullRawText, `${stage.label}原始回复`); }}
+                                                                onClick={() => { void 复制队列文本(rawText, `${stage.label}原始回复`); }}
                                                                 className="text-xs px-2 py-1 border border-emerald-700/70 text-emerald-200 rounded hover:border-emerald-400/70 hover:text-white"
                                                             >
                                                                 复制原始回复

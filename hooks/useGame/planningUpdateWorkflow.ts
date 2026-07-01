@@ -567,7 +567,11 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
             stream: true,
             onDelta: (delta, accumulated) => {
                 markStreamActivity();
-                params.onStreamDelta?.(delta, accumulated);
+                try {
+                    params.onStreamDelta?.(delta, accumulated);
+                } catch (err) {
+                    console.error('[规划分析] onStreamDelta 回调异常', err);
+                }
             }
         }), params.onRetry, params.signal), {
             firstResponseTimeoutMs: 规划分析首次响应超时毫秒,
