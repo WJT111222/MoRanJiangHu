@@ -1,13 +1,25 @@
 {
-  "versionCode": 545,
-  "versionName": "1.0.545",
+  "versionCode": 546,
+  "versionName": "1.0.546",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "修复开局伙伴私密部位图片可能重复生成的问题：已生成成功的图片会正确归档到对应角色，减少重复等待和资源浪费。",
+    "优化独立更新阶段队列：动态世界、规划分析会在运行中实时显示流式反馈，等待过程更清楚。",
+    "修复变量生成关闭后仍可能显示运行中的队列残留，阶段状态更准确。",
+    "增强规划分析流式反馈稳定性：界面显示异常不会中断后台规划分析。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
   "releaseHistory": [
+    {
+      "versionName": "1.0.545",
+      "versionCode": 545,
+      "releasePublishedAt": "2026-06-30T14:29:42.608+08:00",
+      "releaseNotes": [
+        "修复开局伙伴私密部位图片可能重复生成的问题：已生成成功的图片会正确归档到对应角色，减少重复等待和资源浪费。",
+        "官网：https://msjh.bacon159.pp.ua/",
+        "备用站：https://msjh.bacon.de5.net/"
+      ]
+    },
     {
       "versionName": "1.0.544",
       "versionCode": 544,
@@ -208,10 +220,12 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "修复开局伙伴私密部位图片可能重复生成的问题：已生成成功的图片会正确归档到对应角色，减少重复等待和资源浪费。",
+    "优化独立更新阶段队列：动态世界、规划分析会在运行中实时显示流式反馈，等待过程更清楚。",
+    "修复变量生成关闭后仍可能显示运行中的队列残留，阶段状态更准确。",
+    "增强规划分析流式反馈稳定性：界面显示异常不会中断后台规划分析。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
-  "notes": "修复开局伙伴私密部位图片可能重复生成的问题：已生成成功的图片会正确归档到对应角色，减少重复等待和资源浪费。\\n官网：https://msjh.bacon159.pp.ua/\\n备用站：https://msjh.bacon.de5.net/",
-  "releasePublishedAt": "2026-06-30T14:29:42.608+08:00"
+  "notes": "优化独立更新阶段队列：动态世界、规划分析会在运行中实时显示流式反馈，等待过程更清楚。\\n修复变量生成关闭后仍可能显示运行中的队列残留，阶段状态更准确。\\n增强规划分析流式反馈稳定性：界面显示异常不会中断后台规划分析。\\n官网：https://msjh.bacon159.pp.ua/\\n备用站：https://msjh.bacon.de5.net/",
+  "releasePublishedAt": "2026-07-02T07:19:11+08:00"
 }
