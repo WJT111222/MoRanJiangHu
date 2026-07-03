@@ -43,6 +43,7 @@ import {
     获取创意工坊难度选项,
     获取创意工坊世界规模选项,
     获取题材模式配置,
+    清理官方题材手动提示词残留,
     题材模式顺序
 } from '../../../../utils/workshopEngine';
 import { 构建官方模式运行时配置, 规范化模式运行时配置 } from '../../../../utils/modeRuntimeProfile';
@@ -673,11 +674,11 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
         });
         const normalizedOpeningConfig = 规范化可选开局配置(preset.openingConfig);
         const restoredWorldMode = (restored.modeRuntimeProfile?.identity.baseMode || normalizedOpeningConfig?.题材模式 || openingConfig.题材模式) as OpeningConfig['题材模式'];
-        const nextWorldConfig: WorldGenConfig = {
+        const nextWorldConfig: WorldGenConfig = 清理官方题材手动提示词残留({
             ...创建主题默认世界配置(restoredWorldMode),
             ...preset.worldConfig,
             ...(restored.modeRuntimeProfile ? { modeRuntimeProfile: restored.modeRuntimeProfile } : {})
-        };
+        });
         const restoredOpeningConfig = normalizedOpeningConfig
             ? {
                 ...normalizedOpeningConfig,

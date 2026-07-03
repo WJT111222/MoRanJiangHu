@@ -28,6 +28,7 @@ describe('创意工坊主题引擎', () => {
 
         expect(world.worldName).toBe('太古界');
         expect(world.modeRuntimeProfile?.identity.baseMode).toBe('武侠');
+        expect(world.manualWorldPrompt).toBe('');
         expect(role.appearance).toContain('黑发黑眸');
         expect(opening.初始伙伴?.关系).toBe('自幼相识的同行伙伴');
         expect(opening.modeRuntimeProfile?.identity.baseMode).toBe('武侠');
@@ -74,5 +75,20 @@ describe('创意工坊主题引擎', () => {
         const merged = 合并题材世界默认值('无限流', { manualRealmPrompt: 'custom realm' });
         expect(merged.worldName).toBe('主神空间');
         expect(merged.manualRealmPrompt).toBe('custom realm');
+    });
+
+    it('会清理旧版预设残留在手动世界观里的官方题材口径', () => {
+        const legacyPrompt = 获取题材模式配置('武侠').promptLines.join('\n');
+        const merged = 合并题材世界默认值('仙侠', { manualWorldPrompt: legacyPrompt });
+
+        expect(merged.manualWorldPrompt).toBe('');
+        expect(merged.worldExtraRequirement).toContain(legacyPrompt);
+    });
+
+    it('不会清理玩家真正填写的完整手动世界观', () => {
+        const manualPrompt = '<世界观>这是玩家手写的完整世界观。</世界观>';
+        const merged = 合并题材世界默认值('仙侠', { manualWorldPrompt: manualPrompt });
+
+        expect(merged.manualWorldPrompt).toBe(manualPrompt);
     });
 });

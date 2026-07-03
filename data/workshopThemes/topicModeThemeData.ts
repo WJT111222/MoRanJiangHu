@@ -421,10 +421,65 @@ export const 获取题材模式选项 = () => (
     })
 );
 
+const 规范化官方片段文本 = (value: unknown): string => (
+    typeof value === 'string'
+        ? value.replace(/\r/g, '').split('\n').map(line => line.trim()).filter(Boolean).join('\n').trim()
+        : ''
+);
+
+const 拼接唯一文本 = (current: string | undefined, addition: string): string => {
+    const base = (current || '').trim();
+    const extra = addition.trim();
+    if (!extra) return base;
+    if (!base) return extra;
+    if (base.includes(extra)) return base;
+    return `${base}\n\n${extra}`;
+};
+
+export const 是否官方题材世界观口径提示词 = (text: unknown): boolean => {
+    const normalized = 规范化官方片段文本(text);
+    if (!normalized) return false;
+    if (/<\s*世界观\s*>/i.test(normalized) || /"world_prompt"\s*:/.test(normalized) || /"worldPrompt"\s*:/.test(normalized)) {
+        return false;
+    }
+    return Object.values(题材模式配置表).some((profile) => (
+        normalized === 规范化官方片段文本(profile.promptLines.join('\n'))
+    ));
+};
+
+export const 是否官方题材境界口径提示词 = (text: unknown): boolean => {
+    const normalized = 规范化官方片段文本(text);
+    if (!normalized) return false;
+    if (/<\s*境界体系\s*>/i.test(normalized) || /【\s*境界映射母板\s*】/.test(normalized)) {
+        return false;
+    }
+    return Object.values(题材模式配置表).some((profile) => (
+        normalized === 规范化官方片段文本(profile.manualRealmPrompt)
+    ));
+};
+
+export const 清理官方题材手动提示词残留 = <T extends Partial<WorldGenConfig>>(worldConfig: T): T => {
+    const manualWorldPrompt = typeof worldConfig.manualWorldPrompt === 'string' ? worldConfig.manualWorldPrompt.trim() : '';
+    const manualRealmPrompt = typeof worldConfig.manualRealmPrompt === 'string' ? worldConfig.manualRealmPrompt.trim() : '';
+    const shouldClearWorldPrompt = 是否官方题材世界观口径提示词(manualWorldPrompt);
+    const shouldClearRealmPrompt = 是否官方题材境界口径提示词(manualRealmPrompt);
+    if (!shouldClearWorldPrompt && !shouldClearRealmPrompt) return worldConfig;
+    return {
+        ...worldConfig,
+        worldExtraRequirement: [
+            worldConfig.worldExtraRequirement,
+            shouldClearWorldPrompt ? manualWorldPrompt : '',
+            shouldClearRealmPrompt ? manualRealmPrompt : ''
+        ].reduce((acc, item) => 拼接唯一文本(acc, item || ''), ''),
+        ...(shouldClearWorldPrompt ? { manualWorldPrompt: '' } : {}),
+        ...(shouldClearRealmPrompt ? { manualRealmPrompt: '' } : {})
+    };
+};
+
 export const 合并题材世界默认值 = (
     mode: 题材模式类型,
     previous?: Partial<WorldGenConfig>
-): Partial<WorldGenConfig> => ({
+): Partial<WorldGenConfig> => 清理官方题材手动提示词残留({
     ...previous,
     ...获取题材模式配置(mode).worldDefaults,
     manualWorldPrompt: previous?.manualWorldPrompt || '',

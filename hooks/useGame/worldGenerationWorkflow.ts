@@ -13,6 +13,7 @@ import { 获取繁体输出指令 } from '../../utils/traditionalChinese';
 import { 按功能开关过滤提示词内容 } from '../../utils/promptFeatureToggles';
 import { 构建题材默认境界体系提示词, 题材是否使用默认现代境界 } from '../../utils/topicRealmDefaults';
 import { 构建开局运行时快照 } from '../../utils/customNewGamePresets';
+import { 是否官方题材世界观口径提示词, 是否官方题材境界口径提示词 } from '../../data/workshopThemes/topicModeThemeData';
 import { recordDiagnosticLog } from '../../services/diagnosticLog';
 import { 合并世界基底到开场状态 } from './storyState';
 
@@ -148,18 +149,22 @@ const 创建阶段超时错误 = (stageLabel: string, timeoutMs: number, idleTim
 const 是否模式包题材片段 = (text: string): boolean => {
     const source = (text || '').trim();
     if (!source) return false;
-    return /【\s*(题材口径|模式专属世界书|世界规则|运行时模式配置)\s*】/.test(source)
+    return (
+        /【\s*(题材口径|模式专属世界书|世界规则|运行时模式配置)\s*】/.test(source)
         && !/<\s*世界观\s*>/i.test(source)
         && !/"world_prompt"\s*:/.test(source)
-        && !/"worldPrompt"\s*:/.test(source);
+        && !/"worldPrompt"\s*:/.test(source)
+    ) || 是否官方题材世界观口径提示词(source);
 };
 
 const 是否模式包能力片段 = (text: string): boolean => {
     const source = (text || '').trim();
     if (!source) return false;
-    return /【\s*(能力体系|运行时模式配置)\s*】/.test(source)
+    return (
+        /【\s*(能力体系|运行时模式配置)\s*】/.test(source)
         && !/<\s*境界体系\s*>/i.test(source)
-        && !/【\s*境界映射母板\s*】/.test(source);
+        && !/【\s*境界映射母板\s*】/.test(source)
+    ) || 是否官方题材境界口径提示词(source);
 };
 
 const 执行带超时 = async <T,>(

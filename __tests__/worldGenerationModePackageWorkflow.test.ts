@@ -3,6 +3,7 @@ import { 创意工坊模块列表 } from '../data/creativeWorkshopModules';
 import { 执行世界生成工作流 } from '../hooks/useGame/worldGenerationWorkflow';
 import * as textAIService from '../services/ai/text';
 import type { WorldGenConfig, 角色数据结构 } from '../types';
+import { 获取题材模式配置 } from '../utils/workshopEngine';
 
 vi.mock('../services/ai/text', () => ({
     generateWorldFoundationData: vi.fn(async () => ({
@@ -119,5 +120,93 @@ describe('worldGenerationWorkflow mode package opening', () => {
             expect.objectContaining({ id: 'core_world', 内容: 'AI模式包世界观' })
         ]));
         expect(追加系统消息).toHaveBeenCalledWith(expect.stringContaining('世界观与境界体系提示词已写入'));
+    });
+
+    it('旧版安装包残留的官方题材口径不会被当成完整手动世界观', async () => {
+        const xianxiaPackage = 创意工坊模块列表.find((entry) => entry.id === 'mode-package-仙侠');
+        expect(xianxiaPackage?.preset).toBeTruthy();
+        const worldConfig = {
+            ...xianxiaPackage!.preset!.worldConfig,
+            manualWorldPrompt: 获取题材模式配置('武侠').promptLines.join('\n')
+        } as WorldGenConfig;
+
+        const setPrompts = vi.fn();
+        const deps = {
+            apiConfig: {
+                activeConfigId: 'main',
+                configs: [{
+                    id: 'main',
+                    名称: '测试接口',
+                    供应商: 'openai_compatible',
+                    协议覆盖: 'openai',
+                    baseUrl: 'https://example.test/v1',
+                    apiKey: 'test-key',
+                    model: 'test-model',
+                    maxTokens: 1200,
+                    temperature: 0.2
+                }],
+                功能模型占位: {
+                    主剧情使用模型: 'test-model'
+                }
+            },
+            gameConfig: { 启用修炼体系: true },
+            prompts: [{
+                id: 'core_world',
+                标题: '世界观',
+                内容: '旧世界观',
+                类型: '世界观',
+                启用: true
+            }],
+            view: 'new_game',
+            setView: vi.fn(),
+            setPrompts,
+            setLoading: vi.fn(),
+            setShowSettings: vi.fn(),
+            设置历史记录: vi.fn(),
+            设置开局配置: vi.fn(),
+            设置最近开局配置: vi.fn(),
+            清空重Roll快照: vi.fn(),
+            重置自动存档状态: vi.fn(),
+            创建开场基础状态: vi.fn(() => ({ 世界: {}, 角色: {}, 环境: {} })),
+            构建前端清空开场状态: vi.fn((base: any) => base),
+            应用开场基态: vi.fn(),
+            创建开场命令基态: vi.fn(() => ({})),
+            执行开场剧情生成: vi.fn(async () => undefined),
+            追加系统消息: vi.fn(),
+            替换流式草稿为失败提示: vi.fn((currentHistory: any[]) => currentHistory)
+        };
+
+        await 执行世界生成工作流(
+            worldConfig,
+            {
+                姓名: '测试修士',
+                性别: '男',
+                年龄: 18,
+                出生日期: '一月初一',
+                外貌: '青衫干净',
+                性格: '谨慎',
+                境界: '炼气一层',
+                力量: 5,
+                敏捷: 5,
+                体质: 5,
+                根骨: 5,
+                悟性: 5,
+                福源: 5,
+                天赋列表: [{ 名称: '灵觉敏锐', 描述: '感知敏锐', 效果: '提升感知' }],
+                出身背景: { 名称: '散修遗孤', 描述: '独自修行', 效果: '熟悉底层修行' }
+            } as 角色数据结构,
+            xianxiaPackage!.preset!.openingConfig,
+            'step',
+            false,
+            '',
+            undefined,
+            deps as any
+        );
+
+        expect(textAIService.generateWorldFoundationData).toHaveBeenCalledTimes(1);
+        expect(textAIService.解析世界观提示词内容).not.toHaveBeenCalled();
+        expect(setPrompts).toHaveBeenLastCalledWith(expect.arrayContaining([
+            expect.objectContaining({ id: 'core_world', 内容: 'AI模式包世界观' })
+        ]));
     });
 });

@@ -1,14 +1,25 @@
 {
-  "versionCode": 554,
-  "versionName": "1.0.554",
+  "versionCode": 555,
+  "versionName": "1.0.555",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "修复完整模式包开新档会跳过世界观生成的问题：新建存档会先生成/细化世界观，再进入开局剧情。",
-    "修复仙侠、无限流等模式包题材口径被误当成手动世界观的问题，重装或重新开局后不再直接刷开局。",
+    "修复重新安装或旧开局预设残留官方题材提示词时，开新档会跳过世界观设定、直接进入开局剧情的问题。",
+    "优化开局兼容：官方题材口径会自动并入世界观生成要求，保留玩家真正导入的完整手动世界观。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
   "releaseHistory": [
+    {
+      "versionName": "1.0.554",
+      "versionCode": 554,
+      "releasePublishedAt": "2026-07-03T20:30:37+08:00",
+      "releaseNotes": [
+        "修复完整模式包开新档会跳过世界观生成的问题：新建存档会先生成/细化世界观，再进入开局剧情。",
+        "修复仙侠、无限流等模式包题材口径被误当成手动世界观的问题，重装或重新开局后不再直接刷开局。",
+        "官网：https://msjh.bacon159.pp.ua/",
+        "备用站：https://msjh.bacon.de5.net/"
+      ]
+    },
     {
       "versionName": "1.0.552",
       "versionCode": 552,
@@ -279,11 +290,11 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "修复完整模式包开新档会跳过世界观生成的问题：新建存档会先生成/细化世界观，再进入开局剧情。",
-    "修复仙侠、无限流等模式包题材口径被误当成手动世界观的问题，重装或重新开局后不再直接刷开局。",
+    "修复重新安装或旧开局预设残留官方题材提示词时，开新档会跳过世界观设定、直接进入开局剧情的问题。",
+    "优化开局兼容：官方题材口径会自动并入世界观生成要求，保留玩家真正导入的完整手动世界观。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
-  "notes": "修复完整模式包开新档会跳过世界观生成的问题：新建存档会先生成/细化世界观，再进入开局剧情。\n修复仙侠、无限流等模式包题材口径被误当成手动世界观的问题，重装或重新开局后不再直接刷开局。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-  "releasePublishedAt": "2026-07-03T20:30:37+08:00"
+  "notes": "修复重新安装或旧开局预设残留官方题材提示词时，开新档会跳过世界观设定、直接进入开局剧情的问题。\n优化开局兼容：官方题材口径会自动并入世界观生成要求，保留玩家真正导入的完整手动世界观。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
+  "releasePublishedAt": "2026-07-03T21:35:44+08:00"
 }
