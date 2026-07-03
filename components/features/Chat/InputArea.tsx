@@ -608,8 +608,8 @@ const InputArea: React.FC<Props> = ({
         if (!onQuickRestart) return;
         const optionsMap: Record<QuickRestartMode, { title: string; message: string }> = {
             world_only: {
-                title: '重新生成世界观',
-                message: '将仅重新生成世界观提示词，不自动生成开局剧情。是否继续？'
+                title: '重新生成世界观设定',
+                message: '将仅重新生成世界观/境界提示词，不会刷新动态世界，也不会自动生成开局剧情。是否继续？'
             },
             opening_only: {
                 title: '重新生成开局剧情',
@@ -1210,7 +1210,7 @@ const InputArea: React.FC<Props> = ({
                             disabled={busy}
                             className="text-xs px-3 py-2 rounded border border-gray-700 text-gray-200 hover:border-teal-300 hover:text-teal-200 disabled:opacity-40"
                         >
-                            仅重生世界观
+                            仅重生世界观设定
                         </button>
                         <button
                             type="button"
