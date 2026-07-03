@@ -965,14 +965,15 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
             }));
             setWorldConfig((prev) => ({ ...prev, modeRuntimeProfile }));
             const content = String((module.payload as any)?.content || '').trim();
+            const isModePackage = (module.payload as any)?.packagePart === 'mode_package' || (module.payload as any)?.schema === 'moranjianghu-creative-workshop-mode-package';
             if (module.type === 'topic') {
                 if (module.preset) {
                     setWorldConfig((prev) => ({
                         ...prev,
                         ...module.preset!.worldConfig,
                         modeRuntimeProfile,
-                        manualWorldPrompt: prev.manualWorldPrompt || module.preset!.worldConfig.manualWorldPrompt || '',
-                        manualRealmPrompt: prev.manualRealmPrompt || module.preset!.worldConfig.manualRealmPrompt || ''
+                        manualWorldPrompt: isModePackage ? (prev.manualWorldPrompt || '') : (prev.manualWorldPrompt || module.preset!.worldConfig.manualWorldPrompt || ''),
+                        manualRealmPrompt: isModePackage ? (prev.manualRealmPrompt || '') : (prev.manualRealmPrompt || module.preset!.worldConfig.manualRealmPrompt || '')
                     }));
                     if (module.preset.openingConfig?.题材模式) {
                         const normalizedModuleOpening = 规范化开局配置({
@@ -991,8 +992,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                 const modeWorldbooks = Array.isArray(module.modeWorldbooks) ? module.modeWorldbooks : Array.isArray((module.payload as any)?.modeWorldbooks) ? (module.payload as any).modeWorldbooks : [];
                 设置模式包世界书列表(modeWorldbooks);
                 const extractedPrompts = 从模式世界书提取提示词(modeWorldbooks);
-                const isModePackage = (module.payload as any)?.packagePart === 'mode_package' || (module.payload as any)?.schema === 'moranjianghu-creative-workshop-mode-package';
-                const topicPrompt = String(extractedPrompts.manualWorldPrompt || (module.payload as any)?.manualWorldPrompt || (!module.preset ? content : '')).trim();
+                const topicPrompt = String(extractedPrompts.manualWorldPrompt || (module.payload as any)?.manualWorldPrompt || (isModePackage ? module.preset?.worldConfig?.manualWorldPrompt : '') || (!module.preset ? content : '')).trim();
                 if (topicPrompt) {
                     if (isModePackage) {
                         setWorldConfig((prev) => ({ ...prev, worldExtraRequirement: 拼接额外要求(prev.worldExtraRequirement, topicPrompt) }));

@@ -60,6 +60,20 @@ describe('creativeWorkshopModules', () => {
         expect(new Set(entries.map((entry) => entry.preset?.openingConfig?.题材模式))).toEqual(new Set(题材模式顺序));
     });
 
+    it('完整模式包预设不会把题材口径写入手动世界观字段', () => {
+        const entries = 创意工坊模块列表.filter((entry) => (
+            entry.source === 'builtin'
+            && entry.type === 'topic'
+            && entry.payload?.packagePart === 'mode_package'
+        ));
+        expect(entries.length).toBeGreaterThanOrEqual(题材模式顺序.length);
+        for (const entry of entries) {
+            expect(String(entry.payload?.manualWorldPrompt || ''), entry.id).toBeTruthy();
+            expect(entry.preset?.worldConfig.manualWorldPrompt, entry.id).toBe('');
+            expect(entry.preset?.worldConfig.manualRealmPrompt, entry.id).toBe('');
+        }
+    });
+
     it('迁入的玩家题材按完整模式包提供单个整合模块', () => {
         for (const suiteId of ['community-trails-suite', 'community-crossover-wuxia-suite', 'community-rideress-suite', 'community-pokemon-suite']) {
             const entries = 创意工坊模块列表.filter((entry) => entry.payload?.suiteId === suiteId);

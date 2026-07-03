@@ -1026,9 +1026,9 @@ const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创
         ...topic.preset,
         worldConfig: {
             ...topic.preset.worldConfig,
-            manualWorldPrompt: topic.preset.worldConfig.manualWorldPrompt || manualWorldPrompt,
+            manualWorldPrompt: '',
             worldExtraRequirement: worldExtraRequirement || topic.preset.worldConfig.worldExtraRequirement,
-            manualRealmPrompt: manualRealmPrompt || topic.preset.worldConfig.manualRealmPrompt,
+            manualRealmPrompt: '',
             modeRuntimeProfile
         },
         openingConfig: topic.preset.openingConfig
