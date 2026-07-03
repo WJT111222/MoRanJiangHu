@@ -9,7 +9,7 @@ describe('queue stage rerun actions', () => {
             hasReroll: true,
             hasRetryLatestVariableGeneration: false,
             hasQuickRestart: true
-        })).toBe('quick-opening');
+        })).toBe('quick-opening-all');
     });
 
     it('uses variable retry for normal variable stage', () => {
@@ -22,28 +22,28 @@ describe('queue stage rerun actions', () => {
         })).toBe('retry-variable');
     });
 
-    it('uses opening restart for skipped opening sub-stages', () => {
+    it('uses full opening restart for skipped opening sub-stages', () => {
         expect(获取队列阶段重新生成动作({
             stageId: 'opening-polish',
             isOpeningQueue: true,
             hasReroll: true,
             hasRetryLatestVariableGeneration: true,
             hasQuickRestart: true
-        })).toBe('quick-opening');
+        })).toBe('quick-opening-all');
         expect(获取队列阶段重新生成动作({
             stageId: 'world',
             isOpeningQueue: true,
             hasReroll: true,
             hasRetryLatestVariableGeneration: true,
             hasQuickRestart: true
-        })).toBe('quick-opening');
+        })).toBe('quick-opening-all');
         expect(获取队列阶段重新生成动作({
             stageId: 'planning',
             isOpeningQueue: true,
             hasReroll: true,
             hasRetryLatestVariableGeneration: true,
             hasQuickRestart: true
-        })).toBe('quick-opening');
+        })).toBe('quick-opening-all');
     });
 
     it('does not expose a rerun button for normal stages with no real handler', () => {

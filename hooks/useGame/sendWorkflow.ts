@@ -2280,7 +2280,7 @@ export const 执行主剧情发送工作流 = async (
                     if (!worldEvolutionSplitEnabled) {
                         options?.onWorldEvolutionProgress?.({
                             phase: "skipped",
-                            text: "世界演变独立链路未启用，已跳过。"
+                            text: "动态世界接口未配置，已跳过。"
                         });
                         return null;
                     }

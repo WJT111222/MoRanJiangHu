@@ -298,7 +298,7 @@ const WorkflowGraphSettings: React.FC<{
                 subtitle: '世界演变',
                 row: 4,
                 order: 0,
-                enabled: feature.世界演变功能启用 !== false && Boolean(feature.世界演变独立模型开关),
+                enabled: feature.世界演变功能启用 !== false && 接口配置是否可用(worldApi),
                 api: worldApi,
                 configTab: 'world_evolution',
                 modelConfig: {
@@ -310,7 +310,7 @@ const WorkflowGraphSettings: React.FC<{
                     apiKeyKey: '世界演变API密钥',
                     enableKeys: ['世界演变功能启用', '世界演变独立模型开关']
                 },
-                note: '依赖变量生成后的快照；与规划、地图渠道分离时可并行。'
+                note: '依赖变量生成后的快照；独立模型关闭时复用主剧情接口，与规划、地图渠道分离时可并行。'
             }),
             buildStage(normalized, {
                 id: 'planning',

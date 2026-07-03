@@ -1735,7 +1735,7 @@ export const 执行开场剧情生成工作流 = async (
         } else {
             设置开局世界演变进度({
                 phase: 'skipped',
-                text: '动态世界独立链路未启用，已跳过。'
+                text: '动态世界接口未配置，已跳过。'
             });
         }
 

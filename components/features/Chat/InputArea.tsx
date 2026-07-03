@@ -967,8 +967,8 @@ const InputArea: React.FC<Props> = ({
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
-                                                                    if (rerunAction === 'quick-opening') {
-                                                                        void handleQuickRestartSelect('opening_only');
+                                                                    if (rerunAction === 'quick-opening-all') {
+                                                                        void handleQuickRestartSelect('all');
                                                                     } else if (rerunAction === 'reroll') {
                                                                         void handleReroll();
                                                                     } else if (rerunAction === 'retry-variable') {
@@ -977,7 +977,7 @@ const InputArea: React.FC<Props> = ({
                                                                 }}
                                                                 className="text-xs px-2 py-1 border border-cyan-400/40 text-cyan-100 rounded hover:bg-cyan-500/10"
                                                             >
-                                                                {rerunAction === 'quick-opening' ? '重跑开局' : '重新生成'}
+                                                                {rerunAction === 'quick-opening-all' ? '重跑世界观+开局' : '重新生成'}
                                                             </button>
                                                         )}
                                                         {commandTexts.length > 0 && (

@@ -2646,9 +2646,7 @@ export const useGame = () => {
         const feature = apiConfig?.功能模型占位 as any;
         return Boolean(
             feature?.世界演变功能启用 !== false
-            && feature?.世界演变独立模型开关
-            && typeof feature?.世界演变使用模型 === 'string'
-            && feature.世界演变使用模型.trim().length > 0
+            && 接口配置是否可用(获取世界演变接口配置(apiConfig))
         );
     };
 

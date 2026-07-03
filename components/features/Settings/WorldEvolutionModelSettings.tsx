@@ -228,7 +228,7 @@ const WorldEvolutionModelSettings: React.FC<Props> = ({ settings, onSave }) => {
                     </div>
                 ) : !独立模型开启 && (
                     <div className="text-[11px] text-gray-400">
-                        当前状态：世界演变自动更新关闭
+                        当前状态：复用主剧情接口执行动态世界；开启独立模型后可单独指定模型和渠道。
                     </div>
                 )}
             </div>
