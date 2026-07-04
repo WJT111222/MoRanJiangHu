@@ -368,7 +368,7 @@ export const RELEASE_INFO = {
         "备用站：https://msjh.bacon.de5.net/"
     ],
     "notes": "修复创意工坊「小说分解模块」大体积分享包发布失败：遮天、剑来等较大的小说分解 ZIP 在整包上传被 OpenList 拒绝时，会自动切成小分片上传。\n修复分片分享包下载导入：应用会自动逐片下载、合并并校验大小与 sha256，避免大包导入时卡住或提示 ZIP 暂不可下载。\n优化小说分解工作台数据集切换：章节筛选、分段校对等页面会把「切换数据集」放到内容区最上方，减少被遮挡。\n补全并修正部分公开小说分解数据集的空字段，减少世界观规则、人物关系、伏笔线索、章节节奏等字段显示为 0 的情况。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-    "releasePublishedAt": "2026-07-05T00:35:50.106+08:00"
+    "releasePublishedAt": "2026-07-05T00:39:51.623+08:00"
 } as const;
 
 export type ReleaseInfo = typeof RELEASE_INFO;
