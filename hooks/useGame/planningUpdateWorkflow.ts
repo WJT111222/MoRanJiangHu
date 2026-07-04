@@ -316,6 +316,7 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
         response: GameResponse;
         shouldApply?: () => boolean;
         onRetry?: (attempt: number, maxAttempts: number, reason: string) => void;
+        onStreamDelta?: (delta: string, accumulated: string) => void;
         signal?: AbortSignal;
     }): Promise<统一规划分析结果> => {
         检查规划分析中断(params.signal);
@@ -481,10 +482,18 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
         ]
             .filter(Boolean)
             .join('\n\n');
+        const normalizedWorldPayload = deps.规范化世界状态(params.state.世界);
+        const normalizedSocialPayload = deps.规范化社交列表(params.state.社交);
+        const normalizedEnvPayload = deps.规范化环境信息(params.state.环境);
         const genderRatioConstraintText = 构建规划性别比例约束摘要(
             deps.开局配置?.modeRuntimeProfile?.npc?.genderRatio,
-            worldBuffer?.性别比例,
-            解析当前有效性别比例(envBuffer, worldBuffer?.地图层级, worldBuffer?.性别比例, deps.开局配置?.modeRuntimeProfile?.npc?.genderRatio)
+            normalizedWorldPayload?.性别比例,
+            解析当前有效性别比例(
+                normalizedEnvPayload,
+                normalizedWorldPayload?.地图层级,
+                normalizedWorldPayload?.性别比例,
+                deps.开局配置?.modeRuntimeProfile?.npc?.genderRatio
+            )
         );
 
         const planningStoryPayload = 裁剪修炼体系上下文数据({
@@ -510,9 +519,6 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
             { value: planningHeroinePayload, gameConfig: normalizedGameConfig, space: 2 },
             () => 后台分段执行(() => JSON.stringify(planningHeroinePayload, null, 2))
         ));
-        const normalizedWorldPayload = deps.规范化世界状态(params.state.世界);
-        const normalizedSocialPayload = deps.规范化社交列表(params.state.社交);
-        const normalizedEnvPayload = deps.规范化环境信息(params.state.环境);
         const worldJson = await probe.timeAsync('序列化世界载荷(worker)', () => 执行游戏后台重计算<string>(
             'stringifyTrimCultivation',
             { value: normalizedWorldPayload, gameConfig: normalizedGameConfig, space: 2 },
@@ -569,7 +575,14 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
             gptMode: 独立规划分析GPT模式
         }, planningApi, signal, 规划分析非流式输出 ? undefined : {
             stream: true,
-            onDelta: markStreamActivity
+            onDelta: (delta, accumulated) => {
+                markStreamActivity();
+                try {
+                    params.onStreamDelta?.(delta, accumulated);
+                } catch (err) {
+                    console.error('[规划分析] onStreamDelta 回调异常', err);
+                }
+            }
         }), params.onRetry, params.signal), {
             firstResponseTimeoutMs: 规划分析首次响应超时毫秒,
             streamIdleTimeoutMs: 规划分析流式空闲超时毫秒,

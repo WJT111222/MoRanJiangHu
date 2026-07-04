@@ -269,7 +269,7 @@ type 最近开局配置结构 = {
 type 快速重开模式 = 'world_only' | 'opening_only' | 'all';
 
 type 开局独立阶段进度 = {
-    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
+    phase: 'start' | 'stream' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
     commandTexts?: string[];
@@ -359,7 +359,7 @@ type 独立阶段失败决策参数 = {
 };
 
 type 规划分析进度 = {
-    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
+    phase: 'start' | 'stream' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
     commandTexts?: string[];
@@ -371,7 +371,7 @@ type 规划分析进度 = {
 };
 
 type 世界演变进度 = {
-    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
+    phase: 'start' | 'stream' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
     commandTexts?: string[];

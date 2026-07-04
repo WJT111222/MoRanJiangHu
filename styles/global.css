@@ -55,6 +55,65 @@
   }
 }
 
+.novel-decomposition-workbench-surface {
+  background: rgba(6, 8, 12, 0.98) !important;
+  background-color: rgba(6, 8, 12, 0.98) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  isolation: isolate;
+  opacity: 1 !important;
+}
+
+.novel-decomposition-workbench-backdrop {
+  background: #06080c !important;
+  background-color: #06080c !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  isolation: isolate;
+  opacity: 1 !important;
+}
+
+html[data-theme="day"] .novel-decomposition-workbench-surface.novel-decomposition-workbench-surface {
+  background: #f7f0dc !important;
+  background-color: #f7f0dc !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-theme="day"] .novel-decomposition-workbench-backdrop.novel-decomposition-workbench-backdrop {
+  background: #f7f0dc !important;
+  background-color: #f7f0dc !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.novel-archive-fields {
+  display: flex;
+  flex-direction: column;
+}
+
+.novel-archive-input,
+.novel-archive-long-textarea {
+  overflow-wrap: anywhere;
+}
+
+html[data-theme="day"] .novel-archive-input,
+html[data-theme="day"] .novel-archive-long-textarea {
+  background: rgba(255, 252, 244, 0.92) !important;
+  border-color: rgba(132, 91, 45, 0.24) !important;
+  color: #243026 !important;
+}
+
+html[data-theme="day"] .novel-archive-input:focus,
+html[data-theme="day"] .novel-archive-long-textarea:focus {
+  border-color: rgba(146, 98, 34, 0.78) !important;
+  box-shadow: 0 0 0 1px rgba(146, 98, 34, 0.16);
+}
+
 /* Day mode: turn the legacy dark panels into high-contrast paper surfaces. */
 html[data-theme="day"] body {
   background: rgb(var(--c-ink-black));

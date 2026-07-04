@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { 校验响应人称一致性, 校验响应未泄露名器档案名称, 校验响应正文词汇审查, 校验主剧情正文最低字数, 获取主剧情正文不足信息, 提取自动重试原因文本, 是否正文字数不足错误, 收集主剧情已知对白说话人, 统计正文字符数 } from '../hooks/useGame/sendWorkflow';
+import { 校验响应人称一致性, 校验响应未泄露名器档案名称, 校验响应正文词汇审查, 校验主剧情正文最低字数, 获取主剧情正文不足信息, 提取自动重试原因文本, 是否正文字数不足错误, 收集主剧情已知对白说话人, 统计正文字符数, 主剧情流式草稿已具备完整协议 } from '../hooks/useGame/sendWorkflow';
 import { 净化角色对白行, 评估润色长度结果, 检测文章优化协议确认污染, 解析正文日志文本 } from '../hooks/useGame/bodyPolish';
 import { 清理润色正文输出 } from '../services/ai/storyTasks';
 import { 构建主剧情请求参数, type 主剧情系统上下文 } from '../hooks/useGame/mainStoryRequest';
@@ -442,7 +442,6 @@ describe('主剧情叙事人称校验', () => {
                 }
             ]
         };
-
         expect(() => 校验响应正文词汇审查(templateNameResponse as any, [], JSON.stringify(templateNameResponse), '主剧情', false))
             .not.toThrow();
         expect(() => 校验响应人称一致性({
@@ -451,6 +450,7 @@ describe('主剧情叙事人称校验', () => {
                 { sender: '旁白', text: '你走进房间。你感到寒意。你决定继续向前。' }
             ]
         } as any, rawText, '第三人称')).toThrow(/叙事人称不符/);
+        expect(主剧情流式草稿已具备完整协议('只有正文，没有标签结构')).toBe(false);
     });
 
     it('第一人称模式下，对话里出现“你”但旁白稳定用“我”时不报错', () => {
