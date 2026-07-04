@@ -96,7 +96,7 @@ const normalizeOpenListBase = (value: unknown, fallback = DEFAULT_OPENLIST_BASE)
 
 const getOpenListApiBase = (env: any): string => normalizeOpenListBase(
     env?.MORAN_OPENLIST_API_BASE_URL,
-    normalizeOpenListBase(env?.MORAN_OPENLIST_BASE_URL, DEFAULT_OPENLIST_API_BASE)
+    DEFAULT_OPENLIST_API_BASE
 );
 
 const getOpenListPublicBase = (env: any): string => normalizeOpenListBase(
@@ -108,9 +108,19 @@ const getOpenListPublicBase = (env: any): string => normalizeOpenListBase(
  * Upload a ZIP to OneDrive via OpenList PUT API.
  * Returns the OneDrive path on success, empty string on failure.
  */
-const putToOneDrive = async (env: any, oneDrivePath: string, zipBytes: Uint8Array): Promise<string> => {
+const describeOpenListUploadFailure = (response: Response, text: string, payload: any): string => {
+    const detail = readString(payload?.message)
+        || readString(payload?.error)
+        || readString(payload?.data?.message)
+        || readString(payload?.data?.error)
+        || readString(text).slice(0, 240)
+        || `HTTP ${response.status}`;
+    return `OpenList 上传失败：HTTP ${response.status}${payload?.code ? ` / code ${payload.code}` : ''}，${detail}`;
+};
+
+const putToOneDrive = async (env: any, oneDrivePath: string, zipBytes: Uint8Array): Promise<{ ok: boolean; path?: string; error?: string }> => {
     const token = getOpenListToken(env);
-    if (!token) return '';
+    if (!token) return { ok: false, error: '缺少 MORAN_OPENLIST_AUTH_TOKEN' };
     const apiBase = getOpenListApiBase(env);
     try {
         const response = await fetch(`${apiBase}/api/fs/put`, {
@@ -127,12 +137,14 @@ const putToOneDrive = async (env: any, oneDrivePath: string, zipBytes: Uint8Arra
         try {
             payload = text ? JSON.parse(text) : null;
         } catch {
-            return '';
+            return { ok: false, error: `OpenList 上传返回非 JSON：HTTP ${response.status}，${text.slice(0, 240) || '空响应'}` };
         }
-        if (!response.ok || payload?.code !== 200) return '';
-        return oneDrivePath;
-    } catch {
-        return '';
+        if (!response.ok || payload?.code !== 200) {
+            return { ok: false, error: describeOpenListUploadFailure(response, text, payload) };
+        }
+        return { ok: true, path: oneDrivePath };
+    } catch (error: any) {
+        return { ok: false, error: `OpenList 上传请求异常：${error?.message || error || '未知错误'}` };
     }
 };
 
@@ -592,9 +604,10 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
         // Upload ZIP: OneDrive primary when configured; D1 is only the fallback.
         if (useOneDrive) {
             const odResult = await putToOneDrive(env, odPath, zipBytes);
-            if (!odResult) {
+            if (!odResult.ok) {
+                const uploadError = odResult.error ? `原因：${odResult.error}` : '原因：未知错误';
                 if (zipBytes.byteLength > MAX_D1_ZIP_FALLBACK_BYTES) {
-                    throw new Error('OneDrive 上传失败，当前 ZIP 较大，已停止发布以避免生成不可下载的创意工坊模块。请稍后重试。');
+                    throw new Error(`OneDrive 上传失败，当前 ZIP 较大，已停止发布以避免生成不可下载的创意工坊模块。${uploadError}`);
                 }
                 // OneDrive upload failed — small ZIPs can still use D1 fallback.
                 entry.oneDrivePath = undefined;

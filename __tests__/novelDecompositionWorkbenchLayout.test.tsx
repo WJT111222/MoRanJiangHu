@@ -77,13 +77,25 @@ describe('小说分解工作台布局', () => {
         expect(source).toContain('前组延续事实');
     });
 
-    it('创意工坊等操作页不显示固定保存设置遮挡层', () => {
+    it('创意工坊等操作页保留不遮挡内容的保存设置入口', () => {
         const source = fs.readFileSync(
             path.join(process.cwd(), 'components/features/Settings/NovelDecompositionSettings.tsx'),
             'utf8'
         );
 
-        expect(source).toContain("mobileTab === 'import' &&");
+        expect(source).toContain('novel-settings-save-actions');
+        expect(source).not.toContain('sticky bottom-0');
         expect(source).toContain('保存设置');
+    });
+
+    it('首页在线人数悬浮提示不会压过独立工作台界面', () => {
+        const css = fs.readFileSync(
+            path.join(process.cwd(), 'styles/global.css'),
+            'utf8'
+        );
+        const match = css.match(/\.landing-presence-native-tooltip\s*{[\s\S]*?z-index:\s*(\d+)/);
+
+        expect(match?.[1]).toBeDefined();
+        expect(Number(match?.[1])).toBeLessThan(200);
     });
 });

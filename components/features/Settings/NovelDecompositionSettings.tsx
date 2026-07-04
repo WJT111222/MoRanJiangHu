@@ -2380,6 +2380,13 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                     ? 'p-3 pb-20 md:p-4 md:pb-4 space-y-3'
                     : 'p-4 pb-28 md:p-6 md:pb-8 lg:p-8 space-y-6'
             }`}>
+            <div className="novel-settings-save-actions flex flex-wrap items-center justify-end gap-3 rounded-xl border border-emerald-500/15 bg-black/25 p-3 shadow-sm">
+                {message && <p className="mr-auto text-xs text-emerald-300 animate-pulse">{message}</p>}
+                <GameButton onClick={handleSave} variant="primary" className="min-w-32">
+                    {showSuccess ? '✔ 配置已保存' : '保存设置'}
+                </GameButton>
+            </div>
+
             {mobileTab === 'import' && (
                 <div className="space-y-6 max-w-5xl mx-auto">
                     <div className="rounded-xl border border-white/5 bg-gradient-to-b from-black/40 to-black/20 backdrop-blur-md p-6 shadow-xl space-y-6">
@@ -4530,15 +4537,6 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
             </div>
             )}
 
-            {message && <p className="text-xs text-emerald-300 animate-pulse">{message}</p>}
-
-            {mobileTab === 'import' && (
-                <div className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-emerald-500/20 bg-[#f7f0dc]/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 shadow-[0_-10px_24px_rgba(0,0,0,0.18)] backdrop-blur md:static md:m-0 md:border-t md:bg-transparent md:p-0 md:pt-6 md:shadow-none md:backdrop-blur-0">
-                    <GameButton onClick={handleSave} variant="primary" className="w-full">
-                        {showSuccess ? '✔ 配置已保存' : '保存设置'}
-                    </GameButton>
-                </div>
-            )}
             </div>
         </div>
     );

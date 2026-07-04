@@ -134,7 +134,7 @@ describe('workshop novel decomposition API', () => {
         );
     });
 
-    it('defaults workshop ZIP uploads to the direct OpenList origin and keeps ZIP payloads out of D1', async () => {
+    it('uploads workshop ZIPs to the direct OpenList origin even when the public base is proxied by Cloudflare', async () => {
         const workshopBucket = createWorkshopBucket();
         const authBucket = await createAuthBucket('tester', 'secret123');
         const fetchMock = vi.fn(async () => new Response(JSON.stringify({ code: 200 }), { status: 200 }));
@@ -158,7 +158,8 @@ describe('workshop novel decomposition API', () => {
             env: {
                 WORKSHOP_R2: workshopBucket,
                 CLOUD_PLAY_R2: authBucket,
-                MORAN_OPENLIST_AUTH_TOKEN: 'test-token'
+                MORAN_OPENLIST_AUTH_TOKEN: 'test-token',
+                MORAN_OPENLIST_BASE_URL: 'https://openlist.bacon.de5.net/'
             }
         });
         const payload: any = await response.json();
@@ -209,6 +210,7 @@ describe('workshop novel decomposition API', () => {
 
         expect(response.status).toBe(500);
         expect(payload.error).toContain('OneDrive');
+        expect(payload.error).toContain('upload failed');
         expect(putKeys.some((key) => key.includes('/packages/'))).toBe(false);
         expect(putKeys).not.toContain(indexKey);
     });
