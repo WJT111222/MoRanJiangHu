@@ -89,7 +89,7 @@ describe('APK B2 provider', () => {
             } as any);
 
             expect(response.status).toBe(302);
-            expect(response.headers.get('Location')).toBe('https://openlist.bacon.de5.net/p/Onedrive/MoRanJiangHu/releases/latest.apk?sign=signed-token');
+            expect(response.headers.get('Location')).toBe('https://openlist.bacon.de5.net/d/Onedrive/MoRanJiangHu/releases/latest.apk?sign=signed-token');
             expect(response.headers.get('X-Moran-Apk-Source')).toBe('onedrive-proxy');
         } finally {
             globalThis.fetch = originalFetch;
