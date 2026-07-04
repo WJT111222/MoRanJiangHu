@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { 应用Claude兼容末尾User修正, 请求模型文本, 是否流式连接中断错误消息, 规范化流式连接错误提示, 规范化请求模型名称, type 通用消息 } from '../services/ai/chatCompletionClient';
+import { __测试__清除已触发上下文截断警告, 应用Claude兼容末尾User修正, 请求模型文本, 是否流式连接中断错误消息, 规范化流式连接错误提示, 规范化请求模型名称, type 通用消息 } from '../services/ai/chatCompletionClient';
 import type { 当前可用接口结构 } from '../utils/apiConfig';
 
 const baseConfig: 当前可用接口结构 = {
@@ -14,6 +14,7 @@ const baseConfig: 当前可用接口结构 = {
 
 describe('chatCompletionClient Claude compatible message normalization', () => {
     afterEach(() => {
+        __测试__清除已触发上下文截断警告();
         vi.restoreAllMocks();
     });
 
@@ -93,6 +94,66 @@ describe('chatCompletionClient Claude compatible message normalization', () => {
 
         const requestBody = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body));
         expect(requestBody.model).toBe('gemini-3.1-pro-high-search');
+    });
+
+    it('does not inject context integrity markers for short requests', async () => {
+        const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+            choices: [{ message: { content: '短请求响应' } }]
+        }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+        }));
+
+        const result = await 请求模型文本(baseConfig, [
+            { role: 'system', content: '规则' },
+            { role: 'user', content: 'ping' }
+        ], {
+            temperature: 0.7,
+            signal: undefined,
+            streamOptions: { stream: false },
+            errorDetailLimit: 500
+        });
+
+        const requestBody = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body));
+        const serializedMessages = JSON.stringify(requestBody.messages);
+        expect(result).toBe('短请求响应');
+        expect(serializedMessages).not.toContain('[CTXCHK:');
+        expect(serializedMessages).not.toContain('上下文校验');
+    });
+
+    it('requires the context integrity marker to be echoed and strips it from the returned text', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => {
+            const requestBody = JSON.parse(String((init as RequestInit).body));
+            const systemContent = requestBody.messages.find((message: 通用消息) => message.role === 'system')?.content || '';
+            const marker = systemContent.match(/\[CTXCHK:\w+\]/)?.[0];
+            expect(marker).toBeTruthy();
+            expect(systemContent).toContain('最终响应末尾');
+            expect(systemContent).toContain('原样输出');
+            expect(systemContent).not.toContain('请忽略此标记');
+
+            return new Response(JSON.stringify({
+                choices: [{ message: { content: `正文内容\n${marker}` } }]
+            }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' }
+            });
+        });
+
+        const longUserMessage = '长上下文'.repeat(20000);
+        const result = await 请求模型文本(baseConfig, [
+            { role: 'system', content: '规则' },
+            { role: 'user', content: longUserMessage }
+        ], {
+            temperature: 0.7,
+            signal: undefined,
+            streamOptions: { stream: false },
+            errorDetailLimit: 500
+        });
+
+        expect(result).toBe('正文内容');
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('[上下文完整性警告]'));
     });
 
     it('uses Xiaomi MiMo headers and merges stable preset into the existing system prompt', async () => {

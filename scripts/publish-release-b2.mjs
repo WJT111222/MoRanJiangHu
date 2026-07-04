@@ -146,16 +146,21 @@ const hi168VersionedKey = (versionName) => normalizeKey(`${s3Prefix}/${versioned
 
 const providerApkUrls = {
   b2: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(currentVersionedFileName)}?provider=b2` : b2ObjectUrl(b2VersionedKey(currentVersionName)),
+  onedrive: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/latest.apk?provider=onedrive` : '',
   github: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(currentVersionedFileName)}?provider=github` : '',
   githubDirect: `https://github.com/ypq123456789/MoRanJiangHu/releases/download/v${currentVersionName}/${currentVersionedFileName}`
 };
 const githubAcceleratedApkUrls = githubReleaseAccelerators.map((baseUrl) => `${baseUrl}/${providerApkUrls.githubDirect}`);
-const requestedPreferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'b2');
-const preferredApkProvider = requestedPreferredApkProvider === 'github' ? 'github' : 'b2';
-const skipB2ApkUpload = preferredApkProvider === 'github' && process.env.MORAN_B2_SKIP_APK_UPLOAD !== '0';
+const requestedPreferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'onedrive');
+const preferredApkProvider = ['onedrive', 'github', 'b2'].includes(requestedPreferredApkProvider)
+  ? requestedPreferredApkProvider
+  : 'onedrive';
+const skipB2ApkUpload = preferredApkProvider !== 'b2' && process.env.MORAN_B2_SKIP_APK_UPLOAD !== '0';
 const orderedProviderUrls = preferredApkProvider === 'github'
-  ? [providerApkUrls.github, ...githubAcceleratedApkUrls, providerApkUrls.b2, providerApkUrls.githubDirect].filter(Boolean)
-  : [providerApkUrls.b2, providerApkUrls.github, ...githubAcceleratedApkUrls, providerApkUrls.githubDirect].filter(Boolean);
+  ? [providerApkUrls.github, ...githubAcceleratedApkUrls, providerApkUrls.onedrive, providerApkUrls.b2, providerApkUrls.githubDirect].filter(Boolean)
+  : preferredApkProvider === 'b2'
+    ? [providerApkUrls.b2, providerApkUrls.onedrive, providerApkUrls.github, ...githubAcceleratedApkUrls, providerApkUrls.githubDirect].filter(Boolean)
+    : [providerApkUrls.onedrive, providerApkUrls.github, ...githubAcceleratedApkUrls, providerApkUrls.b2, providerApkUrls.githubDirect].filter(Boolean);
 
 const manifest = {
   latest: {
@@ -174,6 +179,7 @@ const manifest = {
     r2ApkUrl: '',
     hi168ApkUrl: '',
     b2ApkUrl: providerApkUrls.b2,
+    oneDriveApkUrl: providerApkUrls.onedrive,
     githubApkUrl: providerApkUrls.github,
     githubDirectApkUrl: providerApkUrls.githubDirect,
     githubAcceleratedApkUrls,
@@ -182,7 +188,6 @@ const manifest = {
     b2DirectApkUrl: b2ObjectUrl(b2VersionedKey(currentVersionName)),
     apkUrls: [
       `${websiteBaseUrl}/api/apk/latest.apk`,
-      `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(currentVersionedFileName)}`,
       ...orderedProviderUrls
     ].filter(Boolean),
     manifestUrl: b2ObjectUrl(b2ManifestKey),
@@ -317,7 +322,7 @@ const uploadedVersions = [];
 for (const item of versionsToPublish) {
   const key = b2VersionedKey(item.versionName);
   if (skipB2ApkUpload) {
-    console.log(`[B2] skipped APK upload for ${key} because preferred provider is github`);
+    console.log(`[B2] skipped APK upload for ${key} because preferred provider is ${preferredApkProvider}`);
   } else if (item.versionName === currentVersionName) {
     await uploadBytes({
       key,
@@ -345,7 +350,7 @@ for (const item of versionsToPublish) {
 }
 
 if (skipB2ApkUpload) {
-  console.log(`[B2] skipped latest APK upload for ${b2LatestApkKey} because preferred provider is github`);
+  console.log(`[B2] skipped latest APK upload for ${b2LatestApkKey} because preferred provider is ${preferredApkProvider}`);
 } else {
   await uploadBytes({
     key: b2LatestApkKey,
@@ -355,7 +360,7 @@ if (skipB2ApkUpload) {
   });
 }
 if (skipB2ApkUpload) {
-  console.log(`[B2] skipped manifest upload for ${b2ManifestKey} because preferred provider is github`);
+  console.log(`[B2] skipped manifest upload for ${b2ManifestKey} because preferred provider is ${preferredApkProvider}`);
 } else {
   await uploadBytes({
     key: b2ManifestKey,

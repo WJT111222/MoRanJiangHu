@@ -13,6 +13,8 @@ const CORS_HEADERS = {
 const WORKSHOP_PREFIX = 'moranjianghu/workshop/novel-decomposition';
 const MAX_ZIP_BYTES = 64 * 1024 * 1024;
 const MAX_D1_ZIP_FALLBACK_BYTES = 4 * 1024 * 1024;
+const OPENLIST_METADATA_TIMEOUT_MS = 12_000;
+const OPENLIST_DOWNLOAD_TIMEOUT_MS = 45_000;
 const CHINA_TIMEZONE_OFFSET_MS = 8 * 60 * 60 * 1000;
 const encoder = new TextEncoder();
 
@@ -100,9 +102,58 @@ const getOpenListApiBase = (env: any): string => normalizeOpenListBase(
 );
 
 const getOpenListPublicBase = (env: any): string => normalizeOpenListBase(
-    env?.MORAN_OPENLIST_PUBLIC_BASE_URL,
+    env?.MORAN_OPENLIST_PUBLIC_BASE_URL || env?.MORAN_OPENLIST_BASE_URL,
     DEFAULT_OPENLIST_BASE
 );
+
+const getOpenListSigningApiBases = (env: any): string[] => {
+    const candidates = [
+        getOpenListApiBase(env),
+        normalizeOpenListBase(env?.MORAN_OPENLIST_BASE_URL, getOpenListPublicBase(env)),
+        getOpenListPublicBase(env)
+    ];
+    return Array.from(new Set(candidates.filter(Boolean)));
+};
+
+const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}, timeoutMs: number): Promise<Response> => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(input, { ...init, signal: controller.signal });
+    } finally {
+        clearTimeout(timeout);
+    }
+};
+
+const encodeOpenListPath = (path: string): string => (
+    path
+        .split('/')
+        .map((part, index) => (index === 0 ? '' : encodeURIComponent(part)))
+        .join('/')
+);
+
+const toStableOpenListDownloadUrl = (url: string): string => {
+    const text = readString(url);
+    if (!text) return '';
+    try {
+        const parsed = new URL(text);
+        if (parsed.pathname.startsWith('/p/')) {
+            parsed.pathname = `/d/${parsed.pathname.slice(3)}`;
+        }
+        return parsed.toString();
+    } catch {
+        return text.replace(/\/p\//, '/d/');
+    }
+};
+
+const buildSignedOpenListDownloadUrl = (base: string, oneDrivePath: string, sign: string): string => (
+    `${base}/d${encodeOpenListPath(oneDrivePath)}?sign=${encodeURIComponent(sign)}`
+);
+
+const appendUnique = (target: string[], value: string): void => {
+    const text = readString(value);
+    if (text && !target.includes(text)) target.push(text);
+};
 
 /**
  * Upload a ZIP to OneDrive via OpenList PUT API.
@@ -149,40 +200,92 @@ const putToOneDrive = async (env: any, oneDrivePath: string, zipBytes: Uint8Arra
 };
 
 /**
- * Get a signed download URL for a file on OneDrive via OpenList.
- * Returns the signed proxy URL on success, empty string on failure.
+ * Get signed download URL candidates for a file on OneDrive via OpenList.
+ * Prefer /api/fs/get raw_url because it is the same URL OpenList has already
+ * prepared for the storage provider. Fall back to directory signing.
  */
-const getOneDriveSignedUrl = async (env: any, oneDrivePath: string): Promise<string> => {
+const getOneDriveDownloadCandidates = async (env: any, oneDrivePath: string): Promise<string[]> => {
     const token = getOpenListToken(env);
-    if (!token) return '';
-    const apiBase = getOpenListApiBase(env);
-    const publicBase = getOpenListPublicBase(env);
-    try {
-        // Extract the parent directory and filename
-        const lastSlash = oneDrivePath.lastIndexOf('/');
-        const dir = oneDrivePath.substring(0, lastSlash);
-        const fileName = oneDrivePath.substring(lastSlash + 1);
+    if (!token) return [];
+    const candidates: string[] = [];
 
-        // List the directory to get the sign value for the file
-        const listResp = await fetch(`${apiBase}/api/fs/list`, {
-            method: 'POST',
-            headers: {
-                'Authorization': token,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ path: dir, password: '', page: 1, per_page: 200, refresh: true })
-        });
-        if (!listResp.ok) return '';
-        const listData: any = await listResp.json();
-        if (listData?.code !== 200) return '';
-        const content = listData?.data?.content;
-        if (!Array.isArray(content)) return '';
-        const fileEntry = content.find((item: any) => item.name === fileName && !item.is_dir);
-        if (!fileEntry?.sign) return '';
-        return `${publicBase}/p${oneDrivePath}?sign=${encodeURIComponent(String(fileEntry.sign))}`;
-    } catch {
-        return '';
+    for (const apiBase of getOpenListSigningApiBases(env)) {
+        try {
+            const getResp = await fetchWithTimeout(`${apiBase}/api/fs/get`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ path: oneDrivePath, password: '' })
+            }, OPENLIST_METADATA_TIMEOUT_MS);
+            if (!getResp.ok) continue;
+            const getData: any = await getResp.json().catch(() => null);
+            if (getData?.code !== 200 || getData?.data?.is_dir) continue;
+            appendUnique(candidates, toStableOpenListDownloadUrl(readString(getData?.data?.raw_url)));
+            const sign = readString(getData?.data?.sign);
+            if (sign) appendUnique(candidates, buildSignedOpenListDownloadUrl(apiBase, oneDrivePath, sign));
+            if (candidates.length > 0) return candidates;
+        } catch {
+            // Try the next metadata endpoint.
+        }
     }
+
+    // Extract the parent directory and filename.
+    const lastSlash = oneDrivePath.lastIndexOf('/');
+    const dir = oneDrivePath.substring(0, lastSlash);
+    const fileName = oneDrivePath.substring(lastSlash + 1);
+
+    for (const apiBase of getOpenListSigningApiBases(env)) {
+        try {
+            // List the directory to get the sign value for the file. Uploads use the
+            // direct origin, but this lightweight signing request can safely fall back
+            // to the public OpenList domain when Workers cannot reach the origin.
+            const listResp = await fetchWithTimeout(`${apiBase}/api/fs/list`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ path: dir, password: '', page: 1, per_page: 200, refresh: true })
+            }, OPENLIST_METADATA_TIMEOUT_MS);
+            if (!listResp.ok) continue;
+            const listData: any = await listResp.json();
+            if (listData?.code !== 200) continue;
+            const content = listData?.data?.content;
+            if (!Array.isArray(content)) continue;
+            const fileEntry = content.find((item: any) => item.name === fileName && !item.is_dir);
+            if (!fileEntry?.sign) continue;
+            appendUnique(candidates, buildSignedOpenListDownloadUrl(apiBase, oneDrivePath, String(fileEntry.sign)));
+            return candidates;
+        } catch {
+            // Try the next signing endpoint.
+        }
+    }
+    return candidates;
+};
+
+const proxyOneDriveZip = async (
+    env: any,
+    oneDrivePath: string,
+    zipHeaders: Record<string, string>
+): Promise<Response | null> => {
+    const downloadUrls = await getOneDriveDownloadCandidates(env, oneDrivePath);
+    for (const downloadUrl of downloadUrls) {
+        try {
+            const upstream = await fetchWithTimeout(downloadUrl, {}, OPENLIST_DOWNLOAD_TIMEOUT_MS);
+            if (!upstream.ok || !upstream.body) continue;
+            const contentType = upstream.headers.get('Content-Type') || '';
+            if (/text\/html|application\/json/i.test(contentType)) continue;
+            const headers = new Headers(zipHeaders);
+            const contentLength = upstream.headers.get('Content-Length');
+            if (contentLength) headers.set('Content-Length', contentLength);
+            return new Response(upstream.body, { status: 200, headers });
+        } catch {
+            // Try the next download URL candidate.
+        }
+    }
+    return null;
 };
 
 const getPrefix = (env: any): string => (
@@ -470,11 +573,8 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
 
             // 1. Try OneDrive proxy download (for entries with oneDrivePath).
             if (entry.oneDrivePath) {
-                const signedUrl = await getOneDriveSignedUrl(env, entry.oneDrivePath);
-                if (signedUrl) {
-                    // Redirect to the signed OpenList proxy URL.
-                    return Response.redirect(signedUrl, 302);
-                }
+                const proxied = await proxyOneDriveZip(env, entry.oneDrivePath, zipHeaders);
+                if (proxied) return proxied;
                 // OneDrive signed URL failed — fall through to D1.
             }
 
@@ -500,10 +600,10 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
             }
 
             // 3. Last resort: if entry has oneDrivePath but D1 fetch also failed,
-            //    try direct OneDrive list + redirect without signed URL (rare edge case).
+            //    try OneDrive signing + same-origin proxy once more (rare edge case).
             if (entry.oneDrivePath) {
-                const signedUrl = await getOneDriveSignedUrl(env, entry.oneDrivePath);
-                if (signedUrl) return Response.redirect(signedUrl, 302);
+                const proxied = await proxyOneDriveZip(env, entry.oneDrivePath, zipHeaders);
+                if (proxied) return proxied;
             }
 
             return jsonResponse({ error: '模块 ZIP 暂不可下载' }, 404);

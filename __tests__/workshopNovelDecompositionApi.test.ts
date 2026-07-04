@@ -85,7 +85,7 @@ describe('workshop novel decomposition API', () => {
         vi.unstubAllGlobals();
     });
 
-    it('uses direct OpenList API base for signing while keeping public download redirects', async () => {
+    it('uses OpenList file metadata raw_url and proxies the ZIP through the stable download endpoint', async () => {
         const entry = {
             id: 'NDW-demo',
             title: '测试模块',
@@ -104,17 +104,27 @@ describe('workshop novel decomposition API', () => {
             r2Key: 'legacy/demo.zip',
             oneDrivePath: '/Onedrive/MoRanJiangHu/workshop/novel-decomposition/packages/2026-05-29/NDW-demo/NDW-demo.zip'
         };
-        const fetchMock = vi.fn(async () => new Response(JSON.stringify({
-            code: 200,
-            data: {
-                content: [
-                    { name: 'NDW-demo.zip', is_dir: false, sign: 'sig+value/with space' }
-                ]
+        const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
+            if (String(url).includes('/api/fs/get')) {
+                return new Response(JSON.stringify({
+                    code: 200,
+                    data: {
+                        name: 'NDW-demo.zip',
+                        is_dir: false,
+                        size: 9,
+                        sign: 'sig+value/with space',
+                        raw_url: 'http://159.138.7.126:5244/p/Onedrive/MoRanJiangHu/workshop/novel-decomposition/packages/2026-05-29/NDW-demo/NDW-demo.zip?sign=sig%2Bvalue%2Fwith%20space'
+                    }
+                }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' }
+                });
             }
-        }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-        }));
+            return new Response('zip-bytes', {
+                status: 200,
+                headers: { 'Content-Type': 'application/zip', 'Content-Length': '9' }
+            });
+        });
         vi.stubGlobal('fetch', fetchMock);
 
         const response = await onRequestGet({
@@ -127,11 +137,81 @@ describe('workshop novel decomposition API', () => {
             }
         });
 
-        expect(fetchMock.mock.calls[0][0]).toBe('http://159.138.7.126:5244/api/fs/list');
-        expect(response.status).toBe(302);
-        expect(response.headers.get('Location')).toBe(
-            'https://openlist.bacon.de5.net/p/Onedrive/MoRanJiangHu/workshop/novel-decomposition/packages/2026-05-29/NDW-demo/NDW-demo.zip?sign=sig%2Bvalue%2Fwith%20space'
-        );
+        expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
+            'http://159.138.7.126:5244/api/fs/get',
+            'http://159.138.7.126:5244/d/Onedrive/MoRanJiangHu/workshop/novel-decomposition/packages/2026-05-29/NDW-demo/NDW-demo.zip?sign=sig%2Bvalue%2Fwith%20space'
+        ]);
+        expect(response.status).toBe(200);
+        expect(response.headers.get('Content-Type')).toBe('application/zip');
+        expect(response.headers.get('Content-Disposition')).toBe('attachment; filename="demo.zip"');
+        expect(await response.text()).toBe('zip-bytes');
+    });
+
+    it('falls back to signed public download URLs when OpenList raw_url is unavailable', async () => {
+        const entry = {
+            id: 'NDW-demo',
+            title: '测试模块',
+            workName: '测试作品',
+            contributor: 'tester',
+            note: '',
+            createdAt: '2026-05-29T00:00:00.000Z',
+            updatedAt: '2026-05-29T00:00:00.000Z',
+            fileName: 'demo.zip',
+            size: 3,
+            sha256: 'abc',
+            chapterCount: 1,
+            segmentCount: 1,
+            sourceType: 'novel',
+            tags: [],
+            r2Key: 'legacy/demo.zip',
+            oneDrivePath: '/Onedrive/MoRanJiangHu/workshop/novel-decomposition/packages/2026-05-29/NDW-demo/NDW-demo.zip'
+        };
+        const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
+            if (String(url).includes('/api/fs/get')) {
+                return new Response(JSON.stringify({ code: 500, message: 'metadata unavailable' }), { status: 200 });
+            }
+            if (String(url).startsWith('http://159.138.7.126:5244/')) {
+                throw new Error('direct origin unavailable from worker');
+            }
+            if (String(url).includes('/d/Onedrive/')) {
+                return new Response('zip-bytes', {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/zip' }
+                });
+            }
+            return new Response(JSON.stringify({
+                code: 200,
+                data: {
+                    content: [
+                        { name: 'NDW-demo.zip', is_dir: false, sign: 'public-sign' }
+                    ]
+                }
+            }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const response = await onRequestGet({
+            request: new Request('https://msjh.bacon159.pp.ua/api/workshop/novel-decomposition?action=download&id=NDW-demo'),
+            env: {
+                WORKSHOP_R2: createIndexBucket([entry]),
+                MORAN_OPENLIST_AUTH_TOKEN: 'test-token',
+                MORAN_OPENLIST_BASE_URL: 'https://openlist.bacon.de5.net/'
+            }
+        });
+
+        expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
+            'http://159.138.7.126:5244/api/fs/get',
+            'https://openlist.bacon.de5.net/api/fs/get',
+            'http://159.138.7.126:5244/api/fs/list',
+            'https://openlist.bacon.de5.net/api/fs/list',
+            'https://openlist.bacon.de5.net/d/Onedrive/MoRanJiangHu/workshop/novel-decomposition/packages/2026-05-29/NDW-demo/NDW-demo.zip?sign=public-sign'
+        ]);
+        expect(response.status).toBe(200);
+        expect(response.headers.get('Content-Type')).toBe('application/zip');
+        expect(await response.text()).toBe('zip-bytes');
     });
 
     it('uploads workshop ZIPs to the direct OpenList origin even when the public base is proxied by Cloudflare', async () => {

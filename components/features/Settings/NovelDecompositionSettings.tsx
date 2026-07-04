@@ -1827,6 +1827,10 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
             });
             setAiCompletionDraft(result.completion as any);
             const fieldNames = Object.keys(result.completion);
+            setAiCompletionLog(fieldNames.length > 0
+                ? `AI 补全完成。\n已覆盖分区：${fieldNames.map((key) => 模式包分区名称[key] || key).join('、')}`
+                : 'AI 补全完成，但未发现可合并到当前题材的配置字段。'
+            );
             设置状态消息(`AI 补全完成，已覆盖 ${fieldNames.length} 个配置字段（${fieldNames.join('、')}）。下次生成或贡献模式包时会自动携带。`);
             onNotify?.({
                 title: 'AI 补全完成',

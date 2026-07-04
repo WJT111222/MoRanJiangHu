@@ -141,12 +141,12 @@ export const buildVersionedApkFileName = (versionName: unknown): string => {
 
 export const readManifestPreferredApkProvider = (payload: any): ApkProvider => {
     const provider = payload?.latest?.preferredApkProvider || payload?.preferredApkProvider;
-    return provider === 'github' || provider === 'b2' || provider === 'onedrive' ? provider : 'b2';
+    return provider === 'github' || provider === 'b2' || provider === 'onedrive' ? provider : 'onedrive';
 };
 
 export const pickApkProvider = (_request: Request, _manifestPayload: any): ApkProvider => {
-    // hi168 S3 decommissioned, R2 retired. B2 is the only provider.
-    return 'b2';
+    // hi168 S3 and R2 are retired; OneDrive/OpenList is the primary APK channel.
+    return 'onedrive';
 };
 
 export const buildVersionedApkHeaders = (
@@ -355,7 +355,7 @@ export const buildOneDriveApkRedirect = async (
     const sign = await fetchOneDriveApkSign(env);
     if (!sign) return null;
     const baseUrl = readEnvString(env, 'MORAN_OPENLIST_BASE_URL', 'https://openlist.bacon.de5.net').replace(/\/+$/, '');
-    const proxyUrl = `${baseUrl}/p${ONEDRIVE_APK_DIR}/${ONEDRIVE_APK_FILE}?sign=${encodeURIComponent(sign)}`;
+    const proxyUrl = `${baseUrl}/d${ONEDRIVE_APK_DIR}/${ONEDRIVE_APK_FILE}?sign=${encodeURIComponent(sign)}`;
     return new Response(null, {
         status: 302,
         headers: {

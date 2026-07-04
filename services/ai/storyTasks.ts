@@ -2296,6 +2296,19 @@ export interface NovelModePackCompletionResult {
     rawText: string;
 }
 
+const 解析AI补全JSON候选 = (text: string, errorMessage: string): any => {
+    const parsed = parseJsonWithRepair(text);
+    if (parsed.value !== null) return parsed.value;
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+        const matched = parseJsonWithRepair(jsonMatch[0]);
+        if (matched.value !== null) return matched.value;
+    }
+
+    throw new Error(errorMessage);
+};
+
 /**
  * Generates a runtime-profile completion patch for a novel decomposition mode pack
  * by sending the novel dataset summary to AI and parsing the JSON response.
@@ -2342,45 +2355,29 @@ const 解析小说模式包补全JSON = (rawText: string): Record<string, any> =
         .replace(/\n?\s*```$/gm, '')
         .trim();
 
-    let parsed: any;
-    try {
-        parsed = parseJsonWithRepair(withoutCodeBlock);
-    } catch {
-        // Try to find a JSON object in the text
-        const jsonMatch = withoutCodeBlock.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            parsed = parseJsonWithRepair(jsonMatch[0]);
-        } else {
-            throw new Error('AI 输出无法解析为 JSON 对象');
-        }
-    }
+    const parsed = 解析AI补全JSON候选(withoutCodeBlock, 'AI 输出无法解析为 JSON 对象');
 
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
         throw new Error('AI 输出不是有效的 JSON 对象');
     }
 
-    // Basic validation: require at least primaryCurrency or progressionNames
-    const hasEconomy = parsed.economy && typeof parsed.economy === 'object';
-    const hasAbility = parsed.ability && typeof parsed.ability === 'object';
-    const hasPrimaryCurrency = hasEconomy && typeof parsed.economy.primaryCurrency === 'string' && parsed.economy.primaryCurrency.trim();
-    const hasProgressionNames = hasAbility && Array.isArray(parsed.ability.progressionNames) && parsed.ability.progressionNames.length >= 3;
-
-    if (!hasPrimaryCurrency && !hasProgressionNames) {
-        throw new Error('AI 补全缺少必要字段（primaryCurrency 或 progressionNames），请重试。');
-    }
-
-    // Diagnostic: log currencyTiers presence/type for debugging merge issues
-    if (hasEconomy) {
-        const tiers = parsed.economy.currencyTiers;
-        const tierType = tiers ? typeof tiers : 'undefined';
-        const tierIsArray = Array.isArray(tiers);
-        if (tiers && !tierIsArray && tierType !== 'object') {
-            console.warn('[AI补全] currencyTiers 类型异常（期望object，实际为' + tierType + '）:', tiers);
-        } else if (tiers && tierIsArray) {
-            console.log('[AI补全] currencyTiers 为数组格式，将在合并时自动转换:', tiers);
-        } else if (!tiers) {
-            console.log('[AI补全] economy 中未包含 currencyTiers 字段');
+    const knownSections = ['economy', 'ability', 'opening', 'organization', 'map', 'npc', 'image', 'time', 'items', 'task', 'validation'];
+    const hasUsableValue = (value: unknown): boolean => {
+        if (typeof value === 'string') return value.trim().length > 0;
+        if (typeof value === 'number') return Number.isFinite(value);
+        if (typeof value === 'boolean') return true;
+        if (Array.isArray(value)) return value.some(hasUsableValue);
+        if (value && typeof value === 'object') {
+            return Object.values(value as Record<string, unknown>).some(hasUsableValue);
         }
+        return false;
+    };
+    const hasUsableSection = knownSections.some((section) => (
+        parsed[section] && typeof parsed[section] === 'object' && hasUsableValue(parsed[section])
+    ));
+
+    if (!hasUsableSection) {
+        throw new Error('AI 补全没有返回可用的模式包配置字段，请重试。');
     }
 
     return parsed;
@@ -2446,17 +2443,7 @@ const 解析分段字段补全JSON = (rawText: string): 分段字段AI补全结�
         .replace(/\n?\s*```$/gm, '')
         .trim();
 
-    let parsed: any;
-    try {
-        parsed = parseJsonWithRepair(withoutCodeBlock);
-    } catch {
-        const jsonMatch = withoutCodeBlock.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            parsed = parseJsonWithRepair(jsonMatch[0]);
-        } else {
-            throw new Error('AI 输出无法解析为 JSON 对象');
-        }
-    }
+    const parsed = 解析AI补全JSON候选(withoutCodeBlock, 'AI 输出无法解析为 JSON 对象');
 
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
         throw new Error('AI 输出不是有效的 JSON 对象');

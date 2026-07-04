@@ -390,7 +390,7 @@ const 是否Claude兼容末尾User模型 = (apiConfig: 当前可用接口结构)
 
 const 上下文完整性校验标记前缀 = '[CTXCHK:';
 const 上下文完整性校验标记后缀 = ']';
-const 上下文完整性校验标记检测正则 = /\[CTXCHK:\w+\]/;
+const 上下文完整性校验最小字符数 = 80_000;
 const 已触发上下文截断警告 = new Set<string>();
 
 type 上下文完整性校验结果 = {
@@ -417,14 +417,18 @@ const 注入上下文完整性校验标记 = (
     if (!endpointKey) return { injectedMessages: messages, checkTag: '', messageCount: messages.length, totalChars: 0 };
     if (已触发上下文截断警告.has(endpointKey)) return { injectedMessages: messages, checkTag: '', messageCount: messages.length, totalChars: 0 };
 
-    const checkTag = `${上下文完整性校验标记前缀}${生成校验标记()}${上下文完整性校验标记后缀}`;
     const messageCount = messages.length;
     const totalChars = messages.reduce((sum, msg) => sum + (msg.content?.length || 0), 0);
+    if (totalChars < 上下文完整性校验最小字符数) {
+        return { injectedMessages: messages, checkTag: '', messageCount, totalChars };
+    }
+
+    const checkTag = `${上下文完整性校验标记前缀}${生成校验标记()}${上下文完整性校验标记后缀}`;
 
     const lastSystemIndex = messages.findLastIndex(msg => msg.role === 'system');
     if (lastSystemIndex < 0) {
         const injectedMessages: 通用消息[] = [
-            { role: 'system', content: `上下文校验：本次请求包含 ${messageCount} 条消息约 ${totalChars} 字符。${checkTag}请忽略此标记。` },
+            { role: 'system', content: `上下文校验：本次请求包含 ${messageCount} 条消息约 ${totalChars} 字符。请在最终响应末尾原样输出校验标记 ${checkTag}。` },
             ...messages
         ];
         return { injectedMessages, checkTag, messageCount, totalChars };
@@ -432,7 +436,7 @@ const 注入上下文完整性校验标记 = (
 
     const injectedMessages = messages.map((msg, index) => {
         if (index !== lastSystemIndex) return msg;
-        const suffix = `\n上下文校验：本次请求包含 ${messageCount} 条消息约 ${totalChars} 字符。${checkTag}请忽略此标记。`;
+        const suffix = `\n上下文校验：本次请求包含 ${messageCount} 条消息约 ${totalChars} 字符。请在最终响应末尾原样输出校验标记 ${checkTag}。`;
         return { ...msg, content: `${msg.content || ''}${suffix}` };
     });
     return { injectedMessages, checkTag, messageCount, totalChars };
@@ -449,7 +453,7 @@ const 检查上下文完整性 = (
     const endpointKey = (apiConfig.baseUrl || '').toLowerCase().replace(/\/+$/, '');
     if (已触发上下文截断警告.has(endpointKey)) return;
 
-    const tagInResponse = 上下文完整性校验标记检测正则.test(responseText);
+    const tagInResponse = responseText.includes(checkTag);
     if (tagInResponse) return;
 
     const lower = responseText.toLowerCase();
@@ -468,6 +472,15 @@ const 检查上下文完整性 = (
         + `发送了 ${messageCount} 条消息约 ${totalChars} 字符，但 AI 响应未校验到完整性标记。`
         + `这通常意味着该 API 端点或中转服务悄悄丢弃了部分消息。建议使用官方渠道或支持完整上下文的 API。`
     );
+};
+
+const 移除上下文完整性校验标记 = (responseText: string, checkTag: string): string => {
+    if (!checkTag || !responseText.includes(checkTag)) return responseText;
+    const escapedTag = checkTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return responseText
+        .replace(new RegExp(`\\s*${escapedTag}\\s*$`), '')
+        .replace(new RegExp(escapedTag, 'g'), '')
+        .trimEnd();
 };
 
 export const __测试__清除已触发上下文截断警告 = (): void => {
@@ -1831,5 +1844,5 @@ export const 请求模型文本 = async (
     });
 
     检查上下文完整性(result, checkTag, apiConfig, messageCount, totalChars);
-    return result;
+    return 移除上下文完整性校验标记(result, checkTag);
 };

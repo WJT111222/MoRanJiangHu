@@ -48,6 +48,20 @@ const 创建分段 = (patch: Partial<小说拆分分段结构>): 小说拆分分
     updatedAt: patch.updatedAt || 1
 });
 
+const 序列化客户可见运行时配置 = (profile: any): string => JSON.stringify({
+    economy: profile?.economy,
+    time: profile?.time,
+    organization: profile?.organization,
+    ability: profile?.ability,
+    items: profile?.items,
+    map: profile?.map,
+    task: profile?.task,
+    npc: profile?.npc,
+    image: profile?.image,
+    opening: profile?.opening,
+    validation: profile?.validation
+});
+
 describe('novelDecompositionWorkshopBridge', () => {
     it('非主神异世界小说不会被误判成无限流模式包', () => {
         const dataset = 聚合小说拆分数据集(创建空小说拆分数据集({
@@ -80,6 +94,36 @@ describe('novelDecompositionWorkshopBridge', () => {
 
         expect(module.modeRuntimeProfile?.identity.baseMode).not.toBe('无限流');
         expect(runtimeText).not.toMatch(/主神商城|主神空间|任务世界|奖励点|支线剧情/);
+    });
+
+    it('仙侠小说里否定提到末日丧尸时不会被误判成末日模式包', () => {
+        const dataset = 聚合小说拆分数据集(创建空小说拆分数据集({
+            id: 'dataset-jianlai',
+            标题: '剑来',
+            作品名: '剑来',
+            来源类型: 'txt',
+            原始文本摘要: '骊珠洞天、山上宗门、剑修与儒释道共同构成古典仙侠江湖。',
+            世界观规则: ['骊珠洞天、剑修、山上宗门和儒释道传承是主要世界观。'],
+            世界边界规则: ['不得写成末日丧尸、生化感染、避难所、幸存者营地题材。'],
+            地图地点档案: [
+                { 名称: '骊珠洞天', 层级: '大地点', 地貌功能: '仙侠开局舞台' } as any,
+                { 名称: '落魄山', 层级: '中地点', 地貌功能: '宗门与山水道场' } as any
+            ],
+            分段列表: [
+                创建分段({
+                    标题: '骊珠洞天',
+                    本组概括: '少年在骊珠洞天牵涉剑修、山水气运和宗门因果。',
+                    世界观规则: ['山上修士、剑修、洞天福地和宗门因果是核心设定。'],
+                    世界边界规则: ['这不是末日丧尸或感染区生存故事。']
+                })
+            ]
+        }));
+
+        const module = 构建小说拆分模式包创意工坊模块({ dataset, now: 1 });
+        const runtimeText = 序列化客户可见运行时配置(module.modeRuntimeProfile);
+
+        expect(module.modeRuntimeProfile?.identity.baseMode).toBe('仙侠');
+        expect(runtimeText).not.toMatch(/apocalypse|感染区|避难所|幸存者|丧尸|末日物资券/iu);
     });
 
     it('非无限流小说模式包会丢弃 AI 补全里照抄的主神模板字段', () => {
@@ -129,6 +173,50 @@ describe('novelDecompositionWorkshopBridge', () => {
         expect(module.modeRuntimeProfile?.identity.baseMode).toBe('武侠');
         expect(runtimeText).not.toMatch(/主神商城|主神空间|任务世界|奖励点|支线剧情|回归倒计时|infinite/);
         expect(module.modeRuntimeProfile?.economy.marketName).not.toBe('主神商城');
+    });
+
+    it('非末日小说模式包会丢弃 AI 补全里照抄的末日丧尸模板字段', () => {
+        const dataset = 聚合小说拆分数据集(创建空小说拆分数据集({
+            id: 'dataset-jianlai-cleanup',
+            标题: '剑来',
+            作品名: '剑来',
+            来源类型: 'txt',
+            原始文本摘要: '骊珠洞天、剑修、山水气运和宗门因果构成仙侠世界。',
+            世界观规则: ['剑修、宗门、洞天福地和儒释道传承是核心设定。'],
+            地图地点档案: [
+                { 名称: '骊珠洞天', 层级: '大地点', 地貌功能: '仙侠开局舞台' } as any
+            ]
+        }));
+
+        const module = 构建小说拆分模式包创意工坊模块({
+            dataset,
+            baseMode: '仙侠',
+            now: 1,
+            aiCompletion: {
+                economy: {
+                    primaryCurrency: '末日物资券',
+                    accountingUnit: '瓶盖',
+                    marketName: '避难所市场',
+                    marketVerb: '流入市场',
+                    currencyTiers: ['高级物资券', '瓶盖', '罐头']
+                },
+                map: {
+                    locationTypes: ['感染区', '医院', '商超', '避难所'],
+                    poiTypes: ['封锁线', '营地', '临时市场', '资源点'],
+                    mapPrompt: '世界版图应按感染区、医院、商超、仓库、避难所、封锁线、营地、临时市场和资源点组织。'
+                },
+                image: {
+                    visualStyle: '写实末日风',
+                    sceneMaterials: '废墟、血污、防护服、封锁线'
+                }
+            } as any
+        });
+
+        const runtimeText = 序列化客户可见运行时配置(module.modeRuntimeProfile);
+
+        expect(module.modeRuntimeProfile?.identity.baseMode).toBe('仙侠');
+        expect(runtimeText).not.toMatch(/apocalypse|感染区|避难所|幸存者|丧尸|末日物资券|瓶盖|封锁线|防护服/iu);
+        expect(module.modeRuntimeProfile?.economy.marketName).not.toBe('避难所市场');
     });
 
     it('把无限流跨世界时间流速写入标准创意工坊模式包', () => {

@@ -71,15 +71,16 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
                 ...payload?.latest,
                 versionName,
                 versionCode: payload?.latest?.versionCode || payload?.versionCode,
+                preferredApkProvider: payload?.latest?.preferredApkProvider || payload?.preferredApkProvider || 'onedrive',
                 apkUrl: stableApkUrl,
                 directApkUrl: latestApkUrl,
                 apkUrls: [
                     latestApkUrl,
+                    oneDriveApkUrl,
                     stableApkUrl,
-                    b2ApkUrl,
                     githubApkUrl,
                     ...githubAcceleratedApkUrls,
-                    oneDriveApkUrl
+                    b2ApkUrl
                 ].filter(Boolean),
                 r2ApkUrl: '',
                 hi168ApkUrl: '',
