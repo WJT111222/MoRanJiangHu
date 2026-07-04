@@ -49,6 +49,88 @@ const 创建分段 = (patch: Partial<小说拆分分段结构>): 小说拆分分
 });
 
 describe('novelDecompositionWorkshopBridge', () => {
+    it('非主神异世界小说不会被误判成无限流模式包', () => {
+        const dataset = 聚合小说拆分数据集(创建空小说拆分数据集({
+            id: 'dataset-yaotian',
+            标题: '遥天',
+            作品名: '遥天',
+            来源类型: 'txt',
+            原始文本摘要: '少年在遥天大陆醒来，卷入王朝、学院与古老遗迹的纷争。',
+            世界观规则: ['遥天大陆存在多国、学院、古老遗迹和异世界来客传说。'],
+            世界边界规则: ['没有主神、轮回小队、任务世界或奖励点体系。'],
+            地图地点档案: [
+                { 名称: '遥天大陆', 层级: '寰宇', 地貌功能: '主舞台' } as any,
+                { 名称: '星桥学院', 层级: '大地点', 地貌功能: '修行与求学场所' } as any
+            ],
+            分段列表: [
+                创建分段({
+                    标题: '遥天初醒',
+                    本组概括: '主角在遥天大陆醒来，遇见学院巡查队。',
+                    世界观规则: ['遥天大陆有学院、王朝和古代遗迹。'],
+                    世界边界规则: ['不存在主神空间。'],
+                    地图地点档案: [
+                        { 名称: '遥天大陆', 层级: '寰宇', 地貌功能: '主舞台' } as any
+                    ]
+                })
+            ]
+        }));
+
+        const module = 构建小说拆分模式包创意工坊模块({ dataset, now: 1 });
+        const runtimeText = JSON.stringify(module.modeRuntimeProfile);
+
+        expect(module.modeRuntimeProfile?.identity.baseMode).not.toBe('无限流');
+        expect(runtimeText).not.toMatch(/主神商城|主神空间|任务世界|奖励点|支线剧情/);
+    });
+
+    it('非无限流小说模式包会丢弃 AI 补全里照抄的主神模板字段', () => {
+        const dataset = 聚合小说拆分数据集(创建空小说拆分数据集({
+            id: 'dataset-yaotian-cleanup',
+            标题: '遥天',
+            作品名: '遥天',
+            来源类型: 'txt',
+            原始文本摘要: '遥天大陆由王朝、学院和遗迹构成，没有主神规则。',
+            世界观规则: ['遥天大陆以学院试炼、王朝边境和遗迹探索推进。'],
+            地图地点档案: [
+                { 名称: '遥天大陆', 层级: '寰宇', 地貌功能: '主舞台' } as any,
+                { 名称: '星桥学院', 层级: '大地点', 地貌功能: '修行与求学场所' } as any
+            ]
+        }));
+
+        const module = 构建小说拆分模式包创意工坊模块({
+            dataset,
+            baseMode: '武侠',
+            now: 1,
+            aiCompletion: {
+                economy: {
+                    primaryCurrency: '奖励点',
+                    accountingUnit: '奖励点',
+                    marketName: '主神商城',
+                    marketVerb: '进入主神兑换列表',
+                    currencyTiers: {
+                        upperName: 'C级支线剧情',
+                        middleName: 'D级支线剧情',
+                        lowerName: '奖励点'
+                    }
+                },
+                map: {
+                    locationTypes: ['主神空间', '队伍房间', '训练场', '任务世界'],
+                    poiTypes: ['主神光球', '补给点', '隐藏支线地点', '回归通道'],
+                    mapPrompt: '世界版图应按主神空间、队伍房间、训练场、主神广场、任务世界、剧情地点、安全屋、补给点、隐藏支线地点和回归通道组织。'
+                },
+                time: {
+                    calendarName: 'infinite',
+                    narrativeStyle: '正文使用无限流/任务世界时间表达：数字钟点、任务倒计时、回归倒计时、电影世界时间线。'
+                }
+            } as any
+        });
+
+        const runtimeText = JSON.stringify(module.modeRuntimeProfile);
+
+        expect(module.modeRuntimeProfile?.identity.baseMode).toBe('武侠');
+        expect(runtimeText).not.toMatch(/主神商城|主神空间|任务世界|奖励点|支线剧情|回归倒计时|infinite/);
+        expect(module.modeRuntimeProfile?.economy.marketName).not.toBe('主神商城');
+    });
+
     it('把无限流跨世界时间流速写入标准创意工坊模式包', () => {
         const dataset = 聚合小说拆分数据集(创建空小说拆分数据集({
             id: 'dataset-opm',

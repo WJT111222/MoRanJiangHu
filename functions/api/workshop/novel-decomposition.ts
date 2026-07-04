@@ -12,8 +12,6 @@ const CORS_HEADERS = {
 
 const WORKSHOP_PREFIX = 'moranjianghu/workshop/novel-decomposition';
 const MAX_ZIP_BYTES = 64 * 1024 * 1024;
-/** ZIP files larger than this are sent to OneDrive instead of D1. */
-const ONEDRIVE_THRESHOLD = 2 * 1024 * 1024; // 2 MB
 const CHINA_TIMEZONE_OFFSET_MS = 8 * 60 * 60 * 1000;
 const encoder = new TextEncoder();
 
@@ -84,10 +82,26 @@ const getAuthBucket = (env: any): any => {
 // OneDrive helpers (via OpenList proxy)
 // ---------------------------------------------------------------------------
 
-const OPENLIST_BASE = 'https://openlist.bacon.de5.net';
+const DEFAULT_OPENLIST_BASE = 'https://openlist.bacon.de5.net';
+const DEFAULT_OPENLIST_API_BASE = 'http://159.138.7.126:5244';
 const ONEDRIVE_WORKSHOP_ROOT = '/Onedrive/MoRanJiangHu/workshop/novel-decomposition';
 
 const getOpenListToken = (env: any): string => readString(env?.MORAN_OPENLIST_AUTH_TOKEN);
+
+const normalizeOpenListBase = (value: unknown, fallback = DEFAULT_OPENLIST_BASE): string => {
+    const base = (readString(value) || fallback).replace(/\/+$/, '');
+    return base || DEFAULT_OPENLIST_BASE;
+};
+
+const getOpenListApiBase = (env: any): string => normalizeOpenListBase(
+    env?.MORAN_OPENLIST_API_BASE_URL,
+    normalizeOpenListBase(env?.MORAN_OPENLIST_BASE_URL, DEFAULT_OPENLIST_API_BASE)
+);
+
+const getOpenListPublicBase = (env: any): string => normalizeOpenListBase(
+    env?.MORAN_OPENLIST_PUBLIC_BASE_URL,
+    DEFAULT_OPENLIST_BASE
+);
 
 /**
  * Upload a ZIP to OneDrive via OpenList PUT API.
@@ -96,8 +110,9 @@ const getOpenListToken = (env: any): string => readString(env?.MORAN_OPENLIST_AU
 const putToOneDrive = async (env: any, oneDrivePath: string, zipBytes: Uint8Array): Promise<string> => {
     const token = getOpenListToken(env);
     if (!token) return '';
+    const apiBase = getOpenListApiBase(env);
     try {
-        const response = await fetch(`${OPENLIST_BASE}/api/fs/put`, {
+        const response = await fetch(`${apiBase}/api/fs/put`, {
             method: 'PUT',
             headers: {
                 'Authorization': token,
@@ -120,6 +135,8 @@ const putToOneDrive = async (env: any, oneDrivePath: string, zipBytes: Uint8Arra
 const getOneDriveSignedUrl = async (env: any, oneDrivePath: string): Promise<string> => {
     const token = getOpenListToken(env);
     if (!token) return '';
+    const apiBase = getOpenListApiBase(env);
+    const publicBase = getOpenListPublicBase(env);
     try {
         // Extract the parent directory and filename
         const lastSlash = oneDrivePath.lastIndexOf('/');
@@ -127,7 +144,7 @@ const getOneDriveSignedUrl = async (env: any, oneDrivePath: string): Promise<str
         const fileName = oneDrivePath.substring(lastSlash + 1);
 
         // List the directory to get the sign value for the file
-        const listResp = await fetch(`${OPENLIST_BASE}/api/fs/list`, {
+        const listResp = await fetch(`${apiBase}/api/fs/list`, {
             method: 'POST',
             headers: {
                 'Authorization': token,
@@ -142,7 +159,7 @@ const getOneDriveSignedUrl = async (env: any, oneDrivePath: string): Promise<str
         if (!Array.isArray(content)) return '';
         const fileEntry = content.find((item: any) => item.name === fileName && !item.is_dir);
         if (!fileEntry?.sign) return '';
-        return `${OPENLIST_BASE}/p${oneDrivePath}?sign=${fileEntry.sign}`;
+        return `${publicBase}/p${oneDrivePath}?sign=${encodeURIComponent(String(fileEntry.sign))}`;
     } catch {
         return '';
     }
@@ -154,6 +171,10 @@ const getPrefix = (env: any): string => (
 
 const getChinaDateKey = (date = new Date()): string => (
     new Date(date.getTime() + CHINA_TIMEZONE_OFFSET_MS).toISOString().slice(0, 10)
+);
+
+const buildOneDriveWorkshopPath = (id: string, createdAt: string): string => (
+    `${ONEDRIVE_WORKSHOP_ROOT}/packages/${getChinaDateKey(new Date(createdAt))}/${id}/${id}.zip`
 );
 
 const sanitizeFilename = (value: unknown, fallback: string): string => {
@@ -480,9 +501,9 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
         const keys = buildKeys(env, id, createdAt, fileName);
         const sha256 = await sha256HexBytes(zipBytes);
 
-        // Decide: large ZIP → OneDrive primary, D1 fallback; small ZIP → D1 only.
-        const useOneDrive = zipBytes.byteLength > ONEDRIVE_THRESHOLD;
-        const odPath = `${ONEDRIVE_WORKSHOP_ROOT}/packages/${getChinaDateKey(new Date(createdAt))}/${id}/${fileName}`;
+        // Keep D1 for the searchable index/metadata; store ZIP payloads in OneDrive when available.
+        const useOneDrive = Boolean(getOpenListToken(env));
+        const odPath = buildOneDriveWorkshopPath(id, createdAt);
 
         const entry: WorkshopEntry = {
             id,
@@ -508,7 +529,7 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
         };
         entry.contributor = entry.anonymous ? '匿名玩家' : (sanitizeText(body?.contributor, 40) || owner?.username || '');
 
-        // Upload ZIP: OneDrive first for large files, then D1 as fallback/primary.
+        // Upload ZIP: OneDrive primary when configured; D1 is only the fallback.
         if (useOneDrive) {
             const odResult = await putToOneDrive(env, odPath, zipBytes);
             if (!odResult) {
@@ -518,15 +539,9 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
                     httpMetadata: { contentType: 'application/zip', cacheControl: 'public, max-age=31536000, immutable' },
                     customMetadata: { sha256, workshopId: id }
                 }).catch(() => { throw new Error('ZIP 文件上传失败，OneDrive 和 D1 均不可用。'); });
-            } else {
-                // OneDrive success — still try D1 as secondary copy (best-effort).
-                await bucket.put(keys.zipKey, zipBytes, {
-                    httpMetadata: { contentType: 'application/zip', cacheControl: 'public, max-age=31536000, immutable' },
-                    customMetadata: { sha256, workshopId: id }
-                }).catch(() => { /* best-effort D1 secondary */ });
             }
         } else {
-            // Small ZIP — D1 only (reliable for small values).
+            // No OneDrive token — preserve the old D1 fallback path.
             await bucket.put(keys.zipKey, zipBytes, {
                 httpMetadata: { contentType: 'application/zip', cacheControl: 'public, max-age=31536000, immutable' },
                 customMetadata: { sha256, workshopId: id }

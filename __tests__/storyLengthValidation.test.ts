@@ -1,10 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { 校验响应人称一致性, 校验响应未泄露名器档案名称, 校验主剧情正文最低字数, 获取主剧情正文不足信息, 提取自动重试原因文本, 是否正文字数不足错误, 统计正文字符数 } from '../hooks/useGame/sendWorkflow';
+import { 校验响应人称一致性, 校验响应未泄露名器档案名称, 校验响应正文词汇审查, 校验主剧情正文最低字数, 获取主剧情正文不足信息, 提取自动重试原因文本, 是否正文字数不足错误, 收集主剧情已知对白说话人, 统计正文字符数 } from '../hooks/useGame/sendWorkflow';
 import { 净化角色对白行, 评估润色长度结果, 检测文章优化协议确认污染, 解析正文日志文本 } from '../hooks/useGame/bodyPolish';
 import { 清理润色正文输出 } from '../services/ai/storyTasks';
 import { 构建主剧情请求参数, type 主剧情系统上下文 } from '../hooks/useGame/mainStoryRequest';
 import { 构建字数要求提示词 } from '../prompts/runtime/protocolDirectives';
 import { 默认游戏设置 } from '../utils/gameSettings';
+
+describe('主剧情已知对白说话人', () => {
+    it('收集在场或重要角色用于四字姓名对白解析', () => {
+        const speakers = 收集主剧情已知对白说话人(
+            { 姓名: '沈砚' } as any,
+            [
+                { 姓名: '阿卡菲尔', 是否在场: true, 是否主要角色: true },
+                { 姓名: '路人甲乙', 是否在场: false, 是否主要角色: false },
+                { 姓名: '南宫听雪', 是否队友: true },
+                { 姓名: '【楚有常】', 对白登场: true }
+            ]
+        );
+
+        expect(speakers).toContain('沈砚');
+        expect(speakers).toContain('阿卡菲尔');
+        expect(speakers).toContain('南宫听雪');
+        expect(speakers).toContain('楚有常');
+        expect(speakers).not.toContain('路人甲乙');
+    });
+});
 
 describe('主剧情正文字数校验', () => {
     it('统计正文日志的可见字符数', () => {
@@ -401,6 +421,30 @@ describe('主剧情叙事人称校验', () => {
     });
 
     it('正文主体明显连续使用第二人称时会报错', () => {
+        expect(() => 校验响应人称一致性({
+            角色: { 姓名: '沈砚' },
+            logs: [
+                { sender: '旁白', text: '你走进房间。你感到寒意。你决定继续向前。' }
+            ]
+        } as any, rawText, '第三人称')).toThrow(/叙事人称不符/);
+    });
+
+    it('关闭正文词汇审查不会关闭人称和标签结构校验', () => {
+        const templateNameResponse = {
+            logs: [
+                { sender: '苏婉儿', text: '少侠，我随你同去。' }
+            ],
+            tavern_commands: [
+                {
+                    action: 'push' as const,
+                    key: '社交',
+                    value: { 姓名: '苏婉儿', 性别: '女' }
+                }
+            ]
+        };
+
+        expect(() => 校验响应正文词汇审查(templateNameResponse as any, [], JSON.stringify(templateNameResponse), '主剧情', false))
+            .not.toThrow();
         expect(() => 校验响应人称一致性({
             角色: { 姓名: '沈砚' },
             logs: [

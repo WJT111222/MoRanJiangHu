@@ -326,6 +326,28 @@ export const 校验响应未泄露名器档案名称 = (
     throw error;
 };
 
+export const 校验响应正文词汇审查 = (
+    response: GameResponse,
+    currentSocial: any[],
+    rawText: string,
+    stageLabel = '主剧情',
+    enabled = true
+) => {
+    if (enabled === false) return;
+    校验响应未命中女性姓名黑名单(
+        response,
+        rawText,
+        stageLabel,
+        currentSocial
+    );
+    校验响应未泄露名器档案名称(
+        response,
+        currentSocial,
+        rawText,
+        stageLabel
+    );
+};
+
 const 叙事人称元信息行正则 = /(?:玩家输入|玩家指令|当前指令|系统提示|任务提示|行动选项|选项|提示|总结|Step|已知事实|协议命中|当前地点|当前时间)/i;
 const 第二人称叙述动作正则 = /你\s*(?:走|来到|进入|推开|看见|望向|抬手|伸手|感到|觉得|意识到|决定|继续|停下|听见|发现|坐下|站起|转身|拿起|打开|闭上|回头|靠近|离开)/g;
 const 第一人称叙述动作正则 = /我\s*(?:走|来到|进入|推开|看见|望向|抬手|伸手|感到|觉得|意识到|决定|继续|停下|听见|发现|坐下|站起|转身|拿起|打开|闭上|回头|靠近|离开)/g;
@@ -449,6 +471,35 @@ const 创建主剧情流式超时错误 = (stage: string, timeoutMs: number): Er
 
 const 主剧情协议必需标签 = ['正文', '短期记忆', '命令'];
 
+const 规范化已知对白姓名 = (value: unknown): string => (
+    typeof value === 'string' ? value.replace(/[【】\[\]「」『』“”"']/g, '').replace(/\s+/g, '').trim() : ''
+);
+
+export const 收集主剧情已知对白说话人 = (
+    playerRole?: Partial<角色数据结构> | null,
+    socialList?: any[]
+): string[] => {
+    const names = new Set<string>();
+    const addName = (value: unknown) => {
+        const name = 规范化已知对白姓名(value);
+        if (name && name !== '旁白' && name !== '奖励') names.add(name);
+    };
+
+    addName(playerRole?.姓名);
+    (Array.isArray(socialList) ? socialList : []).forEach((npc: any) => {
+        if (!npc || typeof npc !== 'object') return;
+        const shouldTrust = npc.是否在场 === true
+            || npc.是否主要角色 === true
+            || npc.是否队友 === true
+            || npc.对白登场 === true;
+        if (!shouldTrust) return;
+        addName(npc.姓名);
+        addName(npc.名称);
+    });
+
+    return Array.from(names);
+};
+
 const 标签块已完整闭合 = (text: string, tag: string): boolean => {
     const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return new RegExp(`<\\s*${escaped}\\s*>[\\s\\S]*?<\\s*\\/\\s*${escaped}\\s*>`, 'i').test(text);
@@ -479,6 +530,7 @@ export const 尝试解析完整主剧情流式草稿 = (
         requireActionOptionsTag?: boolean;
         requireDynamicWorldTag?: boolean;
         validateDialogueFormat?: boolean;
+        knownSpeakers?: string[];
     }
 ): textAIService.StoryResponseResult | null => {
     const rawText = typeof draftText === 'string' ? draftText.trim() : '';
@@ -489,7 +541,8 @@ export const 尝试解析完整主剧情流式草稿 = (
             enableTagRepair: requestOptions?.enableTagRepair,
             requireActionOptionsTag: requestOptions?.requireActionOptionsTag,
             requireDynamicWorldTag: requestOptions?.requireDynamicWorldTag,
-            validateDialogueFormat: requestOptions?.validateDialogueFormat
+            validateDialogueFormat: requestOptions?.validateDialogueFormat,
+            knownSpeakers: requestOptions?.knownSpeakers
         });
         const hasBody = Array.isArray(response.logs)
             && response.logs.some((log) => typeof log?.text === 'string' && log.text.trim().length > 0);
@@ -1494,6 +1547,7 @@ export const 执行主剧情发送工作流 = async (
             worldbooks: currentState.世界书列表
         });
         const inputTokens = deps.估算消息Token(orderedMessages, activeApi?.model);
+        const knownDialogueSpeakers = 收集主剧情已知对白说话人(currentState.角色, currentState.社交);
         recordDiagnosticLog('info', ['主剧情请求开始', {
             stage: 'main_story',
             model: activeApi?.model || '',
@@ -1506,6 +1560,7 @@ export const 执行主剧情发送工作流 = async (
             validateTagCompleteness: runtimeGameConfig.启用标签检测完整性 === true,
             enableTagRepair: runtimeGameConfig.启用标签修复 !== false,
             requireActionOptionsTag: runtimeGameConfig.启用行动选项 !== false,
+            knownDialogueSpeakerCount: knownDialogueSpeakers.length,
             autoRetryEnabled: deps.游戏设置启用自动重试(runtimeGameConfig)
         }]);
 
@@ -1603,6 +1658,7 @@ export const 执行主剧情发送工作流 = async (
                             validateTagCompleteness: runtimeGameConfig.启用标签检测完整性 === true,
                             enableTagRepair: runtimeGameConfig.启用标签修复 !== false,
                             validateDialogueFormat: true,
+                            knownSpeakers: knownDialogueSpeakers,
                             requireActionOptionsTag: runtimeGameConfig.启用行动选项 !== false,
                             errorDetailLimit: Number.POSITIVE_INFINITY,
                             prefixMode: deepSeekPrefixMode || glmPrefixMode,
@@ -1622,36 +1678,33 @@ export const 执行主剧情发送工作流 = async (
                             validateTagCompleteness: runtimeGameConfig.启用标签检测完整性 === true,
                             enableTagRepair: runtimeGameConfig.启用标签修复 !== false,
                             requireActionOptionsTag: runtimeGameConfig.启用行动选项 !== false,
-                            validateDialogueFormat: true
+                            validateDialogueFormat: true,
+                            knownSpeakers: knownDialogueSpeakers
                         })
                     );
-                校验响应未命中女性姓名黑名单(
+                const rawStoryText = deps.获取原始AI消息(storyResult.rawText);
+                校验响应正文词汇审查(
                     storyResult.response,
-                    deps.获取原始AI消息(storyResult.rawText),
+                    currentState.社交,
+                    rawStoryText,
                     "主剧情",
-                    currentState.社交
+                    runtimeGameConfig.启用正文词汇审查 !== false
                 );
                 校验响应人称一致性(
                     storyResult.response,
-                    deps.获取原始AI消息(storyResult.rawText),
+                    rawStoryText,
                     runtimeGameConfig.叙事人称 || '第二人称'
-                );
-                校验响应未泄露名器档案名称(
-                    storyResult.response,
-                    currentState.社交,
-                    deps.获取原始AI消息(storyResult.rawText),
-                    "主剧情"
                 );
                 校验响应未改写既有NPC姓名(
                     storyResult.response,
                     currentState.社交,
-                    deps.获取原始AI消息(storyResult.rawText),
+                    rawStoryText,
                     "主剧情"
                 );
                 校验响应未删除既有NPC(
                     storyResult.response,
                     currentState.社交,
-                    deps.获取原始AI消息(storyResult.rawText),
+                    rawStoryText,
                     "主剧情"
                 );
                 return storyResult;
@@ -1747,7 +1800,7 @@ export const 执行主剧情发送工作流 = async (
             }
             const expandedResponse = textAIService.parseStoryRawText(
                 `<正文>\n${expanded.bodyText}\n</正文>\n<短期记忆>无</短期记忆>`,
-                { validateDialogueFormat: true, enableTagRepair: true }
+                { validateDialogueFormat: true, enableTagRepair: true, knownSpeakers: knownDialogueSpeakers }
             );
             const expandedAiData: GameResponse = {
                 ...aiData,

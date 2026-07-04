@@ -398,6 +398,38 @@ const 结构化条目卡片: React.FC<{
     </div>
 );
 
+const 悬浮说明按钮: React.FC<{
+    ariaLabel: string;
+    children: React.ReactNode;
+}> = ({ ariaLabel, children }) => {
+    const [open, setOpen] = useState(false);
+    return (
+        <span className="group/help relative inline-flex shrink-0">
+            <button
+                type="button"
+                aria-label={ariaLabel}
+                title={typeof children === 'string' ? children : ariaLabel}
+                onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setOpen((prev) => !prev);
+                }}
+                onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-amber-300/50 bg-amber-100/90 text-[12px] font-bold text-amber-950 shadow-sm transition-colors hover:border-amber-200 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300/60"
+            >
+                ?
+            </button>
+            <span
+                className={`pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-64 -translate-x-1/2 rounded-lg border border-amber-300/45 bg-[#fff9e8] px-3 py-2 text-left text-[11px] leading-5 text-[#3f2b14] shadow-xl transition-opacity md:left-auto md:right-0 md:translate-x-0 ${
+                    open ? 'opacity-100' : 'opacity-0 group-hover/help:opacity-100 group-focus-within/help:opacity-100'
+                }`}
+            >
+                {children}
+            </span>
+        </span>
+    );
+};
+
 const 过滤目标注入树节点 = (
     nodes: 小说拆分树节点结构[],
     target: 小说拆分注入目标类型
@@ -2266,7 +2298,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
     };
 
     return (
-        <div className="flex flex-col md:flex-row h-full overflow-hidden text-sm animate-fadeIn">
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row overflow-hidden text-sm animate-fadeIn">
             <input
                 ref={importTxtInputRef}
                 type="file"
@@ -2312,7 +2344,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                 </div>
             </div>
 
-            <div className="flex-1 min-w-0 h-full overflow-y-auto custom-scrollbar p-4 md:p-6 lg:p-8 space-y-6 relative bg-black/20">
+            <div className="flex-1 min-w-0 min-h-0 overflow-y-auto custom-scrollbar p-4 pb-28 md:p-6 md:pb-8 lg:p-8 space-y-6 relative bg-black/20 overscroll-contain">
             {mobileTab === 'import' && (
                 <div className="space-y-6 max-w-5xl mx-auto">
                     <div className="rounded-xl border border-white/5 bg-gradient-to-b from-black/40 to-black/20 backdrop-blur-md p-6 shadow-xl space-y-6">
@@ -2460,10 +2492,13 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                             </div>
                                             <ToggleSwitch checked={Boolean(form.功能模型占位.小说拆分主剧情注入)} onChange={(checked) => updatePlaceholder('小说拆分主剧情注入', checked)} ariaLabel="切换主剧情注入" />
                                         </label>
-                                        <label className="flex items-center justify-between p-3 rounded-lg bg-black/20 hover:bg-black/40 border border-transparent hover:border-white/5 transition-colors cursor-pointer group">
-                                            <div className="flex items-center gap-3">
+                                        <label className="flex items-center justify-between gap-3 p-3 rounded-lg bg-black/20 hover:bg-black/40 border border-transparent hover:border-white/5 transition-colors cursor-pointer group">
+                                            <div className="flex min-w-0 items-center gap-3">
                                                 <div className="p-1.5 rounded-md bg-white/5 group-hover:text-amber-300 transition-colors text-gray-400"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg></div>
-                                                <span className="text-sm text-gray-300">主剧情保留原文注入</span>
+                                                <span className="min-w-0 text-sm text-gray-300">主剧情保留原文注入</span>
+                                                <悬浮说明按钮 ariaLabel="说明主剧情保留原文注入">
+                                                    开启后，主剧情注入小说分解资料时会额外带入原著片段节选，能让剧情更贴近原文细节；代价是每次主剧情请求会占用更多上下文，接口额度消耗也会增加。一般想严格跟原著时开启，普通游玩可关闭。
+                                                </悬浮说明按钮>
                                             </div>
                                             <ToggleSwitch checked={Boolean(form.功能模型占位.小说拆分主剧情保留原文注入)} onChange={(checked) => updatePlaceholder('小说拆分主剧情保留原文注入', checked)} ariaLabel="切换主剧情保留原文注入" />
                                         </label>
@@ -2820,7 +2855,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                     ) : workshopEntries.length <= 0 ? (
                         <div className="rounded-xl border border-dashed border-white/10 bg-black/20 p-8 text-center">
                             <div className="text-sm font-medium text-gray-300">当前分区暂时还没有公开小说分解模块</div>
-                            <div className="mt-1 text-xs text-gray-500">可以先发布当前数据集；发布后会同时写入 R2 和 hi168 对象存储。</div>
+                            <div className="mt-1 text-xs text-gray-500">可以先发布当前数据集；发布后 ZIP 会存入 OneDrive 社区存储，列表索引保存在云端。</div>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2902,7 +2937,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
             )}
 
             {mobileTab === 'chapters' && (
-            <div className="space-y-6 max-w-5xl mx-auto h-full flex flex-col">
+            <div className="space-y-6 max-w-5xl mx-auto min-h-full flex flex-col">
                 <div className="rounded-xl border border-white/5 bg-gradient-to-b from-black/40 to-black/20 backdrop-blur-md p-6 shadow-xl shrink-0">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
@@ -2938,7 +2973,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                         </div>
                     </div>
                 ) : (
-                    <div className="flex-1 flex flex-col min-h-0 space-y-4">
+                    <div className="flex flex-col gap-4 md:flex-1 md:min-h-0">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
                             <div className="rounded-lg border border-white/5 bg-black/30 p-4">
                                 <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">可浏览章节</div>
@@ -3041,7 +3076,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex-1 rounded-xl border border-white/5 bg-black/30 overflow-hidden flex flex-col relative">
+                            <div className="min-h-[420px] md:flex-1 md:min-h-[360px] rounded-xl border border-white/5 bg-black/30 overflow-hidden flex flex-col relative">
                                 <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-black/50 to-transparent z-10 pointer-events-none"></div>
                                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                                     {chapterProgressList.map(({ chapter, segment, status }) => {
@@ -4468,7 +4503,7 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
 
             {message && <p className="text-xs text-emerald-300 animate-pulse">{message}</p>}
 
-            <div className="pt-6 border-t border-emerald-500/20 mt-8">
+            <div className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-emerald-500/20 bg-[#f7f0dc]/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 shadow-[0_-10px_24px_rgba(0,0,0,0.18)] backdrop-blur md:static md:m-0 md:border-t md:bg-transparent md:p-0 md:pt-6 md:shadow-none md:backdrop-blur-0">
                 <GameButton onClick={handleSave} variant="primary" className="w-full">
                     {showSuccess ? '✔ 配置已保存' : '保存设置'}
                 </GameButton>

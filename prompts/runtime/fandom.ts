@@ -234,7 +234,7 @@ const 构建境界母板展示文本 = (schema: 境界映射母板): string => [
     ...默认累计境界阶段推进提示词.split('\n'),
     '【大境突破表】',
     ...默认累计境界大境突破提示词.split('\n'),
-    '【武侠硬边界】',
+    '【题材硬边界】',
     ...默认累计境界武侠硬边界提示词.split('\n')
 ].join('\n');
 
@@ -723,7 +723,7 @@ const 构建境界区块文本 = (blocks: 境界区块集合): string => [
     '【大境突破表】',
     blocks.大境突破表,
     '',
-    '【武侠硬边界】',
+    '【题材硬边界】',
     blocks.武侠硬边界
 ].join('\n');
 
@@ -754,7 +754,7 @@ export const 归一化或补全境界体系提示词 = (content: string): string
     if (validation.missingBreakthroughJumps.length > 0 || validation.missingSections.includes('大境突破表')) {
         blocks.大境突破表 = fallbackBlocks.大境突破表;
     }
-    if (validation.missingSections.includes('武侠硬边界')) {
+    if (validation.missingSections.includes('题材硬边界')) {
         blocks.武侠硬边界 = fallbackBlocks.武侠硬边界;
     }
 
@@ -773,19 +773,19 @@ export const 校验境界体系提示词完整性 = (content: string): {
 } => {
     const normalizedText = 提取境界体系正文(content);
     const hardBoundaryBlock = 提取首个标题区块(normalizedText, ['武侠硬边界', '仙侠硬边界', '都市硬边界', '末日硬边界', '题材硬边界', '能力硬边界', '硬边界']);
-    const normalizedForValidation = hardBoundaryBlock && !normalizedText.includes('【武侠硬边界】')
-        ? `${normalizedText.trim()}\n\n【武侠硬边界】\n${hardBoundaryBlock}`
-        : normalizedText;
+    const normalizedForValidation = normalizedText;
     const requiredSections = [
         '境界映射母板',
         '九阶命名与能力边界',
         '境界差距口径',
         '阶段推进表',
         '大境突破表',
-        '终点文案',
-        '武侠硬边界'
+        '终点文案'
     ];
-    const missingSections = requiredSections.filter((section) => !normalizedForValidation.includes(`【${section}】`));
+    const missingSections = [
+        ...requiredSections.filter((section) => !normalizedForValidation.includes(`【${section}】`)),
+        hardBoundaryBlock ? '' : '题材硬边界'
+    ].filter(Boolean);
     const schema = 读取境界映射母板(normalizedForValidation, 'realm_prompt');
     const mappedLevels = new Set((schema?.mapping || []).map((item) => item.level));
     const missingMappings = 默认累计境界映射数值列表.filter((level) => !mappedLevels.has(level));

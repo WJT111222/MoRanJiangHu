@@ -258,6 +258,36 @@ describe('storyResponseParser', () => {
         ]);
     });
 
+    it('accepts known four-character in-scene speaker tags as dialogue turns', () => {
+        const parsed = parseStoryRawText([
+            '<正文>',
+            '【阿卡菲尔】我已经在这里等你很久了。',
+            '【旁白】雨声压过窗棂。',
+            '</正文>',
+            '<短期记忆>阿卡菲尔在场并与主角交谈。</短期记忆>'
+        ].join('\n'), {
+            validateDialogueFormat: true,
+            knownSpeakers: ['阿卡菲尔']
+        });
+
+        expect(parsed.logs).toEqual([
+            { sender: '阿卡菲尔', text: '我已经在这里等你很久了。' },
+            { sender: '旁白', text: '雨声压过窗棂。' }
+        ]);
+    });
+
+    it('detects colon dialogue for known four-character speakers during strict parsing', () => {
+        expect(() => parseStoryRawText([
+            '<正文>',
+            '阿卡菲尔：我已经在这里等你很久了。',
+            '</正文>',
+            '<短期记忆>阿卡菲尔在场并与主角交谈。</短期记忆>'
+        ].join('\n'), {
+            validateDialogueFormat: true,
+            knownSpeakers: ['阿卡菲尔']
+        })).toThrow(/阿卡菲尔.*冒号格式/);
+    });
+
     it('rejects bare colon speaker lines during strict parsing', () => {
         expect(() => parseStoryRawText([
             '<正文>',

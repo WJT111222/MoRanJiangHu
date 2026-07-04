@@ -1,11 +1,19 @@
 # Dependencies
 /node_modules/
+android/app/build/
 
 # Build outputs
 /dist/
 /dist-ssr/
 /coverage/
 *.tsbuildinfo
+/output/
+/.tmp-release-assets/
+/.tmp-release-verify/
+/_apk_extract/
+/apk_recovered/
+/moranjianghu/
+*.apk
 
 # Environment files
 .env
@@ -18,7 +26,10 @@
 android/keystore.properties
 android/app/*.jks
 android/app/*.keystore
+android/app/moranjianghu-release.jks
 opencode.json
+env.production
+env-production-*.enc.json
 
 # Logs
 /logs/
@@ -32,6 +43,12 @@ lerna-debug.log*
 # Generated reports, temp workspaces, and local analysis outputs
 /artifacts/
 /.tmp*/
+/.tmp-codex-screenshots/
+/.tmp-diagnostics/
+/.tmp-e2e-test/
+/.tmp-gpt-image/
+/.tmp-worker-build/
+/.tmp-wrangler-config/
 /clean_diff.txt
 /diff.txt
 /diff1.txt
@@ -50,7 +67,6 @@ lerna-debug.log*
 /.tmp-screenshot*.webp
 /.tmp_*.png
 /cnb主页.png
-/output/
 /preset-items-preview.html
 /scripts/.tmp-*.png
 /scripts/gen-4-missing-preset-items.mjs
@@ -58,28 +74,28 @@ lerna-debug.log*
 /scripts/gen-infinite-preset-images.mjs
 /scripts/upload-preset-images.mjs
 /scripts/upload-apk-s3.mjs
-/moranjianghu/
 /codex对话.txt
 /primary-home-*.md
+/primary-home-*-snapshot.md
+/Screenshot_*.webp
+*.png
 
 # Local tooling state
 /.wrangler/
 /.codex/
 /.mimocode/
+/.playwright-mcp/
+/.playwright-cli/
+/.serena/
 
 # Sensitive local data, save packages, debug outputs, and generated app bundles
-/.tmp-release-assets/
 /.tmp-save-test/
-/_apk_extract/
-/apk_recovered/
 /progress.md
 /mobile-local-*.png
 /output-*.png
 /final-mobile-topbar-validation.png
 /.codex-*.log
 /.tmp-*.log
-/.tmp_*.png
-/*.apk
 /*.aab
 /*.webp
 /character-body-bars-day-mode.png
@@ -106,8 +122,6 @@ lerna-debug.log*
 
 # Local test and debug artifacts
 /.local-debug/
-/.playwright-cli/
-/.playwright-mcp/
 /test-results/
 /diff_output.txt
 /nul
@@ -126,6 +140,3 @@ Desktop.ini
 *.njsproj
 *.sln
 *.sw?
-.serena/
-env.production
-env-production-*.enc.json

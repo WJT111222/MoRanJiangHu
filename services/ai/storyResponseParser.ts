@@ -10,6 +10,7 @@ export interface StoryParseOptions {
     requireActionOptionsTag?: boolean;
     requireDynamicWorldTag?: boolean;
     validateDialogueFormat?: boolean;
+    knownSpeakers?: string[];
 }
 
 export class StoryResponseParseError extends Error {
@@ -47,15 +48,23 @@ const 默认解析选项: Required<StoryParseOptions> = {
     enableTagRepair: true,
     requireActionOptionsTag: false,
     requireDynamicWorldTag: false,
-    validateDialogueFormat: false
+    validateDialogueFormat: false,
+    knownSpeakers: []
 };
+
+const 规范化已知说话人列表 = (items?: string[]): string[] => (
+    Array.from(new Set((Array.isArray(items) ? items : [])
+        .map(item => 规范化正文发送者名(item || ''))
+        .filter(item => item && item !== '旁白')))
+);
 
 const 规范化解析选项 = (options?: StoryParseOptions): Required<StoryParseOptions> => ({
     validateTagCompleteness: options?.validateTagCompleteness === true,
     enableTagRepair: options?.enableTagRepair !== false,
     requireActionOptionsTag: options?.requireActionOptionsTag === true,
     requireDynamicWorldTag: options?.requireDynamicWorldTag === true,
-    validateDialogueFormat: options?.validateDialogueFormat === true
+    validateDialogueFormat: options?.validateDialogueFormat === true,
+    knownSpeakers: 规范化已知说话人列表(options?.knownSpeakers)
 });
 
 type 协议标签 = (typeof 协议标签列表)[number];
@@ -854,13 +863,13 @@ const 正文冒号说话人排除集合 = new Set([
     '基础', '环境', '状态', '幸运', '装备', '结果', '奖励', '获得', '失去'
 ]);
 
-const 识别无括号正文发送者行 = (line: string): { sender: string; text: string } | null => {
+const 识别无括号正文发送者行 = (line: string, declaredNames?: Set<string>): { sender: string; text: string } | null => {
     const match = (line || '').trim().match(/^([A-Za-z][A-Za-z0-9_· -]{1,23}|[\u4e00-\u9fff]{2,4})(?:[（(][^）)\n]{1,16}[）)])?\s*[:：]\s*(.+)$/u);
     if (!match) return null;
     const sender = 规范化日志发送者(match[1] || '');
     if (!sender) return null;
     if (正文冒号说话人排除集合.has(sender)) return null;
-    if (!是否可信正文标签发送者(sender, { allowUnknownName: true })) return null;
+    if (!是否可信正文标签发送者(sender, { allowUnknownName: true, declaredNames })) return null;
     return {
         sender,
         text: (match[2] || '').trim()
@@ -1188,7 +1197,7 @@ const 检测正文引号内换行问题 = (body: string): string | null => {
     return null;
 };
 
-const 检测正文对白格式问题 = (body: string): string | null => {
+const 检测正文对白格式问题 = (body: string, declaredNames?: Set<string>): string | null => {
     const quoteIssue = 检测正文引号内换行问题(body);
     if (quoteIssue) return quoteIssue;
 
@@ -1256,7 +1265,7 @@ const 检测正文对白格式问题 = (body: string): string | null => {
             }
         }
 
-        const colonLine = 识别无括号正文发送者行(line);
+        const colonLine = 识别无括号正文发送者行(line, declaredNames);
         if (colonLine) {
             return `疑似角色「${colonLine.sender}」的对白使用了冒号格式，必须改为【${colonLine.sender}】开头`;
         }
@@ -1681,7 +1690,7 @@ const 解析标签协议响应 = (content: string, options?: Required<StoryParse
         .join('\n\n');
 
     const dialogueFormatIssue = options?.validateDialogueFormat
-        ? 检测正文对白格式问题(bodyJudgeExtraction.cleanBody)
+        ? 检测正文对白格式问题(bodyJudgeExtraction.cleanBody, declaredNames)
         : null;
     if (dialogueFormatIssue) {
         throw new StoryResponseParseError(
@@ -1852,6 +1861,7 @@ export const parseStoryRawText = (content: string, options?: StoryParseOptions):
         || 提取首个标签内容(preprocessedText, 'cast')
         || 提取残缺角色名单标签(preprocessedText)
         || '');
+    parseOptions.knownSpeakers.forEach(name => declaredNames.add(name));
     const normalizedText = parseOptions.enableTagRepair
         ? 修复思考区后半段标签协议文本(preprocessedText)
         : preprocessedText;

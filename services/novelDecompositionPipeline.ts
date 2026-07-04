@@ -9,7 +9,7 @@ import type {
 } from '../types';
 import type { 当前可用接口结构 } from '../utils/apiConfig';
 import { 过滤疑似目录章节, 重排章节序号, 规范化标题, 识别TXT章节标题行 } from './novelStructureHeuristics';
-import { 默认小说时间线起点, 尝试规范化小说时间锚点, 规范化小说时间锚点 } from './novelDecompositionTime';
+import { 默认小说时间线起点, 尝试规范化小说时间锚点, 规范化小说时间锚点, 小说时间锚点转分钟序数 } from './novelDecompositionTime';
 import { 构建小说拆分跨世界时间线规则 } from './novelDecompositionTimelineConstraints';
 
 const 时间锚点格式正则 = /^\d{4,6}:\d{2}:\d{2}:\d{2}:\d{2}$/;
@@ -219,6 +219,71 @@ const 构建分段时间线 = (params: {
         });
 
     return normalized;
+};
+
+const 选择有效小说时间锚点 = (...values: string[]): string => (
+    values
+        .map((value) => 读取文本(value).trim())
+        .find((value) => 时间锚点格式正则.test(value)) || ''
+);
+
+const 比较小说时间锚点 = (left: string, right: string): number => {
+    const leftMinutes = 小说时间锚点转分钟序数(left);
+    const rightMinutes = 小说时间锚点转分钟序数(right);
+    if (leftMinutes === null || rightMinutes === null) {
+        return left.localeCompare(right);
+    }
+    return leftMinutes - rightMinutes;
+};
+
+const 小说时间早于 = (left: string, right: string): boolean => 比较小说时间锚点(left, right) < 0;
+const 小说时间晚于 = (left: string, right: string): boolean => 比较小说时间锚点(left, right) > 0;
+
+const 补齐关键事件时间字段 = (
+    event: 小说拆分分段结构['关键事件'][number],
+    fallback: {
+        本组时间线起点: string;
+        本组时间线终点: string;
+        上一事件时间参考: string;
+        默认时间参考: string;
+    }
+): 小说拆分分段结构['关键事件'][number] => {
+    const 开始时间 = 选择有效小说时间锚点(
+        event.开始时间,
+        event.最早开始时间,
+        event.最迟开始时间,
+        event.结束时间,
+        fallback.上一事件时间参考,
+        fallback.本组时间线起点,
+        fallback.默认时间参考
+    );
+    const 最早开始时间 = 选择有效小说时间锚点(
+        event.最早开始时间,
+        event.开始时间,
+        开始时间
+    );
+    const 最迟开始时间 = 选择有效小说时间锚点(
+        event.最迟开始时间,
+        event.开始时间,
+        最早开始时间,
+        开始时间
+    );
+    const 结束时间 = 选择有效小说时间锚点(
+        event.结束时间,
+        event.最迟开始时间,
+        event.开始时间,
+        最迟开始时间,
+        开始时间,
+        fallback.本组时间线终点
+    );
+
+    return {
+        ...event,
+        开始时间,
+        最早开始时间,
+        最迟开始时间,
+        结束时间
+    };
 };
 
 const 合成阶段概括 = (
@@ -596,16 +661,18 @@ const 规范化AI结果到分段 = (
     const 给下一组参考 = 去重文本列表(result.nextGroupReferences || [], 12);
     const 原著硬约束 = 去重可见信息条目(result.hardConstraints || [], 12);
     const 可提前铺垫 = 去重可见信息条目(result.foreshadowing || [], 12);
+    const 时间线起点 = 规范化AI时间锚点(result.timelineStart, options.referenceStart);
+    const 时间线终点 = 规范化AI时间锚点(result.timelineEnd, 时间线起点 || options.referenceStart);
 
     const 关键事件: 小说拆分分段结构['关键事件'] = [];
     if (Array.isArray(result.keyEvents)) {
-        let 上一事件时间参考 = options.referenceStart;
+        let 上一事件时间参考 = 时间线起点 || options.referenceStart;
         result.keyEvents.forEach((event) => {
             const 开始时间 = 规范化AI时间锚点(event.开始时间, 上一事件时间参考);
             const 最早开始时间 = 规范化AI时间锚点(event.最早开始时间, 开始时间 || 上一事件时间参考);
             const 最迟开始时间 = 规范化AI时间锚点(event.最迟开始时间, 最早开始时间 || 开始时间 || 上一事件时间参考);
             const 结束时间 = 规范化AI时间锚点(event.结束时间, 最迟开始时间 || 开始时间 || 上一事件时间参考);
-            const normalizedEvent = {
+            const normalizedEvent = 补齐关键事件时间字段({
                 事件名: 清理章节编号文本(event.事件名 || ''),
                 事件说明: 清理章节编号文本(event.事件说明 || ''),
                 开始时间,
@@ -618,7 +685,12 @@ const 规范化AI结果到分段 = (
                 事件结果: 去重文本列表(event.事件结果 || [], 12),
                 对下一组影响: 去重文本列表(event.对下一组影响 || [], 12),
                 信息可见性: 规范化信息可见性(event.信息可见性)
-            };
+            }, {
+                本组时间线起点: 时间线起点,
+                本组时间线终点: 时间线终点,
+                上一事件时间参考,
+                默认时间参考: options.referenceStart
+            });
             if (normalizedEvent.事件名 || normalizedEvent.事件说明) {
                 关键事件.push(normalizedEvent);
                 上一事件时间参考 = normalizedEvent.结束时间
@@ -694,8 +766,6 @@ const 规范化AI结果到分段 = (
         关键事件,
         referenceStart: options.referenceStart
     });
-    const 时间线起点 = 规范化AI时间锚点(result.timelineStart, options.referenceStart);
-    const 时间线终点 = 规范化AI时间锚点(result.timelineEnd, 时间线起点 || options.referenceStart);
     const 登场角色 = AI登场角色;
 
     const 规范化章节范围 = (() => {
@@ -796,10 +866,10 @@ const 校验分段AI输出完整性 = (
         ) {
             throw new Error(`分段“${segmentTitle}”的关键事件 #${index + 1}（${event.事件名 || '未命名事件'}）时间格式无效。`);
         }
-        if (event.最早开始时间 > event.开始时间 || event.开始时间 > event.最迟开始时间) {
+        if (小说时间晚于(event.最早开始时间, event.开始时间) || 小说时间晚于(event.开始时间, event.最迟开始时间)) {
             throw new Error(`分段“${segmentTitle}”的关键事件 #${index + 1}（${event.事件名 || '未命名事件'}）开始时间不在允许窗口内。`);
         }
-        if (event.结束时间 < event.开始时间) {
+        if (小说时间早于(event.结束时间, event.开始时间)) {
             throw new Error(`分段“${segmentTitle}”的关键事件 #${index + 1}（${event.事件名 || '未命名事件'}）结束时间早于开始时间。`);
         }
         if (
@@ -833,7 +903,7 @@ const 校验分段时间连续性 = (
     if (!时间锚点格式正则.test(currentEnd)) {
         throw new Error(`分段“${segmentTitle}”结束时间格式无效：${currentEnd}`);
     }
-    if (currentEnd < currentStart) {
+    if (小说时间早于(currentEnd, currentStart)) {
         throw new Error(`分段“${segmentTitle}”结束时间 ${currentEnd} 早于起始时间 ${currentStart}。`);
     }
 
@@ -843,7 +913,7 @@ const 校验分段时间连续性 = (
     if (!时间锚点格式正则.test(normalizedPreviousEnd)) {
         throw new Error(`上一章节结束时间格式无效：${normalizedPreviousEnd}`);
     }
-    if (currentStart < normalizedPreviousEnd) {
+    if (小说时间早于(currentStart, normalizedPreviousEnd)) {
         throw new Error(`分段“${segmentTitle}”起始时间 ${currentStart} 早于上一章节结束时间 ${normalizedPreviousEnd}，时间线未衔接。`);
     }
 
@@ -854,7 +924,7 @@ const 校验分段时间连续性 = (
         if (!时间锚点格式正则.test(firstEventTime)) {
             throw new Error(`分段“${segmentTitle}”首条时间线事件格式无效：${firstEventTime}`);
         }
-        if (firstEventTime < normalizedPreviousEnd) {
+        if (小说时间早于(firstEventTime, normalizedPreviousEnd)) {
             throw new Error(`分段“${segmentTitle}”首条时间线事件 ${firstEventTime} 早于上一章节结束时间 ${normalizedPreviousEnd}，时间线未衔接。`);
         }
     }

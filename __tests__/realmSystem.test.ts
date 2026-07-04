@@ -82,6 +82,58 @@ describe('xianxia hardcoded realm system', () => {
         expect(validation.ok).toBe(true);
         expect(validation.normalizedText).toContain('【境界映射母板】');
         expect(validation.normalizedText).toContain('【九阶命名与能力边界】');
+        expect(prompt).toContain('【题材硬边界】');
+        expect(prompt).not.toContain('【武侠硬边界】');
+    });
+
+    it('accepts topic hard-boundary aliases without rewriting the visible title to wuxia', () => {
+        const prompt = [
+            '【境界映射母板】',
+            '1 => 炼气一层',
+            '2 => 炼气二层',
+            '3 => 炼气三层',
+            '4 => 炼气四层',
+            '5 => 炼气五层',
+            '6 => 炼气六层',
+            '7 => 炼气七层',
+            '8 => 炼气八层',
+            '9 => 炼气九层',
+            '10 => 炼气十层',
+            '11 => 炼气十一层',
+            '12 => 炼气圆满',
+            '13 => 筑基初期',
+            '14 => 筑基中期',
+            '15 => 筑基后期',
+            '16 => 筑基圆满',
+            '17 => 金丹初期',
+            '18 => 金丹中期',
+            '19 => 金丹后期',
+            '20 => 金丹圆满',
+            '21 => 元婴初期',
+            '22 => 元婴中期',
+            '24 => 元婴圆满',
+            '27 => 化神期',
+            '33 => 炼虚期',
+            '43 => 合体期',
+            '【九阶命名与能力边界】',
+            '- 九阶命名顺序固定：炼气、筑基、金丹、元婴、化神、炼虚、合体',
+            '- 境界能力边界：仙侠能力受境界、灵力、神识、法宝、阵法与因果制衡。',
+            '【境界差距口径】',
+            '- 同境可波动，跨大境默认压制。',
+            '【终点文案】',
+            '- 当前境界文案位于本段终点写法：炼气圆满 / 筑基圆满 / 金丹圆满 / 元婴圆满 / 化神期 / 炼虚期 / 合体期',
+            '【阶段推进表】',
+            '- 1→2；2→3；3→4；5→6；6→7；7→8；9→10；10→11；11→12；13→14；14→15；15→16；17→18；18→19；19→20；21→22；22→24',
+            '【大境突破表】',
+            '- 4→5；8→9；12→13；16→17；20→21；24→27；27→33；33→43',
+            '【题材硬边界】',
+            '- 仙侠能力可以使用灵力、术法、法宝和天劫，但必须受境界与资源代价约束。'
+        ].join('\n');
+
+        const validation = 校验境界体系提示词完整性(prompt);
+        expect(validation.ok).toBe(true);
+        expect(validation.normalizedText).toContain('【题材硬边界】');
+        expect(validation.normalizedText).not.toContain('【武侠硬边界】');
     });
 
     it('accepts topic hard-boundary aliases and normalizes them for storage', () => {
@@ -153,7 +205,7 @@ describe('xianxia hardcoded realm system', () => {
 
         const validation = 校验境界体系提示词完整性(prompt);
         expect(validation.ok).toBe(true);
-        expect(validation.normalizedText).toContain('【武侠硬边界】');
+        expect(validation.normalizedText).toContain('【题材硬边界】');
         expect(validation.normalizedText).toContain('末日能力不能无代价清场');
     });
 
@@ -170,6 +222,6 @@ describe('xianxia hardcoded realm system', () => {
         expect(prompt).toContain('【境界映射母板】');
         expect(prompt).toContain('1 => 开脉境一重');
         expect(prompt).toContain('43 => 天人境');
-        expect(prompt).toContain('【武侠硬边界】');
+        expect(prompt).toContain('【题材硬边界】');
     });
 });

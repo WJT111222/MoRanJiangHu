@@ -16,9 +16,9 @@ const NovelDecompositionWorkbenchModal: React.FC<Props> = ({ open, settings, onS
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-[320] bg-black/85 backdrop-blur-sm overflow-y-auto animate-fadeIn">
-            <div className="min-h-full w-full flex items-start md:items-center justify-center p-0 md:p-4">
-                <OrnateBorder className="w-full h-[100dvh] md:max-w-7xl md:h-[88vh] md:max-h-[92vh] flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] p-0 overflow-hidden backdrop-blur-md rounded-none md:rounded-2xl">
+        <div className="fixed inset-0 z-[320] bg-black/85 backdrop-blur-sm overflow-hidden animate-fadeIn">
+            <div className="h-[100dvh] w-full flex items-start md:items-center justify-center p-0 md:p-4 overflow-hidden">
+                <OrnateBorder className="w-full h-full md:max-w-7xl md:h-[88vh] md:max-h-[92vh] flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] p-0 overflow-hidden backdrop-blur-md rounded-none md:rounded-2xl">
                     <div className="shrink-0 flex items-center justify-between gap-4 border-b border-wuxia-gold/10 bg-black/40 px-5 py-4">
                         <div>
                             <h2 className="text-lg md:text-xl font-serif font-bold text-wuxia-gold tracking-[0.18em]">小说分解工作台</h2>
@@ -33,7 +33,7 @@ const NovelDecompositionWorkbenchModal: React.FC<Props> = ({ open, settings, onS
                         </button>
                     </div>
 
-                    <div className="flex-1 min-h-0 flex flex-col bg-black/10">
+                    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-black/10">
                         <NovelDecompositionSettings settings={settings} onSave={onSave} requestConfirm={requestConfirm} onNotify={onNotify} />
                     </div>
                 </OrnateBorder>

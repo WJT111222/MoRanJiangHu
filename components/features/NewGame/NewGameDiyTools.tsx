@@ -27,27 +27,16 @@ const inputClass = 'w-full rounded border border-gray-700 bg-black/50 px-2 py-2 
 const textAreaClass = `${inputClass} min-h-[72px] resize-y`;
 const smallButtonClass = 'rounded border border-wuxia-gold/25 bg-wuxia-gold/10 px-3 py-1.5 text-xs text-wuxia-gold hover:bg-wuxia-gold/20 disabled:opacity-50';
 
-const buildWorldContext = (worldConfig: WorldGenConfig): string => [
-    `世界名称：${worldConfig.worldName || '未命名世界'}`,
-    `世界版图：${worldConfig.worldSize}`,
-    `宗门密度：${worldConfig.sectDensity}`,
-    `王朝局势：${worldConfig.dynastySetting || '待生成'}`,
-    `天骄/战力设定：${worldConfig.tianjiaoSetting || '待生成'}`,
-    worldConfig.worldExtraRequirement ? `玩家额外要求：${worldConfig.worldExtraRequirement}` : '',
-    '请优先根据玩家填写的作品、题材、世界名称和关键词生成专属世界观，不要默认套用元婴、化神、渡劫等通用修仙境界。'
-].filter(Boolean).join('\n');
+const 获取DIY题材模式 = (worldConfig: WorldGenConfig, openingConfig?: OpeningConfig): string => (
+    openingConfig?.题材模式
+    || worldConfig.modeRuntimeProfile?.identity?.baseMode
+    || '未指定'
+);
 
-const buildRealmExtraPrompt = (worldConfig: WorldGenConfig): string => [
-    `世界名称：${worldConfig.worldName || '未命名世界'}`,
-    `题材关键词：${worldConfig.dynastySetting || ''}；${worldConfig.tianjiaoSetting || ''}；${worldConfig.worldExtraRequirement || ''}`,
-    '请生成符合本作品/题材代入感的境界体系。如果玩家写了“斗破”“银宗”等关键词，请使用类似斗气、宗门、等阶、异火/血脉/功法等语义扩展，而不是回退成元婴、化神这类默认修仙命名。',
-    '输出必须是完整 <境界体系>，并通过游戏现有境界体系校验。'
-].filter(Boolean).join('\n');
-
-const 斗气题材关键词 = ['斗破', '斗气', '异火', '炼药', '丹药', '银宗', '斗者', '斗师', '斗灵', '斗王', '斗皇', '斗宗', '斗尊', '斗圣', '斗帝'];
+const 斗气题材关键词 = ['斗破', '斗气', '异火', '炼药师', '银宗', '斗者', '斗师', '斗灵', '斗王', '斗皇', '斗宗', '斗尊', '斗圣', '斗帝'];
 const 通用修仙禁词 = ['元婴', '化神', '渡劫', '金丹', '筑基'];
 
-const needsCustomRealmGuard = (worldConfig: WorldGenConfig): boolean => {
+export const needsCustomRealmGuardForDiy = (worldConfig: WorldGenConfig, _openingConfig?: OpeningConfig): boolean => {
     const text = [
         worldConfig.worldName,
         worldConfig.dynastySetting,
@@ -58,7 +47,51 @@ const needsCustomRealmGuard = (worldConfig: WorldGenConfig): boolean => {
     return 斗气题材关键词.some((keyword) => text.includes(keyword));
 };
 
-const containsGenericRealmTerms = (text: string): boolean => 通用修仙禁词.some((keyword) => text.includes(keyword));
+export const containsDisallowedRealmTermsForDiy = (
+    text: string,
+    openingConfig?: OpeningConfig,
+    worldConfig?: WorldGenConfig
+): boolean => {
+    if (openingConfig?.题材模式 === '仙侠' && !(worldConfig && needsCustomRealmGuardForDiy(worldConfig, openingConfig))) {
+        return false;
+    }
+    return 通用修仙禁词.some((keyword) => text.includes(keyword));
+};
+
+export const buildWorldContextForDiy = (worldConfig: WorldGenConfig, openingConfig?: OpeningConfig): string => {
+    const topicMode = 获取DIY题材模式(worldConfig, openingConfig);
+    const realmInstruction = needsCustomRealmGuardForDiy(worldConfig, openingConfig)
+        ? '当前检测到斗气/斗破类关键词：不要回退成元婴、化神、渡劫等默认修仙命名，境界与世界观应贴合斗气、斗技、异火、血脉、炼药师等作品风格。'
+        : topicMode === '仙侠'
+            ? '仙侠题材应优先使用练气、筑基、金丹、元婴、化神、渡劫等修真口径；不得改写成斗气、斗者、斗师、斗王等斗气体系。'
+            : '请优先根据玩家填写的作品、题材、世界名称和关键词生成专属世界观，不要套用与当前题材无关的默认境界体系。';
+    return [
+        `当前题材：${topicMode}`,
+        `世界名称：${worldConfig.worldName || '未命名世界'}`,
+        `世界版图：${worldConfig.worldSize}`,
+        `宗门密度：${worldConfig.sectDensity}`,
+        `王朝局势：${worldConfig.dynastySetting || '待生成'}`,
+        `天骄/战力设定：${worldConfig.tianjiaoSetting || '待生成'}`,
+        worldConfig.worldExtraRequirement ? `玩家额外要求：${worldConfig.worldExtraRequirement}` : '',
+        realmInstruction
+    ].filter(Boolean).join('\n');
+};
+
+export const buildRealmExtraPromptForDiy = (worldConfig: WorldGenConfig, openingConfig?: OpeningConfig): string => {
+    const topicMode = 获取DIY题材模式(worldConfig, openingConfig);
+    const realmInstruction = needsCustomRealmGuardForDiy(worldConfig, openingConfig)
+        ? '请生成符合斗气/斗破类作品代入感的境界体系，使用斗气、斗技、异火、血脉、炼药师等语义扩展，不得回退成元婴、化神这类默认修仙命名。'
+        : topicMode === '仙侠'
+            ? '仙侠题材应优先使用修真境界，如练气、筑基、金丹、元婴、化神、炼虚、合体、渡劫；不得生成斗者、斗师、斗王、斗皇、斗宗、斗尊等斗气体系。'
+            : '请生成符合本作品/题材代入感的境界体系，优先使用玩家提供的题材关键词，不要回退成无关作品模板。';
+    return [
+        `当前题材：${topicMode}`,
+        `世界名称：${worldConfig.worldName || '未命名世界'}`,
+        `题材关键词：${worldConfig.dynastySetting || ''}；${worldConfig.tianjiaoSetting || ''}；${worldConfig.worldExtraRequirement || ''}`,
+        realmInstruction,
+        '输出必须是完整 <境界体系>，并通过游戏现有境界体系校验。'
+    ].filter(Boolean).join('\n');
+};
 
 const patchRealmRow = (row: RealmDiyRow): RealmDiyRow => ({
     ...row,
@@ -207,14 +240,15 @@ const NewGameDiyTools: React.FC<Props> = ({ worldConfig, charData, openingConfig
         }
         setAiStatus({ type: 'loading', message: '正在生成世界观提示词...' });
         try {
+            const hasCustomRealmGuard = needsCustomRealmGuardForDiy(worldConfig, openingConfig);
             const guardedExtraPrompt = [
                 worldConfig.worldExtraRequirement,
-                needsCustomRealmGuard(worldConfig)
+                hasCustomRealmGuard
                     ? `【硬性禁用】本局是斗气/宗门类题材，世界观与境界命名禁止出现：${通用修仙禁词.join('、')}。必须改用斗气、斗技、丹药、异火、宗门等作品风格术语。`
                     : ''
             ].filter(Boolean).join('\n\n');
             let prompt = await generateWorldData(
-                buildWorldContext(worldConfig),
+                buildWorldContextForDiy(worldConfig, openingConfig),
                 charData || {},
                 currentApi,
                 undefined,
@@ -222,10 +256,10 @@ const NewGameDiyTools: React.FC<Props> = ({ worldConfig, charData, openingConfig
                 undefined,
                 { 启用修炼体系: true, openingConfig }
             );
-            if (needsCustomRealmGuard(worldConfig) && containsGenericRealmTerms(prompt)) {
+            if (hasCustomRealmGuard && containsDisallowedRealmTermsForDiy(prompt, openingConfig, worldConfig)) {
                 setAiStatus({ type: 'loading', message: '世界观初稿含通用修仙词，正在按题材重写...' });
                 prompt = await generateWorldData(
-                    buildWorldContext(worldConfig),
+                    buildWorldContextForDiy(worldConfig, openingConfig),
                     charData || {},
                     currentApi,
                     undefined,
@@ -234,7 +268,7 @@ const NewGameDiyTools: React.FC<Props> = ({ worldConfig, charData, openingConfig
                     { 启用修炼体系: true, openingConfig }
                 );
             }
-            if (needsCustomRealmGuard(worldConfig) && containsGenericRealmTerms(prompt)) {
+            if (hasCustomRealmGuard && containsDisallowedRealmTermsForDiy(prompt, openingConfig, worldConfig)) {
                 throw new Error(`AI 输出仍包含不适合本题材的通用修仙词：${通用修仙禁词.filter((keyword) => prompt.includes(keyword)).join('、')}`);
             }
             onChange(prev => ({ ...prev, manualWorldPrompt: prompt }));
@@ -251,22 +285,23 @@ const NewGameDiyTools: React.FC<Props> = ({ worldConfig, charData, openingConfig
         }
         setAiStatus({ type: 'loading', message: '正在生成境界体系提示词...' });
         try {
+            const hasCustomRealmGuard = needsCustomRealmGuardForDiy(worldConfig, openingConfig);
             let prompt = await generateFandomRealmData(
                 { openingConfig },
                 currentApi,
                 undefined,
-                buildRealmExtraPrompt(worldConfig)
+                buildRealmExtraPromptForDiy(worldConfig, openingConfig)
             );
-            if (needsCustomRealmGuard(worldConfig) && containsGenericRealmTerms(prompt)) {
+            if (hasCustomRealmGuard && containsDisallowedRealmTermsForDiy(prompt, openingConfig, worldConfig)) {
                 setAiStatus({ type: 'loading', message: '境界初稿含通用修仙词，正在按题材重写...' });
                 prompt = await generateFandomRealmData(
                     { openingConfig },
                     currentApi,
                     undefined,
-                    `${buildRealmExtraPrompt(worldConfig)}\n\n上一次输出仍包含 ${通用修仙禁词.join('、')} 等通用修仙词。请完整重写为斗气大陆/宗门/斗技/丹药/异火风格，不得出现这些禁词。`
+                    `${buildRealmExtraPromptForDiy(worldConfig, openingConfig)}\n\n上一次输出仍包含 ${通用修仙禁词.join('、')} 等通用修仙词。请完整重写为斗气大陆/宗门/斗技/丹药/异火风格，不得出现这些禁词。`
                 );
             }
-            if (needsCustomRealmGuard(worldConfig) && containsGenericRealmTerms(prompt)) {
+            if (hasCustomRealmGuard && containsDisallowedRealmTermsForDiy(prompt, openingConfig, worldConfig)) {
                 throw new Error(`AI 输出仍包含不适合本题材的通用修仙词：${通用修仙禁词.filter((keyword) => prompt.includes(keyword)).join('、')}`);
             }
             onChange(prev => ({ ...prev, manualRealmPrompt: prompt }));

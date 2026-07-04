@@ -220,6 +220,7 @@ export interface StoryRequestOptions {
     requireActionOptionsTag?: boolean;
     requireDynamicWorldTag?: boolean;
     validateDialogueFormat?: boolean;
+    knownSpeakers?: string[];
     errorDetailLimit?: number;
     includeReasoning?: boolean;
     disableThinking?: boolean;
@@ -1936,7 +1937,8 @@ const 解析故事响应 = (
         enableTagRepair: requestOptions?.enableTagRepair,
         requireActionOptionsTag: requestOptions?.requireActionOptionsTag,
         requireDynamicWorldTag: requestOptions?.requireDynamicWorldTag,
-        validateDialogueFormat: requestOptions?.validateDialogueFormat
+        validateDialogueFormat: requestOptions?.validateDialogueFormat,
+        knownSpeakers: requestOptions?.knownSpeakers
     }),
     rawText
 });

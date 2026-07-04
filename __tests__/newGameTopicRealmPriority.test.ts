@@ -5,6 +5,12 @@ import { 构建开局世界观生成提示词预览 } from '../utils/worldGenera
 import { 构建官方模式运行时配置, 获取题材顶部时间显示格式 } from '../utils/modeRuntimeProfile';
 import { 规范化开局配置 } from '../utils/openingConfig';
 import { 创建主题默认世界配置 } from '../utils/workshopEngine';
+import {
+    buildRealmExtraPromptForDiy,
+    buildWorldContextForDiy,
+    containsDisallowedRealmTermsForDiy,
+    needsCustomRealmGuardForDiy
+} from '../components/features/NewGame/NewGameDiyTools';
 
 describe('新开局题材模式与手动境界优先级', () => {
     it('仙侠题材启用开局配置时，手动境界提示词优先于固定仙侠境界', () => {
@@ -94,5 +100,30 @@ describe('新开局题材模式与手动境界优先级', () => {
         expect(prompt).toContain('金丹初期');
         expect(prompt).toContain('元婴初期');
         expect(prompt).toContain('不得使用斗气/斗者/斗师/斗王/斗皇/斗宗/斗尊');
+    });
+
+    it('仙侠 DIY AI 辅助不会把元婴化神渡劫当成需要重写的通用禁词', () => {
+        const openingConfig = 规范化开局配置({
+            配置约束启用: true,
+            题材模式: '仙侠',
+            modeRuntimeProfile: 构建官方模式运行时配置('仙侠')
+        });
+        const worldConfig = {
+            ...创建主题默认世界配置('仙侠'),
+            worldName: '玄衡界',
+            dynastySetting: '凡俗王朝与修炼宗门并立',
+            tianjiaoSetting: '灵根、法宝、丹药、秘境、天劫',
+            worldExtraRequirement: '境界体系使用练气、筑基、金丹、元婴、化神、渡劫。'
+        } as any;
+
+        const worldContext = buildWorldContextForDiy(worldConfig, openingConfig);
+        const realmPrompt = buildRealmExtraPromptForDiy(worldConfig, openingConfig);
+
+        expect(needsCustomRealmGuardForDiy(worldConfig, openingConfig)).toBe(false);
+        expect(containsDisallowedRealmTermsForDiy('元婴、化神、渡劫', openingConfig)).toBe(false);
+        expect(worldContext).toContain('当前题材：仙侠');
+        expect(worldContext).not.toContain('不要默认套用元婴、化神、渡劫');
+        expect(realmPrompt).toContain('仙侠题材应优先使用修真境界');
+        expect(realmPrompt).not.toContain('斗气大陆/宗门/斗技/丹药/异火风格');
     });
 });

@@ -74,4 +74,16 @@ describe('GameSettings 高级存档修复', () => {
         expect(html).toContain('2026:12:23:13:30');
         expect(html).toContain('第 3 天');
     });
+
+    it('GameSettings 显示正文词汇审查开关', () => {
+        const html = renderToStaticMarkup(
+            <GameSettings
+                settings={默认游戏设置}
+                onSave={() => undefined}
+            />
+        );
+
+        expect(html).toContain('正文词汇审查');
+        expect(html).toContain('女性模板名黑名单');
+    });
 });
