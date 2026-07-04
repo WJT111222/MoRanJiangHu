@@ -91,6 +91,43 @@ html[data-theme="day"] .novel-decomposition-workbench-backdrop.novel-decompositi
   -webkit-backdrop-filter: none !important;
 }
 
+html[data-theme="day"] .day-mode-novel-dataset-switcher {
+  background: #fffaf0 !important;
+  border-color: rgba(132, 91, 45, 0.24) !important;
+  box-shadow: 0 10px 26px rgba(90, 55, 20, 0.12) !important;
+}
+
+html[data-theme="day"] .day-mode-novel-dataset-switcher .novel-dataset-switcher-label {
+  color: rgba(72, 43, 18, 0.72) !important;
+}
+
+html[data-theme="day"] .day-mode-novel-dataset-switcher .novel-dataset-switcher-button {
+  background: rgba(255, 252, 244, 0.96) !important;
+  border-color: rgba(132, 91, 45, 0.32) !important;
+  color: #40270f !important;
+}
+
+html[data-theme="day"] .day-mode-novel-dataset-switcher .novel-dataset-switcher-button:hover,
+html[data-theme="day"] .day-mode-novel-dataset-switcher .novel-dataset-switcher-button:focus-visible {
+  background: #fffdf8 !important;
+  border-color: rgba(146, 98, 34, 0.72) !important;
+}
+
+html[data-theme="day"] .day-mode-novel-dataset-switcher .novel-dataset-switcher-panel {
+  background: #fffaf0 !important;
+  border-color: rgba(132, 91, 45, 0.34) !important;
+  color: #40270f !important;
+  box-shadow: 0 16px 36px rgba(90, 55, 20, 0.18) !important;
+}
+
+html[data-theme="day"] .day-mode-novel-dataset-switcher .novel-dataset-switcher-option {
+  color: #40270f !important;
+}
+
+html[data-theme="day"] .day-mode-novel-dataset-switcher .novel-dataset-switcher-option:hover {
+  background: rgba(132, 91, 45, 0.08) !important;
+}
+
 .novel-archive-fields {
   display: flex;
   flex-direction: column;

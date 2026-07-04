@@ -43,6 +43,25 @@ describe('小说分解工作台布局', () => {
         expect(source).toContain('切换数据集');
     });
 
+    it('章节筛选和分段校对的数据集切换条位于内容区最顶部', () => {
+        const source = fs.readFileSync(
+            path.join(process.cwd(), 'components/features/Settings/NovelDecompositionSettings.tsx'),
+            'utf8'
+        );
+
+        const switcherIndex = source.indexOf('day-mode-novel-dataset-switcher');
+        const saveActionsIndex = source.indexOf('novel-settings-save-actions');
+        const segmentHeaderIndex = source.indexOf('分段条目双栏校对');
+
+        expect(switcherIndex).toBeGreaterThan(-1);
+        expect(saveActionsIndex).toBeGreaterThan(-1);
+        expect(segmentHeaderIndex).toBeGreaterThan(-1);
+        expect(source).toContain('novel-dataset-switcher-button');
+        expect(source).toContain('novel-dataset-switcher-panel');
+        expect(switcherIndex).toBeLessThan(saveActionsIndex);
+        expect(switcherIndex).toBeLessThan(segmentHeaderIndex);
+    });
+
     it('分段档案编辑区使用卡片分区网格避免字段浪费或截断', () => {
         const source = fs.readFileSync(
             path.join(process.cwd(), 'components/features/Settings/NovelDecompositionSettings.tsx'),

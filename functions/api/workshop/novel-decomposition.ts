@@ -14,9 +14,18 @@ const WORKSHOP_PREFIX = 'moranjianghu/workshop/novel-decomposition';
 const MAX_ZIP_BYTES = 64 * 1024 * 1024;
 const MAX_D1_ZIP_FALLBACK_BYTES = 4 * 1024 * 1024;
 const OPENLIST_METADATA_TIMEOUT_MS = 12_000;
-const OPENLIST_DOWNLOAD_TIMEOUT_MS = 45_000;
+const OPENLIST_DOWNLOAD_TIMEOUT_MS = 180_000;
+const OPENLIST_DOWNLOAD_CHUNK_BYTES = 4 * 1024 * 1024;
+const OPENLIST_UPLOAD_PART_BYTES = 2 * 1024 * 1024;
 const CHINA_TIMEZONE_OFFSET_MS = 8 * 60 * 60 * 1000;
 const encoder = new TextEncoder();
+
+type OneDrivePart = {
+    index: number;
+    path: string;
+    size: number;
+    sha256?: string;
+};
 
 type WorkshopEntry = {
     id: string;
@@ -38,6 +47,8 @@ type WorkshopEntry = {
     hi168Url?: string;
     /** When the ZIP is stored on OneDrive, this holds the OpenList path. */
     oneDrivePath?: string;
+    /** Large ZIP fallback: the original ZIP split into ordered OneDrive parts. */
+    oneDriveParts?: OneDrivePart[];
     ownerUserId?: string;
     ownerUsername?: string;
     anonymous?: boolean;
@@ -155,6 +166,126 @@ const appendUnique = (target: string[], value: string): void => {
     if (text && !target.includes(text)) target.push(text);
 };
 
+type OpenListDownloadBytes = {
+    response: Response;
+    bytes: Uint8Array;
+};
+
+type ParsedContentRange = {
+    start: number;
+    end: number;
+    total: number;
+};
+
+const parseContentRange = (value: string | null): ParsedContentRange | null => {
+    const match = readString(value).match(/^bytes\s+(\d+)-(\d+)\/(\d+)$/i);
+    if (!match) return null;
+    const start = Number(match[1]);
+    const end = Number(match[2]);
+    const total = Number(match[3]);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isFinite(total)) return null;
+    if (start < 0 || end < start || total <= 0 || end >= total) return null;
+    return { start, end, total };
+};
+
+const isZipDownloadResponse = (response: Response): boolean => {
+    if (!response.ok && response.status !== 206) return false;
+    const contentType = response.headers.get('Content-Type') || '';
+    return !/text\/html|application\/json/i.test(contentType);
+};
+
+const fetchOpenListDownloadBytes = async (
+    downloadUrl: string,
+    headers?: Record<string, string>
+): Promise<OpenListDownloadBytes> => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), OPENLIST_DOWNLOAD_TIMEOUT_MS);
+    try {
+        const response = await fetch(downloadUrl, {
+            headers,
+            signal: controller.signal
+        });
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        return { response, bytes };
+    } finally {
+        clearTimeout(timeout);
+    }
+};
+
+const mergeZipChunks = (chunks: Uint8Array[], totalBytes: number): Uint8Array => {
+    if (totalBytes <= 0 || totalBytes > MAX_ZIP_BYTES) throw new Error('OneDrive ZIP 大小超出限制');
+    const merged = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+        if (chunk.byteLength <= 0) throw new Error('OneDrive ZIP 分片为空');
+        if (offset + chunk.byteLength > totalBytes) throw new Error('OneDrive ZIP 分片大小异常');
+        merged.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+    if (offset !== totalBytes) throw new Error('OneDrive ZIP 分片未完整下载');
+    return merged;
+};
+
+const downloadOneDriveZipByRanges = async (downloadUrl: string): Promise<Uint8Array | null> => {
+    const firstEnd = OPENLIST_DOWNLOAD_CHUNK_BYTES - 1;
+    const first = await fetchOpenListDownloadBytes(downloadUrl, { Range: `bytes=0-${firstEnd}` });
+    if (!isZipDownloadResponse(first.response)) return null;
+    if (first.bytes.byteLength <= 0) throw new Error('OneDrive ZIP 响应为空');
+    if (first.response.status === 200) return first.bytes;
+    if (first.response.status !== 206) return null;
+
+    const firstRange = parseContentRange(first.response.headers.get('Content-Range'));
+    if (!firstRange || firstRange.start !== 0) return null;
+    if (firstRange.total > MAX_ZIP_BYTES) throw new Error('OneDrive ZIP 过大');
+    const expectedFirstLength = firstRange.end - firstRange.start + 1;
+    if (first.bytes.byteLength !== expectedFirstLength) throw new Error('OneDrive ZIP 首分片大小不匹配');
+
+    const chunks: Uint8Array[] = [first.bytes];
+    let nextStart = firstRange.end + 1;
+    while (nextStart < firstRange.total) {
+        const nextEnd = Math.min(firstRange.total - 1, nextStart + OPENLIST_DOWNLOAD_CHUNK_BYTES - 1);
+        const part = await fetchOpenListDownloadBytes(downloadUrl, { Range: `bytes=${nextStart}-${nextEnd}` });
+        if (!isZipDownloadResponse(part.response) || part.response.status !== 206) {
+            throw new Error('OneDrive ZIP 分片下载失败');
+        }
+        const range = parseContentRange(part.response.headers.get('Content-Range'));
+        if (!range || range.start !== nextStart || range.total !== firstRange.total) {
+            throw new Error('OneDrive ZIP 分片范围异常');
+        }
+        const expectedLength = range.end - range.start + 1;
+        if (part.bytes.byteLength !== expectedLength) throw new Error('OneDrive ZIP 分片大小不匹配');
+        chunks.push(part.bytes);
+        nextStart = range.end + 1;
+    }
+
+    return mergeZipChunks(chunks, firstRange.total);
+};
+
+const downloadOneDriveZipBytes = async (downloadUrl: string): Promise<Uint8Array> => {
+    const ranged = await downloadOneDriveZipByRanges(downloadUrl);
+    if (ranged && ranged.byteLength > 0) return ranged;
+
+    // Range is not supported by this endpoint; use a single buffered read as a compatibility fallback.
+    const full = await fetchOpenListDownloadBytes(downloadUrl);
+    if (!isZipDownloadResponse(full.response) || full.bytes.byteLength <= 0) {
+        throw new Error('OneDrive ZIP 下载响应无效');
+    }
+    if (full.bytes.byteLength > MAX_ZIP_BYTES) throw new Error('OneDrive ZIP 过大');
+    return full.bytes;
+};
+
+const downloadOneDrivePathBytes = async (env: any, oneDrivePath: string): Promise<Uint8Array | null> => {
+    const downloadUrls = await getOneDriveDownloadCandidates(env, oneDrivePath);
+    for (const downloadUrl of downloadUrls) {
+        try {
+            return await downloadOneDriveZipBytes(downloadUrl);
+        } catch {
+            // Try the next signed URL candidate.
+        }
+    }
+    return null;
+};
+
 /**
  * Upload a ZIP to OneDrive via OpenList PUT API.
  * Returns the OneDrive path on success, empty string on failure.
@@ -169,7 +300,19 @@ const describeOpenListUploadFailure = (response: Response, text: string, payload
     return `OpenList 上传失败：HTTP ${response.status}${payload?.code ? ` / code ${payload.code}` : ''}，${detail}`;
 };
 
-const putToOneDrive = async (env: any, oneDrivePath: string, zipBytes: Uint8Array): Promise<{ ok: boolean; path?: string; error?: string }> => {
+type OneDrivePutResult = {
+    ok: boolean;
+    path?: string;
+    parts?: OneDrivePart[];
+    error?: string;
+};
+
+const putBytesToOneDrive = async (
+    env: any,
+    oneDrivePath: string,
+    bytes: Uint8Array,
+    contentType: string
+): Promise<OneDrivePutResult> => {
     const token = getOpenListToken(env);
     if (!token) return { ok: false, error: '缺少 MORAN_OPENLIST_AUTH_TOKEN' };
     const apiBase = getOpenListApiBase(env);
@@ -178,10 +321,10 @@ const putToOneDrive = async (env: any, oneDrivePath: string, zipBytes: Uint8Arra
             method: 'PUT',
             headers: {
                 'Authorization': token,
-                'Content-Type': 'application/zip',
+                'Content-Type': contentType,
                 'File-Path': oneDrivePath
             },
-            body: zipBytes
+            body: bytes
         });
         const text = await response.text().catch(() => '');
         let payload: any = null;
@@ -197,6 +340,46 @@ const putToOneDrive = async (env: any, oneDrivePath: string, zipBytes: Uint8Arra
     } catch (error: any) {
         return { ok: false, error: `OpenList 上传请求异常：${error?.message || error || '未知错误'}` };
     }
+};
+
+const putToOneDrive = async (env: any, oneDrivePath: string, zipBytes: Uint8Array): Promise<OneDrivePutResult> => (
+    putBytesToOneDrive(env, oneDrivePath, zipBytes, 'application/zip')
+);
+
+const buildOneDrivePartPath = (oneDrivePath: string, partIndex: number): string => {
+    const lastSlash = oneDrivePath.lastIndexOf('/');
+    const dir = lastSlash >= 0 ? oneDrivePath.slice(0, lastSlash) : oneDrivePath;
+    const partName = `part-${String(partIndex + 1).padStart(4, '0')}.bin`;
+    return `${dir}/parts/${partName}`;
+};
+
+const putToOneDriveParts = async (
+    env: any,
+    oneDrivePath: string,
+    zipBytes: Uint8Array
+): Promise<OneDrivePutResult> => {
+    const parts: OneDrivePart[] = [];
+    const totalParts = Math.ceil(zipBytes.byteLength / OPENLIST_UPLOAD_PART_BYTES);
+    for (let index = 0; index < totalParts; index += 1) {
+        const start = index * OPENLIST_UPLOAD_PART_BYTES;
+        const end = Math.min(zipBytes.byteLength, start + OPENLIST_UPLOAD_PART_BYTES);
+        const partBytes = zipBytes.subarray(start, end);
+        const partPath = buildOneDrivePartPath(oneDrivePath, index);
+        const result = await putBytesToOneDrive(env, partPath, partBytes, 'application/octet-stream');
+        if (!result.ok) {
+            return {
+                ok: false,
+                error: `OpenList 分片上传失败：第 ${index + 1}/${totalParts} 片。${result.error || '未知错误'}`
+            };
+        }
+        parts.push({
+            index,
+            path: partPath,
+            size: partBytes.byteLength,
+            sha256: await sha256HexBytes(partBytes)
+        });
+    }
+    return { ok: true, parts };
 };
 
 /**
@@ -273,19 +456,53 @@ const proxyOneDriveZip = async (
     const downloadUrls = await getOneDriveDownloadCandidates(env, oneDrivePath);
     for (const downloadUrl of downloadUrls) {
         try {
-            const upstream = await fetchWithTimeout(downloadUrl, {}, OPENLIST_DOWNLOAD_TIMEOUT_MS);
-            if (!upstream.ok || !upstream.body) continue;
-            const contentType = upstream.headers.get('Content-Type') || '';
-            if (/text\/html|application\/json/i.test(contentType)) continue;
+            const zipBytes = await downloadOneDriveZipBytes(downloadUrl);
             const headers = new Headers(zipHeaders);
-            const contentLength = upstream.headers.get('Content-Length');
-            if (contentLength) headers.set('Content-Length', contentLength);
-            return new Response(upstream.body, { status: 200, headers });
+            headers.set('Content-Length', String(zipBytes.byteLength));
+            return new Response(zipBytes, { status: 200, headers });
         } catch {
             // Try the next download URL candidate.
         }
     }
     return null;
+};
+
+const proxyOneDrivePartZip = async (
+    env: any,
+    parts: OneDrivePart[],
+    expectedSize: number,
+    expectedSha256: string,
+    zipHeaders: Record<string, string>
+): Promise<Response | null> => {
+    const orderedParts = [...parts]
+        .filter((part) => readString(part?.path) && Number.isFinite(Number(part?.index)))
+        .sort((left, right) => Number(left.index) - Number(right.index));
+    if (orderedParts.length <= 0) return null;
+
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    for (const part of orderedParts) {
+        const chunk = await downloadOneDrivePathBytes(env, part.path);
+        if (!chunk || chunk.byteLength <= 0) return null;
+        if (Number(part.size) > 0 && chunk.byteLength !== Number(part.size)) return null;
+        if (part.sha256) {
+            const partSha = await sha256HexBytes(chunk);
+            if (partSha !== part.sha256) return null;
+        }
+        chunks.push(chunk);
+        totalBytes += chunk.byteLength;
+        if (totalBytes > MAX_ZIP_BYTES) return null;
+    }
+
+    if (Number(expectedSize) > 0 && totalBytes !== Number(expectedSize)) return null;
+    const zipBytes = mergeZipChunks(chunks, totalBytes);
+    if (expectedSha256) {
+        const actualSha = await sha256HexBytes(zipBytes);
+        if (actualSha !== expectedSha256) return null;
+    }
+    const headers = new Headers(zipHeaders);
+    headers.set('Content-Length', String(zipBytes.byteLength));
+    return new Response(zipBytes, { status: 200, headers });
 };
 
 const getPrefix = (env: any): string => (
@@ -571,14 +788,21 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
                 ...CORS_HEADERS
             };
 
-            // 1. Try OneDrive proxy download (for entries with oneDrivePath).
+            // 1. Try OneDrive part download for large ZIPs that were uploaded in chunks.
+            if (Array.isArray(entry.oneDriveParts) && entry.oneDriveParts.length > 0) {
+                const proxied = await proxyOneDrivePartZip(env, entry.oneDriveParts, entry.size, entry.sha256, zipHeaders);
+                if (proxied) return proxied;
+                // Part download failed — fall through to legacy/full ZIP paths.
+            }
+
+            // 2. Try OneDrive proxy download (for entries with oneDrivePath).
             if (entry.oneDrivePath) {
                 const proxied = await proxyOneDriveZip(env, entry.oneDrivePath, zipHeaders);
                 if (proxied) return proxied;
                 // OneDrive signed URL failed — fall through to D1.
             }
 
-            // 2. Try D1-backed bucket.
+            // 3. Try D1-backed bucket.
             const bucket = getBucket(env);
             const object = bucket ? await bucket.get(entry.r2Key) : null;
 
@@ -599,8 +823,12 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
                 return new Response(zipBytes, { headers: zipHeaders });
             }
 
-            // 3. Last resort: if entry has oneDrivePath but D1 fetch also failed,
+            // 4. Last resort: if entry has OneDrive metadata but D1 fetch also failed,
             //    try OneDrive signing + same-origin proxy once more (rare edge case).
+            if (Array.isArray(entry.oneDriveParts) && entry.oneDriveParts.length > 0) {
+                const proxied = await proxyOneDrivePartZip(env, entry.oneDriveParts, entry.size, entry.sha256, zipHeaders);
+                if (proxied) return proxied;
+            }
             if (entry.oneDrivePath) {
                 const proxied = await proxyOneDriveZip(env, entry.oneDrivePath, zipHeaders);
                 if (proxied) return proxied;
@@ -707,14 +935,21 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
             if (!odResult.ok) {
                 const uploadError = odResult.error ? `原因：${odResult.error}` : '原因：未知错误';
                 if (zipBytes.byteLength > MAX_D1_ZIP_FALLBACK_BYTES) {
-                    throw new Error(`OneDrive 上传失败，当前 ZIP 较大，已停止发布以避免生成不可下载的创意工坊模块。${uploadError}`);
+                    const partResult = await putToOneDriveParts(env, odPath, zipBytes);
+                    if (!partResult.ok || !partResult.parts?.length) {
+                        const partError = partResult.error ? `分片原因：${partResult.error}` : '分片原因：未知错误';
+                        throw new Error(`OneDrive 上传失败，当前 ZIP 较大，整包上传失败后分片上传也失败，已停止发布以避免生成不可下载的创意工坊模块。${uploadError}；${partError}`);
+                    }
+                    entry.oneDrivePath = undefined;
+                    entry.oneDriveParts = partResult.parts;
+                } else {
+                    // OneDrive upload failed — small ZIPs can still use D1 fallback.
+                    entry.oneDrivePath = undefined;
+                    await bucket.put(keys.zipKey, zipBytesToJsonArray(zipBytes), {
+                        httpMetadata: { contentType: 'application/zip', cacheControl: 'public, max-age=31536000, immutable' },
+                        customMetadata: { sha256, workshopId: id }
+                    }).catch(() => { throw new Error('ZIP 文件上传失败，OneDrive 和 D1 均不可用。'); });
                 }
-                // OneDrive upload failed — small ZIPs can still use D1 fallback.
-                entry.oneDrivePath = undefined;
-                await bucket.put(keys.zipKey, zipBytesToJsonArray(zipBytes), {
-                    httpMetadata: { contentType: 'application/zip', cacheControl: 'public, max-age=31536000, immutable' },
-                    customMetadata: { sha256, workshopId: id }
-                }).catch(() => { throw new Error('ZIP 文件上传失败，OneDrive 和 D1 均不可用。'); });
             }
         } else {
             if (zipBytes.byteLength > MAX_D1_ZIP_FALLBACK_BYTES) {

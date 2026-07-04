@@ -54,6 +54,10 @@ import {
 import { 发布创意工坊模块, 导入本地创意工坊模块 } from '../../../services/creativeWorkshop';
 import { 构建小说拆分模式包创意工坊模块, AI补全小说模式包配置 } from '../../../services/novelDecompositionWorkshopBridge';
 import { generateNovelSegmentFieldCompletion } from '../../../services/ai/storyTasks';
+import {
+    构建小说分段字段补全原文输入,
+    构建小说分段字段补全备用上下文
+} from '../../../services/novelSegmentFieldCompletionContext';
 import type { 分段字段AI补全结果 } from '../../../prompts/runtime/novelSegmentFieldCompletion';
 import { 读取云端游玩会话 } from '../../../services/cloudPlayService';
 
@@ -773,9 +777,10 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
     }), [selectedDataset?.注入树]);
     const selectedDatasetTasks = useMemo(() => tasks.filter((item) => item.数据集ID === (selectedDataset?.id || '')), [tasks, selectedDataset?.id]);
     const selectedSegment = selectedDataset?.分段列表.find((item) => item.id === selectedSegmentId) || selectedDataset?.分段列表[0] || null;
+    const shouldShowTopDatasetSwitcher = ['chapters', 'segments', 'tasks', 'snapshots'].includes(mobileTab);
     const 渲染数据集切换控件 = (label = '切换数据集') => (
-        <div className="w-full md:w-80 shrink-0">
-            <div className="text-xs text-gray-500 mb-2 font-medium">{label}</div>
+        <div className="novel-dataset-switcher-control relative z-[70] w-full shrink-0 md:w-80">
+            <div className="novel-dataset-switcher-label mb-2 text-xs font-medium text-gray-500">{label}</div>
             <InlineSelect
                 value={selectedDataset?.id || ''}
                 options={datasetList.map((dataset) => ({
@@ -785,7 +790,9 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                 onChange={(value) => setSelectedDatasetId(value)}
                 placeholder={datasetList.length > 0 ? '选择数据集' : '暂无数据集'}
                 disabled={datasetList.length <= 0}
-                buttonClassName="bg-black/40 border-white/10 py-3 rounded-lg hover:border-wuxia-gold/30 hover:bg-black/60 transition-all text-gray-200"
+                buttonClassName="novel-dataset-switcher-button bg-black/40 border-white/10 py-3 rounded-lg hover:border-wuxia-gold/30 hover:bg-black/60 transition-all text-gray-200"
+                panelClassName="novel-dataset-switcher-panel z-[80]"
+                optionClassName="novel-dataset-switcher-option text-sm"
             />
         </div>
     );
@@ -2011,8 +2018,8 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
         setSegmentFieldCompletionRunning(true);
         setSegmentFieldCompletionLog('AI 补全分段字段中...\n');
         try {
-            const result = await generateNovelSegmentFieldCompletion({
-                segmentOriginalText: selectedSegment.原文内容 || '',
+            const 构建请求参数 = (segmentOriginalText: string) => ({
+                segmentOriginalText,
                 segmentTitle: selectedSegment.标题 || '',
                 existing角色档案: selectedSegment.角色档案,
                 existing势力档案: selectedSegment.势力档案,
@@ -2025,12 +2032,39 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                 existing伏笔线索: selectedSegment.伏笔线索,
                 existing回收点: selectedSegment.回收点,
                 existing章节节奏: selectedSegment.章节节奏,
-            }, apiConfig, {
-                stream: true,
-                onDelta: (delta: string, accumulated: string) => {
-                    setSegmentFieldCompletionLog(accumulated);
-                }
             });
+            const 运行补全 = async (segmentOriginalText: string, logPrefix = '') => generateNovelSegmentFieldCompletion(
+                构建请求参数(segmentOriginalText),
+                apiConfig,
+                {
+                    stream: true,
+                    onDelta: (delta: string, accumulated: string) => {
+                        setSegmentFieldCompletionLog(logPrefix ? `${logPrefix}\n${accumulated}` : accumulated);
+                    }
+                }
+            );
+
+            let result: Awaited<ReturnType<typeof generateNovelSegmentFieldCompletion>>;
+            const 原文输入 = 构建小说分段字段补全原文输入(selectedSegment);
+            if ((selectedSegment.原文内容 || '').trim()) {
+                try {
+                    result = await 运行补全(原文输入);
+                } catch (firstError: any) {
+                    const retryPrefix = [
+                        '原文补全未返回可解析结果，正在改用已分解结构化上下文重试。',
+                        `原始错误：${firstError?.message || '未知错误'}`
+                    ].join('\n');
+                    setSegmentFieldCompletionLog(`${retryPrefix}\n`);
+                    try {
+                        result = await 运行补全(构建小说分段字段补全备用上下文(selectedSegment), retryPrefix);
+                    } catch (fallbackError: any) {
+                        throw new Error(`原文补全失败，备用上下文补全也失败：${fallbackError?.message || firstError?.message || '未知错误'}`);
+                    }
+                }
+            } else {
+                setSegmentFieldCompletionLog('当前分段没有原文内容，正在改用已分解结构化上下文补全。\n');
+                result = await 运行补全(构建小说分段字段补全备用上下文(selectedSegment), '当前分段没有原文内容，正在改用已分解结构化上下文补全。');
+            }
 
             // Merge AI completion into segment draft
             const patch = result.completion;
@@ -2384,6 +2418,20 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                     ? 'p-3 pb-20 md:p-4 md:pb-4 space-y-3'
                     : 'p-4 pb-28 md:p-6 md:pb-8 lg:p-8 space-y-6'
             }`}>
+            {shouldShowTopDatasetSwitcher && (
+                <div className="day-mode-novel-dataset-switcher relative z-[60] shrink-0 overflow-visible rounded-xl border border-wuxia-gold/20 bg-[#fffaf0] p-4 shadow-[0_10px_26px_rgba(90,55,20,0.12)]">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                        <div className="min-w-0">
+                            <div className="text-xs font-semibold text-amber-900/70">当前小说分解数据集</div>
+                            <div className="mt-1 truncate text-sm font-semibold text-amber-950" title={selectedDataset?.作品名 || selectedDataset?.标题 || ''}>
+                                {selectedDataset?.作品名 || selectedDataset?.标题 || '未选择数据集'}
+                            </div>
+                        </div>
+                        {渲染数据集切换控件('切换数据集')}
+                    </div>
+                </div>
+            )}
+
             <div className="novel-settings-save-actions flex flex-wrap items-center justify-end gap-3 rounded-xl border border-emerald-500/15 bg-black/25 p-3 shadow-sm">
                 {message && <p className="mr-auto text-xs text-emerald-300 animate-pulse">{message}</p>}
                 <GameButton onClick={handleSave} variant="primary" className="min-w-32">
@@ -2992,7 +3040,6 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                 管理当前数据集的拆章结果，支持批量勾选删除无需注入的目录或番外。
                             </div>
                         </div>
-                        {渲染数据集切换控件()}
                     </div>
                 </div>
 
@@ -3175,7 +3222,6 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
                                 手工校对分段概括、事实约束、关键事件与角色推进，并支持临时关闭注入或打回重做。
                             </div>
                         </div>
-                        {渲染数据集切换控件()}
                     </div>
                 </div>
 
