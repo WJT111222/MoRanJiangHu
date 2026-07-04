@@ -14,6 +14,7 @@ export type UpdateManifest = {
     apkUrl?: string;
     directApkUrl?: string;
     apkUrls?: string[];
+    oneDriveDirectApkUrl?: string;
     latestApkUrl?: string;
     manifestUrl?: string;
     githubRepoUrl?: string;
@@ -278,6 +279,7 @@ const resolveNativeApkDownloadUrls = (manifest: UpdateManifest): string[] => {
     const rawCandidates = [
         manifest.directApkUrl,
         ...(Array.isArray(manifest.apkUrls) ? manifest.apkUrls : []),
+        manifest.oneDriveDirectApkUrl,
         manifest.apkUrl,
         manifest.latestApkUrl,
         RELEASE_INFO.apkDownloadUrl
@@ -302,7 +304,10 @@ const probeAndSortUrlsByLatency = async (urls: string[], timeoutMs = 5000): Prom
         const timer = setTimeout(() => controller.abort(), timeoutMs);
         const start = Date.now();
         try {
-            await fetch(url, { method: 'HEAD', signal: controller.signal, cache: 'no-store' });
+            const response = await fetch(url, { method: 'HEAD', signal: controller.signal, cache: 'no-store' });
+            if (!response.ok && (response.status < 300 || response.status >= 400)) {
+                throw new Error(`HEAD ${response.status}`);
+            }
             return { url, latencyMs: Date.now() - start, index };
         } catch {
             return { url, latencyMs: Infinity, index };
@@ -314,6 +319,10 @@ const probeAndSortUrlsByLatency = async (urls: string[], timeoutMs = 5000): Prom
     const results = await Promise.all(urls.map((url, index) => probeOne(url, index)));
     return results
         .sort((a, b) => {
+            const aAvailable = Number.isFinite(a.latencyMs);
+            const bAvailable = Number.isFinite(b.latencyMs);
+            if (aAvailable && !bAvailable) return -1;
+            if (!aAvailable && bAvailable) return 1;
             const latencyDelta = a.latencyMs - b.latencyMs;
             if (Number.isFinite(latencyDelta) && Math.abs(latencyDelta) > 100) return latencyDelta;
             return a.index - b.index;
@@ -349,6 +358,9 @@ const installUpdateInNativeApp = async (manifest: UpdateManifest) => {
     const getChannelLabel = (url: string): string => {
         const lower = url.toLowerCase();
         if (lower.includes('provider=github') || lower.includes('objects.githubusercontent.com') || lower.includes('github.com/ypq123456789/moranjianghu/releases')) return 'GitHub';
+        if (lower.includes('provider=b2') || lower.includes('backblazeb2.com') || lower.includes('obs.bacon159.pp.ua')) return 'B2';
+        if (lower.includes('provider=onedrive-direct') || lower.includes('provider=onedrive-origin') || lower.includes('159.138.7.126:5244')) return 'OneDrive直连';
+        if (lower.includes('provider=onedrive') || lower.includes('openlist.bacon.de5.net')) return 'OneDrive';
         if (lower.includes('provider=r2') || lower.includes('download.bacon.de5.net')) return 'R2';
         if (lower.includes('provider=hi168') || lower.includes('s3.hi168.com')) return 'S3';
         if (lower.includes('/api/apk/')) return 'CDN';

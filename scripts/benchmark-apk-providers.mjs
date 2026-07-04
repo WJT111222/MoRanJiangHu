@@ -42,6 +42,11 @@ const providers = [
     provider: 'onedrive',
     label: 'OneDrive (OpenList 代理)',
     url: `${websiteBaseUrl}/api/apk/latest.apk?provider=onedrive`
+  },
+  {
+    provider: 'onedrive-direct',
+    label: 'OneDrive (OpenList 直连)',
+    url: `${websiteBaseUrl}/api/apk/latest.apk?provider=onedrive-direct`
   }
 ];
 

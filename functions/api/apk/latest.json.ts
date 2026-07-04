@@ -5,6 +5,7 @@ import {
     buildTextResponse,
     readReleaseBaseUrl,
     readManifestPayload,
+    readManifestPreferredApkProvider,
     readManifestVersionName
 } from './_shared';
 
@@ -60,28 +61,32 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
             ? `${baseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=b2`
             : `${baseUrl}/api/apk/latest.apk?provider=b2`;
         const oneDriveApkUrl = `${baseUrl}/api/apk/latest.apk?provider=onedrive`;
+        const oneDriveDirectApkUrl = `${baseUrl}/api/apk/latest.apk?provider=onedrive-direct`;
         const githubApkUrl = versionedFileName
             ? `${baseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=github`
             : `${baseUrl}/api/apk/latest.apk?provider=github`;
         const githubDirectApkUrl = versionedFileName ? buildGitHubReleaseDownloadUrl(versionName, versionedFileName) : '';
         const githubAcceleratedApkUrls = versionedFileName ? buildGitHubAcceleratedUrls(versionName, versionedFileName) : [];
+        const preferredApkProvider = readManifestPreferredApkProvider(payload);
+        const orderedApkUrls = [
+            latestApkUrl,
+            b2ApkUrl,
+            ...githubAcceleratedApkUrls,
+            githubApkUrl,
+            githubDirectApkUrl,
+            oneDriveApkUrl,
+            oneDriveDirectApkUrl
+        ].filter(Boolean);
         const nextPayload = {
             ...payload,
             latest: {
                 ...payload?.latest,
                 versionName,
                 versionCode: payload?.latest?.versionCode || payload?.versionCode,
-                preferredApkProvider: payload?.latest?.preferredApkProvider || payload?.preferredApkProvider || 'onedrive',
+                preferredApkProvider,
                 apkUrl: stableApkUrl,
                 directApkUrl: latestApkUrl,
-                apkUrls: [
-                    latestApkUrl,
-                    oneDriveApkUrl,
-                    stableApkUrl,
-                    githubApkUrl,
-                    ...githubAcceleratedApkUrls,
-                    b2ApkUrl
-                ].filter(Boolean),
+                apkUrls: Array.from(new Set(orderedApkUrls)),
                 r2ApkUrl: '',
                 hi168ApkUrl: '',
                 b2ApkUrl,
@@ -89,6 +94,7 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
                 githubDirectApkUrl,
                 githubAcceleratedApkUrls,
                 oneDriveApkUrl,
+                oneDriveDirectApkUrl,
                 latestApkUrl,
                 manifestUrl: stableManifestUrl
             }

@@ -13,7 +13,7 @@ export const readEnvString = (env: any, name: string, fallback = ''): string => 
     typeof env?.[name] === 'string' && env[name].trim() ? env[name].trim() : fallback
 );
 
-export type ApkProvider = 'r2' | 'hi168' | 'b2' | 'github' | 'onedrive';
+export type ApkProvider = 'r2' | 'hi168' | 'b2' | 'github' | 'onedrive' | 'onedrive-direct' | 'onedrive-origin';
 
 export const readReleaseBaseUrl = (request: Request, env: any): string => {
     const configured = readEnvString(env, 'MORAN_RELEASE_BASE_URL');
@@ -141,12 +141,22 @@ export const buildVersionedApkFileName = (versionName: unknown): string => {
 
 export const readManifestPreferredApkProvider = (payload: any): ApkProvider => {
     const provider = payload?.latest?.preferredApkProvider || payload?.preferredApkProvider;
-    return provider === 'github' || provider === 'b2' || provider === 'onedrive' ? provider : 'onedrive';
+    return provider === 'github' || provider === 'b2' || provider === 'onedrive' || provider === 'onedrive-direct' || provider === 'onedrive-origin'
+        ? provider
+        : 'b2';
 };
 
+export const isOneDriveDirectProvider = (provider: unknown): boolean => (
+    provider === 'onedrive-direct' || provider === 'onedrive-origin'
+);
+
+export const isOneDriveProvider = (provider: unknown): boolean => (
+    provider === 'onedrive' || isOneDriveDirectProvider(provider)
+);
+
 export const pickApkProvider = (_request: Request, _manifestPayload: any): ApkProvider => {
-    // hi168 S3 and R2 are retired; OneDrive/OpenList is the primary APK channel.
-    return 'onedrive';
+    // hi168 S3 and R2 are retired; B2 is the default APK channel, with OneDrive/GitHub as fallbacks.
+    return 'b2';
 };
 
 export const buildVersionedApkHeaders = (
@@ -324,37 +334,69 @@ export const buildB2ApkRedirect = async (
 const ONEDRIVE_APK_DIR = '/Onedrive/MoRanJiangHu/releases';
 const ONEDRIVE_APK_FILE = 'latest.apk';
 const ONEDRIVE_SIGN_CACHE_CONTROL = 'public, max-age=3600';
+const DEFAULT_OPENLIST_PUBLIC_BASE_URL = 'https://openlist.bacon.de5.net';
+const DEFAULT_OPENLIST_DIRECT_BASE_URL = 'http://159.138.7.126:5244';
+
+const trimBaseUrl = (value: string): string => value.replace(/\/+$/, '');
+
+const readOpenListPublicBaseUrl = (env: any): string => trimBaseUrl(
+    readEnvString(env, 'MORAN_OPENLIST_PUBLIC_BASE_URL')
+    || readEnvString(env, 'MORAN_OPENLIST_BASE_URL', DEFAULT_OPENLIST_PUBLIC_BASE_URL)
+);
+
+const readOpenListApiBaseUrl = (env: any): string => trimBaseUrl(
+    readEnvString(env, 'MORAN_OPENLIST_API_BASE_URL')
+    || readEnvString(env, 'MORAN_OPENLIST_BASE_URL', DEFAULT_OPENLIST_PUBLIC_BASE_URL)
+);
+
+const readOpenListDirectBaseUrl = (env: any): string => trimBaseUrl(
+    readEnvString(env, 'MORAN_OPENLIST_DIRECT_BASE_URL')
+    || readEnvString(env, 'MORAN_OPENLIST_API_BASE_URL')
+    || DEFAULT_OPENLIST_DIRECT_BASE_URL
+);
+
+const readOpenListApiBaseUrlCandidates = (env: any): string[] => {
+    const candidates = [
+        readOpenListApiBaseUrl(env),
+        readOpenListPublicBaseUrl(env),
+        DEFAULT_OPENLIST_PUBLIC_BASE_URL
+    ].map(trimBaseUrl).filter(Boolean);
+    return Array.from(new Set(candidates));
+};
 
 const fetchOneDriveApkSign = async (env: any): Promise<string | null> => {
     const authToken = env?.MORAN_OPENLIST_AUTH_TOKEN;
     if (!authToken) return null;
-    const baseUrl = readEnvString(env, 'MORAN_OPENLIST_BASE_URL', 'https://openlist.bacon.de5.net').replace(/\/+$/, '');
-    try {
-        const response = await fetch(`${baseUrl}/api/fs/list`, {
-            method: 'POST',
-            headers: { 'Authorization': authToken, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ path: ONEDRIVE_APK_DIR, password: '', page: 1, per_page: 100, refresh: false }),
-        });
-        if (!response.ok) return null;
-        const json = await response.json() as any;
-        if (json?.code !== 200 || !Array.isArray(json?.data?.content)) return null;
-        const apkItem = json.data.content.find(
-            (item: any) => item?.name === ONEDRIVE_APK_FILE && !item?.is_dir && item?.sign
-        );
-        return apkItem?.sign || null;
-    } catch {
-        return null;
+    for (const baseUrl of readOpenListApiBaseUrlCandidates(env)) {
+        try {
+            const response = await fetch(`${baseUrl}/api/fs/list`, {
+                method: 'POST',
+                headers: { 'Authorization': authToken, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: ONEDRIVE_APK_DIR, password: '', page: 1, per_page: 100, refresh: false }),
+            });
+            if (!response.ok) continue;
+            const json = await response.json() as any;
+            if (json?.code !== 200 || !Array.isArray(json?.data?.content)) continue;
+            const apkItem = json.data.content.find(
+                (item: any) => item?.name === ONEDRIVE_APK_FILE && !item?.is_dir && item?.sign
+            );
+            if (apkItem?.sign) return apkItem.sign;
+        } catch {
+            // Try the next OpenList API base. The final download URL still follows the requested provider.
+        }
     }
+    return null;
 };
 
 export const buildOneDriveApkRedirect = async (
     env: any,
     fileName: string,
-    cacheControl = APK_LATEST_CACHE_CONTROL
+    cacheControl = APK_LATEST_CACHE_CONTROL,
+    mode: 'public' | 'direct' = 'public'
 ): Promise<Response | null> => {
     const sign = await fetchOneDriveApkSign(env);
     if (!sign) return null;
-    const baseUrl = readEnvString(env, 'MORAN_OPENLIST_BASE_URL', 'https://openlist.bacon.de5.net').replace(/\/+$/, '');
+    const baseUrl = mode === 'direct' ? readOpenListDirectBaseUrl(env) : readOpenListPublicBaseUrl(env);
     const proxyUrl = `${baseUrl}/d${ONEDRIVE_APK_DIR}/${ONEDRIVE_APK_FILE}?sign=${encodeURIComponent(sign)}`;
     return new Response(null, {
         status: 302,
@@ -363,7 +405,7 @@ export const buildOneDriveApkRedirect = async (
             'Content-Type': 'application/vnd.android.package-archive',
             'Cache-Control': cacheControl,
             'Content-Disposition': `attachment; filename="${fileName}"`,
-            'X-Moran-Apk-Source': 'onedrive-proxy',
+            'X-Moran-Apk-Source': mode === 'direct' ? 'onedrive-direct-proxy' : 'onedrive-proxy',
             ...APK_CORS_HEADERS
         }
     });

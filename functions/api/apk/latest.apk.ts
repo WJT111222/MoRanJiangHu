@@ -6,6 +6,8 @@ import {
     buildOneDriveApkRedirect,
     buildVersionedApkFileName,
     buildTextResponse,
+    isOneDriveDirectProvider,
+    isOneDriveProvider,
     normalizeObjectKey,
     readManifestPayload,
     readManifestPreferredApkProvider,
@@ -23,8 +25,13 @@ const handleLatestApkRequest = async ({ request, env }: any): Promise<Response> 
         const key = normalizeObjectKey(`${prefix}/${versionedFileName || 'latest.apk'}`);
         const requestedProvider = new URL(request.url).searchParams.get('provider');
         const provider = requestedProvider || readManifestPreferredApkProvider(manifest?.payload);
-        if (provider === 'onedrive') {
-            const oneDriveResponse = await buildOneDriveApkRedirect(env, fileName, APK_LATEST_CACHE_CONTROL);
+        if (isOneDriveProvider(provider)) {
+            const oneDriveResponse = await buildOneDriveApkRedirect(
+                env,
+                fileName,
+                APK_LATEST_CACHE_CONTROL,
+                isOneDriveDirectProvider(provider) ? 'direct' : 'public'
+            );
             if (oneDriveResponse) return oneDriveResponse;
             return buildTextResponse('OneDrive APK not available', 502);
         }

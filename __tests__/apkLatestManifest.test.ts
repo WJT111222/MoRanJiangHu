@@ -40,14 +40,22 @@ describe('APK latest manifest proxy', () => {
             'https://ghfast.top/https://github.com/ypq123456789/MoRanJiangHu/releases/download/v1.0.528/MoRanJiangHu-v1.0.528.apk'
         ]);
         expect(payload.latest.oneDriveApkUrl).toBe('https://msjh.bacon159.pp.ua/api/apk/latest.apk?provider=onedrive');
-        expect(payload.latest.preferredApkProvider).toBe('onedrive');
+        expect(payload.latest.oneDriveDirectApkUrl).toBe('https://msjh.bacon159.pp.ua/api/apk/latest.apk?provider=onedrive-direct');
+        expect(payload.latest.preferredApkProvider).toBe('b2');
         expect(payload.latest.r2ApkUrl).toBe('');
         expect(payload.latest.hi168ApkUrl).toBe('');
+        expect(payload.latest.apkUrls.indexOf(payload.latest.b2ApkUrl)).toBeLessThan(
+            payload.latest.apkUrls.indexOf(payload.latest.oneDriveApkUrl)
+        );
+        expect(payload.latest.apkUrls.indexOf(payload.latest.githubAcceleratedApkUrls[0])).toBeLessThan(
+            payload.latest.apkUrls.indexOf(payload.latest.oneDriveApkUrl)
+        );
         expect(payload.latest.apkUrls.indexOf(payload.latest.oneDriveApkUrl)).toBeLessThan(
-            payload.latest.apkUrls.indexOf(payload.latest.b2ApkUrl)
+            payload.latest.apkUrls.indexOf(payload.latest.oneDriveDirectApkUrl)
         );
         expect(payload.latest.apkUrls).toContain(payload.latest.githubApkUrl);
         expect(payload.latest.apkUrls).toContain(payload.latest.githubAcceleratedApkUrls[0]);
+        expect(payload.latest.apkUrls).toContain(payload.latest.oneDriveDirectApkUrl);
     });
 
     it('keeps nested latest manifest values and uses latest.versionName first', async () => {
