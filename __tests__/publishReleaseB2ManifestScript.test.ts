@@ -17,5 +17,7 @@ describe('B2 release publish manifest script', () => {
         expect(source).toContain('...githubAcceleratedApkUrls');
         expect(source).not.toContain('...orderedProviderUrls,\n      providerApkUrls.github');
         expect(source).toContain("readEnv('GITHUB_RELEASE_ACCELERATORS', 'https://gh.ddlc.top,https://gh-proxy.com,https://gh-proxy.ygxz.in,https://ghfast.top')");
+        expect(source).toContain('trying native B2 API fallback');
+        expect(source).toContain('b2_get_upload_url');
     });
 });

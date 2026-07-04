@@ -19,6 +19,7 @@ const readEnv = (name, fallback = '') => String(process.env[name] || fallback).t
 const normalizeKey = (key) => key.replace(/^\/+/, '').replace(/\/+/g, '/');
 const encodeKey = (key) => normalizeKey(key).split('/').map((part) => encodeURIComponent(part)).join('/');
 const sha256Hex = (body) => crypto.createHash('sha256').update(body).digest('hex');
+const sha1Hex = (body) => crypto.createHash('sha1').update(body).digest('hex');
 const hmac = (key, value) => crypto.createHmac('sha256', key).update(value).digest();
 const hmacHex = (key, value) => crypto.createHmac('sha256', key).update(value).digest('hex');
 const safeVersionName = (value) => String(value || '').trim().replace(/[^0-9A-Za-z._-]/g, '');
@@ -35,6 +36,9 @@ const s3AccessKey = readEnv('MORAN_OSS_ACCESS_KEY');
 const s3SecretKey = readEnv('MORAN_OSS_SECRET_KEY');
 const s3Region = readEnv('MORAN_OSS_REGION', 'auto');
 const s3Prefix = readEnv('MORAN_OSS_RELEASE_PREFIX', releaseInfo.r2Prefix || 'moranjianghu').replace(/^\/+|\/+$/g, '');
+const b2ApplicationKeyId = readEnv('MORAN_B2_APPLICATION_KEY_ID');
+const b2ApplicationKey = readEnv('MORAN_B2_APPLICATION_KEY');
+const b2BucketId = readEnv('MORAN_B2_BUCKET_ID');
 
 if (!token) {
   throw new Error('Missing MORAN_B2_DISTRIBUTION_TOKEN.');
@@ -104,6 +108,56 @@ const request = async (url, init = {}) => {
     throw new Error(`${init.method || 'GET'} ${url} failed (${response.status}): ${text.slice(0, 500)}`);
   }
   return response;
+};
+
+let nativeB2UploadUrl = null;
+
+const getNativeB2UploadUrl = async () => {
+  if (nativeB2UploadUrl) return nativeB2UploadUrl;
+  if (!b2ApplicationKeyId || !b2ApplicationKey || !b2BucketId) {
+    throw new Error('Missing MORAN_B2_APPLICATION_KEY_ID, MORAN_B2_APPLICATION_KEY, or MORAN_B2_BUCKET_ID for native B2 upload fallback.');
+  }
+  const authResponse = await request('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${b2ApplicationKeyId}:${b2ApplicationKey}`).toString('base64')}`
+    }
+  });
+  const auth = await authResponse.json();
+  if (!auth?.apiUrl || !auth?.authorizationToken) {
+    throw new Error('Backblaze B2 authorize response is missing apiUrl or authorizationToken.');
+  }
+  const uploadResponse = await request(`${auth.apiUrl}/b2api/v2/b2_get_upload_url`, {
+    method: 'POST',
+    headers: { Authorization: auth.authorizationToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bucketId: b2BucketId })
+  });
+  const upload = await uploadResponse.json();
+  if (!upload?.uploadUrl || !upload?.authorizationToken) {
+    throw new Error('Backblaze B2 upload URL response is missing uploadUrl or authorizationToken.');
+  }
+  nativeB2UploadUrl = upload;
+  return nativeB2UploadUrl;
+};
+
+const uploadBytesToNativeB2 = async ({ key, bytes, contentType, cacheControl }) => {
+  const upload = await getNativeB2UploadUrl();
+  const response = await fetch(upload.uploadUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: upload.authorizationToken,
+      'X-Bz-File-Name': encodeKey(key),
+      'X-Bz-Content-Sha1': sha1Hex(bytes),
+      'Content-Type': contentType,
+      'Content-Length': String(bytes.byteLength),
+      'Cache-Control': cacheControl
+    },
+    body: bytes,
+    signal: AbortSignal.timeout(timeoutMs)
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`Native B2 upload ${key} failed (${response.status}): ${text.slice(0, 500)}`);
+  }
 };
 
 const currentVersionName = safeVersionName(releaseInfo.versionName);
@@ -226,7 +280,9 @@ const uploadBytes = async ({ key, bytes, contentType, cacheControl }) => {
   });
   fs.rmSync(target, { force: true });
   if (result.status !== 0) {
-    throw new Error(`Upload ${key} failed: ${(result.stderr || result.stdout || '').slice(0, 500)}`);
+    const distributionError = (result.stderr || result.stdout || '').slice(0, 500);
+    console.warn(`[B2] distribution upload failed for ${key}, trying native B2 API fallback: ${distributionError}`);
+    await uploadBytesToNativeB2({ key, bytes, contentType, cacheControl });
   }
 };
 
@@ -405,13 +461,19 @@ const versionedKeyPattern = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g,
 let deletedCount = 0;
 if (skipB2ApkUpload) {
   console.log('[B2 cleanup] skipped because MORAN_B2_SKIP_APK_UPLOAD=1');
+} else if (process.env.MORAN_B2_SKIP_CLEANUP === '1') {
+  console.log('[B2 cleanup] skipped because MORAN_B2_SKIP_CLEANUP=1');
 } else {
-  for (const file of await listB2Files()) {
-    const key = typeof file?.key === 'string' ? file.key : '';
-    if (!versionedKeyPattern.test(key) || keepKeys.has(key)) continue;
-    await deleteB2Object(key);
-    deletedCount += 1;
-    console.log(`[B2 cleanup] deleted stale APK: ${key}`);
+  try {
+    for (const file of await listB2Files()) {
+      const key = typeof file?.key === 'string' ? file.key : '';
+      if (!versionedKeyPattern.test(key) || keepKeys.has(key)) continue;
+      await deleteB2Object(key);
+      deletedCount += 1;
+      console.log(`[B2 cleanup] deleted stale APK: ${key}`);
+    }
+  } catch (err) {
+    console.warn(`[B2 cleanup] skipped because cleanup endpoint failed: ${err?.message || err}`);
   }
 }
 
