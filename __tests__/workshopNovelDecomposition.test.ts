@@ -131,6 +131,8 @@ describe('workshopNovelDecomposition', () => {
         await 下载小说分解创意工坊模块('published-demo');
 
         expect(result.downloadUrl).toBe('https://msjh.bacon159.pp.ua/api/workshop/novel-decomposition?action=download&id=published-demo');
+        expect(fetchMock.mock.calls[0][1]?.body).toBeInstanceOf(FormData);
+        expect(fetchMock.mock.calls[0][1]?.headers?.['Content-Type']).toBeUndefined();
         expect(fetchMock.mock.calls[1][0]).toBe('https://msjh.bacon159.pp.ua/api/workshop/novel-decomposition?action=download&id=published-demo');
     });
 });

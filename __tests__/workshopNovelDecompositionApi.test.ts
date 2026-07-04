@@ -137,7 +137,7 @@ describe('workshop novel decomposition API', () => {
     it('defaults workshop ZIP uploads to the direct OpenList origin and keeps ZIP payloads out of D1', async () => {
         const workshopBucket = createWorkshopBucket();
         const authBucket = await createAuthBucket('tester', 'secret123');
-        const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }));
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify({ code: 200 }), { status: 200 }));
         vi.stubGlobal('fetch', fetchMock);
 
         const response = await onRequestPost({
@@ -170,5 +170,46 @@ describe('workshop novel decomposition API', () => {
         expect(payload.entry.oneDrivePath).toMatch(/^\/Onedrive\/MoRanJiangHu\/workshop\/novel-decomposition\/packages\//);
         expect(putKeys).toContain(indexKey);
         expect(putKeys.some((key) => key.includes('/packages/'))).toBe(false);
+    });
+
+    it('rejects large workshop ZIPs when OpenList upload is not accepted instead of saving broken D1 payloads', async () => {
+        const workshopBucket = createWorkshopBucket();
+        const authBucket = await createAuthBucket('tester', 'secret123');
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify({ code: 500, message: 'upload failed' }), { status: 200 }));
+        vi.stubGlobal('fetch', fetchMock);
+        const largeZip = new Uint8Array(5 * 1024 * 1024);
+        largeZip[0] = 0x50;
+        largeZip[1] = 0x4b;
+
+        const formData = new FormData();
+        formData.append('metadata', JSON.stringify({
+            title: '大包验证模块',
+            workName: '大包验证作品',
+            fileName: 'large-demo.zip',
+            chapterCount: 1,
+            segmentCount: 1,
+            sourceType: 'txt',
+            auth: { username: 'tester', password: 'secret123' }
+        }));
+        formData.append('zip', new Blob([largeZip], { type: 'application/zip' }), 'large-demo.zip');
+
+        const response = await onRequestPost({
+            request: new Request('https://msjh.bacon159.pp.ua/api/workshop/novel-decomposition', {
+                method: 'POST',
+                body: formData
+            }),
+            env: {
+                WORKSHOP_R2: workshopBucket,
+                CLOUD_PLAY_R2: authBucket,
+                MORAN_OPENLIST_AUTH_TOKEN: 'test-token'
+            }
+        });
+        const payload: any = await response.json();
+        const putKeys = workshopBucket.put.mock.calls.map((call) => String(call[0]));
+
+        expect(response.status).toBe(500);
+        expect(payload.error).toContain('OneDrive');
+        expect(putKeys.some((key) => key.includes('/packages/'))).toBe(false);
+        expect(putKeys).not.toContain(indexKey);
     });
 });

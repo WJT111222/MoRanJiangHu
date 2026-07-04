@@ -12,6 +12,7 @@ const CORS_HEADERS = {
 
 const WORKSHOP_PREFIX = 'moranjianghu/workshop/novel-decomposition';
 const MAX_ZIP_BYTES = 64 * 1024 * 1024;
+const MAX_D1_ZIP_FALLBACK_BYTES = 4 * 1024 * 1024;
 const CHINA_TIMEZONE_OFFSET_MS = 8 * 60 * 60 * 1000;
 const encoder = new TextEncoder();
 
@@ -121,7 +122,14 @@ const putToOneDrive = async (env: any, oneDrivePath: string, zipBytes: Uint8Arra
             },
             body: zipBytes
         });
-        if (!response.ok) return '';
+        const text = await response.text().catch(() => '');
+        let payload: any = null;
+        try {
+            payload = text ? JSON.parse(text) : null;
+        } catch {
+            return '';
+        }
+        if (!response.ok || payload?.code !== 200) return '';
         return oneDrivePath;
     } catch {
         return '';
@@ -207,6 +215,56 @@ const decodeBase64 = (value: unknown): Uint8Array => {
     if (bytes.byteLength <= 0) throw new Error('ZIP 内容为空');
     if (bytes.byteLength > MAX_ZIP_BYTES) throw new Error('ZIP 过大，请控制在 64MB 以内');
     return bytes;
+};
+
+const normalizeZipBytes = (bytes: Uint8Array): Uint8Array => {
+    if (bytes.byteLength <= 0) throw new Error('ZIP 内容为空');
+    if (bytes.byteLength > MAX_ZIP_BYTES) throw new Error('ZIP 过大，请控制在 64MB 以内');
+    return bytes;
+};
+
+const readZipBytesFromFile = async (value: unknown): Promise<Uint8Array> => {
+    if (!value || typeof (value as any).arrayBuffer !== 'function') throw new Error('缺少 ZIP 内容');
+    return normalizeZipBytes(new Uint8Array(await (value as any).arrayBuffer()));
+};
+
+const parseCreateRequest = async (request: Request): Promise<{ body: any; zipBytes: Uint8Array }> => {
+    const contentType = request.headers.get('content-type') || '';
+    if (/multipart\/form-data/i.test(contentType)) {
+        const form = await request.formData();
+        const metadataRaw = readString(form.get('metadata'));
+        const body = metadataRaw ? JSON.parse(metadataRaw) : {};
+        return {
+            body,
+            zipBytes: await readZipBytesFromFile(form.get('zip'))
+        };
+    }
+    const body = await request.json();
+    return {
+        body,
+        zipBytes: decodeBase64(body?.zipBase64)
+    };
+};
+
+const zipBytesToJsonArray = (bytes: Uint8Array): number[] => Array.from(bytes);
+
+const zipBytesFromStoredPayload = (stored: string): Uint8Array => {
+    const parsed = JSON.parse(stored);
+    if (Array.isArray(parsed) && typeof parsed[0] === 'number') {
+        return new Uint8Array(parsed);
+    }
+    if (parsed && typeof parsed === 'object') {
+        const numericKeys = Object.keys(parsed).filter((key) => /^\d+$/.test(key));
+        if (numericKeys.length > 0) {
+            return new Uint8Array(numericKeys
+                .sort((a, b) => Number(a) - Number(b))
+                .map((key) => Number(parsed[key]) || 0));
+        }
+    }
+    if (typeof parsed === 'string') {
+        return decodeBase64(parsed);
+    }
+    return decodeBase64(stored);
 };
 
 const bytesToHex = (bytes: ArrayBuffer): string => (
@@ -422,14 +480,7 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
                 const stored = await object.text();
                 let zipBytes: Uint8Array;
                 try {
-                    const parsed = JSON.parse(stored);
-                    if (Array.isArray(parsed) && typeof parsed[0] === 'number') {
-                        zipBytes = new Uint8Array(parsed);
-                    } else if (typeof parsed === 'string') {
-                        zipBytes = decodeBase64(parsed);
-                    } else {
-                        zipBytes = decodeBase64(stored);
-                    }
+                    zipBytes = zipBytesFromStoredPayload(stored);
                 } catch {
                     zipBytes = decodeBase64(stored);
                 }
@@ -455,7 +506,16 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
     try {
         const bucket = getBucket(env);
         if (!bucket) return jsonResponse({ error: '创意工坊存储未配置' }, 500);
-        const body = await request.json();
+        const isMultipartCreate = /multipart\/form-data/i.test(request.headers.get('content-type') || '');
+        let body: any;
+        let zipBytesForCreate: Uint8Array | null = null;
+        if (isMultipartCreate) {
+            const parsed = await parseCreateRequest(request);
+            body = parsed.body;
+            zipBytesForCreate = parsed.zipBytes;
+        } else {
+            body = await request.json();
+        }
         const action = readString(body?.action) || 'create';
         const existingEntries = await readIndex(env);
 
@@ -491,7 +551,7 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
             return jsonResponse({ ok: true, entry: updated });
         }
 
-        const zipBytes = decodeBase64(body?.zipBase64);
+        const zipBytes = zipBytesForCreate || decodeBase64(body?.zipBase64);
         const owner = await authenticateWorkshopUser(env, body?.auth);
         const id = buildId();
         const createdAt = new Date().toISOString();
@@ -533,16 +593,22 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
         if (useOneDrive) {
             const odResult = await putToOneDrive(env, odPath, zipBytes);
             if (!odResult) {
-                // OneDrive upload failed — fall back to D1.
+                if (zipBytes.byteLength > MAX_D1_ZIP_FALLBACK_BYTES) {
+                    throw new Error('OneDrive 上传失败，当前 ZIP 较大，已停止发布以避免生成不可下载的创意工坊模块。请稍后重试。');
+                }
+                // OneDrive upload failed — small ZIPs can still use D1 fallback.
                 entry.oneDrivePath = undefined;
-                await bucket.put(keys.zipKey, zipBytes, {
+                await bucket.put(keys.zipKey, zipBytesToJsonArray(zipBytes), {
                     httpMetadata: { contentType: 'application/zip', cacheControl: 'public, max-age=31536000, immutable' },
                     customMetadata: { sha256, workshopId: id }
                 }).catch(() => { throw new Error('ZIP 文件上传失败，OneDrive 和 D1 均不可用。'); });
             }
         } else {
-            // No OneDrive token — preserve the old D1 fallback path.
-            await bucket.put(keys.zipKey, zipBytes, {
+            if (zipBytes.byteLength > MAX_D1_ZIP_FALLBACK_BYTES) {
+                throw new Error('OneDrive 存储未配置，当前 ZIP 较大，无法发布为可下载模块。');
+            }
+            // No OneDrive token — preserve the old D1 fallback path for small ZIPs.
+            await bucket.put(keys.zipKey, zipBytesToJsonArray(zipBytes), {
                 httpMetadata: { contentType: 'application/zip', cacheControl: 'public, max-age=31536000, immutable' },
                 customMetadata: { sha256, workshopId: id }
             });

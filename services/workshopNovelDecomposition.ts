@@ -97,17 +97,6 @@ const 读取响应JSON = async (response: Response): Promise<any> => {
     }
 };
 
-const blobToBase64 = async (blob: Blob): Promise<string> => {
-    const buffer = await blob.arrayBuffer();
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    const chunkSize = 0x8000;
-    for (let index = 0; index < bytes.length; index += chunkSize) {
-        binary += String.fromCharCode(...bytes.slice(index, index + chunkSize));
-    }
-    return btoa(binary);
-};
-
 const 规范化作品名称 = (value: unknown, maxLength = 80): string => {
     const text = (typeof value === 'string' ? value : '').replace(/\s+/g, ' ').trim();
     const bracketMatch = text.match(/《\s*([^《》]{1,120}?)\s*》/);
@@ -171,22 +160,24 @@ export const 发布小说分解创意工坊模块 = async (
 ): Promise<发布小说分解创意工坊结果> => {
     const fallbackTitle = 规范化作品名称(params.title || params.workName) || '未命名小说分解模块';
     const workName = 规范化作品名称(params.workName || fallbackTitle) || fallbackTitle;
+    const formData = new FormData();
+    formData.append('metadata', JSON.stringify({
+        fileName: params.fileName,
+        title: fallbackTitle,
+        workName,
+        contributor: params.contributor || '',
+        note: params.note || '',
+        chapterCount: params.chapterCount || 0,
+        segmentCount: params.segmentCount || 0,
+        sourceType: params.sourceType || '',
+        tags: params.tags || [],
+        ...构建必需账号载荷(params.anonymous)
+    }));
+    formData.append('zip', params.zipBlob, params.fileName || `${fallbackTitle}.zip`);
     const response = await fetch(构建创意工坊API地址(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({
-            fileName: params.fileName,
-            title: fallbackTitle,
-            workName,
-            contributor: params.contributor || '',
-            note: params.note || '',
-            chapterCount: params.chapterCount || 0,
-            segmentCount: params.segmentCount || 0,
-            sourceType: params.sourceType || '',
-            tags: params.tags || [],
-            zipBase64: await blobToBase64(params.zipBlob),
-            ...构建必需账号载荷(params.anonymous)
-        })
+        headers: { Accept: 'application/json' },
+        body: formData
     });
     const payload = await 读取响应JSON(response);
     if (!response.ok || payload?.ok === false) {

@@ -76,4 +76,14 @@ describe('小说分解工作台布局', () => {
         expect(source).toContain('开局已成立事实');
         expect(source).toContain('前组延续事实');
     });
+
+    it('创意工坊等操作页不显示固定保存设置遮挡层', () => {
+        const source = fs.readFileSync(
+            path.join(process.cwd(), 'components/features/Settings/NovelDecompositionSettings.tsx'),
+            'utf8'
+        );
+
+        expect(source).toContain("mobileTab === 'import' &&");
+        expect(source).toContain('保存设置');
+    });
 });

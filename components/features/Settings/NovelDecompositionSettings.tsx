@@ -4532,11 +4532,13 @@ const NovelDecompositionSettings: React.FC<Props> = ({ settings, onSave, request
 
             {message && <p className="text-xs text-emerald-300 animate-pulse">{message}</p>}
 
-            <div className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-emerald-500/20 bg-[#f7f0dc]/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 shadow-[0_-10px_24px_rgba(0,0,0,0.18)] backdrop-blur md:static md:m-0 md:border-t md:bg-transparent md:p-0 md:pt-6 md:shadow-none md:backdrop-blur-0">
-                <GameButton onClick={handleSave} variant="primary" className="w-full">
-                    {showSuccess ? '✔ 配置已保存' : '保存设置'}
-                </GameButton>
-            </div>
+            {mobileTab === 'import' && (
+                <div className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-emerald-500/20 bg-[#f7f0dc]/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 shadow-[0_-10px_24px_rgba(0,0,0,0.18)] backdrop-blur md:static md:m-0 md:border-t md:bg-transparent md:p-0 md:pt-6 md:shadow-none md:backdrop-blur-0">
+                    <GameButton onClick={handleSave} variant="primary" className="w-full">
+                        {showSuccess ? '✔ 配置已保存' : '保存设置'}
+                    </GameButton>
+                </div>
+            )}
             </div>
         </div>
     );
