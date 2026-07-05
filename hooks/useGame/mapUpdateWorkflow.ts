@@ -5,6 +5,7 @@ import { 获取内置世界书槽位内容 } from '../../utils/worldbook';
 import { 地图重生成系统提示词 } from '../../prompts/runtime/mapRegenerate';
 import { 地图重生成COT提示词 } from '../../prompts/runtime/mapRegenerateCot';
 import { 请求模型文本, 规范化文本补全消息链 } from '../../services/ai/chatCompletionClient';
+import { recordDiagnosticLog, type DiagnosticLogLevel } from '../../services/diagnosticLog';
 import { 获取繁体输出指令 } from '../../utils/traditionalChinese';
 
 export type 地图更新模式 = 'memory_regenerate' | 'auto_incremental';
@@ -48,8 +49,31 @@ type 地图更新请求参数 = {
 
 const 地图层级顺序 = ['寰宇', '大地点', '中地点', '小地点', '区地点', '子地点'] as const;
 const 地图层级集合 = new Set<string>(地图层级顺序);
+const 地图更新请求超时毫秒 = 120_000;
 
 const 取文本 = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
+const 创建地图更新诊断ID = (): string => (
+    `map_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+);
+
+const 读取接口主机 = (baseUrl?: unknown): string => {
+    const text = 取文本(baseUrl);
+    if (!text) return '';
+    try {
+        return new URL(text).host;
+    } catch {
+        return text.replace(/^https?:\/\//i, '').split('/')[0] || text.slice(0, 80);
+    }
+};
+
+const 记录地图更新诊断 = (
+    level: DiagnosticLogLevel,
+    event: string,
+    detail: Record<string, unknown> = {}
+) => {
+    recordDiagnosticLog(level, [`[地图更新] ${event}`, detail]);
+};
 
 const 规范化层级 = (value: unknown): string => {
     const text = 取文本(value);
@@ -417,15 +441,41 @@ export const 解析地图自动更新命令 = (rawText: string, currentWorld?: a
 export const 生成地图更新 = async (
     params: 地图更新请求参数
 ): Promise<地图更新执行结果> => {
+    const diagnosticId = 创建地图更新诊断ID();
+    const startedAt = Date.now();
     const api = params.mode === 'auto_incremental'
         ? 获取地图自动更新接口配置(params.apiSettings)
         : 获取地图生成接口配置(params.apiSettings);
-    if (!接口配置是否可用(api)) return 创建地图接口缺失结果();
-
     const env = params.stateBase?.环境 || params.环境;
     const world = params.stateBase?.世界 || params.世界;
     const social = params.stateBase?.社交 || params.社交 || [];
     const role = params.stateBase?.角色 || params.角色;
+    const layerCount = Array.isArray((world as any)?.地图层级) ? (world as any).地图层级.length : 0;
+    const bodyTextLength = 提取响应正文(params.currentResponse).length;
+    const currentLocation = [env?.大地点, env?.中地点, env?.小地点, env?.具体地点].map(取文本).filter(Boolean).join(' > ');
+    const apiUsable = 接口配置是否可用(api);
+    const baseMeta = {
+        diagnosticId,
+        mode: params.mode,
+        model: 取文本((api as any)?.model),
+        supplier: 取文本((api as any)?.供应商),
+        baseUrlHost: 读取接口主机((api as any)?.baseUrl),
+        apiUsable,
+        timeoutMs: 地图更新请求超时毫秒,
+        existingLayerCount: layerCount,
+        socialCount: Array.isArray(social) ? social.length : 0,
+        bodyTextLength,
+        currentLocation: currentLocation || '未知'
+    };
+    记录地图更新诊断('info', 'stage-start', baseMeta);
+    if (!apiUsable) {
+        记录地图更新诊断('warn', 'interface-missing-skip', {
+            ...baseMeta,
+            elapsedMs: Date.now() - startedAt
+        });
+        return 创建地图接口缺失结果();
+    }
+
     const userPrompt = 构建地图更新用户提示词({
         mode: params.mode,
         环境: env,
@@ -454,23 +504,102 @@ export const 生成地图更新 = async (
     ], { 保留System: true, 合并同角色: false });
     const shouldNonStream = params.gameConfig?.启用非流式输出
         || params.apiSettings.功能模型占位?.地图自动更新非流式输出 === true;
-    const rawText = await 请求模型文本(api as 当前可用接口结构, messages, {
-        temperature: params.mode === 'auto_incremental' ? 0.35 : 0.7,
-        signal: params.signal,
-        streamOptions: shouldNonStream
-            ? undefined
-            : params.onDelta
-                ? {
-                    stream: true,
-                    onDelta: params.onDelta
-                }
-                : undefined,
-        errorDetailLimit: Number.POSITIVE_INFINITY
+    记录地图更新诊断('info', 'request-start', {
+        ...baseMeta,
+        streaming: !shouldNonStream && Boolean(params.onDelta),
+        nonStream: Boolean(shouldNonStream),
+        messageCount: messages.length,
+        userPromptLength: userPrompt.length,
+        systemPromptLength: systemPrompt.length,
+        cotPromptLength: cotPrompt.length
     });
+    const requestController = new AbortController();
+    const abortRequest = () => {
+        try {
+            requestController.abort(params.signal?.reason || new DOMException('Aborted', 'AbortError'));
+        } catch {
+            requestController.abort();
+        }
+    };
+    if (params.signal?.aborted) abortRequest();
+    params.signal?.addEventListener('abort', abortRequest, { once: true });
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let timedOut = false;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+            timedOut = true;
+            requestController.abort(new Error(`地图更新请求超过 ${Math.round(地图更新请求超时毫秒 / 1000)} 秒未返回`));
+            reject(new Error(`地图更新请求超过 ${Math.round(地图更新请求超时毫秒 / 1000)} 秒未返回，已自动跳过本轮地图更新。`));
+        }, 地图更新请求超时毫秒);
+    });
+
+    let rawText = '';
+    try {
+        rawText = await Promise.race([
+            请求模型文本(api as 当前可用接口结构, messages, {
+                temperature: params.mode === 'auto_incremental' ? 0.35 : 0.7,
+                signal: requestController.signal,
+                streamOptions: shouldNonStream
+                    ? undefined
+                    : params.onDelta
+                        ? {
+                            stream: true,
+                            onDelta: params.onDelta
+                        }
+                        : undefined,
+                errorDetailLimit: Number.POSITIVE_INFINITY
+            }),
+            timeoutPromise
+        ]);
+        记录地图更新诊断('info', 'request-success', {
+            ...baseMeta,
+            elapsedMs: Date.now() - startedAt,
+            rawTextLength: rawText.length
+        });
+    } catch (error: any) {
+        if (params.signal?.aborted) {
+            记录地图更新诊断('info', 'request-aborted', {
+                ...baseMeta,
+                elapsedMs: Date.now() - startedAt,
+                message: error?.message || params.signal.reason?.message || ''
+            });
+            throw params.signal.reason || new DOMException('Aborted', 'AbortError');
+        }
+        if (timedOut) {
+            记录地图更新诊断('warn', 'request-timeout-skip', {
+                ...baseMeta,
+                elapsedMs: Date.now() - startedAt,
+                message: error?.message || ''
+            });
+            return {
+                ok: false,
+                phase: 'skipped',
+                commands: [],
+                rawText: '',
+                statusText: error?.message || '地图更新请求超时，已自动跳过本轮地图更新。'
+            };
+        }
+        记录地图更新诊断('error', 'request-error', {
+            ...baseMeta,
+            elapsedMs: Date.now() - startedAt,
+            name: error?.name || typeof error,
+            message: error?.message || ''
+        });
+        throw error;
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+        params.signal?.removeEventListener('abort', abortRequest);
+    }
 
     if (params.mode === 'memory_regenerate') {
         const rawNodes = 解析地图重生成节点(rawText);
         const newLayers = 构建地图层级替换结果(rawNodes, world);
+        记录地图更新诊断('info', 'memory-regenerate-parsed', {
+            ...baseMeta,
+            elapsedMs: Date.now() - startedAt,
+            rawNodeCount: rawNodes.length,
+            newLayerCount: newLayers.length
+        });
         return {
             ok: true,
             phase: newLayers.length > 0 ? 'done' : 'skipped',
@@ -488,6 +617,13 @@ export const 生成地图更新 = async (
         && Array.isArray(commands[0]?.value)
         ? commands[0].value.length
         : 0;
+    记录地图更新诊断('info', 'auto-incremental-parsed', {
+        ...baseMeta,
+        elapsedMs: Date.now() - startedAt,
+        rawTextLength: rawText.length,
+        commandCount: commands.length,
+        fullTreeSyncCount
+    });
     return {
         ok: true,
         phase: commands.length > 0 ? 'done' : 'skipped',

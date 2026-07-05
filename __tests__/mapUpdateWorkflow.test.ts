@@ -1,5 +1,36 @@
-import { describe, expect, it } from 'vitest';
-import { 解析地图自动更新命令, 构建地图层级替换结果 } from '../hooks/useGame/mapUpdateWorkflow';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { 生成地图更新, 解析地图自动更新命令, 构建地图层级替换结果 } from '../hooks/useGame/mapUpdateWorkflow';
+
+vi.mock('../services/ai/chatCompletionClient', async () => {
+    const actual = await vi.importActual<any>('../services/ai/chatCompletionClient');
+    return {
+        ...actual,
+        请求模型文本: vi.fn()
+    };
+});
+
+vi.mock('../utils/apiConfig', async () => {
+    const actual = await vi.importActual<any>('../utils/apiConfig');
+    return {
+        ...actual,
+        获取地图生成接口配置: vi.fn((settings: any) => settings?.configs?.[0] || null),
+        获取地图自动更新接口配置: vi.fn((settings: any) => settings?.configs?.[0] || null),
+        接口配置是否可用: vi.fn((api: any) => Boolean(api?.baseUrl && api?.apiKey && api?.model))
+    };
+});
+
+vi.mock('../services/diagnosticLog', () => ({
+    recordDiagnosticLog: vi.fn()
+}));
+
+const { 请求模型文本 } = await import('../services/ai/chatCompletionClient');
+const { recordDiagnosticLog } = await import('../services/diagnosticLog');
+
+afterEach(() => {
+    vi.useRealTimers();
+    vi.mocked(请求模型文本).mockReset();
+    vi.mocked(recordDiagnosticLog).mockReset();
+});
 
 describe('地图自动更新解析', () => {
     it('兼容模型返回思考块加地点树 JSON 的全量同步格式', () => {
@@ -80,5 +111,98 @@ describe('构建地图层级替换结果 — 不保留「在场人物」', () =>
         expect(inn.控制势力).toBe('商会');
         expect(inn.势力标签).toEqual(['商会', '帮会']);
         expect(inn).not.toHaveProperty('在场人物');
+    });
+});
+
+describe('地图更新请求兜底超时', () => {
+    it('记录地图更新请求边界日志，方便定位卡住阶段', async () => {
+        vi.mocked(请求模型文本).mockResolvedValue([
+            '<thinking>无需新增地点。</thinking>',
+            '<说明>- 本回合没有新增长期地点。</说明>',
+            '<命令>无</命令>'
+        ].join('\n'));
+
+        const result = await 生成地图更新({
+            mode: 'auto_incremental',
+            apiSettings: {
+                configs: [{
+                    id: 'map',
+                    名称: '地图测试接口',
+                    供应商: 'openai_compatible',
+                    协议覆盖: 'openai',
+                    baseUrl: 'https://example.test/v1',
+                    apiKey: 'test-key',
+                    model: 'test-model'
+                }],
+                功能模型占位: {
+                    地图生成功能启用: true
+                }
+            } as any,
+            环境: { 大地点: '云岫剑宗', 具体地点: '青瓦木屋' } as any,
+            世界: { 地图层级: [{ ID: 'DT-001', 名称: '云岫剑宗', 层级: '大地点' }] } as any,
+            社交: [{ 姓名: '俞月荷' }],
+            角色: { 姓名: '测试少侠' },
+            gameConfig: {},
+            worldbooks: [],
+            currentResponse: { logs: [{ sender: '旁白', text: '清晨醒来。' }], tavern_commands: [] } as any
+        });
+
+        expect(result.phase).toBe('skipped');
+        const logText = vi.mocked(recordDiagnosticLog).mock.calls
+            .map((call) => JSON.stringify(call))
+            .join('\n');
+        expect(logText).toContain('[地图更新] stage-start');
+        expect(logText).toContain('[地图更新] request-start');
+        expect(logText).toContain('[地图更新] request-success');
+        expect(logText).toContain('[地图更新] auto-incremental-parsed');
+        expect(logText).toContain('existingLayerCount');
+        expect(logText).toContain('baseUrlHost');
+        expect(logText).not.toContain('test-key');
+    });
+
+    it('底层地图模型请求无响应时返回超时跳过结果，避免后台队列永久卡住', async () => {
+        vi.useFakeTimers();
+        vi.mocked(请求模型文本).mockImplementation(() => new Promise<string>(() => undefined));
+
+        const resultPromise = 生成地图更新({
+            mode: 'auto_incremental',
+            apiSettings: {
+                configs: [{
+                    id: 'map',
+                    名称: '地图测试接口',
+                    供应商: 'openai_compatible',
+                    协议覆盖: 'openai',
+                    baseUrl: 'https://example.test/v1',
+                    apiKey: 'test-key',
+                    model: 'test-model'
+                }],
+                功能模型占位: {
+                    地图生成功能启用: true
+                }
+            } as any,
+            环境: { 大地点: '云岫剑宗', 具体地点: '青瓦木屋' } as any,
+            世界: { 地图层级: [] } as any,
+            社交: [],
+            角色: { 姓名: '测试少侠' },
+            gameConfig: {},
+            worldbooks: [],
+            currentResponse: { logs: [{ sender: '旁白', text: '清晨醒来。' }], tavern_commands: [] } as any
+        });
+
+        await vi.advanceTimersByTimeAsync(125_000);
+        const result = await resultPromise;
+
+        expect(result).toMatchObject({
+            ok: false,
+            phase: 'skipped',
+            commands: []
+        });
+        expect(result.statusText).toMatch(/超时|跳过|地图更新/);
+        const logText = vi.mocked(recordDiagnosticLog).mock.calls
+            .map((call) => JSON.stringify(call))
+            .join('\n');
+        expect(logText).toContain('[地图更新] request-start');
+        expect(logText).toContain('[地图更新] request-timeout-skip');
+        expect(logText).not.toContain('test-key');
     });
 });

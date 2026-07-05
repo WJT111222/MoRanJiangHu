@@ -407,6 +407,15 @@ describe('storyResponseParser', () => {
         ].join('\n'), { validateDialogueFormat: true })).toThrow(/高频套话|指关节|泛白/);
     });
 
+    it('rejects multi-word English fragments mixed into Chinese story body during strict parsing', () => {
+        expect(() => parseStoryRawText([
+            '<正文>',
+            '清晨的冷雾像是有分量的薄纱，沉甸甸地压在云岫剑宗碧落峰 lower slope 的石板路上。',
+            '</正文>',
+            '<短期记忆>主角在碧落峰清晨醒来。</短期记忆>'
+        ].join('\n'), { validateDialogueFormat: true })).toThrow(/异常英文片段|英文夹杂|自然中文|lower slope/);
+    });
+
     it('keeps only explicit tagged single-speaker text as character bubbles for rendering', () => {
         const rendered = 规范化可渲染对白日志([
             { sender: '杨培强', text: '“弟子，领命。”\n\n风，渐渐停了。\n\n铅灰色的云层开始散去。' },

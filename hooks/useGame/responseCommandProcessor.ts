@@ -1658,6 +1658,9 @@ export const 执行响应命令处理 = (
         // 地点级性别比例恢复回合递减
         if (Array.isArray(worldBuffer?.地图层级)) {
             worldBuffer.地图层级 = worldBuffer.地图层级.map((layer: any) => {
+                if (!layer || typeof layer !== 'object') {
+                    return layer;
+                }
                 if (layer.性别比例恢复回合 === -1) {
                     return layer;
                 }

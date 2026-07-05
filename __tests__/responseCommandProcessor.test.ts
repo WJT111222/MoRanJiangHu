@@ -31,6 +31,32 @@ const deps = {
 };
 
 describe('responseCommandProcessor dialogue social sync', () => {
+    it('skips null map layers while decreasing location gender-ratio recovery turns', () => {
+        const state = 构建基础状态();
+        state.世界 = {
+            地图层级: [
+                null,
+                { ID: 'DT-001', 名称: '碧落峰', 层级: '小地点', 性别比例: '1:5', 性别比例恢复回合: 2, 性别比例变更原因: '临时事件' },
+                { ID: 'DT-002', 名称: '青瓦木屋', 层级: '区地点' }
+            ]
+        } as any;
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '清晨寒雾压低。' }
+            ],
+            tavern_commands: []
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect(result.世界.地图层级[0]).toBeNull();
+        expect(result.世界.地图层级[1]).toMatchObject({
+            ID: 'DT-001',
+            性别比例: '1:5',
+            性别比例恢复回合: 1
+        });
+        expect(result.世界.地图层级[2]).toMatchObject({ ID: 'DT-002' });
+    });
+
     it('allows normal environment time progress but ignores game initial time commands', () => {
         const state = 构建基础状态() as 响应命令处理状态 & { 游戏初始时间?: string };
         state.环境 = { 时间: '1:01:02:08:00' } as any;
