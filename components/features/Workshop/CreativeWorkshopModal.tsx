@@ -11,6 +11,7 @@ import {
     删除本地创意工坊模块,
     发布创意工坊模块,
     导入本地创意工坊模块,
+    更新本地创意工坊模块,
     列出创意工坊模块,
     提取ComfyUI工作流模块JSON
 } from '../../../services/creativeWorkshop';
@@ -781,7 +782,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
     const [cloudUsername, setCloudUsername] = useState('');
     const [previewEntry, setPreviewEntry] = useState<创意工坊模块条目 | null>(null);
     const [editingEntryId, setEditingEntryId] = useState('');
-    const [editingDraft, setEditingDraft] = useState({ title: '', subtitle: '', description: '', tags: '', contributor: '', anonymous: false });
+    const [editingDraft, setEditingDraft] = useState({ title: '', subtitle: '', description: '', tags: '', contributor: '', anonymous: false, moduleJson: '' });
     const [contributionDraft, setContributionDraft] = useState<贡献草稿>(() => 空贡献草稿());
     const [currencySystemJsonDraft, setCurrencySystemJsonDraft] = useState(() => 格式化货币系统Json(空贡献草稿().modeRuntimeProfile));
     const [currencySystemJsonError, setCurrencySystemJsonError] = useState('');
@@ -1082,7 +1083,35 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         }
     };
 
-    const 开始编辑社区模块 = (entry: 创意工坊模块条目) => {
+    const 构建编辑模块JSON = (entry: 创意工坊模块条目): string => {
+        const { downloadUrl: _downloadUrl, sha256: _sha256, ...editable } = entry as any;
+        return JSON.stringify(editable, null, 2);
+    };
+
+    const 解析编辑模块草稿 = (entry: 创意工坊模块条目): 创意工坊模块条目 => {
+        let parsed: any = {};
+        const rawJson = editingDraft.moduleJson.trim();
+        if (rawJson) {
+            parsed = JSON.parse(rawJson);
+            if (parsed?.module && typeof parsed.module === 'object' && !Array.isArray(parsed.module)) parsed = parsed.module;
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('完整 JSON 必须是单个创意工坊模块对象，或包含 module 字段的导出文件。');
+        }
+        return {
+            ...entry,
+            ...parsed,
+            id: entry.id,
+            type: entry.type,
+            source: entry.source,
+            title: editingDraft.title.trim() || parsed.title || entry.title,
+            subtitle: editingDraft.subtitle.trim() || parsed.subtitle || entry.subtitle,
+            description: editingDraft.description.trim() || parsed.description || entry.description,
+            tags: editingDraft.tags.split(/[，,、\s]+/).map((tag) => tag.trim()).filter(Boolean),
+            contributor: editingDraft.anonymous ? '匿名玩家' : (editingDraft.contributor.trim() || parsed.contributor || entry.contributor || ''),
+            anonymous: editingDraft.anonymous
+        } as 创意工坊模块条目;
+    };
+
+    const 开始编辑模块 = (entry: 创意工坊模块条目) => {
         setEditingEntryId(entry.id);
         setEditingDraft({
             title: entry.title || '',
@@ -1090,25 +1119,31 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
             description: entry.description || '',
             tags: (entry.tags || []).join('、'),
             contributor: entry.anonymous ? '' : (entry.contributor || cloudUsername),
-            anonymous: entry.anonymous === true
+            anonymous: entry.anonymous === true,
+            moduleJson: 构建编辑模块JSON(entry)
         });
     };
 
-    const 保存社区模块编辑 = async (entry: 创意工坊模块条目) => {
+    const 保存模块编辑 = async (entry: 创意工坊模块条目) => {
         setBusyId(entry.id);
         try {
-            const updated = await 编辑创意工坊模块({
-                id: entry.id,
-                anonymous: editingDraft.anonymous,
-                patch: {
-                    title: editingDraft.title,
-                    subtitle: editingDraft.subtitle,
-                    description: editingDraft.description,
-                    tags: editingDraft.tags.split(/[，,、\s]+/).map((tag) => tag.trim()).filter(Boolean),
-                    contributor: editingDraft.contributor
-                }
-            });
-            setStatus(`已更新社区工坊：${updated.title}。`);
+            const module = 解析编辑模块草稿(entry);
+            const patch = {
+                title: module.title,
+                subtitle: module.subtitle,
+                description: module.description,
+                tags: module.tags,
+                contributor: module.contributor || '',
+                module
+            };
+            const updated = entry.source === 'local'
+                ? 更新本地创意工坊模块(entry.id, module)
+                : await 编辑创意工坊模块({
+                    id: entry.id,
+                    anonymous: editingDraft.anonymous,
+                    patch
+                });
+            setStatus(entry.source === 'local' ? `已更新本地导入：${updated.title}。` : `已更新社区工坊：${updated.title}。`);
             setEditingEntryId('');
             await refreshEntries();
         } catch (error: any) {
@@ -2051,6 +2086,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                             );
                             const canManageEntry = entry.source === 'cloud' && Boolean(cloudUsername) && entry.ownerUsername === cloudUsername;
                             const canDeleteLocalEntry = entry.source === 'local';
+                            const canEditEntry = canDeleteLocalEntry || canManageEntry;
                             const editing = editingEntryId === entry.id;
                             const hasVersions = group.versions.length > 1;
                             return (
@@ -2095,6 +2131,18 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                                 <input type="checkbox" checked={editingDraft.anonymous} onChange={(event) => setEditingDraft((prev) => ({ ...prev, anonymous: event.target.checked }))} className="h-3.5 w-3.5 accent-wuxia-gold" />
                                                 匿名显示
                                             </label>
+                                            <label className="block text-xs text-gray-300">
+                                                完整模块 JSON
+                                                <textarea
+                                                    value={editingDraft.moduleJson}
+                                                    onChange={(event) => setEditingDraft((prev) => ({ ...prev, moduleJson: event.target.value }))}
+                                                    className="mt-1 min-h-48 w-full resize-y rounded-lg border border-white/10 bg-black/35 px-3 py-2 font-mono text-[11px] leading-5 text-gray-100 outline-none placeholder:text-gray-500 focus:border-sky-400/50"
+                                                    spellCheck={false}
+                                                />
+                                            </label>
+                                            <div className="text-[11px] leading-5 text-gray-400">
+                                                上方名称、简介、标签会覆盖 JSON 中对应字段；payload、contentBlocks、模式世界书等完整内容会随 JSON 一起保存。
+                                            </div>
                                         </div>
                                     )}
                                     <div className="mt-4 grid gap-2 sm:grid-cols-3">
@@ -2107,13 +2155,13 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                         {canDeleteLocalEntry ? (
                                             <button type="button" onClick={() => void 删除本地模块(entry)} disabled={Boolean(busyId)} className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200 hover:bg-red-500/15 disabled:opacity-50">删除本地导入</button>
                                         ) : null}
-                                        {canManageEntry && !editing ? (
-                                            <button type="button" onClick={() => 开始编辑社区模块(entry)} className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200 hover:bg-sky-500/15">编辑投稿</button>
+                                        {canEditEntry && !editing ? (
+                                            <button type="button" onClick={() => 开始编辑模块(entry)} className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200 hover:bg-sky-500/15">{entry.source === 'local' ? '编辑本地 JSON' : '编辑投稿 JSON'}</button>
                                         ) : null}
-                                        {canManageEntry && editing ? (
-                                            <button type="button" onClick={() => void 保存社区模块编辑(entry)} disabled={Boolean(busyId)} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 hover:bg-emerald-500/15 disabled:opacity-50">保存编辑</button>
+                                        {canEditEntry && editing ? (
+                                            <button type="button" onClick={() => void 保存模块编辑(entry)} disabled={Boolean(busyId)} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 hover:bg-emerald-500/15 disabled:opacity-50">保存编辑</button>
                                         ) : null}
-                                        {canManageEntry && editing ? (
+                                        {canEditEntry && editing ? (
                                             <button type="button" onClick={() => setEditingEntryId('')} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">取消编辑</button>
                                         ) : null}
                                         {canManageEntry ? (

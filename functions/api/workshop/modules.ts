@@ -22,12 +22,15 @@ type WorkshopModuleEntry = {
     description: string;
     tags: string[];
     payload: Record<string, unknown>;
+    worldDetailGeneration?: Record<string, unknown>;
+    modeRuntimeProfile?: Record<string, unknown>;
+    modeWorldbooks?: unknown[];
     contentBlocks?: Array<{
         id: string;
         title: string;
         purpose: string;
         content: string;
-        injectionTarget?: 'manualWorldPrompt' | 'manualRealmPrompt' | 'openingExtraRequirement' | 'imageWorkflow' | 'referenceOnly';
+        injectionTarget?: 'manualWorldPrompt' | 'worldExtraRequirement' | 'manualRealmPrompt' | 'openingExtraRequirement' | 'imageWorkflow' | 'referenceOnly';
     }>;
     usagePrompt?: string;
     safetyNotes?: string[];
@@ -59,6 +62,10 @@ const jsonResponse = (payload: unknown, status = 200): Response => (
 );
 
 const readString = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
+const readPlainObject = (value: unknown): Record<string, unknown> | undefined => (
+    value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined
+);
 
 const getBucket = (env: any): any => {
     const dbBucket = tryDbBucket(env, 'workshop_data');
@@ -151,7 +158,7 @@ const sanitizeContentBlocks = (value: unknown): WorkshopModuleEntry['contentBloc
                 title: sanitizeText(block?.title, 80),
                 purpose: sanitizeText(block?.purpose, 200),
                 content: readString(block?.content).slice(0, 20000),
-                injectionTarget: injectionTarget === 'manualWorldPrompt' || injectionTarget === 'manualRealmPrompt' || injectionTarget === 'openingExtraRequirement' || injectionTarget === 'imageWorkflow' || injectionTarget === 'referenceOnly'
+                injectionTarget: injectionTarget === 'manualWorldPrompt' || injectionTarget === 'worldExtraRequirement' || injectionTarget === 'manualRealmPrompt' || injectionTarget === 'openingExtraRequirement' || injectionTarget === 'imageWorkflow' || injectionTarget === 'referenceOnly'
                     ? injectionTarget
                     : undefined
             };
@@ -241,7 +248,14 @@ const normalizeModule = async (raw: any, contributorInput = '', owner?: CloudPla
     if (!title) throw new Error('模块标题不能为空');
     const createdAt = new Date().toISOString();
     const id = buildId(type);
-    const payload = module?.payload && typeof module.payload === 'object' && !Array.isArray(module.payload) ? module.payload : {};
+    const payload = readPlainObject(module?.payload) || {};
+    const worldDetailGeneration = readPlainObject(module?.worldDetailGeneration) || readPlainObject((payload as any).worldDetailGeneration);
+    const modeRuntimeProfile = readPlainObject(module?.modeRuntimeProfile) || readPlainObject((payload as any).modeRuntimeProfile);
+    const modeWorldbooks = Array.isArray(module?.modeWorldbooks)
+        ? module.modeWorldbooks
+        : Array.isArray((payload as any).modeWorldbooks)
+            ? (payload as any).modeWorldbooks
+            : undefined;
     if (type !== 'comfy_workflow' && !readString((payload as any).suiteId)) {
         throw new Error('题材模板、世界规则和能力体系必须作为同一个完整模式包贡献，请在创意工坊表单中一次填写三段内容。');
     }
@@ -253,6 +267,9 @@ const normalizeModule = async (raw: any, contributorInput = '', owner?: CloudPla
         description: sanitizeText(module?.description, 500),
         tags: sanitizeTags(module?.tags),
         payload,
+        worldDetailGeneration,
+        modeRuntimeProfile,
+        modeWorldbooks,
         formatVersion: Number(module?.formatVersion) === 2 ? 2 : undefined,
         workshopKind: module?.workshopKind === 'standard_module' ? 'standard_module' : undefined,
         contentBlocks: sanitizeContentBlocks(module?.contentBlocks),
@@ -271,6 +288,71 @@ const normalizeModule = async (raw: any, contributorInput = '', owner?: CloudPla
     if (encoder.encode(json).byteLength > MAX_MODULE_BYTES) throw new Error('模块 JSON 过大，请控制在 2MB 内');
     const keys = buildKeys({}, id);
     return { ...entry, sha256: await sha256HexText(json), r2Key: keys.moduleKey };
+};
+
+const sanitizeUpdatedModule = async (
+    target: WorkshopModuleEntry,
+    patch: any,
+    user: CloudPlayUser,
+    anonymous: boolean
+): Promise<WorkshopModuleEntry> => {
+    const modulePatch = patch?.module && typeof patch.module === 'object' && !Array.isArray(patch.module)
+        ? patch.module
+        : {};
+    const payload = readPlainObject(modulePatch.payload) || target.payload;
+    const worldDetailGeneration = readPlainObject(modulePatch.worldDetailGeneration)
+        || readPlainObject((payload as any).worldDetailGeneration)
+        || target.worldDetailGeneration;
+    const modeRuntimeProfile = readPlainObject(modulePatch.modeRuntimeProfile)
+        || readPlainObject((payload as any).modeRuntimeProfile)
+        || target.modeRuntimeProfile;
+    const modeWorldbooks = Array.isArray(modulePatch.modeWorldbooks)
+        ? modulePatch.modeWorldbooks
+        : Array.isArray((payload as any).modeWorldbooks)
+            ? (payload as any).modeWorldbooks
+            : target.modeWorldbooks;
+    const contentBlocks = Array.isArray(modulePatch.contentBlocks)
+        ? sanitizeContentBlocks(modulePatch.contentBlocks)
+        : target.contentBlocks;
+    const updatedWithoutSha: Omit<WorkshopModuleEntry, 'sha256'> = {
+        ...target,
+        title: sanitizeText(patch.title, 80) || sanitizeText(modulePatch.title, 80) || target.title,
+        subtitle: sanitizeText(patch.subtitle, 100) || sanitizeText(modulePatch.subtitle, 100) || target.subtitle,
+        description: sanitizeText(patch.description, 500) || sanitizeText(modulePatch.description, 500) || target.description,
+        tags: Array.isArray(patch.tags)
+            ? sanitizeTags(patch.tags)
+            : Array.isArray(modulePatch.tags)
+                ? sanitizeTags(modulePatch.tags)
+                : target.tags,
+        payload,
+        worldDetailGeneration,
+        modeRuntimeProfile,
+        modeWorldbooks,
+        formatVersion: Number(modulePatch.formatVersion) === 2 ? 2 : target.formatVersion,
+        workshopKind: modulePatch.workshopKind === 'standard_module' ? 'standard_module' : target.workshopKind,
+        contentBlocks,
+        usagePrompt: typeof modulePatch.usagePrompt === 'string' ? sanitizeText(modulePatch.usagePrompt, 500) : target.usagePrompt,
+        safetyNotes: Array.isArray(modulePatch.safetyNotes)
+            ? modulePatch.safetyNotes.map((item: unknown) => sanitizeText(item, 200)).filter(Boolean).slice(0, 12)
+            : target.safetyNotes,
+        injectionPreview: Array.isArray(modulePatch.injectionPreview)
+            ? modulePatch.injectionPreview.map((item: unknown) => sanitizeText(item, 400)).filter(Boolean).slice(0, 12)
+            : target.injectionPreview,
+        preset: modulePatch.preset && typeof modulePatch.preset === 'object' ? modulePatch.preset : target.preset,
+        contributor: anonymous ? '匿名玩家' : (sanitizeText(patch.contributor, 40) || sanitizeText(modulePatch.contributor, 40) || user.username),
+        anonymous,
+        ownerUserId: target.ownerUserId,
+        ownerUsername: target.ownerUsername,
+        createdAt: target.createdAt,
+        updatedAt: new Date().toISOString(),
+        r2Key: target.r2Key
+    };
+    const json = JSON.stringify(updatedWithoutSha);
+    if (encoder.encode(json).byteLength > MAX_MODULE_BYTES) throw new Error('模块 JSON 过大，请控制在 2MB 内');
+    return {
+        ...updatedWithoutSha,
+        sha256: await sha256HexText(json)
+    };
 };
 
 export function onRequestOptions(): Response {
@@ -315,16 +397,7 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
             }
             const patch = body?.patch && typeof body.patch === 'object' ? body.patch : {};
             const anonymous = body?.anonymous === true;
-            const updated: WorkshopModuleEntry = {
-                ...target,
-                title: sanitizeText(patch.title, 80) || target.title,
-                subtitle: sanitizeText(patch.subtitle, 100) || target.subtitle,
-                description: sanitizeText(patch.description, 500) || target.description,
-                tags: Array.isArray(patch.tags) ? sanitizeTags(patch.tags) : target.tags,
-                contributor: anonymous ? '匿名玩家' : (sanitizeText(patch.contributor, 40) || user.username),
-                anonymous,
-                updatedAt: new Date().toISOString()
-            };
+            const updated = await sanitizeUpdatedModule(target, patch, user, anonymous);
             await bucket.put(updated.r2Key, JSON.stringify(updated, null, 2), {
                 httpMetadata: { contentType: 'application/json; charset=utf-8', cacheControl: 'public, max-age=300' },
                 customMetadata: { sha256: updated.sha256, workshopId: updated.id }

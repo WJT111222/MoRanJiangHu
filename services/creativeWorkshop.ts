@@ -17,7 +17,9 @@ export interface 发布创意工坊模块参数 {
 
 export interface 编辑创意工坊模块参数 {
     id: string;
-    patch: Partial<Pick<创意工坊模块条目, 'title' | 'subtitle' | 'description' | 'tags' | 'contributor'>>;
+    patch: Partial<Pick<创意工坊模块条目, 'title' | 'subtitle' | 'description' | 'tags' | 'contributor'>> & {
+        module?: 创意工坊模块条目;
+    };
     anonymous?: boolean;
 }
 
@@ -309,6 +311,26 @@ export const 导入本地创意工坊模块 = (module: 创意工坊模块条目)
     const normalized = 规范化当前模块({ ...module, id: module.id || `local-${Date.now()}` }, 'local');
     if (!normalized) throw new Error('模块 JSON 格式不完整');
     const next = [normalized, ...读取本地创意工坊模块().filter((item) => item.id !== normalized.id)].slice(0, 100);
+    保存本地创意工坊模块(next);
+    return normalized;
+};
+
+export const 更新本地创意工坊模块 = (id: string, module: 创意工坊模块条目): 创意工坊模块条目 => {
+    const targetId = typeof id === 'string' ? id.trim() : '';
+    if (!targetId) throw new Error('缺少要编辑的本地模块 ID');
+    const existingModules = 读取本地创意工坊模块();
+    const existing = existingModules.find((item) => item.id === targetId);
+    if (!existing) throw new Error('未找到要编辑的本地模块');
+    const normalized = 规范化当前模块({
+        ...existing,
+        ...module,
+        id: targetId,
+        source: 'local',
+        createdAt: module.createdAt || existing.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    }, 'local');
+    if (!normalized) throw new Error('模块 JSON 格式不完整');
+    const next = [normalized, ...existingModules.filter((item) => item.id !== targetId)].slice(0, 100);
     保存本地创意工坊模块(next);
     return normalized;
 };

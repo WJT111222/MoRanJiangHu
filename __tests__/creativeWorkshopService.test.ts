@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { 删除本地创意工坊模块, 导入本地创意工坊模块, 列出创意工坊模块, 本地创意工坊模块存储键, 读取本地创意工坊模块 } from '../services/creativeWorkshop';
+import { 删除本地创意工坊模块, 导入本地创意工坊模块, 更新本地创意工坊模块, 列出创意工坊模块, 本地创意工坊模块存储键, 读取本地创意工坊模块 } from '../services/creativeWorkshop';
 
 const createLocalStorageMock = () => {
     const store = new Map<string, string>();
@@ -110,5 +110,24 @@ describe('creativeWorkshop service compatibility', () => {
         删除本地创意工坊模块(imported.id);
 
         expect(读取本地创意工坊模块().some((entry) => entry.id === imported.id)).toBe(false);
+    });
+
+    it('本地导入的模块可以编辑完整 JSON 并保留本地来源', () => {
+        const imported = 导入本地创意工坊模块(创建旧版开局模块() as any);
+
+        const updated = 更新本地创意工坊模块(imported.id, {
+            ...imported,
+            title: '改名后的本地模式包',
+            payload: {
+                ...imported.payload,
+                manualWorldPrompt: '编辑后的完整 JSON 内容'
+            },
+            injectionPreview: ['编辑后预览']
+        } as any);
+
+        expect(updated.title).toBe('改名后的本地模式包');
+        expect(updated.source).toBe('local');
+        expect(updated.payload?.manualWorldPrompt).toBe('编辑后的完整 JSON 内容');
+        expect(读取本地创意工坊模块().find((entry) => entry.id === imported.id)?.title).toBe('改名后的本地模式包');
     });
 });
