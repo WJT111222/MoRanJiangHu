@@ -1,15 +1,26 @@
 {
-  "versionCode": 567,
-  "versionName": "1.0.567",
+  "versionCode": 568,
+  "versionName": "1.0.568",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "修复创意工坊本地导入 JSON 没有编辑入口的问题：本地测试的模式包现在可以直接打开完整 JSON 编辑并保存。",
-    "修复已发布到社区的本人投稿只能改标题、简介、标签的问题：作者现在可以编辑并保存完整模块 JSON 内容。",
-    "完善创意工坊完整模式包保存：payload、contentBlocks、modeWorldbooks、worldDetailGeneration、modeRuntimeProfile 等核心字段会完整保留，减少编辑后实际配置没变的问题。",
+    "修复自定义题材模式包应用后仍显示内置题材内容的问题：新建开局会正确展示玩家修改过的模式名称、市场入口、交易口径和货币换算。",
+    "优化题材模式包开局体验：AI 补全开局框架时会优先沿用模式包保存的世界观、地图口径、组织规则和能力体系，减少被默认灵气复苏等内置模板覆盖。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
   "releaseHistory": [
+    {
+      "versionName": "1.0.567",
+      "versionCode": 567,
+      "releasePublishedAt": "2026-07-05T18:58:34.483+08:00",
+      "releaseNotes": [
+        "修复创意工坊本地导入 JSON 没有编辑入口的问题：本地测试的模式包现在可以直接打开完整 JSON 编辑并保存。",
+        "修复已发布到社区的本人投稿只能改标题、简介、标签的问题：作者现在可以编辑并保存完整模块 JSON 内容。",
+        "完善创意工坊完整模式包保存：payload、contentBlocks、modeWorldbooks、worldDetailGeneration、modeRuntimeProfile 等核心字段会完整保留，减少编辑后实际配置没变的问题。",
+        "官网：https://msjh.bacon159.pp.ua/",
+        "备用站：https://msjh.bacon.de5.net/"
+      ]
+    },
     {
       "versionName": "1.0.566",
       "versionCode": 566,
@@ -437,12 +448,11 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "修复创意工坊本地导入 JSON 没有编辑入口的问题：本地测试的模式包现在可以直接打开完整 JSON 编辑并保存。",
-    "修复已发布到社区的本人投稿只能改标题、简介、标签的问题：作者现在可以编辑并保存完整模块 JSON 内容。",
-    "完善创意工坊完整模式包保存：payload、contentBlocks、modeWorldbooks、worldDetailGeneration、modeRuntimeProfile 等核心字段会完整保留，减少编辑后实际配置没变的问题。",
+    "修复自定义题材模式包应用后仍显示内置题材内容的问题：新建开局会正确展示玩家修改过的模式名称、市场入口、交易口径和货币换算。",
+    "优化题材模式包开局体验：AI 补全开局框架时会优先沿用模式包保存的世界观、地图口径、组织规则和能力体系，减少被默认灵气复苏等内置模板覆盖。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
-  "notes": "修复创意工坊本地导入 JSON 没有编辑入口的问题：本地测试的模式包现在可以直接打开完整 JSON 编辑并保存。\n修复已发布到社区的本人投稿只能改标题、简介、标签的问题：作者现在可以编辑并保存完整模块 JSON 内容。\n完善创意工坊完整模式包保存：payload、contentBlocks、modeWorldbooks、worldDetailGeneration、modeRuntimeProfile 等核心字段会完整保留，减少编辑后实际配置没变的问题。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-  "releasePublishedAt": "2026-07-05T18:58:34.483+08:00"
+  "notes": "修复自定义题材模式包应用后仍显示内置题材内容的问题：新建开局会正确展示玩家修改过的模式名称、市场入口、交易口径和货币换算。\n优化题材模式包开局体验：AI 补全开局框架时会优先沿用模式包保存的世界观、地图口径、组织规则和能力体系，减少被默认灵气复苏等内置模板覆盖。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
+  "releasePublishedAt": "2026-07-05T20:01:20+08:00"
 }

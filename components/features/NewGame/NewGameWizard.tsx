@@ -47,6 +47,7 @@ import {
     题材模式顺序
 } from '../../../utils/workshopEngine';
 import { 构建官方模式运行时配置, 构建货币系统模板, 规范化模式运行时配置 } from '../../../utils/modeRuntimeProfile';
+import { 构建题材显示摘要 } from '../../../utils/topicModeDisplay';
 import { 构建默认技艺 } from '../../../utils/skillDefaults';
 import { 默认境界母板提示词 } from '../../../prompts/runtime/fandom';
 import { 设置键 } from '../../../utils/settingsSchema';
@@ -819,6 +820,10 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
     const stepProgress = ((step + 1) / STEPS.length) * 100;
     const currentStepLabel = STEPS[step] || '创建';
     const 当前题材配置 = useMemo(() => 获取题材模式配置(openingConfig.题材模式), [openingConfig.题材模式]);
+    const 当前题材显示摘要 = useMemo(
+        () => 构建题材显示摘要(openingConfig.题材模式, openingConfig.modeRuntimeProfile),
+        [openingConfig.题材模式, openingConfig.modeRuntimeProfile]
+    );
     const 当前难度设定 = useMemo(() => 获取题材化难度设定(worldConfig.difficulty, openingConfig.题材模式), [worldConfig.difficulty, openingConfig.题材模式]);
     const 出身剩余重Roll次数 = Math.max(0, 当前难度设定.天赋重Roll次数 - 出身已重Roll次数);
     const 天赋剩余重Roll次数 = Math.max(0, 当前难度设定.天赋重Roll次数 - 天赋已重Roll次数);
@@ -1251,15 +1256,15 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                 '要求：',
                 '- 背景和天赋必须能长期影响玩法，不要只写一句第一幕设定。',
                 '- 伙伴必须适合开局同行，并给出清楚关系，不要抢主角戏。',
-                `- 当前题材模式是“${当前题材配置.label}”，必须严格沿用对应世界观、身份背景、天赋、交易和地图口径。`,
-                ...当前题材配置.promptLines.map((line) => `- 题材核心边界：${line}`),
-                `- 开局边界：${当前题材配置.promptBoundary}`,
-                `- 货币/交易口径：${当前题材配置.currencyPrompt}`,
-                `- 统一换算口径：${当前题材配置.currencyExchangePrompt}`,
-                `- 地图/势力口径：${当前题材配置.mapPrompt}`,
-                `- 推荐背景方向：${当前题材配置.backgroundSuggestions.join('、')}`,
-                `- 推荐天赋方向：${当前题材配置.talentSuggestions.join('、')}`,
-                `- 预设物品方向：${当前题材配置.presetItemKeywords.join('、')}`,
+                `- 当前题材模式是“${当前题材显示摘要.label}”，必须严格沿用对应世界观、身份背景、天赋、交易和地图口径。`,
+                ...当前题材显示摘要.promptLines.map((line) => `- 题材核心边界：${line}`),
+                `- 开局边界：${当前题材显示摘要.promptBoundary}`,
+                `- 货币/交易口径：${当前题材显示摘要.currencyPrompt}`,
+                `- 统一换算口径：${当前题材显示摘要.currencyExchangePrompt}`,
+                `- 地图/势力口径：${当前题材显示摘要.mapPrompt}`,
+                `- 推荐背景方向：${当前题材显示摘要.backgroundSuggestions.join('、')}`,
+                `- 推荐天赋方向：${当前题材显示摘要.talentSuggestions.join('、')}`,
+                `- 预设物品方向：${当前题材显示摘要.presetItemKeywords.join('、')}`,
                 `当前世界配置：${JSON.stringify(worldConfig)}`,
                 `当前主角：${JSON.stringify({ 姓名: charName, 性别: charGender, 年龄: charAge, 外貌: charAppearance, 性格: charPersonality, 背景: selectedBackground, 天赋列表: selectedTalents })}`,
                 `当前开局配置：${JSON.stringify(openingConfigEnabled ? openingConfig : null)}`,
@@ -2086,10 +2091,10 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                                             <div>
                                                 <div className="text-sm text-wuxia-gold font-bold">题材模式</div>
                                                 <div className="mt-1 text-[11px] leading-6 text-gray-400">
-                                                    {当前题材配置.hint} 题材会同步影响世界观、身份背景、天赋卷宗、地图版图、势力密度、市场入口和预设物品。
+                                                    {当前题材显示摘要.hint} 题材会同步影响世界观、身份背景、天赋卷宗、地图版图、势力密度、市场入口和预设物品。
                                                 </div>
                                             </div>
-                                            <div className="text-[10px] text-wuxia-cyan font-mono tracking-[0.18em]">{当前题材配置.shortLabel}</div>
+                                            <div className="text-[10px] text-wuxia-cyan font-mono tracking-[0.18em]">{当前题材显示摘要.shortLabel}</div>
                                         </div>
                                         <InlineSelect
                                             value={openingConfig.题材模式}
@@ -2099,7 +2104,7 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] leading-5">
                                             <div className="rounded-xl border border-white/8 bg-black/30 p-3">
                                                 <div className="text-gray-500">市场入口</div>
-                                                <div className="mt-1 text-gray-200">{当前题材配置.auctionName}</div>
+                                                <div className="mt-1 text-gray-200">{当前题材显示摘要.marketName}</div>
                                             </div>
                                             <div className="rounded-xl border border-white/8 bg-black/30 p-3">
                                                 <div className="text-gray-500">{当前题材配置.densityLabel}</div>
@@ -2107,11 +2112,11 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                                             </div>
                                             <div className="rounded-xl border border-white/8 bg-black/30 p-3">
                                                 <div className="text-gray-500">交易口径</div>
-                                                <div className="mt-1 text-gray-200 line-clamp-2">{当前题材配置.currencyPrompt}</div>
+                                                <div className="mt-1 text-gray-200 line-clamp-2">{当前题材显示摘要.currencyPrompt}</div>
                                             </div>
                                             <div className="rounded-xl border border-white/8 bg-black/30 p-3 md:col-span-3">
                                                 <div className="text-gray-500">统一换算</div>
-                                                <div className="mt-1 text-gray-200">{当前题材配置.currencyExchangePrompt}</div>
+                                                <div className="mt-1 text-gray-200">{当前题材显示摘要.currencyExchangePrompt}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -2819,7 +2824,7 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                                     <div className="min-w-0">
                                         <div className="text-[11px] uppercase tracking-[0.28em] text-wuxia-cyan/70 font-mono">Mode Fit</div>
-                                        <div className="mt-1 text-sm text-gray-300">当前模式：<span className="text-wuxia-gold">{当前题材配置.label}</span></div>
+                                        <div className="mt-1 text-sm text-gray-300">当前模式：<span className="text-wuxia-gold">{当前题材显示摘要.label}</span></div>
                                     </div>
                                     <GameButton
                                         onClick={() => { void runAiFrameworkAssist(); }}
@@ -3078,7 +3083,7 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                                         <h3 className="text-2xl font-serif font-bold text-wuxia-gold mt-2">天赋选择</h3>
                                         <p className="text-xs text-gray-400 mt-2 leading-6">选择最多三个天赋，组合出你的长期成长风格、擅长判定与可走路线。</p>
                                         <p className="mt-2 rounded-xl border border-wuxia-cyan/20 bg-wuxia-cyan/5 px-3 py-2 text-[11px] text-gray-300 leading-5">
-                                            当前题材：<span className="text-wuxia-gold">{当前题材配置.label}</span>。想切到西幻风格时，回到“世界观”页选择“西方奇幻 / 西幻模式包”，这里的天赋卷宗会自动刷新为魔力、骑士、公会与冒险者口径。
+                                            当前题材：<span className="text-wuxia-gold">{当前题材显示摘要.label}</span>。想切到西幻风格时，回到“世界观”页选择“西方奇幻 / 西幻模式包”，这里的天赋卷宗会自动刷新为魔力、骑士、公会与冒险者口径。
                                         </p>
                                     </div>
                                     <div className="flex flex-col items-start md:items-end gap-2">
@@ -3362,9 +3367,9 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="rounded-2xl border border-wuxia-gold/20 bg-black/25 p-4 text-xs leading-6 text-gray-400">
-                                        <div className="text-sm text-wuxia-gold font-bold">当前题材：{当前题材配置.label}</div>
-                                        <div className="mt-1">{当前题材配置.hint}</div>
-                                        <div className="mt-2 text-gray-500">市场入口：{当前题材配置.auctionName}；{当前题材配置.currencyPrompt}；{当前题材配置.currencyExchangePrompt}</div>
+                                        <div className="text-sm text-wuxia-gold font-bold">当前题材：{当前题材显示摘要.label}</div>
+                                        <div className="mt-1">{当前题材显示摘要.hint}</div>
+                                        <div className="mt-2 text-gray-500">市场入口：{当前题材显示摘要.marketName}；{当前题材显示摘要.currencyPrompt}；{当前题材显示摘要.currencyExchangePrompt}</div>
                                     </div>
                                     <div className="space-y-3">
                                         <label className="text-sm text-wuxia-cyan font-bold">开局切入偏好</label>
@@ -3503,7 +3508,7 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
                                     <p>开局伙伴: <span className="text-white">{partnerEnabled ? `${获取当前伙伴列表快照().length} 名` : '关闭'}</span></p>
                                     {partnerEnabled && <p>伙伴名单: <span className="text-white">{获取当前伙伴列表快照().map((partner) => partner.姓名 || '未填写姓名').join('、')}</span></p>}
                                     <p>开局配置: <span className="text-white">{openingConfigEnabled ? '已启用' : '未启用'}</span></p>
-                                    <p>题材模式: <span className="text-white">{openingConfig.题材模式}</span></p>
+                                    <p>题材模式: <span className="text-white">{当前题材显示摘要.label}</span></p>
                                     <p>关系侧重: <span className="text-white">{openingConfigEnabled ? (openingConfig.关系侧重.join('、') || '无') : '未设置'}</span></p>
                                     <p>开局切入: <span className="text-white">{openingConfigEnabled ? openingConfig.开局切入偏好 : '未设置'}</span></p>
                                     <p>生成性别: <span className="text-white">{openingConfigEnabled ? openingConfig.允许生成性别.join('、') : '未设置'}</span></p>
