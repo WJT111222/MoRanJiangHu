@@ -16,7 +16,7 @@ describe('dialogueLogNormalizer story readability cleanup', () => {
         expect(logs[0].text).not.toContain('。。');
     });
 
-    it('splits very long narration into readable paragraphs', () => {
+    it('keeps very long narration unchanged instead of inserting local paragraph breaks', () => {
         const longText = [
             '卯时的青云仙城尚未大亮，晨雾覆在飞檐之上。',
             '云水客栈二号房内，灵气沿着阵纹缓缓流转。',
@@ -33,7 +33,7 @@ describe('dialogueLogNormalizer story readability cleanup', () => {
 
         const logs = 规范化可渲染对白日志([{ sender: '旁白', text: longText }] as any);
 
-        expect(logs[0].text).toContain('\n\n');
+        expect(logs[0].text).toBe(longText);
     });
 
     it('keeps narrated quoted speech as narration instead of guessing character bubbles', () => {

@@ -276,6 +276,43 @@ describe('storyResponseParser', () => {
         ]);
     });
 
+    it('rejects a speaker tag on its own line so the model must repair the body format', () => {
+        expect(() => parseStoryRawText([
+            '<正文>',
+            '【旁白】冷雾在黑色的竹林间缓缓流淌。',
+            '【散修首领】',
+            '“小娘们，跑得挺快啊。乖乖把身上的灵石和那柄铁剑交出来。”俞月荷没有答话，只是再次向后退了一步。',
+            '【旁白】她的靴底踩碎了一块枯竹枝。',
+            '</正文>',
+            '<短期记忆>散修首领在铁线竹林中拦截俞月荷。</短期记忆>'
+        ].join('\n'), { validateDialogueFormat: true })).toThrow(/空的【散修首领】标签|裸引号对白|局部修复/);
+    });
+
+    it('rejects repeated standalone title-like speaker tags instead of repairing them locally', () => {
+        expect(() => parseStoryRawText([
+            '<正文>',
+            '【旁白】散修首领挥刀逼近。',
+            '【散修首领】',
+            '“找死！”',
+            '【旁白】他怒吼着，将灵力灌入铁刀。',
+            '【散修首领】',
+            '“啊——！”',
+            '【旁白】厚铁刀当啷一声掉落在泥泞中。',
+            '</正文>',
+            '<短期记忆>散修首领被主角和俞月荷伏击重创。</短期记忆>'
+        ].join('\n'), { validateDialogueFormat: true })).toThrow(/空的【散修首领】标签|裸引号对白|局部修复/);
+    });
+
+    it('rejects narration appended after a tagged quoted dialogue line', () => {
+        expect(() => parseStoryRawText([
+            '<正文>',
+            '【旁白】散修首领挥刀逼近。',
+            '【散修首领】“找死！”他怒吼着，将灵力灌入铁刀。',
+            '</正文>',
+            '<短期记忆>散修首领挥刀逼近。</短期记忆>'
+        ].join('\n'), { validateDialogueFormat: true })).toThrow(/对白闭合后又接了旁白|必须拆成/);
+    });
+
     it('detects colon dialogue for known four-character speakers during strict parsing', () => {
         expect(() => parseStoryRawText([
             '<正文>',

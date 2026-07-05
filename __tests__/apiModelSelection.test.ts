@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { 选择最佳可用模型 } from '../components/features/Settings/ApiSettings';
-import { 创建接口配置模板, 获取剧情回忆接口配置, 获取世界演变接口配置, 规范化接口设置, 推断供应商, 供应商标签 } from '../utils/apiConfig';
+import { 创建接口配置模板, 获取剧情回忆接口配置, 获取世界演变接口配置, 获取规划分析接口配置, 规范化接口设置, 推断供应商, 供应商标签 } from '../utils/apiConfig';
 
 describe('接口模型自动选择', () => {
     it('优先选择同渠道返回列表中版本号更大的高能力模型', () => {
@@ -147,6 +147,34 @@ describe('阶段上游模型解析', () => {
         });
 
         const config = 获取世界演变接口配置(settings);
+
+        expect(config?.id).toBe('main-channel');
+        expect(config?.baseUrl).toBe('https://main.example.test/v1');
+        expect(config?.apiKey).toBe('main-key');
+        expect(config?.model).toBe('main-model');
+    });
+
+    it('规划分析未配置独立模型时复用主剧情接口', () => {
+        const settings = 规范化接口设置({
+            activeConfigId: 'main-channel',
+            configs: [
+                {
+                    ...创建接口配置模板('openai_compatible'),
+                    id: 'main-channel',
+                    名称: '主剧情渠道',
+                    baseUrl: 'https://main.example.test/v1',
+                    apiKey: 'main-key',
+                    model: 'main-model'
+                }
+            ],
+            功能模型占位: {
+                规划分析功能启用: true,
+                规划分析独立模型开关: false,
+                规划分析使用模型: ''
+            }
+        });
+
+        const config = 获取规划分析接口配置(settings);
 
         expect(config?.id).toBe('main-channel');
         expect(config?.baseUrl).toBe('https://main.example.test/v1');

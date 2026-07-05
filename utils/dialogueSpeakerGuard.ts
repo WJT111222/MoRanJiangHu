@@ -16,6 +16,13 @@ const 常见复姓列表 = [
     '轩辕', '令狐'
 ];
 const 四字非复姓名词正则 = /(?:灵气|剑光|刀光|晨雾|夜色|灯光|雨声|风声|脚步|眼力|感觉|气息|玄铁|精石|矿材|屋内|门外|窗外|林间|山间|水面|火光|人群|全场|众人)/;
+const 角色称谓核心词正则 = /(?:首领|头目|随从|护卫|侍卫|管事|掌柜|长老|执事|供奉|客卿|堂主|舵主|寨主|帮主|门主|宗主|峰主|坛主|香主|队长|统领|弟子|师兄|师姐|师弟|师妹|修士|散修|剑修|刀修|魔修|妖修|刀客|剑客|镖师|捕快|侍女|丫鬟)$/u;
+const 角色称谓限定词正则 = /^(?:[一二三四五六七八九十老小大小高矮胖瘦黑白青灰红蓝紫黄绿金银铁铜玉木火水土风雷冰血毒邪魔妖鬼玄灵云山林河湖海江荒野外内前后左右东西南北上中下][\u4e00-\u9fa5]*|[\u4e00-\u9fa5]*(?:宗|门|派|帮|寨|堂|峰|谷|楼|阁|府|寺|观|城|镇|村|族|家|军|卫|院|坊|市|铺|营|队|宫|岛|山|岭|林|江|湖|海|河|原|荒|野|散修|魔修|妖修|剑修|刀修))/u;
+const 是否像临场角色称谓 = (value: string): boolean => (
+    /^[\u4e00-\u9fa5]{3,8}$/u.test(value)
+    && 角色称谓核心词正则.test(value)
+    && 角色称谓限定词正则.test(value)
+);
 const 是否像中文姓名 = (value: string): boolean => (
     /^[\u4e00-\u9fa5]{2,4}$/u.test(value)
     && (value.length < 4 || 常见复姓列表.some(surname => value.startsWith(surname)) || 额外常见姓氏.has(value[0]))
@@ -26,6 +33,7 @@ const 是否像中文姓名 = (value: string): boolean => (
 const 是否可接受未知中文角色名 = (value: string): boolean => {
     if (!/^[\u4e00-\u9fa5]{2,6}$/u.test(value)) return false;
     if (四字非复姓名词正则.test(value)) return false;
+    if (是否像临场角色称谓(value)) return true;
     if (是否像中文姓名(value)) return true;
     if (value.length >= 2 && value.length <= 3) return true;
     return 姓名含已知中文姓氏(value);

@@ -41,6 +41,7 @@ import * as textAIService from '../services/ai/text';
 import { 终止全部ComfyUI生图任务 } from '../services/ai/image';
 import { recordDiagnosticLog } from '../services/diagnosticLog';
 import { useGameState } from './useGameState';
+import { isTurnProcessing, shouldPlayTurnNotification } from '../utils/turnNotificationState';
 import { 规范化接口设置, 获取当前接口配置, 获取主剧情接口配置, 获取剧情回忆接口配置, 获取记忆总结接口配置, 获取文章优化接口配置, 获取变量计算接口配置, 获取世界演变接口配置, 获取文生图接口配置, 获取场景文生图接口配置, 获取NSFW文生图接口配置, 获取生图词组转化器接口配置, 获取生图画师串预设, 获取词组转化器预设提示词, 接口配置是否可用, 刷新已发现ComfyUI后端缓存, 变量校准功能已启用 as 变量生成功能已启用 } from '../utils/apiConfig';
 import type { 当前可用接口结构 } from '../utils/apiConfig';
 import {
@@ -634,14 +635,21 @@ export const useGame = () => {
         刷新NPC记忆总结队列(Array.isArray(社交) ? 社交 : [], { 静默: NPC记忆总结阶段 === 'processing' || NPC记忆总结阶段 === 'review' });
     }, [社交, memoryConfig]);
 
-    const prevLoadingRef = useRef(false);
+    const 上一次回合处理中Ref = useRef(false);
     useEffect(() => {
-        const wasLoading = prevLoadingRef.current;
-        prevLoadingRef.current = loading;
-        if (wasLoading && !loading && view === 'game' && gameConfig.启用回合提示音 !== false) {
+        const wasTurnProcessing = 上一次回合处理中Ref.current;
+        const turnProcessing = isTurnProcessing({ loading, postStoryQueueRunning: 后台队列处理中 });
+        上一次回合处理中Ref.current = turnProcessing;
+        if (shouldPlayTurnNotification({
+            wasTurnProcessing,
+            loading,
+            postStoryQueueRunning: 后台队列处理中,
+            view,
+            enabled: gameConfig.启用回合提示音 !== false
+        })) {
             import('../utils/turnNotificationSound').then(m => m.playTurnNotificationSound()).catch(() => {});
         }
-    }, [loading, view, gameConfig.启用回合提示音]);
+    }, [loading, 后台队列处理中, view, gameConfig.启用回合提示音]);
 
     // --- Actions ---
     const 深拷贝 = <T,>(data: T): T => {

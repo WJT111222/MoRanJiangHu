@@ -58,4 +58,26 @@ describe('variable model dialogue NPC audit', () => {
         expect(prompt).toContain('剧情对话人物');
         expect(prompt).toContain('不能继续保留半残');
     });
+
+    it('requires title-like enemy dialogue speakers to be created in social records', () => {
+        const prompt = 构建正文对白人物审计提示({
+            logs: [
+                { sender: '旁白', text: '冷雾压低了竹林。' },
+                { sender: '散修首领', text: '“把灵石交出来。”' }
+            ]
+        } as any, {
+            角色: { 姓名: '杨培强' },
+            环境: {},
+            世界: {},
+            社交: [],
+            战斗: {},
+            玩家门派: {},
+            任务列表: [],
+            约定列表: []
+        });
+
+        expect(prompt).toContain('散修首领');
+        expect(prompt).toContain('push 社交');
+        expect(prompt).toContain('完整 NPC 档案');
+    });
 });

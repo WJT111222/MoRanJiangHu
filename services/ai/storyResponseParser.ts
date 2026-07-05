@@ -1197,6 +1197,17 @@ const 检测正文引号内换行问题 = (body: string): string | null => {
     return null;
 };
 
+const 提取首段正文引号对白余文 = (text: string): string => {
+    const source = (text || '').trim();
+    if (!/^[“"「『]/.test(source)) return '';
+    const opener = source[0];
+    const closer = 正文引号闭合表[opener] || '';
+    if (!closer) return '';
+    const closingIndex = source.indexOf(closer, 1);
+    if (closingIndex <= 0) return '';
+    return source.slice(closingIndex + 1).trim();
+};
+
 const 检测正文对白格式问题 = (body: string, declaredNames?: Set<string>): string | null => {
     const quoteIssue = 检测正文引号内换行问题(body);
     if (quoteIssue) return quoteIssue;
@@ -1232,9 +1243,17 @@ const 检测正文对白格式问题 = (body: string, declaredNames?: Set<string
             if (sender === '旁白') {
                 const quotedSpeaker = 提取显式说话引号人物名(text);
                 if (quotedSpeaker) return `疑似角色「${quotedSpeaker}」的对白写在【旁白】行内`;
+            } else {
+                const trailingNarration = 提取首段正文引号对白余文(text);
+                if (trailingNarration) {
+                    return `正文第${index + 1}行的【${sender}】对白闭合后又接了旁白「${trailingNarration.slice(0, 40)}」；必须拆成【${sender}】对白行和【旁白】叙事行`;
+                }
             }
             if (!text && 协议标签开头正则.test(line)) {
                 const nextLine = lines[index + 1] || '';
+                if (sender !== '旁白' && nextLine && /^[“"「『]/.test(nextLine)) {
+                    return `正文第${index + 1}行只有空的【${sender}】标签，后续引号对白没有和角色标签写在同一行；必须改为【${sender}】对白行，若对白后有叙事则另起【旁白】行`;
+                }
                 if (nextLine && 裸文正文行正则.test(nextLine)) {
                     return `正文第${index + 1}行只有空的【${sender}】标签，后续裸文未带正文协议标签；每个非空正文行必须以【旁白】、【角色名】或【判定】开头`;
                 }

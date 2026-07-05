@@ -17,6 +17,7 @@ const 非单一说话人正则 = /^(?:旁白|判定|NSFW判定|系统|众人|众
 const 语气词说话人正则 = /^(?:轻声|低声|沉声|冷声|温声|柔声|厉声|朗声|小声|淡淡|缓缓|忽然|忽地|笑着|苦笑着)$/;
 const 非人名短语说话人正则 = /^(?:随着|伴随|当他|当她|当你|当我|如果|若是|只是|这是|那是|这个|那个|这种|那种|此时|这时|随后|然后|接着|同时|终于|突然|忽然|仍然|已经|开始|继续|所有|全场|一切|空气|雨声|风声|灯光|夜色|晨光|脚步|声音)/;
 const 拟声词正则 = /^(?:啊+|呀+|唔+|嗯+|呃+|哼+|哈+|呵+|嘿+|咳+|轰+|砰+|啪+|咚+|铛+|嗡+|哗+|唰+|嗖+|吱+|喀+|咔+|沙+|呼+|呜+|嗷+|嘶+|噗+|扑通+|哗啦+|咔嚓+|轰隆+|咳咳+|哈哈+|呵呵+|嘿嘿+|呜呜+)[。！？!?…~～—-]*$/;
+const 角色发声拟声词正则 = /^(?:啊+|呀+|唔+|嗯+|呃+|哼+|哈+|呵+|嘿+|咳+|呼+|呜+|嗷+|嘶+|咳咳+|哈哈+|呵呵+|嘿嘿+|呜呜+)[。！？!?…~～—-]*$/;
 const Judge标签残留正则 = /(?:<|&lt;)\s*\/?\s*judge\s*(?:>|&gt;)/i;
 const Judge数值残留正则 = /^判定值\s*[+\-]?\d+(?:\.\d+)?\s*\/\s*难度\s*[+\-]?\d+(?:\.\d+)?/m;
 const 完整判定文本特征正则 = /判定值|结果\s*[=:：]|[｜|]/;
@@ -79,22 +80,7 @@ const 清理正文套话 = (value: string): string => (
 
 const 拆分过长旁白段落 = (sender: string, value: string): string => {
     const text = 清理正文套话(value).trim();
-    if (sender !== '旁白' || text.length < 220 || /\n\s*\n/.test(text)) return text;
-    const units = text.match(/[^。！？!?；;\n]+[。！？!?；;]?|\n+/g) || [text];
-    const paragraphs: string[] = [];
-    let current = '';
-    units.forEach((unit) => {
-        const piece = unit.trim();
-        if (!piece) return;
-        if (current && current.length + piece.length > 150) {
-            paragraphs.push(current);
-            current = piece;
-            return;
-        }
-        current = current ? `${current}${piece}` : piece;
-    });
-    if (current) paragraphs.push(current);
-    return paragraphs.length > 1 ? paragraphs.join('\n\n') : text;
+    return text;
 };
 
 const 合并相邻同发送者 = (logs: GameLog[]): GameLog[] => {
@@ -144,7 +130,7 @@ const 是否无效角色对白 = (sender: string, text: string): boolean => {
     const normalizedSender = 清理说话人(sender);
     if (!normalizedSender || 非单一说话人正则.test(normalizedSender) || 泛称说话人正则.test(normalizedSender)) return true;
     const speech = 剥离外层引号(text);
-    if (!speech || 拟声词正则.test(speech)) return true;
+    if (!speech || (拟声词正则.test(speech) && !角色发声拟声词正则.test(speech))) return true;
     if (/^(?:众人|众弟子|众门人|众侍从|众士卒|所有人|全场|人群).{0,8}(?:齐声|一起|同时)/.test(speech)) return true;
     return false;
 };
