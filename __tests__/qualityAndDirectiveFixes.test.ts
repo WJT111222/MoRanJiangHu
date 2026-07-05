@@ -80,6 +80,48 @@ describe('功法品质校准', () => {
         expect(high.内力系数).toBeGreaterThan(low.内力系数);
         expect(high.被动修正[0].数值).toBeGreaterThan(low.被动修正[0].数值);
     });
+
+    it('同名功法会合并为更高重数的同一条记录', () => {
+        const list = 标准化功法列表([
+            {
+                ID: 'k-old',
+                名称: '云岫入门剑法',
+                类型: '被动',
+                品质: '凡品',
+                来源: '云岫剑宗藏经阁',
+                描述: '云岫剑宗给新进弟子打基础的入门典籍。',
+                当前重数: 1,
+                最高重数: 3,
+                当前熟练度: 0,
+                重数描述映射: [{ 重数: 1, 描述: '初学入门' }]
+            },
+            {
+                ID: 'k-new',
+                名称: '云岫入门剑法',
+                类型: '被动',
+                品质: '凡品',
+                来源: '宗门传授',
+                描述: '云岫剑宗入门基础剑招，烂熟于心。',
+                当前重数: 3,
+                最高重数: 3,
+                当前熟练度: 120,
+                重数描述映射: [{ 重数: 3, 描述: '烂熟于心' }]
+            }
+        ]);
+
+        expect(list).toHaveLength(1);
+        expect(list[0]).toMatchObject({
+            名称: '云岫入门剑法',
+            当前重数: 3,
+            当前熟练度: 120
+        });
+        expect(list[0].来源).toContain('云岫剑宗藏经阁');
+        expect(list[0].来源).toContain('宗门传授');
+        expect(list[0].重数描述映射).toEqual(expect.arrayContaining([
+            expect.objectContaining({ 重数: 1, 描述: '初学入门' }),
+            expect.objectContaining({ 重数: 3, 描述: '烂熟于心' })
+        ]));
+    });
 });
 
 describe('NPC 指令字段保留', () => {

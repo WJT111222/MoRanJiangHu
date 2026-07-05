@@ -975,9 +975,124 @@ const 构建功法重数描述 = (名称: string, 品质: string, 类型: string
     }));
 };
 
+const 功法去重键 = (item: any): string => 规范化文本(item?.名称).replace(/\s+/g, '');
+
+const 合并唯一文本 = (...values: unknown[]): string => {
+    const parts = values
+        .map(value => 规范化文本(value))
+        .filter(Boolean);
+    return Array.from(new Set(parts)).join('、');
+};
+
+const 合并功法重数描述 = (left: any[] | undefined, right: any[] | undefined): any[] => {
+    const byLevel = new Map<number, any>();
+    [...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])].forEach((entry) => {
+        const level = 规范化整数(entry?.重数, 0);
+        const desc = 规范化文本(entry?.描述);
+        if (level <= 0 || !desc) return;
+        const existing = byLevel.get(level);
+        if (!existing || desc.length >= 规范化文本(existing?.描述).length) {
+            byLevel.set(level, { ...entry, 重数: level, 描述: desc });
+        }
+    });
+    return Array.from(byLevel.values()).sort((a, b) => a.重数 - b.重数);
+};
+
+const 合并功法被动修正 = (left: any[] | undefined, right: any[] | undefined): any[] => {
+    const byKey = new Map<string, any>();
+    [...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])].forEach((entry) => {
+        const attr = 规范化文本(entry?.属性名);
+        if (!attr) return;
+        const type = entry?.类型 === '百分比' ? '百分比' : '固定值';
+        const key = `${attr}::${type}`;
+        const value = 规范化数值(entry?.数值, 0);
+        const existing = byKey.get(key);
+        if (!existing || value >= 规范化数值(existing?.数值, 0)) {
+            byKey.set(key, { ...entry, 属性名: attr, 类型: type, 数值: value });
+        }
+    });
+    return Array.from(byKey.values());
+};
+
+const 合并按名称唯一数组 = (left: any[] | undefined, right: any[] | undefined): any[] => {
+    const byName = new Map<string, any>();
+    [...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])].forEach((entry) => {
+        const name = 规范化文本(entry?.名称);
+        if (!name) return;
+        const existing = byName.get(name);
+        byName.set(name, existing ? { ...existing, ...entry, 名称: name } : { ...entry, 名称: name });
+    });
+    return Array.from(byName.values());
+};
+
+const 合并唯一数组 = (left: any[] | undefined, right: any[] | undefined): any[] => (
+    Array.from(new Set([...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])]
+        .map(value => 规范化文本(value))
+        .filter(Boolean)))
+);
+
+const 选择功法主记录 = (left: any, right: any): any => {
+    const leftScore = 规范化整数(left?.当前重数, 1) * 100000
+        + 规范化整数(left?.当前熟练度, 0) * 10
+        + Math.max(0, 功法品质列表.indexOf(规范化文本(left?.品质)));
+    const rightScore = 规范化整数(right?.当前重数, 1) * 100000
+        + 规范化整数(right?.当前熟练度, 0) * 10
+        + Math.max(0, 功法品质列表.indexOf(规范化文本(right?.品质)));
+    return rightScore >= leftScore ? right : left;
+};
+
+const 合并同名功法 = (left: any, right: any): any => {
+    const primary = 选择功法主记录(left, right);
+    const secondary = primary === left ? right : left;
+    return {
+        ...secondary,
+        ...primary,
+        ID: 规范化文本(primary?.ID) || 规范化文本(secondary?.ID),
+        来源: 合并唯一文本(left?.来源, right?.来源) || primary?.来源,
+        最高重数: Math.max(规范化整数(left?.最高重数, 1), 规范化整数(right?.最高重数, 1)),
+        当前重数: Math.max(规范化整数(left?.当前重数, 1), 规范化整数(right?.当前重数, 1)),
+        当前熟练度: Math.max(规范化整数(left?.当前熟练度, 0), 规范化整数(right?.当前熟练度, 0)),
+        升级经验: Math.max(规范化整数(left?.升级经验, 0), 规范化整数(right?.升级经验, 0)),
+        基础伤害: Math.max(规范化数值(left?.基础伤害, 0), 规范化数值(right?.基础伤害, 0)),
+        加成系数: Math.max(规范化数值(left?.加成系数, 0), 规范化数值(right?.加成系数, 0)),
+        内力系数: Math.max(规范化数值(left?.内力系数, 0), 规范化数值(right?.内力系数, 0)),
+        消耗数值: Math.min(
+            Math.max(0, 规范化整数(left?.消耗数值, 0)),
+            Math.max(0, 规范化整数(right?.消耗数值, 0))
+        ),
+        最大目标数: Math.max(规范化整数(left?.最大目标数, 1), 规范化整数(right?.最大目标数, 1)),
+        武器限制: 合并唯一数组(left?.武器限制, right?.武器限制),
+        重数描述映射: 合并功法重数描述(left?.重数描述映射, right?.重数描述映射),
+        附带效果: 合并按名称唯一数组(left?.附带效果, right?.附带效果),
+        被动修正: 合并功法被动修正(left?.被动修正, right?.被动修正),
+        境界特效: 合并功法重数描述(left?.境界特效?.map((entry: any) => ({ 重数: entry?.解锁重数, 描述: entry?.描述 })), right?.境界特效?.map((entry: any) => ({ 重数: entry?.解锁重数, 描述: entry?.描述 })))
+            .map((entry: any) => ({ 解锁重数: entry.重数, 描述: entry.描述 }))
+    };
+};
+
+const 合并同名功法列表 = (items: any[]): any[] => {
+    const merged: any[] = [];
+    const indexByKey = new Map<string, number>();
+    items.forEach((item) => {
+        const key = 功法去重键(item);
+        if (!key) {
+            merged.push(item);
+            return;
+        }
+        const existingIndex = indexByKey.get(key);
+        if (existingIndex === undefined) {
+            indexByKey.set(key, merged.length);
+            merged.push(item);
+            return;
+        }
+        merged[existingIndex] = 合并同名功法(merged[existingIndex], item);
+    });
+    return merged;
+};
+
 const 标准化功法列表 = (raw: any): any[] => {
     if (!Array.isArray(raw)) return [];
-    return raw
+    const normalized = raw
         .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
         .map((source, index) => {
             const item = { ...source } as any;
@@ -1079,6 +1194,7 @@ const 标准化功法列表 = (raw: any): any[] => {
                 境界特效
             };
         });
+    return 合并同名功法列表(normalized);
 };
 const 清理旧储物字段并重算负重 = (items: any[]): number => {
     items.forEach((item) => {

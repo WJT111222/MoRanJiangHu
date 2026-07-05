@@ -266,6 +266,62 @@ describe('香闺秘档部位档案 pending 占位防御', () => {
             expect(pendingResult.本地路径).toBe('wuxia-asset://old-chest');
             expect(pendingResult.状态).toBe('pending');
         });
+
+        it('部位描述缺失时会先请求补齐描述再继续生图', async () => {
+            const { 执行NPC香闺秘档部位生图工作流 } = await import('../hooks/useGame/npcSecretImageWorkflow');
+            let extractCalls = 0;
+            const 补齐NPC香闺秘档部位描述 = vi.fn(async () => ({
+                胸部描述: '补齐后的胸部稳定档案',
+                外貌: '补齐后的外貌'
+            }));
+            const { deps } = 创建工作流依赖({
+                apiConfig: {},
+                获取文生图接口配置: () => ({
+                    图片后端类型: 'comfyui',
+                    model: 'test-model',
+                    baseUrl: 'http://localhost:8188',
+                    画风: '写实',
+                    供应商: 'other',
+                    图片走OpenAI自定义格式: false,
+                    自动切换提示: ''
+                }),
+                获取生图词组转化器接口配置: () => null,
+                获取生图画师串预设: () => null,
+                获取当前PNG画风预设: () => null,
+                获取NPC角色锚点: () => null,
+                获取词组转化器预设提示词: () => '',
+                接口配置是否可用: () => true,
+                读取文生图功能配置: () => ({ 总开关: true, NPC开关: true, 使用词组转化器: false }),
+                NPC私密部位生图进行中集合: new Set<string>(),
+                提取NPC香闺秘档部位生图数据: () => {
+                    extractCalls += 1;
+                    return extractCalls === 1 ? {} : { 胸部描述: '补齐后的胸部稳定档案' };
+                },
+                补齐NPC香闺秘档部位描述,
+                创建NPC生图任务: (p: any) => p,
+                生成NPC生图记录ID: () => 'record-refill-1',
+                追加NPC生图任务: vi.fn(),
+                更新NPC生图任务: vi.fn(),
+                写入NPC图片历史记录: vi.fn(),
+                写入NPC香闺秘档部位记录: vi.fn(() => true)
+            });
+
+            await expect(执行NPC香闺秘档部位生图工作流(
+                { id: 'npc_yyh', 姓名: '俞月荷', 性别: '女', 是否主要角色: true },
+                '胸部',
+                { source: 'auto' },
+                deps as any
+            )).rejects.toThrow('backend offline');
+
+            expect(补齐NPC香闺秘档部位描述).toHaveBeenCalledWith(
+                expect.objectContaining({ 姓名: '俞月荷' }),
+                '胸部',
+                expect.objectContaining({ taskSource: 'auto' })
+            );
+            expect(extractCalls).toBe(1);
+            const pendingUpdater = deps.更新NPC香闺秘档部位结果.mock.calls[0][2] as (current: any) => any;
+            expect(pendingUpdater(undefined).描述文本).toBe('补齐后的胸部稳定档案');
+        });
     });
 
     describe('创建NPC图片状态工作流: pending 占位写入后旧图仍在', () => {

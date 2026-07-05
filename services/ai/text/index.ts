@@ -19,6 +19,7 @@ export {
     generateWorldFoundationData,
     generateStoryResponse,
     generateVariableCalibrationUpdate,
+    generateNpcSecretPartDescriptionPatch,
     generateWorldData,
     generateWorldEvolutionUpdate,
     testConnection

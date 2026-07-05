@@ -164,6 +164,32 @@ describe('playerImageWorkflow', () => {
         expect(执行生图.mock.calls[0][1]).toEqual(expect.objectContaining({ 构图: '立绘' }));
     });
 
+    it('does not resubmit a player avatar when the current role already has a pending avatar from an earlier opening trigger', async () => {
+        const 执行生图 = vi.fn(async () => undefined);
+        const pendingAvatar = {
+            id: 'pending-avatar-1',
+            构图: '头像',
+            状态: 'pending',
+            生成时间: Date.now(),
+            生图词组: 'opening avatar prompt'
+        };
+        const currentRole: any = {
+            姓名: '刀哥',
+            头像图片URL: '',
+            图片档案: {
+                最近生图结果: pendingAvatar,
+                生图历史: [pendingAvatar]
+            }
+        };
+        const deps = 创建依赖(执行生图);
+        deps.获取角色 = () => currentRole;
+        const workflow = 创建主角图片工作流(deps as any);
+
+        await workflow.ensurePlayerAvatarEachTurn({ 姓名: '刀哥', 头像图片URL: '' } as any);
+
+        expect(执行生图).not.toHaveBeenCalled();
+    });
+
     it('persists every generated player secret part image into the player archive', async () => {
         let role: any = {
             姓名: '前月荷',

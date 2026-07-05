@@ -59,6 +59,41 @@ const 游戏机制关键词 = /兑换|强化|支线剧情|奖励点|属性|技�
 
 const 是否游戏机制文案 = (text: string): boolean => 游戏机制关键词.test(text);
 export const 物品无文字正向约束 = `${全局无文字正向提示词}, blank unmarked object surface, plain empty panels, clean material texture where markings would appear`;
+export const 物品符箓正向约束 = 'label-free talisman design, no readable characters, no legible writing, abstract unreadable cinnabar strokes are allowed, decorative non-linguistic talisman linework is allowed';
+
+const 物品是否符纸符箓 = (item: any): boolean => {
+    const text = [
+        item?.名称,
+        item?.类型,
+        item?.描述,
+        item?.视觉描述,
+        Array.isArray(item?.标签) ? item.标签.join(' ') : '',
+        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
+    ].map((value) => 读取文本(value)).join(' ');
+    return /符纸|纸符|黄符|符箓|符材|符咒|符篆|火球符|冰锥符|雷光符|金刚符|神行符|隐身符|传音符|传送符/u.test(text);
+};
+
+const 获取物品正向无文字约束 = (item: any): string => (
+    物品是否符纸符箓(item) ? 物品符箓正向约束 : 物品无文字正向约束
+);
+
+const 过滤符箓负面提示词 = (negativePrompt: string): string => {
+    const allowForTalisman = new Set([
+        'glyphs',
+        'runes',
+        'ideograms',
+        'seal',
+        'vertical calligraphy',
+        'calligraphy',
+        'brush strokes'
+    ]);
+    return negativePrompt
+        .split(',')
+        .map(part => part.trim())
+        .filter(Boolean)
+        .filter(part => !allowForTalisman.has(part.toLowerCase()))
+        .join(', ');
+};
 
 export const 构建物品视觉描述 = (item: any): string => {
     const structured = 查找结构化物品(
@@ -96,7 +131,7 @@ export const 构建物品视觉描述 = (item: any): string => {
 const 获取渲染风格要求 = (style: string): string => {
     switch (style) {
         case '写实道具':
-            return 'photorealistic single prop product photography, isolated physical object, real metal leather cloth wood or paper materials, studio lighting, tactile surface detail, neutral matte background, clean product composition';
+            return 'isolated single prop product photography, studio lighting, tactile material detail, neutral matte background';
         case '像素图标':
             return 'high-end pixel art item icon, crisp silhouette, readable at small size, clean transparent-style asset presentation';
         case '3D渲染':
@@ -382,7 +417,7 @@ const 获取外形纠偏强调描述 = (category: 物品外形纠偏类别): str
         case '长柄锐器':
             return 'strict polearm weapon prop: long shaft and spearhead, blade or pointed head clearly visible; polearm silhouette must be the main subject';
         case '锐器':
-            return 'strict edged weapon prop: blade, edge, hilt, handle or scabbard clearly visible; if the name mentions gathering herbs, render the cutting tool itself, not herbs or plants';
+            return 'strict edged weapon prop: blade, edge, hilt, handle or scabbard clearly visible';
         case '钝器':
             return 'strict blunt weapon prop: solid striking head or sturdy shaft clearly visible, impact-focused non-bladed weapon silhouette';
         default:
@@ -495,6 +530,10 @@ const 物品名称转英文描述 = (name: string): string => {
         '军装': 'modern military uniform, cloth jacket and trousers, soft textile garment, no armor plates',
         '作训服': 'modern combat training uniform, cloth shirt and trousers, fabric folds, no armor plates',
         '战术服': 'modern tactical clothing, dark fabric shirt and trousers, utility pockets, soft textile garment, no armor plates, no metal plating',
+        '青竹法剑': 'xianxia flying sword, jian sword, translucent green jade-bamboo blade, bamboo segment texture, gold guard, green bamboo hilt, subtle magical aura',
+        '青竹灵剑': 'xianxia flying sword, jian sword, translucent green jade-bamboo blade, bamboo segment texture, gold guard, green bamboo hilt, subtle magical aura',
+        '灵竹剑': 'xianxia flying sword, jian sword, translucent green jade-bamboo blade, visible bamboo nodes, gold guard, refined cultivation sword prop',
+        '法剑': 'xianxia ritual jian sword, translucent green jade or spirit bamboo blade when bamboo is mentioned, refined gold guard, subtle magical aura',
         '弓': 'traditional bow weapon, curved wooden bow with taut string',
         '弩': 'crossbow weapon, horizontal bow limbs, stock, trigger, taut string and bolt rail clearly visible',
         '枪': 'spear weapon, long shaft with metal spearhead',
@@ -514,6 +553,7 @@ const 物品名称转英文描述 = (name: string): string => {
         '灵晶': 'dense faceted spirit crystal with concentrated inner glow',
         '妖丹': 'round beast core crystal with layered inner glow, cultivation material',
         '玉简': 'bundle of jade slips tied with silk cord, abstract unreadable etched marks',
+        '符纸': 'small stack of thin yellow paper talisman sheets, handmade paper slips with slightly uneven edges, a few abstract unreadable cinnabar strokes, no readable characters',
         '符箓': 'single talisman paper charm with abstract unreadable ink strokes',
         '符': 'single talisman paper charm with abstract unreadable ink strokes',
         '飞剑': 'slender xianxia flying sword artifact, ceremonial decorative prop, no person',
@@ -622,6 +662,7 @@ const 物品名称转英文描述 = (name: string): string => {
     if (/箭囊|箭袋|箭筒|箭匣|quiver/i.test(name)) return 'arrow-carrying quiver or arrow case, leather or wood container with strap and visible feathered arrow ends, no bow';
     if (/弩箭|箭矢|羽箭|箭枝|箭头|箭簇|箭束|arrow bundle|arrowhead|arrows|bolt/i.test(name)) return 'grouped arrow ammunition prop, fletched shafts with visible arrowheads and nocks, bundled or laid together, not a bow, not a blade weapon';
     if (/弩|弩机/.test(name)) return 'crossbow weapon prop, horizontal bow limbs, stock, trigger, taut string and bolt rail clearly visible, compact ranged weapon';
+    if (/青竹.*剑|灵竹.*剑|竹.*法剑|法剑/.test(name)) return 'xianxia flying sword, jian sword, translucent green jade-bamboo blade, bamboo segment texture, gold guard, green bamboo hilt, subtle magical aura';
     if (/暗器|兵器|刀|短刀|匕首|剑|弓|枪|矛|戟|棍|棒|杖|斧|锤|鞭|刃|镖/.test(name)) return 'traditional weapon prop, clearly visible blade, bow, hilt, shaft, grip or scabbard';
     if (/牌|令|符/.test(name)) return 'wooden or metal plaque token';
     if (/壶|瓶|罐/.test(name)) return 'ceramic or metal container vessel';
@@ -635,6 +676,36 @@ const 物品名称转英文描述 = (name: string): string => {
     if (/软甲|内甲|宝甲|甲衣|护身甲|护心甲|胸甲|背甲|护甲|铠甲|甲胄|皮甲|锁子甲|链甲|鳞甲/.test(name)) return 'wearable torso armor vest, protective garment shape, arm openings, shoulder straps, chest and back panels, waist hem';
     if (物品名称是否柔性服装(name)) return 'soft cloth martial arts garment, folded fabric clothing';
     return '';
+};
+
+const 提炼中文物品描述为英文材质 = (item: any, description: string): string => {
+    const text = [
+        item?.名称,
+        item?.类型,
+        description,
+        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
+    ].map((value) => 读取文本(value)).join(' ');
+    const cues: string[] = [];
+    if (/灵竹|青竹|竹/.test(text)) {
+        cues.push('green spirit bamboo material, translucent green jade-bamboo blade, bamboo segment texture, polished bamboo grain, pale green natural texture');
+    }
+    if (/法剑|法器|法宝|灵力|御使|灵气/.test(text)) {
+        cues.push('xianxia flying sword, subtle xianxia magical aura, restrained glow, refined ritual weapon finish, gold guard');
+    }
+    if (/轻剑|轻便|轻盈/.test(text)) {
+        cues.push('slender lightweight sword silhouette');
+    }
+    return Array.from(new Set(cues)).join(', ');
+};
+
+const 构建物品描述材质提示 = (item: any): string => {
+    const description = 读取文本(item?.视觉描述) || (!是否游戏机制文案(读取文本(item?.描述) || '') ? 读取文本(item?.描述) : '');
+    const name = 读取文本(item?.名称);
+    if (/青竹.*剑|灵竹.*剑|竹.*法剑/.test(name)) return 'slender lightweight sword silhouette';
+    if (!description) return '';
+    const translated = 提炼中文物品描述为英文材质(item, description);
+    if (translated) return translated;
+    return /[\u4e00-\u9fff]/.test(description) ? '' : description;
 };
 
 const 构建物品视觉主体描述 = (item: any): string => {
@@ -660,10 +731,11 @@ const 构建物品视觉主体描述 = (item: any): string => {
     const isAncientMedicine = !isCigarette && 物品是否古代药物(item);
     const isModernMedicine = !isCigarette && !isAncientMedicine && 物品是否现代药剂(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
+    const isTalismanPaper = 物品是否符纸符箓(item);
     const typeEn = isLivingMount ? 'living mount animal' : isLivingAnimal ? 'living animal' : isFan ? 'folded Chinese hand fan' : isModernFirearm ? 'modern firearm' : isEnergyWeapon ? 'sci-fi energy weapon' : isCrossbow ? 'crossbow' : isQuiver ? 'arrow container' : isArrowAmmo ? 'arrow ammunition' : isWeapon ? 'weapon' : isSoftGarment ? 'cloth garment' : isTacticalVest ? 'wearable tactical vest' : isWearableArmor ? 'wearable torso armor vest' : isAncientMedicine ? 'ancient medicinal powder or pills' : isModernMedicine ? 'modern medicine vial or ampoule' : isBotanicalHerb ? 'botanical medicinal herb' : 物品类型转英文(读取文本(item?.类型, '物品'));
     const qualityEn = 物品品质转英文(读取文本(item?.品质, '普通'));
     const nameEn = 物品名称转英文描述(name);
-    const description = 读取文本(item?.视觉描述) || (!是否游戏机制文案(读取文本(item?.描述) || '') ? 读取文本(item?.描述) : '');
+    const description = 构建物品描述材质提示(item);
     const tags = Array.isArray(item?.视觉标签)
         ? item.视觉标签.map((tag: unknown) => 读取文本(tag)).filter(Boolean).join(', ')
         : '';
@@ -685,8 +757,9 @@ const 构建物品视觉主体描述 = (item: any): string => {
         isAncientMedicine ? 'ancient Chinese medicine presentation, herbal powder or pills, folded paper packet, cloth sachet, small ceramic medicine vial, apothecary prop, pre-modern wuxia era' : '',
         isModernMedicine ? 'strict medicine stabilizer prop: small amber glass vial, ampoule, syringe-free serum bottle or compact blank medicine case, sealed cap, transparent liquid, no label, no text, no book shape' : '',
         isBotanicalHerb ? 'strict botanical herb or flower specimen: organic petals, leaves, roots or stems, natural plant anatomy, no manufactured device, no electronics' : '',
-        description ? `form and materials: ${description}` : '',
-        tags ? `material cues: ${tags}` : ''
+        isTalismanPaper ? 'strict talisman paper material: thin yellow paper slips, handmade paper fiber texture, slightly curled corners, stacked sheets or bundled paper charms, red cinnabar abstract unreadable talisman strokes, not a plastic panel, not a blank board' : '',
+        description,
+        tags
     ].filter(Boolean).join('\n');
 };
 
@@ -711,7 +784,8 @@ export const 构建物品负面提示词 = (item: any): string => {
     const isAncientMedicine = !isCigarette && 物品是否古代药物(item);
     const isModernMedicine = !isCigarette && !isAncientMedicine && 物品是否现代药剂(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
-    return [
+    const isTalismanPaper = 物品是否符纸符箓(item);
+    const negativePrompt = [
         全局无文字负面提示词,
         isLivingMount ? 'rider, saddle covering the body, harness covering the body, cart, carriage, vehicle, boat' : isLivingAnimal ? 'person, human handler, leash held by person, cage, carrier bag, framed portrait, stuffed display, taxidermy scene' : 'person, human, face, hand, foot, feet, body part, skin, portrait, headshot, framed portrait, photo frame, picture frame',
         isLivingMount ? 'toy horse, plastic horse, resin figurine, statue, sculpture, ceramic, porcelain, model horse, miniature, collectible figurine, carousel horse, rocking horse, fake animal, mannequin, doll, glossy plastic, product prop, studio toy photography' : isLivingAnimal ? 'plush toy, stuffed animal, toy fox, toy cat, toy dog, plush doll, resin figurine, statue, sculpture, ceramic animal, porcelain animal, taxidermy mount, fake animal, mannequin, glossy plastic pet toy, chibi animal illustration' : '',
@@ -736,6 +810,7 @@ export const 构建物品负面提示词 = (item: any): string => {
         isClothShoe ? 'feet, toes, legs, socks, person wearing shoes, shoe model, leather dress shoe, polished leather shoe, oxford shoe, loafer, business shoe, high heel, glossy leather, hard stacked heel' : '',
         isBandageDressing ? 'patient, wounded person, nurse, doctor, face, portrait, hand wrapping bandage, arm, leg, injury, blood, hospital bed, medical scene, photo frame, framed portrait' : ''
     ].filter(Boolean).join(', ');
+    return isTalismanPaper ? 过滤符箓负面提示词(negativePrompt) : negativePrompt;
 };
 
 export const 构建物品图提示词 = (
@@ -763,6 +838,7 @@ export const 构建物品图提示词 = (
     const isAncientMedicine = !isCigarette && 物品是否古代药物(item);
     const isModernMedicine = !isCigarette && !isAncientMedicine && 物品是否现代药剂(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && !isModernMedicine && 物品是否草药植物(item);
+    const isTalismanPaper = 物品是否符纸符箓(item);
     const softGarmentGuard = isSoftGarment
         ? 'for clothing items: soft fabric garment laid flat or neatly folded, visible cloth weave, seams, wrinkles, flexible drape'
         : '';
@@ -793,7 +869,7 @@ export const 构建物品图提示词 = (
                 ? 'single sci-fi inventory weapon asset on a plain neutral background, centered composition, clean silhouette'
                 : 'single inventory item asset on a plain neutral background, centered composition, clean silhouette'),
         获取渲染风格要求(renderStyle),
-        style === '写实' ? 'photorealistic' : style,
+        style === '写实' ? (renderStyle === '写实道具' ? '' : 'photorealistic') : style,
         isFan ? 'strict Chinese hand fan prop only: folded or half-open fan, visible ribs and fan leaf, jade or bamboo frame, tassel, elegant accessory; no blade, no knife, no sword, no spear' : '',
         isModernFirearm ? 'strict modern firearm prop only: rifle or gun body with receiver, barrel, magazine, stock, grip and trigger guard; not a spear, not a polearm, not a sword' : '',
         isCrossbow ? 'strict crossbow prop only: horizontal bow limbs, stock, trigger, taut string and bolt rail; compact survival ranged weapon, not a spear, not a staff, not a firearm' : '',
@@ -806,6 +882,7 @@ export const 构建物品图提示词 = (
         isAncientMedicine ? 'strict ancient wuxia medicine prop only: folded paper medicine packet, small cloth sachet, ceramic medicine vial, herbal powder or pills; absolutely pre-modern, no modern technology' : '',
         isModernMedicine ? 'strict medicine stabilizer prop only: one small unlabelled amber glass vial or ampoule kit, sealed cap, transparent liquid, compact blank medical case, no book, no label, no text' : '',
         isBotanicalHerb ? 'strict botanical herb or flower only: natural plant specimen, visible petals leaves roots or stems, organic plant anatomy, not a manufactured object' : '',
+        isTalismanPaper ? 'strict talisman paper prop only: small stack of thin yellow paper sheets, visible handmade paper fiber, soft curled corners, red cinnabar abstract unreadable talisman strokes, not a plastic panel, not a blank rectangular board' : '',
         isTacticalVest ? 'strict wearable tactical vest item: fabric upper-body vest with MOLLE webbing, shoulder straps, front buckles or zipper, pouch panels, arm holes and waist hem; product photo of clothing-shaped protective gear, no shield' : '',
         isWearableArmor && !isTacticalVest ? 'strict wearable armor item: upper-body vest or cuirass garment shape, sleeveless torso armor with arm holes, shoulder straps, chest and back panels, waist hem; product photo of clothing-shaped protective gear' : '',
         构建物品视觉主体描述(item),
@@ -855,7 +932,7 @@ export const 生成物品图标 = async (
     const enrichedItemIsClothShoe = 物品是否布鞋(enrichedItem);
     const enrichedItemIsBandageDressing = 物品是否绷带敷料(enrichedItem);
     const enrichedItemIsAncientMedicine = 物品是否古代药物(enrichedItem);
-    const noTextGuard = 物品无文字正向约束;
+    const noTextGuard = 获取物品正向无文字约束(enrichedItem);
     const prompt = 构建物品图提示词(enrichedItem, {
         画风: style,
         渲染风格: renderStyle,
@@ -899,7 +976,7 @@ export const 生成物品图标 = async (
             : enrichedItemIsTacticalVest
             ? 'single wearable tactical vest prop, MOLLE webbing, shoulder straps, front buckles, pouch panels, fabric torso gear, no shield, photorealistic product photo, neutral matte studio background'
             : enrichedItemIsWeapon
-            ? 'single physical weapon prop, defining blade, striking head, bow limbs, shaft, hilt, scabbard or handle clearly visible according to the object type, no plant as main subject, photorealistic product photo, neutral matte studio background'
+            ? 'single physical weapon prop, defining blade, striking head, bow limbs, shaft, hilt, scabbard or handle clearly visible according to the object type, photorealistic product photo, neutral matte studio background'
             : enrichedItemIsClothShoe
             ? 'single pair of empty cloth shoes or straw sandals, footwear prop, side by side, unworn product still life, photorealistic product photo, neutral matte studio background'
             : enrichedItemIsBandageDressing

@@ -2309,6 +2309,87 @@ const 解析AI补全JSON候选 = (text: string, errorMessage: string): any => {
     throw new Error(errorMessage);
 };
 
+export interface NpcSecretPartDescriptionPatchResult {
+    patch: Record<string, string>;
+    rawText: string;
+}
+
+const 读取NPC私密部位描述字段 = (part: string): string => {
+    if (part === '胸部') return '胸部描述';
+    if (part === '小穴') return '小穴描述';
+    if (part === '肉棒') return '肉棒描述';
+    return '屁穴描述';
+};
+
+export const generateNpcSecretPartDescriptionPatch = async (
+    params: {
+        npc: any;
+        part: string;
+        baseData?: any;
+    },
+    apiConfig: 当前可用接口结构,
+    signal?: AbortSignal
+): Promise<NpcSecretPartDescriptionPatchResult> => {
+    if (!apiConfig.apiKey) throw new Error('Missing API Key');
+
+    const field = 读取NPC私密部位描述字段(params.part);
+    const npcSummary = JSON.stringify({
+        姓名: params.npc?.姓名,
+        性别: params.npc?.性别,
+        年龄: params.npc?.年龄,
+        身份: params.npc?.身份,
+        是否主要角色: params.npc?.是否主要角色,
+        简介: params.npc?.简介,
+        外貌描写: params.npc?.外貌描写 || params.npc?.外貌,
+        身材描写: params.npc?.身材描写 || params.npc?.身材,
+        衣着风格: params.npc?.衣着风格 || params.npc?.衣着,
+        性格: params.npc?.核心性格特征 || params.npc?.性格,
+        既有私密字段: {
+            胸部描述: params.npc?.胸部描述,
+            小穴描述: params.npc?.小穴描述,
+            屁穴描述: params.npc?.屁穴描述,
+            肉棒描述: params.npc?.肉棒描述,
+            性癖: params.npc?.性癖,
+            敏感点: params.npc?.敏感点
+        },
+        生图基础数据: params.baseData
+    }, null, 2);
+    const systemPrompt = [
+        '你是游戏运行时的角色档案补全器，只补齐缺失的私密部位稳定描述字段。',
+        '必须依据已有角色资料生成长期可复用的档案描述，避免空泛词，避免与角色性别/年龄/身份冲突。',
+        '只返回严格 JSON，不要 Markdown，不要解释。'
+    ].join('\n');
+    const userPrompt = [
+        `请为目标 NPC 补齐字段：${field}`,
+        `目标部位：${params.part}`,
+        '要求：',
+        '- 返回对象只能包含目标字段；',
+        '- 字段值用中文，1 到 2 句，包含可供后续生图使用的稳定视觉特征；',
+        '- 如需提到名器/无名器结论，可自然写入，但不要凭空拔高为稀有名器；',
+        '- 不要返回空字符串、未知、待定、暂无、无法判断。',
+        'NPC资料：',
+        npcSummary,
+        `输出示例：{"${field}":"稳定描述文本"}`
+    ].join('\n');
+    const messages = 规范化文本补全消息链([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+    ], { 保留System: true, 合并同角色: false });
+
+    const rawText = await 请求模型文本(apiConfig, messages, {
+        temperature: 0.35,
+        signal,
+        errorDetailLimit: Number.POSITIVE_INFINITY
+    });
+    const parsed = 解析AI补全JSON候选(rawText, 'NPC 私密部位描述补齐响应无法解析为 JSON。');
+    const value = typeof parsed?.[field] === 'string' ? parsed[field].trim() : '';
+    if (!value) throw new Error(`NPC 私密部位描述补齐未返回有效的 ${field}。`);
+    return {
+        patch: { [field]: value },
+        rawText
+    };
+};
+
 /**
  * Generates a runtime-profile completion patch for a novel decomposition mode pack
  * by sending the novel dataset summary to AI and parsing the JSON response.

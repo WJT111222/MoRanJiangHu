@@ -71,15 +71,23 @@ const MODIFIER_LABELS: Record<string, string> = {
 };
 
 const parseModifier = (part: string): JudgmentModifier | null => {
-    const modifierMatch = part.match(/^(基础|境界|环境|状态|幸运|装备)\s*([+\-]?\d+(?:\.\d+)?)(?:\s*[(（](.*?)[)）])?$/);
+    const modifierMatch = part.match(/^(基础|境界|环境|状态|幸运|装备)\s*(.*)$/);
     if (!modifierMatch) return null;
-    const [, key, valueRaw, desc] = modifierMatch;
+    const [, key, restRaw] = modifierMatch;
+    const rest = (restRaw || '').trim();
+    if (!rest) return null;
+    const valueMatch = rest.match(/[+\-]?\d+(?:\.\d+)?/);
+    const bracketMatch = rest.match(/[(（]\s*(.*?)[)）]/);
+    const bracketContent = bracketMatch?.[1]?.trim() || '';
+    const desc = bracketContent
+        ? bracketContent.replace(/^[+\-]?\d+(?:\.\d+)?\s*[,，、]?\s*/, '').trim()
+        : undefined;
     return {
         key,
         label: MODIFIER_LABELS[key] || key,
-        value: Number(valueRaw),
-        raw: part,
-        description: desc?.trim() || undefined
+        value: valueMatch ? Number(valueMatch[0]) : null,
+        raw: valueMatch ? part : rest,
+        description: desc || undefined
     };
 };
 
@@ -156,6 +164,7 @@ const 剥离串入正文 = (text: string): string => {
         const sender = (match[2] || '').trim();
         if (!sender || JUDGMENT_FIELD_NAMES.has(sender)) continue;
         const before = source.slice(0, match.index).trim();
+        if (/(?:触发对象|判定角色|对象)\s*$/.test(before)) continue;
         if (!before || !/(成功|失败|大成功|大失败|极成功|极失败|胜利|落败|锁定|偏离|致残|重创|肢残|骨折|破防|截脉|格挡|僵持)/.test(before)) continue;
         return before;
     }

@@ -128,6 +128,8 @@ const ZImageTurbo叙事构图增强提示词 = 'Z-Image-Turbo narrative prompt, 
 const NSFW部位特写画质增强提示词 = 'adult character only, target anatomy only, macro anatomical close-up, ultra tight crop, wet skin texture, glistening moisture, natural skin folds, soft rim light, specular highlights, subsurface scattering, single private anatomy focus, no minors';
 const 部位特写反拼贴负面提示词 = 'multiple views, split screen, panel layout, comic panel, comic page, manga panel, story panels, collage, contact sheet, reference sheet, character sheet, turnaround, comparison sheet, montage, triptych, diptych, quadriptych, grid layout, tiled composition, thumbnails, bottom strip, inset image, duplicate anatomy, mirrored anatomy, repeated organ, multiple organs, multiple nipples, extra nipples, multiple genitals, extra genitals';
 const 默认NovelAI负面提示词 = 'photorealistic, realistic, 3d, rendering, unreal engine, octane render, real life, photography, bokeh, lowres, bad anatomy, bad hands, text, typography, letters, words, numbers, caption, label, plaque, sign, inscription, Chinese characters, English letters, calligraphy, seal, stamp, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, logo, blurry, artist name, border, out of frame, subtitles, title, poster text, speech bubble, dialogue box, word balloon, UI overlay, date stamp, QR code, barcode';
+const 古代行囊正向提示词 = 'ancient cloth travel bundle, small cloth shoulder satchel, tied fabric bundle, pre-modern carrying pouch';
+const 古代行囊负面提示词 = 'modern backpack, traveler backpack, travel backpack, hiking backpack, outdoor backpack, school backpack, plastic buckle, nylon straps, synthetic shoulder straps, zipper backpack, tactical backpack';
 const 默认分词器AI角色提示词 = [
     '你是分词器大师。',
     '你的职责是把输入资料整理成稳定、可执行、可直接投喂图像模型的高质量提示词。',
@@ -150,6 +152,54 @@ const 合并负面提示词片段 = (...parts: Array<string | undefined>): strin
             });
     });
     return items.join(', ');
+};
+
+const 是否现代角色背包语境 = (text: string): boolean => (
+    /modern|contemporary|urban|city|commuter|subway|office|school|campus|post-?apocalyptic|survival|tactical|military|sci-?fi|futuristic|现代|都市|末日|战术|军装|通勤/i.test(text)
+);
+
+const 是否古代修行角色语境 = (text: string): boolean => (
+    /xianxia|wuxia|cultivation|cultivator|ancient chinese|fantasy ancient|martial arts attire|hanfu|taoist robe|sect disciple|sword hilt|flying sword|仙侠|修仙|武侠|古代|宗门|道袍|劲装|法剑/i.test(text)
+);
+
+const 古代角色需要行囊纠偏 = (text: string): boolean => (
+    是否古代修行角色语境(text) && !是否现代角色背包语境(text)
+);
+
+const 替换古代角色背包正向提示词 = (text: string): string => {
+    const source = text || '';
+    if (!source) return source;
+    const hasAncientBagCue = /行囊|包袱|随身.*囊|惯用行囊/.test(source);
+    const hasBackpack = /\b(?:traveler|travel|hiking|outdoor|modern|adventurer|adventure|school|tactical)?\s*backpack\b/i.test(source);
+    if (!hasAncientBagCue && !hasBackpack) return source;
+    if (!古代角色需要行囊纠偏(source) && !hasAncientBagCue) return source;
+    let output = source
+        .replace(/\b(?:traveler|travel|hiking|outdoor|modern|adventurer|adventure|school|tactical)?\s*backpack\b/gi, 古代行囊正向提示词)
+        .replace(/随身带着惯用行囊|随身带着行囊|惯用行囊|行囊|包袱/g, 古代行囊正向提示词)
+        .replace(/(?:,\s*){2,}/g, ', ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+    if (!output.toLowerCase().includes('ancient cloth travel bundle')) {
+        output = [output, 古代行囊正向提示词].filter(Boolean).join(', ');
+    }
+    return output;
+};
+
+const 规范化NPC直接视觉字段 = (text: string): string => {
+    const source = (text || '').trim();
+    if (!source) return '';
+    const replaced = 替换古代角色背包正向提示词(source)
+        .replace(/绝世大美女|大美女|美女/g, 'beautiful woman')
+        .replace(/眉眼清亮/g, 'clear bright eyes')
+        .replace(/利落的紧身劲装|紧身劲装|劲装/g, 'fitted martial arts attire')
+        .replace(/布鞋/g, 'cloth shoes')
+        .replace(/[。；，、]/g, ', ');
+    if (!/[\u4e00-\u9fff]/.test(replaced)) return replaced;
+    return replaced
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item && !/[\u4e00-\u9fff]/.test(item))
+        .join(', ');
 };
 
 const blob转DataUrl = async (blob: Blob): Promise<string> => {
@@ -1918,7 +1968,7 @@ export const 构建最终图片提示词 = (
         后端类型: apiConfig.图片后端类型
     });
     const 使用NAI角色分段 = apiConfig.词组转化输出策略 === 'nai_character_segments' && /\|/.test(主体正向提示词);
-    const 最终正向提示词 = 规范化Artist标签大小写(使用NAI角色分段
+    const 初始最终正向提示词 = 规范化Artist标签大小写(使用NAI角色分段
         ? (() => {
             const segments = 主体正向提示词
                 .split('|')
@@ -1932,8 +1982,12 @@ export const 构建最终图片提示词 = (
             return [mergedBase, ...roleSegments].filter(Boolean).join(' | ');
         })()
         : 合并正向提示词片段(前置正向提示词, 主体正向提示词, 后置正向提示词));
+    const 最终正向提示词 = 是否角色构图(composition)
+        ? 替换古代角色背包正向提示词(初始最终正向提示词)
+        : 初始最终正向提示词;
     const 最终负向提示词 = 合并负面提示词片段(
         options?.附加负面提示词,
+        是否角色构图(composition) && 古代角色需要行囊纠偏(初始最终正向提示词) ? 古代行囊负面提示词 : '',
         需要默认中国人物 ? 默认中国人物负向提示词 : '',
         构图附加负面提示词映射[composition],
         自动去水印负面提示词
@@ -3039,9 +3093,9 @@ export const buildNpcDirectImagePrompt = (
     const fragments = [
         翻译性别(读取NPC字段文本(source, '性别')),
         年龄文本 && /^\d+$/.test(年龄文本) ? `${年龄文本} years old` : '',
-        读取NPC字段文本(source, '外貌'),
-        读取NPC字段文本(source, '身材'),
-        读取NPC字段文本(source, '衣着')
+        规范化NPC直接视觉字段(读取NPC字段文本(source, '外貌')),
+        规范化NPC直接视觉字段(读取NPC字段文本(source, '身材')),
+        规范化NPC直接视觉字段(读取NPC字段文本(source, '衣着'))
     ];
 
     // 注意：装备 / 背包 / 补充视觉设定 这些字段在游戏里通常是"名称:值"的结构化数据，

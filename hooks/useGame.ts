@@ -1670,6 +1670,59 @@ export const useGame = () => {
         return `index:${index ?? -1}`;
     };
 
+    const 读取香闺秘档部位描述字段 = (part: 香闺秘档部位类型): '胸部描述' | '小穴描述' | '屁穴描述' | '肉棒描述' => {
+        if (part === '胸部') return '胸部描述';
+        if (part === '小穴') return '小穴描述';
+        if (part === '肉棒') return '肉棒描述';
+        return '屁穴描述';
+    };
+
+    const 补齐NPC香闺秘档部位描述 = async (
+        npc: any,
+        part: 香闺秘档部位类型,
+        context: { npcKey: string; taskSource: 生图任务来源类型; baseData: any; 描述字段: string }
+    ): Promise<Record<string, string>> => {
+        const field = 读取香闺秘档部位描述字段(part);
+        const existing = typeof npc?.[field] === 'string' ? npc[field].trim() : '';
+        if (existing) return { [field]: existing };
+        const mainApi = 获取主剧情接口配置(apiConfigRef.current);
+        if (!接口配置是否可用(mainApi)) {
+            recordDiagnosticLog('warn', '[NPC私密部位生图链路] 部位描述为空但主剧情接口不可用，无法自动补齐', {
+                npcKey: context.npcKey,
+                part,
+                taskSource: context.taskSource
+            });
+            return {};
+        }
+        const result = await textAIService.generateNpcSecretPartDescriptionPatch({
+            npc,
+            part,
+            baseData: context.baseData
+        }, mainApi!, 生图存档AbortControllerRef.current.signal);
+        const value = typeof result.patch?.[field] === 'string' ? result.patch[field].trim() : '';
+        if (!value) return {};
+        const targetName = typeof npc?.姓名 === 'string' ? npc.姓名.trim() : '';
+        同步设置社交((prev: any[]) => {
+            const nextList = (Array.isArray(prev) ? prev : []).map((item: any, index: number) => {
+                const itemKey = 获取NPC唯一标识(item, index);
+                const itemName = typeof item?.姓名 === 'string' ? item.姓名.trim() : '';
+                if (itemKey !== context.npcKey && (!targetName || itemName !== targetName)) return item;
+                return {
+                    ...item,
+                    [field]: value
+                };
+            });
+            return 规范化社交列表安全(nextList, { 合并同名: false });
+        });
+        recordDiagnosticLog('info', '[NPC私密部位生图链路] 已自动补齐并写回部位描述', {
+            npcKey: context.npcKey,
+            part,
+            field,
+            descriptionLength: value.length
+        });
+        return { [field]: value };
+    };
+
     const {
         更新NPC最近生图结果,
         写入NPC图片历史记录,
@@ -2114,6 +2167,7 @@ export const useGame = () => {
             提取NPC香闺秘档部位生图数据: (targetNpc, targetPart) => 提取NPC香闺秘档部位生图数据(targetNpc, targetPart, {
                 cultivationSystemEnabled: 读取修炼体系开关()
             }),
+            补齐NPC香闺秘档部位描述,
             创建NPC生图任务,
             生成NPC生图记录ID,
             追加NPC生图任务,

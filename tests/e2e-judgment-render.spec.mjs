@@ -44,17 +44,30 @@ const run = async () => {
                 leakedBodyInsideJudgment: judgmentCards.some((node) => (node.textContent || '').includes(leakedBody)),
                 leakedBodyInsideNarrator: narratorBlocks.some((node) => (node.textContent || '').includes(leakedBody)),
                 thoughtVisible: judgmentCards.some((node) => (node.textContent || '').includes('观察与逻辑分析')),
-                parsedTargetVisible: judgmentCards.some((node) => (node.textContent || '').includes('玩家:杨培强'))
+                parsedTargetVisible: judgmentCards.some((node) => (node.textContent || '').includes('玩家:杨培强')),
+                leadingResultDetailsVisible: judgmentCards.some((node) => {
+                    const text = node.textContent || '';
+                    return text.includes('观察晨雾与山路状况')
+                        && text.includes('判定值')
+                        && text.includes('7')
+                        && text.includes('难度值')
+                        && text.includes('5')
+                        && text.includes('过目不忘的观察力')
+                        && text.includes('晨光渐亮');
+                }),
+                duplicatedModifierValue: judgmentCards.some((node) => (node.textContent || '').includes('+5+5,过目不忘的观察力'))
             };
         });
 
         if (
-            result.judgmentCardCount !== 1
+            result.judgmentCardCount !== 2
             || result.narratorBlockCount < 2
             || result.leakedBodyInsideJudgment
             || !result.leakedBodyInsideNarrator
             || !result.thoughtVisible
             || !result.parsedTargetVisible
+            || !result.leadingResultDetailsVisible
+            || result.duplicatedModifierValue
             || !result.judgmentText.includes('成功')
             || !result.judgmentText.includes('洞察')
         ) {

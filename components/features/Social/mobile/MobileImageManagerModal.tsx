@@ -410,7 +410,7 @@ const MobileImageManagerModal: React.FC<Props> = ({
             case 'scene':
                 return <SceneTabContent {...propsForTabs} />;
             case 'queue':
-                return <><QueueTabContent {...propsForTabs} /><div className="mt-4"><HistoryTabContent {...propsForTabs} /></div></>;
+                return <HistoryTabContent {...propsForTabs} queueMode />;
             case 'presets':
                 return <PresetsTabContent {...propsForTabs} />;
             case 'rules':
@@ -1819,7 +1819,8 @@ const QueueTabContent: React.FC<TabProps> = ({ queue, sceneQueue, itemImageSeque
     );
 };
 
-const HistoryTabContent: React.FC<TabProps> = ({
+const HistoryTabContent: React.FC<TabProps & { queueMode?: boolean }> = (props) => {
+    const {
     socialList,
     sceneArchive,
     itemImageSequence = [],
@@ -1830,8 +1831,9 @@ const HistoryTabContent: React.FC<TabProps> = ({
     onSetPersistentWallpaper,
     onClearPersistentWallpaper,
     withBusyAction,
-    busyActionKey
-}) => {
+    busyActionKey,
+    queueMode = false
+    } = props;
     const [imageViewer, setImageViewer] = React.useState<{ src: string; alt: string } | null>(null);
     const 打开图片查看器 = React.useCallback((src?: string, alt?: string) => {
         const normalizedSrc = typeof src === 'string' ? src.trim() : '';
@@ -1852,15 +1854,23 @@ const HistoryTabContent: React.FC<TabProps> = ({
         return [...npcItems, ...sceneItems, ...itemItems].sort((a, b) => b.时间 - a.时间);
     }, [itemImageSequence, socialList, sceneArchive]);
 
-    if (combinedHistory.length === 0) return <空状态 title="历史为空" desc="所有生成记录（不论成败）都会显示在这里。" />
+    if (combinedHistory.length === 0 && !queueMode) return <空状态 title="历史为空" desc="所有生成记录（不论成败）都会显示在这里。" />
 
     return (
         <div className="space-y-4 px-1 pb-4">
+            {queueMode && (
+                <div className={`${卡片样式} p-3 space-y-2 border-cyan-300/20 bg-cyan-950/10`}>
+                    <div className="text-sm font-serif font-bold tracking-widest text-cyan-100">实时队列状态</div>
+                    <div className="text-[10px] text-cyan-100/55">下方继续沿用生成历史框架展示完整记录。</div>
+                    <QueueTabContent {...props} />
+                </div>
+            )}
             <div className="flex gap-2 justify-end flex-wrap">
                 {onClearImageHistory && <button onClick={() => withBusyAction('clear_npc_hist_all', () => onClearImageHistory())} disabled={!!busyActionKey} className={次级按钮样式(true, true)}>清空NPC历史</button>}
                 {onClearSceneHistory && <button onClick={() => withBusyAction('clear_scene_hist_all', () => onClearSceneHistory())} disabled={!!busyActionKey} className={次级按钮样式(true, true)}>清空场景历史</button>}
                 {onClearItemImageHistory && <button onClick={() => withBusyAction('clear_item_hist_all', () => onClearItemImageHistory())} disabled={!!busyActionKey} className={次级按钮样式(true, true)}>清空物品历史</button>}
             </div>
+            {combinedHistory.length === 0 && <空状态 title="历史为空" desc="生成完成、失败或生成中的记录会显示在这里。" />}
             {combinedHistory.map(entry => {
                 if (entry.类型 === 'item' && entry.itemRecord) {
                     const result = entry.itemRecord;

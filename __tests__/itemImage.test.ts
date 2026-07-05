@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { 获取物品图标复用Key, 获取物品已选图标地址 } from '../utils/itemImage';
-import { 构建最终图片提示词, 全局无文字正向提示词, 全局无文字负面提示词 } from '../services/ai/image';
+import { buildNpcDirectImagePrompt, 构建最终图片提示词, 全局无文字正向提示词, 全局无文字负面提示词 } from '../services/ai/image';
 import { 构建物品图提示词, 构建物品负面提示词, 构建物品视觉描述, 物品无文字正向约束 } from '../services/ai/itemImageGeneration';
 
 describe('item image preset fallback', () => {
@@ -521,6 +521,96 @@ describe('item image prompt classification', () => {
         expect(negativePrompt).toContain('Chinese characters');
         expect(negativePrompt).toContain('engraved words');
         expect(negativePrompt).toContain('ideograms');
+    });
+
+    it('allows unreadable talisman strokes for talisman paper instead of forcing blank plastic panels', () => {
+        const item = {
+            名称: '符纸一沓',
+            类型: '材料',
+            品质: '凡品',
+            描述: '适合绘制低阶符箓的空白符纸。'
+        };
+        const prompt = 构建物品图提示词(item);
+        const negativePrompt = 构建物品负面提示词(item);
+
+        expect(prompt).toContain('talisman paper');
+        expect(prompt).toContain('stack');
+        expect(prompt).toContain('thin yellow paper');
+        expect(prompt).toContain('abstract unreadable cinnabar strokes');
+        expect(negativePrompt).toContain('readable inscription');
+        expect(negativePrompt).not.toContain('brush strokes');
+        expect(negativePrompt).not.toContain('glyphs');
+        expect(negativePrompt).not.toContain('runes');
+        expect(negativePrompt).not.toContain('calligraphy');
+    });
+
+    it('keeps named magic swords concise with material and sword form instead of raw Chinese description text', () => {
+        const item = {
+            名称: '青竹法剑',
+            类型: '武器',
+            品质: '良品',
+            描述: '以灵竹炼成的轻剑，便于初学者御使。'
+        };
+        const prompt = 构建物品图提示词(item);
+
+        expect(prompt).toContain('jian sword');
+        expect(prompt).toMatch(/(?:green|bamboo|spirit bamboo|magical aura)/i);
+        expect(prompt).toContain('translucent green jade-bamboo blade');
+        expect(prompt).toContain('bamboo segment texture');
+        expect(prompt).toContain('gold guard');
+        expect(prompt).toContain('xianxia flying sword');
+        expect(prompt).not.toContain('straight metal blade');
+        expect(prompt).not.toContain('form and materials: 以灵竹炼成的轻剑');
+        expect(prompt).not.toMatch(/[\u4e00-\u9fff]/);
+        expect(prompt.length).toBeLessThan(900);
+    });
+
+    it('remaps ancient travel baggage away from modern backpacks in character prompts', () => {
+        const bundle = 构建最终图片提示词('1woman, fantasy ancient Chinese style, tight martial arts attire, traveler backpack, hand on sword hilt', {
+            图片后端类型: 'comfyui',
+            baseUrl: 'https://example.com',
+            apiKey: '',
+            model: 'mock'
+        } as any, {
+            构图: '半身',
+            附加正向提示词: 'xianxia companion portrait',
+            附加负面提示词: ''
+        });
+
+        expect(bundle.最终正向提示词).toContain('ancient cloth travel bundle');
+        expect(bundle.最终正向提示词).not.toMatch(/\b(?:traveler backpack|travel backpack|backpack)\b/i);
+        expect(bundle.最终负向提示词).toContain('modern backpack');
+        expect(bundle.最终负向提示词).toContain('plastic buckle');
+        expect(bundle.最终负向提示词).toContain('nylon straps');
+    });
+
+    it('preserves backpacks in explicitly modern character prompts', () => {
+        const bundle = 构建最终图片提示词('1woman, modern city commuter, backpack, subway station', {
+            图片后端类型: 'comfyui',
+            baseUrl: 'https://example.com',
+            apiKey: '',
+            model: 'mock'
+        } as any, {
+            构图: '半身',
+            附加正向提示词: '',
+            附加负面提示词: ''
+        });
+
+        expect(bundle.最终正向提示词).toContain('backpack');
+        expect(bundle.最终正向提示词).not.toContain('ancient cloth travel bundle');
+    });
+
+    it('turns Chinese ancient luggage wording into pre-modern carrying props in direct NPC prompts', () => {
+        const result = buildNpcDirectImagePrompt({
+            性别: '女',
+            年龄: 26,
+            外貌: '绝世大美女，眉眼清亮，随身带着惯用行囊。',
+            衣着: '利落的紧身劲装，布鞋'
+        }, { 构图: '半身', 后端类型: 'comfyui' });
+
+        expect(result.生图词组).toContain('ancient cloth travel bundle');
+        expect(result.生图词组).not.toContain('行囊');
+        expect(result.生图词组).not.toMatch(/\b(?:traveler backpack|backpack)\b/i);
     });
 
     it('keeps global no-text protection even when base negative prompt is skipped', () => {
