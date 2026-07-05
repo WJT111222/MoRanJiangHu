@@ -3,6 +3,7 @@ import { 规范化对白日志 } from '../../utils/dialogueLogNormalizer';
 import { 是否可信正文标签发送者, 规范化正文发送者名 } from '../../utils/dialogueSpeakerGuard';
 import { 拆分判定日志与后续正文, 提取判定日志前缀, 是否判定日志文本 } from '../../utils/judgmentFormat';
 import { parseJsonWithRepair } from '../../utils/jsonRepair';
+import { 是否裸标准游戏时间行, 检测裸标准游戏时间行 } from '../../utils/bodyTextSanitizer';
 
 export interface StoryParseOptions {
     validateTagCompleteness?: boolean;
@@ -456,6 +457,10 @@ const 清理正文初始化泄露内容 = (body: string): string => {
 
     for (const rawLine of lines) {
         const line = rawLine.trim();
+        if (是否裸标准游戏时间行(line)) {
+            removedCount += 1;
+            continue;
+        }
         const startsInitSection = 初始化泄露标题规则.test(line);
         if (startsInitSection) {
             inInitLeakBlock = true;
@@ -1711,6 +1716,17 @@ const 解析标签协议响应 = (content: string, options?: Required<StoryParse
     const dialogueFormatIssue = options?.validateDialogueFormat
         ? 检测正文对白格式问题(bodyJudgeExtraction.cleanBody, declaredNames)
         : null;
+    const leakedCanonicalGameTimeLine = options?.validateDialogueFormat
+        ? 检测裸标准游戏时间行(bodyBlock || '')
+        : null;
+    if (leakedCanonicalGameTimeLine) {
+        throw new StoryResponseParseError(
+            `正文混入标准时间真值行「${leakedCanonicalGameTimeLine}」，必须改写成自然叙事时间表达。请局部修复本回合正文：不要直接暴露 1:01:01:06:30 这类后台标准时间字符串。`,
+            content,
+            `正文混入标准时间真值行「${leakedCanonicalGameTimeLine}」`,
+            [`正文混入标准时间真值行「${leakedCanonicalGameTimeLine}」`]
+        );
+    }
     if (dialogueFormatIssue) {
         throw new StoryResponseParseError(
             `${dialogueFormatIssue}。请局部修复本回合正文：角色对白必须单独使用【角色名】开头，旁白只写动作、环境与心理；正文行不能只剩孤立标点，也不能保留被指出的高频套话。`,
@@ -1736,6 +1752,16 @@ const 解析标签协议响应 = (content: string, options?: Required<StoryParse
 
     if (logs.length === 0) {
         return null;
+    }
+
+    if (options?.requireActionOptionsTag && actionOptions.length === 0) {
+        const detail = '缺少 <行动选项>...</行动选项> 标签或标签内容为空';
+        throw new StoryResponseParseError(
+            构建标签协议错误详情([detail]),
+            content,
+            detail,
+            [detail]
+        );
     }
 
     return {

@@ -26,6 +26,18 @@ describe('storyResponseParser', () => {
         ]);
     });
 
+    it('rejects successful story parse when required action options are missing', () => {
+        expect(() => parseStoryRawText([
+            '<thinking>',
+            '计划中提到最终要输出 <行动选项>，但后文没有真实选项块。',
+            '</thinking>',
+            '<正文>',
+            '【旁白】晨钟响起，你和俞月荷走出杂役小院。',
+            '</正文>',
+            '<短期记忆>主角与俞月荷准备前往执事堂。</短期记忆>'
+        ].join('\n'), { requireActionOptionsTag: true })).toThrow(StoryResponseParseError);
+    });
+
     it('does not render Izumi state blocks or status lines as quick action options', () => {
         const parsed = parseStoryRawText([
             '<正文>',
@@ -159,6 +171,16 @@ describe('storyResponseParser', () => {
         expect(parsed.logs).toEqual([
             { sender: '旁白', text: '窗纸被晨光照得微亮，院外传来木桶落地的轻响。' }
         ]);
+    });
+
+    it('rejects bare canonical game time lines during strict story parsing', () => {
+        expect(() => parseStoryRawText([
+            '<正文>',
+            '此时是1:01:01:06:30。',
+            '【旁白】云岫山脉的晨雾尚未散尽，执事堂前的青石台阶泛着湿光。',
+            '</正文>',
+            '<短期记忆>主角抵达执事堂前。</短期记忆>'
+        ].join('\n'), { validateDialogueFormat: true })).toThrow(/标准时间真值行|后台标准时间字符串/);
     });
 
     it('removes colon-suffixed opening initialization lists from body tail', () => {

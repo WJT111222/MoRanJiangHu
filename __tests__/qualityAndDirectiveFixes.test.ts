@@ -247,6 +247,51 @@ describe('正文优化重试', () => {
         expect(result.rawText).toBe('second');
     });
 
+    it('发现标准时间真值泄露时会静默自动重试文章优化', async () => {
+        vi.mocked(textAIService.generatePolishedBody)
+            .mockResolvedValueOnce({
+                bodyText: [
+                    '此时是1:01:01:06:30。',
+                    '【旁白】云岫山脉的晨雾尚未散尽，执事堂前的青石台阶泛着湿光。'
+                ].join('\n'),
+                rawText: 'first'
+            } as any)
+            .mockResolvedValueOnce({
+                bodyText: '【旁白】云岫山脉的晨雾尚未散尽，执事堂前的青石台阶泛着湿光。',
+                rawText: 'second'
+            } as any);
+
+        const result = await 执行正文润色(
+            { logs: [{ sender: '旁白', text: '原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文' }] } as any,
+            '<正文>原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文原始正文</正文>',
+            {
+                apiConfig: {
+                    功能模型占位: {
+                        文章优化独立模型开关: true,
+                        文章优化使用模型: 'test-model',
+                        文章优化API地址: 'https://example.com',
+                        文章优化API密钥: 'test-key'
+                    }
+                },
+                prompts: [],
+                gameConfig: {},
+                环境: {} as any,
+                剧情: {} as any,
+                社交: [],
+                战斗: {} as any,
+                角色: {} as any,
+                文章优化已开启: true,
+                深拷贝: (value: any) => JSON.parse(JSON.stringify(value))
+            } as any,
+            { minLength: 20 }
+        );
+
+        expect(vi.mocked(textAIService.generatePolishedBody)).toHaveBeenCalledTimes(2);
+        expect(result.applied).toBe(true);
+        expect(result.response.logs?.map((item: any) => item.text).join('\n')).not.toContain('1:01:01:06:30');
+        expect(result.rawText).toBe('second');
+    });
+
     it('会把玩家额外提示词作为最高优先级规则传给文章优化模型', async () => {
         vi.mocked(textAIService.generatePolishedBody).mockResolvedValueOnce({
             bodyText: '这是一段遵守禁名与新文风的正文。'.repeat(8),

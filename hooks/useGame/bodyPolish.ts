@@ -21,6 +21,7 @@ import { 是否可信正文标签发送者, 规范化正文发送者名 } from '
 import { 拆分判定日志与后续正文, 提取判定日志前缀, 是否判定日志文本 } from '../../utils/judgmentFormat';
 import { 构建运行时额外提示词 } from '../../prompts/runtime/nsfw';
 import { 按功能开关过滤提示词内容 } from '../../utils/promptFeatureToggles';
+import { 是否裸标准游戏时间行, 检测裸标准游戏时间行 } from '../../utils/bodyTextSanitizer';
 
 type 正文日志结构 = Array<{ sender: string; text: string }>;
 
@@ -114,6 +115,16 @@ export const 检测文章优化协议确认污染 = (text: string): { polluted: 
     return { polluted: false, reason: '', repeats };
 };
 
+const 检测文章优化时间真值污染 = (text: string): { polluted: boolean; reason: string; line: string } | null => {
+    const line = 检测裸标准游戏时间行(text || '');
+    if (!line) return null;
+    return {
+        polluted: true,
+        line,
+        reason: `正文混入标准时间真值行「${line}」，必须改写成自然叙事时间表达，不能直接显示后台标准时间字符串。`
+    };
+};
+
 const 构建文章优化流式守卫 = (
     onDelta?: (delta: string, accumulated: string) => void
 ): ((delta: string, accumulated: string) => void) | undefined => {
@@ -129,7 +140,7 @@ const 构建文章优化流式守卫 = (
 
 const 是否文章优化协议污染错误 = (error: any): boolean => {
     const message = String(error?.message || error || '');
-    return /协议确认|复读循环|确认说明|禁止协议确认复读/.test(message);
+    return /协议确认|复读循环|确认说明|禁止协议确认复读|标准时间真值行|后台标准时间字符串/.test(message);
 };
 
 const 剥离首尾思考区段 = (text: string): string => {
@@ -218,6 +229,7 @@ export const 解析正文日志文本 = (bodyText: string, options?: { declaredN
     for (const rawLine of lines) {
         const line = rawLine.trim();
         if (!line) continue;
+        if (是否裸标准游戏时间行(line)) continue;
         const judgmentLine = 解析判定正文行(line);
         if (judgmentLine) {
             pendingDialogueSender = '';
@@ -578,6 +590,10 @@ export const 执行正文润色 = async (
         const pollution = 检测文章优化协议确认污染(result.rawText || result.bodyText || '');
         if (pollution.polluted) {
             throw new Error(pollution.reason);
+        }
+        const timePollution = 检测文章优化时间真值污染(result.bodyText || result.rawText || '');
+        if (timePollution?.polluted) {
+            throw new Error(timePollution.reason);
         }
         return result;
     };

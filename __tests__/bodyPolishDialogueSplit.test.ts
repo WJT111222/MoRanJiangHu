@@ -24,4 +24,15 @@ describe('body polish dialogue parsing', () => {
             { sender: '旁白', text: '她抬头看着你，等待着你的决定。' }
         ]);
     });
+
+    it('removes bare canonical game time lines from polished body text', () => {
+        const logs = 净化角色对白行(解析正文日志文本([
+            '此时是1:01:01:06:30。',
+            '【旁白】云岫山脉的晨雾尚未散尽，执事堂前的青石台阶泛着湿光。'
+        ].join('\n')));
+
+        const body = logs.map(item => item.text).join('\n');
+        expect(body).not.toContain('1:01:01:06:30');
+        expect(body).toContain('执事堂前的青石台阶');
+    });
 });
