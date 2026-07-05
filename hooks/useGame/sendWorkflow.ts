@@ -310,6 +310,46 @@ const 构建玩家可见正文文本 = (response: GameResponse): string => (
         .join('\n')
 );
 
+const 统计固定词出现次数 = (source: string, word: string): number => {
+    if (!source || !word) return 0;
+    let count = 0;
+    let index = source.indexOf(word);
+    while (index >= 0) {
+        count += 1;
+        index = source.indexOf(word, index + word.length);
+    }
+    return count;
+};
+
+const 提取空泛强调词滥用 = (bodyText: string): { word: string; count: number; reason: string } | null => {
+    const compactText = (bodyText || '').replace(/\s+/g, '');
+    if (!compactText) return null;
+
+    const word = '极其';
+    const count = 统计固定词出现次数(compactText, word);
+    if (count <= 0) return null;
+    if (compactText.includes(`${word}${word}`)) {
+        return { word, count, reason: `连续重复「${word}」` };
+    }
+    if (count >= 4) {
+        return { word, count, reason: `短段内高频出现 ${count} 次` };
+    }
+    return null;
+};
+
+const 校验响应正文未滥用空泛强调词 = (
+    response: GameResponse,
+    rawText: string,
+    stageLabel = '主剧情'
+) => {
+    const issue = 提取空泛强调词滥用(构建玩家可见正文文本(response));
+    if (!issue) return;
+    const detail = `${stageLabel}正文滥用空泛强调词「${issue.word}」：${issue.reason}。请完整重写本回合正文，改用具体动作、感官、环境压力和可见阻力来表达强度，不能用大量「${issue.word}」硬抬情绪。`;
+    const error = new textAIService.StoryResponseParseError(detail, rawText, detail);
+    (error as any).parseDetail = detail;
+    throw error;
+};
+
 export const 校验响应未泄露名器档案名称 = (
     response: GameResponse,
     currentSocial: any[],
@@ -343,6 +383,11 @@ export const 校验响应正文词汇审查 = (
     校验响应未泄露名器档案名称(
         response,
         currentSocial,
+        rawText,
+        stageLabel
+    );
+    校验响应正文未滥用空泛强调词(
+        response,
         rawText,
         stageLabel
     );
@@ -561,6 +606,20 @@ const 构建标签协议失败自动回炉提示 = (reason: string, requireActio
         ? '当前已开启行动选项，必须额外补全 <行动选项>...</行动选项>。'
         : '若未开启行动选项，不要额外编造无关顶层标签。',
     '如果接近输出上限，优先收束正文并闭合所有已打开标签。'
+].join('\n');
+
+const 是否正文质量审查错误 = (error: any): boolean => {
+    const text = String(error?.parseDetail || error?.message || '');
+    return /正文.*(?:空泛强调词|高频套话|硬抬情绪|低质量)|(?:空泛强调词|高频套话|硬抬情绪)/u.test(text);
+};
+
+const 构建正文质量失败自动重写提示 = (reason: string): string => [
+    '【自动重试正文质量修正】',
+    `上一版被拒绝原因：${reason || '正文质量审查未通过'}`,
+    '请完整重新生成本回合，不要只输出补丁，不要解释原因。',
+    '硬性要求：删除空泛强调词堆叠，尤其不要连续或高频使用“极其、非常、无比、极度”等万能加强词。',
+    '硬性要求：用具体动作、感官反馈、环境压力、可见阻力和人物反应来表达强度，不要用重复副词硬抬情绪。',
+    '仍需保持 <正文>、<短期记忆>、<命令> 等标签协议完整闭合。'
 ].join('\n');
 
 const 执行主剧情流式请求带空闲超时 = async <T,>(
@@ -1581,6 +1640,7 @@ export const 执行主剧情发送工作流 = async (
             },
             action: async (attempt, lastError) => {
                 const lastErrorIsBodyLengthShortage = 是否正文字数不足错误(lastError);
+                const lastErrorIsBodyQualityIssue = 是否正文质量审查错误(lastError);
                 const protocolRetryPrompt = (
                     attempt > 1
                     && !lastErrorIsBodyLengthShortage
@@ -1600,14 +1660,18 @@ export const 执行主剧情发送工作流 = async (
                         `硬性要求：<正文> 内可见正文必须达到至少 ${runtimeGameConfig.字数要求} 字。`,
                         '优先补充动作过程、感官反馈、环境承接、NPC反应、结果余波和必要对白；不要压缩成总结、提纲或清单。',
                         '仍需保持 <正文>、<短期记忆>、<命令> 等标签协议完整闭合。'
-                    ].join('\n') : [
+                    ].join('\n') : (lastErrorIsBodyQualityIssue
+                        ? 构建正文质量失败自动重写提示(
+                            lastError?.parseDetail || lastError?.message || '正文质量审查未通过'
+                        )
+                        : [
                         '【自动重试格式修正】',
                         `上一版被拒绝原因：${lastError?.parseDetail || lastError?.message || '正文协议不合格'}`,
                         '请完整重新生成本回合，不要只输出补丁。',
                         '硬性要求：<正文> 内所有角色对白必须单独成行，并以【角色名】开头；没有【角色名】的行只能写旁白、动作、环境或判定。',
                         '硬性要求：【角色名】只能是真实人物/NPC/临时龙套名；双手、指尖、眼睛、嘴唇、长剑、茶盏、衣袖、声音、气息、灵气、剑光等身体部位、物件或抽象对象必须写入【旁白】。',
                         '如果一句话是某个角色说出口的内容，不允许写成无标签普通段落。'
-                    ].join('\n'))
+                    ].join('\n')))
                     : '';
                 const requestStory = (
                     signal: AbortSignal,
