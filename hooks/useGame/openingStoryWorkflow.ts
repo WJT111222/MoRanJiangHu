@@ -37,6 +37,7 @@ import { 构建运行时额外提示词 } from '../../prompts/runtime/nsfw';
 import { 获取DeepSeek主剧情兼容提示词 } from '../../prompts/runtime/deepseekMode';
 import { 获取GLM主剧情兼容提示词 } from '../../prompts/runtime/glmMode';
 import { 包装繁体任务提示, 获取繁体输出指令 } from '../../utils/traditionalChinese';
+import { 提取叙事约束块 } from '../../utils/narrativeConstraint';
 import { 构建标签缺失补充提示 } from '../../utils/parseErrorHints';
 import { 构建世界演变COT提示词, 世界演变COT伪装历史消息提示词 } from '../../prompts/runtime/worldEvolutionCot';
 import { 构建开局世界演变初始化上下文, 开局世界演变初始化附加提示词 } from '../../prompts/runtime/openingWorldEvolutionInit';
@@ -967,6 +968,9 @@ export const 执行开场剧情生成工作流 = async (
             cultivationSystemEnabled: 启用修炼体系
         });
         const openingConfigText = 构建开局配置提示词(options?.开局配置, options?.开局额外要求);
+        const openingNarrativeConstraintBlock = 提取叙事约束块(
+            (openingStatePayload?.角色 || deps.角色)?.天赋列表
+        );
         const openingLatestUserInputRole: 'assistant' | 'user' = (
             openingTavernPresetModeEnabled
             || openingRuntimeGptMode
@@ -974,6 +978,7 @@ export const 执行开场剧情生成工作流 = async (
         ) ? 'user' : 'assistant';
 
         const playerSetupContext = [
+            ...(openingNarrativeConstraintBlock ? [openingNarrativeConstraintBlock, ''] : []),
             '【本次任务】',
             '请基于 world_prompt、下列主角建档信息、当前标签协议与开局额外要求，生成第0回合开场，并输出自然语言、完整详细的 `<变量规划>` 作为本回合初始化结果说明。',
             '不要把下列建档信息视为已经自动注入前端变量或已自动写入当前状态；除非你在 `<变量规划>` 中明确列出需要初始化的内容，否则这些内容都不算已进入本回合初始化结果。',
@@ -1041,6 +1046,7 @@ export const 执行开场剧情生成工作流 = async (
                 const normalizedRole: 'system' | 'user' | 'assistant' = role;
                 openingOrderedMessages.push({ role: normalizedRole, content: trimmed });
             };
+            pushOpening('system', openingContext.contextPieces.叙事约束提示词);
             pushOpening('system', openingContext.contextPieces.AI角色声明);
             pushOpening('system', openingContext.contextPieces.worldPrompt);
             pushOpening('system', openingContext.contextPieces.同人设定摘要);

@@ -273,7 +273,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
         const 描述 = raw?.描述?.trim() || '';
         const 效果 = raw?.效果?.trim() || '';
         if (!名称 || !描述 || !效果) return null;
-        return { 名称, 描述, 效果 };
+        return { 名称, 描述, 效果, 叙事约束: raw?.叙事约束 };
     };
     const 标准化背景 = (raw: 背景结构): 背景结构 | null => {
         const 名称 = raw?.名称?.trim() || '';
@@ -3139,6 +3139,37 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                                             onToggle={() => {
                                                 setOpeningConfig((prev) => ({ ...prev, 开局生成同门: prev.开局生成同门 === false }));
                                             }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="mt-5 space-y-3">
+                                    <div className="flex items-center justify-between rounded-2xl border border-gray-800 bg-black/25 px-4 py-4">
+                                        <div>
+                                            <div className="text-sm text-gray-200">叙事平静值系统</div>
+                                            <div className="text-[11px] text-gray-500 mt-1">开启后系统会根据剧情节奏自动调整推动强度，长时间平淡剧情将自动推出新事件</div>
+                                        </div>
+                                        <开关按钮
+                                            checked={openingConfig.modeRuntimeProfile?.叙事平静值配置?.启用 === true}
+                                            label={openingConfig.modeRuntimeProfile?.叙事平静值配置?.启用 ? '启用' : '关闭'}
+                                            onToggle={() => setOpeningConfig((prev) => {
+                                                const profile = { ...prev.modeRuntimeProfile } as any;
+                                                profile.叙事平静值配置 = { ...(profile.叙事平静值配置 || {}), 启用: !profile.叙事平静值配置?.启用 };
+                                                return { ...prev, modeRuntimeProfile: profile };
+                                            })}
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between rounded-2xl border border-gray-800 bg-black/25 px-4 py-4">
+                                        <div>
+                                            <div className="text-sm text-gray-200">性别比例自动演变</div>
+                                            <div className="text-[11px] text-gray-500 mt-1">开启后世界演变环节会根据剧情自动调整性别比例（世界级+地点级），并生成对应的个体性转命令；关闭后性别比例不受AI自动调整</div>
+                                        </div>
+                                        <开关按钮
+                                            checked={openingConfig.modeRuntimeProfile?.性别比例演变预设 === true}
+                                            label={openingConfig.modeRuntimeProfile?.性别比例演变预设 ? '启用' : '关闭'}
+                                            onToggle={() => setOpeningConfig((prev) => ({
+                                                ...prev,
+                                                modeRuntimeProfile: { ...prev.modeRuntimeProfile!, 性别比例演变预设: !(prev.modeRuntimeProfile?.性别比例演变预设 ?? false) }
+                                            }))}
                                         />
                                     </div>
                                 </div>

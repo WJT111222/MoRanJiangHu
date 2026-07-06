@@ -98,7 +98,8 @@ export interface 聊天记录结构 {
 export interface 天赋结构 {
     名称: string;
     描述: string;
-    效果: string; // 具体数值或逻辑描述
+    效果: string; // 叙事依据：给 LLM 编故事用的因果逻辑描述
+    叙事约束?: string; // 可选，高优先级叙事注意事项，注入 system prompt 最前面
 }
 
 export type 背景初始物品 = {

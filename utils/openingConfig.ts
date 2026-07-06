@@ -505,7 +505,7 @@ const 规范化快照天赋列表 = (value: unknown): 天赋结构[] => {
             const 描述 = 读取文本(item?.描述);
             const 效果 = 读取文本(item?.效果);
             if (!名称 || !描述 || !效果) return null;
-            return { 名称, 描述, 效果 };
+            return { 名称, 描述, 效果, 叙事约束: item?.叙事约束 };
         })
         .filter(Boolean) as 天赋结构[];
 };
@@ -677,7 +677,8 @@ const 规范化天赋列表 = (value: unknown): 初始伙伴配置结构['天赋
             .map((item: any) => ({
                 名称: 读取文本(item?.名称),
                 描述: 读取文本(item?.描述),
-                效果: 读取文本(item?.效果)
+                效果: 读取文本(item?.效果),
+                叙事约束: item?.叙事约束
             }))
             .filter((item) => item.名称 && item.描述 && item.效果)
             .slice(0, 3)
@@ -720,7 +721,8 @@ const 规范化开局运行时快照 = (raw?: any): OpeningRuntimeSnapshot | und
             .map((item: any) => ({
                 名称: 读取文本(item?.名称),
                 描述: 读取文本(item?.描述),
-                效果: 读取文本(item?.效果)
+                效果: 读取文本(item?.效果),
+                叙事约束: item?.叙事约束
             }))
             .filter((item) => item.名称 && item.描述 && item.效果)
         : [];

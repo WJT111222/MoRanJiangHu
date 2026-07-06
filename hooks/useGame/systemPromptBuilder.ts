@@ -37,6 +37,7 @@ import {
 import { 构建主剧情难度摘要提示词 } from '../../prompts/runtime/promptOwnership';
 import { 获取内置提示词槽位内容 } from '../../utils/builtinPrompts';
 import { 按功能开关过滤提示词内容, 裁剪修炼体系上下文数据 } from '../../utils/promptFeatureToggles';
+import { 提取叙事约束块 } from '../../utils/narrativeConstraint';
 import {
     构建运行时提示词池,
     剥离NoControl关联提示词,
@@ -1690,6 +1691,9 @@ export const 构建系统提示词 = ({
     const contextSectState = 构建门派状态文本(statePayload);
     const contextTaskState = 构建任务列表文本(statePayload);
     const contextAgreementState = 构建约定列表文本(statePayload);
+    const narrativeConstraintBlock = 提取叙事约束块(
+        statePayload?.角色?.天赋列表
+    );
     const normalizedMemoryConfig = 规范化记忆配置(memoryConfig);
     const shortMemoryInjectLimit = Math.max(1, Number(normalizedMemoryConfig.短期记忆阈值) || 30);
     const shortMemoryEntries = options?.禁用短期记忆
@@ -1706,6 +1710,7 @@ export const 构建系统提示词 = ({
 
     return {
         systemPrompt: [
+            ...(narrativeConstraintBlock ? [narrativeConstraintBlock, ''] : []),
             promptHeader,
             difficultyPrompts,
             activePerspectiveContent,
@@ -1728,6 +1733,7 @@ export const 构建系统提示词 = ({
         shortMemoryContext,
         runtimePromptStates,
         contextPieces: {
+            叙事约束提示词: narrativeConstraintBlock,
             AI角色声明: ai角色声明,
             worldPrompt: worldPrompt.trim(),
             地图建筑状态: contextMapAndBuilding,

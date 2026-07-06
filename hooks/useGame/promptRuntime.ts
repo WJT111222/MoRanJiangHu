@@ -289,6 +289,7 @@ const 构建酒馆世界书文本 = (
         ? options.剧情安排后附加文本.trim()
         : '';
     return [
+        contextPieces.叙事约束提示词,
         contextPieces.worldPrompt,
         contextPieces.地图建筑状态,
         contextPieces.同人设定摘要,

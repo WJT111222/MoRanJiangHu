@@ -112,8 +112,9 @@ const 合并去重天赋 = (rawList: 天赋结构[]): 天赋结构[] => {
         const 名称 = 标准化文本(item?.名称);
         const 描述 = 标准化文本(item?.描述);
         const 效果 = 标准化文本(item?.效果);
+        const 叙事约束 = 标准化文本(item?.叙事约束);
         if (!名称 || !描述 || !效果) return;
-        map.set(名称, { 名称, 描述, 效果 });
+        map.set(名称, { 名称, 描述, 效果, 叙事约束: 叙事约束 || undefined });
     });
     return Array.from(map.values());
 };
@@ -395,14 +396,14 @@ export const 构建预设表单恢复结果 = (
     const 已选背景兜底列表 = 合并去重背景(options.selectedBackgroundCatalog || []);
     const 已选天赋兜底列表 = 合并去重天赋(options.selectedTalentCatalog || []);
     const 全部背景选项 = 合并去重背景([
-        ...模式包背景列表,
         ...预设题材背景列表,
+        ...模式包背景列表,
         ...options.fallbackBackgrounds,
         ...已选背景兜底列表
     ]);
     const 全部天赋选项 = 合并去重天赋([
-        ...模式包天赋列表,
         ...预设题材天赋列表,
+        ...模式包天赋列表,
         ...options.fallbackTalents,
         ...已选天赋兜底列表
     ]);
