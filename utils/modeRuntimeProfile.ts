@@ -8,16 +8,24 @@ const 文本 = (value: unknown, fallback = ''): string => (
     typeof value === 'string' && value.trim() ? value.trim() : fallback
 );
 
+const 读取性别比例数值 = (value: unknown): number | null => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))) return Number(value);
+    return null;
+};
+
 const 规范化性别比例 = (value: unknown, fallback: string | 性别比例配置): string | 性别比例配置 => {
     if (!value || typeof value !== 'object') return 文本(value as any, typeof fallback === 'string' ? fallback : '');
     if (typeof value === 'object' && !Array.isArray(value)) {
         const obj = value as Record<string, unknown>;
-        if (typeof obj.男 === 'number' && typeof obj.女 === 'number') {
+        const 男 = 读取性别比例数值(obj.男);
+        const 女 = 读取性别比例数值(obj.女);
+        if (男 !== null && 女 !== null) {
             return {
-                男: obj.男,
-                女: obj.女,
-                男娘: typeof obj.男娘 === 'number' ? obj.男娘 : 0,
-                扶她: typeof obj.扶她 === 'number' ? obj.扶她 : 0,
+                男,
+                女,
+                男娘: 读取性别比例数值(obj.男娘) ?? 0,
+                扶她: 读取性别比例数值(obj.扶她) ?? 0,
             } as 性别比例配置;
         }
     }
