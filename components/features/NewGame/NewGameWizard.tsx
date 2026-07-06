@@ -57,7 +57,7 @@ import { 构建开局世界观生成提示词预览 } from '../../../utils/world
 import { normalizeWorldMapDraft } from '../../../utils/newGameDiy';
 import { 获取主剧情接口配置, 接口配置是否可用 } from '../../../utils/apiConfig';
 import { 请求模型文本 } from '../../../services/ai/chatCompletionClient';
-import { 下载创意工坊模块, 列出创意工坊模块 } from '../../../services/creativeWorkshop';
+import { 下载创意工坊模块, 列出创意工坊模块, 读取本地创意工坊模块 } from '../../../services/creativeWorkshop';
 
 interface Props {
     onComplete: (
@@ -341,10 +341,17 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
     const 当前题材预设背景 = useMemo(() => 获取题材预设背景(openingConfig.题材模式), [openingConfig.题材模式]);
     const 当前题材预设天赋 = useMemo(() => 获取题材预设天赋(openingConfig.题材模式), [openingConfig.题材模式]);
     const 恢复链有效模块键 = useMemo(
-        () => 创意工坊模块列表.some((item) => item.type !== 'topic')
-            ? new Set(创意工坊模块列表.map((item) => `${item.source || 'builtin'}:${item.id}`))
-            : undefined,
-        [创意工坊模块列表]
+        () => {
+            const builtinKeys = 创意工坊模块列表
+                .filter((item) => item.type !== 'topic')
+                .map((item) => `${item.source || 'builtin'}:${item.id}`);
+            const localKeys = 读取本地创意工坊模块()
+                .filter((item) => item.type !== 'topic')
+                .map((item) => `local:${item.id}`);
+            const allKeys = [...builtinKeys, ...localKeys];
+            return allKeys.length > 0 ? new Set(allKeys) : undefined;
+        },
+        []
     );
     const 当前题材预设背景名称集合 = useMemo(() => new Set(当前题材预设背景.map(item => item.名称)), [当前题材预设背景]);
     const 当前题材预设天赋名称集合 = useMemo(() => new Set(当前题材预设天赋.map(item => item.名称)), [当前题材预设天赋]);
