@@ -147,6 +147,11 @@ describe('AI returned female name e2e', () => {
         expect(规范化游戏设置({} as any).启用正文词汇审查).toBe(true);
     });
 
+    it('严格正文对白格式默认缺失时仍开启', () => {
+        expect(规范化游戏设置({} as any).启用严格正文对白格式).toBe(true);
+        expect(规范化游戏设置({ 启用严格正文对白格式: false } as any).启用严格正文对白格式).toBe(false);
+    });
+
     it('正文词汇审查开启时仍触发女性模板名黑名单', () => {
         const response = 构建女性模板名响应();
         expect(() => 校验响应正文词汇审查(response as any, [], JSON.stringify(response), '主剧情', true))

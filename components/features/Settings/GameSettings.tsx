@@ -763,6 +763,20 @@ const GameSettings: React.FC<Props> = ({ settings, onSave, gameInitialTime, curr
             <div className="space-y-3 rounded-md border border-wuxia-gold/20 bg-black/30 p-4">
                 <div className="flex items-center justify-between gap-4">
                     <div>
+                        <div className="text-sm text-wuxia-cyan font-bold">严格旁白/对白格式</div>
+                        <div className="text-xs text-gray-400 mt-1">默认开启。关闭后，系统不再强制正文把旁白和角色对白拆成【旁白】/【角色名】格式；更接近普通酒馆角色卡正文，但对话气泡识别会更宽松。</div>
+                    </div>
+                    <ToggleSwitch
+                        checked={form.启用严格正文对白格式 !== false}
+                        onChange={(next) => 实时应用更新({ 启用严格正文对白格式: next })}
+                        ariaLabel="切换严格旁白对白格式"
+                    />
+                </div>
+            </div>
+
+            <div className="space-y-3 rounded-md border border-wuxia-gold/20 bg-black/30 p-4">
+                <div className="flex items-center justify-between gap-4">
+                    <div>
                         <div className="text-sm text-wuxia-cyan font-bold">正文词汇审查</div>
                         <div className="text-xs text-gray-400 mt-1">默认开启。关闭后会跳过女性模板名黑名单、内部档案名称泄露等正文词汇类拦截；标签结构、人称一致性和 NPC 结构保护仍会继续生效。</div>
                     </div>

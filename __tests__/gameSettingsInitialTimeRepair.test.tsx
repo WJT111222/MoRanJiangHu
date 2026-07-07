@@ -86,4 +86,16 @@ describe('GameSettings 高级存档修复', () => {
         expect(html).toContain('正文词汇审查');
         expect(html).toContain('女性模板名黑名单');
     });
+
+    it('GameSettings 显示严格旁白对白格式开关', () => {
+        const html = renderToStaticMarkup(
+            <GameSettings
+                settings={默认游戏设置}
+                onSave={() => undefined}
+            />
+        );
+
+        expect(html).toContain('严格旁白/对白格式');
+        expect(html).toContain('普通酒馆角色卡正文');
+    });
 });

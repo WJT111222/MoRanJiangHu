@@ -1902,7 +1902,7 @@ export const 执行主剧情发送工作流 = async (
                             disclaimerRequirementPrompt: tavernPresetModeEnabled ? '' : disclaimerRequirementPrompt,
                             validateTagCompleteness: runtimeGameConfig.启用标签检测完整性 === true,
                             enableTagRepair: runtimeGameConfig.启用标签修复 !== false,
-                            validateDialogueFormat: true,
+                            validateDialogueFormat: runtimeGameConfig.启用严格正文对白格式 !== false,
                             knownSpeakers: knownDialogueSpeakers,
                             requireActionOptionsTag: runtimeGameConfig.启用行动选项 !== false,
                             errorDetailLimit: Number.POSITIVE_INFINITY,
@@ -1923,7 +1923,7 @@ export const 执行主剧情发送工作流 = async (
                             validateTagCompleteness: runtimeGameConfig.启用标签检测完整性 === true,
                             enableTagRepair: runtimeGameConfig.启用标签修复 !== false,
                             requireActionOptionsTag: runtimeGameConfig.启用行动选项 !== false,
-                            validateDialogueFormat: true,
+                            validateDialogueFormat: runtimeGameConfig.启用严格正文对白格式 !== false,
                             knownSpeakers: knownDialogueSpeakers
                         })
                     );
@@ -2057,7 +2057,11 @@ export const 执行主剧情发送工作流 = async (
             }
             const expandedResponse = textAIService.parseStoryRawText(
                 `<正文>\n${expanded.bodyText}\n</正文>\n<短期记忆>无</短期记忆>`,
-                { validateDialogueFormat: true, enableTagRepair: true, knownSpeakers: knownDialogueSpeakers }
+                {
+                    validateDialogueFormat: runtimeGameConfig.启用严格正文对白格式 !== false,
+                    enableTagRepair: true,
+                    knownSpeakers: knownDialogueSpeakers
+                }
             );
             const expandedAiData: GameResponse = {
                 ...aiData,

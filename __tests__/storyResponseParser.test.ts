@@ -367,6 +367,19 @@ describe('storyResponseParser', () => {
         ].join('\n'), { validateDialogueFormat: true })).toThrow(/林婉儿.*冒号格式/);
     });
 
+    it('does not mistake lowercase preset metadata fields for colon dialogue', () => {
+        const parsed = parseStoryRawText([
+            '<正文>',
+            'time: 9月上旬 · 某日（夜风微凉）☆22:50-23:15',
+            'scene: 海川市·海川大学城·男生7号楼402宿舍',
+            '你把鼠标往鼠标垫边缘一推，顺手拉开电脑桌的抽屉。',
+            '</正文>',
+            '<短期记忆>主角在宿舍整理桌面。</短期记忆>'
+        ].join('\n'), { validateDialogueFormat: true });
+
+        expect(parsed.logs.map(log => log.text).join('\n')).toContain('time: 9月上旬');
+    });
+
     it('still rejects likely unlabeled oral dialogue during strict parsing', () => {
         expect(() => parseStoryRawText([
             '<正文>',
@@ -466,13 +479,15 @@ describe('storyResponseParser', () => {
         ].join('\n'), { validateDialogueFormat: true })).toThrow(/高频套话|指关节|泛白/);
     });
 
-    it('rejects multi-word English fragments mixed into Chinese story body during strict parsing', () => {
-        expect(() => parseStoryRawText([
+    it('allows modern setting English fragments inside Chinese story body during strict parsing', () => {
+        const parsed = parseStoryRawText([
             '<正文>',
-            '清晨的冷雾像是有分量的薄纱，沉甸甸地压在云岫剑宗碧落峰 lower slope 的石板路上。',
+            '手机屏幕上弹出 Team Meeting 的提醒，楼下咖啡店的 WiFi 名称还停在列表第一行。',
             '</正文>',
-            '<短期记忆>主角在碧落峰清晨醒来。</短期记忆>'
-        ].join('\n'), { validateDialogueFormat: true })).toThrow(/异常英文片段|英文夹杂|自然中文|lower slope/);
+            '<短期记忆>主角在都市日常中收到会议提醒。</短期记忆>'
+        ].join('\n'), { validateDialogueFormat: true });
+
+        expect(parsed.logs[0]?.text).toContain('Team Meeting');
     });
 
     it('keeps only explicit tagged single-speaker text as character bubbles for rendering', () => {

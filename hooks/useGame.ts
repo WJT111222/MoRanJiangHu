@@ -1419,7 +1419,8 @@ export const useGame = () => {
     const 构建标签解析选项 = (config: 游戏设置结构) => ({
         validateTagCompleteness: config?.启用标签检测完整性 === true,
         enableTagRepair: config?.启用标签修复 !== false,
-        requireActionOptionsTag: config?.启用行动选项 !== false
+        requireActionOptionsTag: config?.启用行动选项 !== false,
+        validateDialogueFormat: config?.启用严格正文对白格式 !== false
     });
 
     const 追加系统消息 = (content: string, options?: { position?: 'tail' | 'after_last_turn' }) => {
