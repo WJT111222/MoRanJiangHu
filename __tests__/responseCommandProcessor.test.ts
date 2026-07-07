@@ -77,6 +77,54 @@ describe('responseCommandProcessor dialogue social sync', () => {
         expect(state.游戏初始时间).toBe('1:01:01:08:00');
     });
 
+    it('rejects high-level environment location jumps when the story provides no location evidence', () => {
+        const state = 构建基础状态();
+        state.环境 = {
+            时间: '1:01:01:08:00',
+            大地点: '大唐',
+            中地点: '长安',
+            小地点: '西市',
+            具体地点: '客栈前厅'
+        } as any;
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '杨培强仍坐在客栈前厅，与掌柜核对行程。' }
+            ],
+            tavern_commands: [
+                { action: 'set', key: '环境.大地点', value: '大明帝国' },
+                { action: 'set', key: '环境.中地点', value: '京师' }
+            ]
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect(result.环境.大地点).toBe('大唐');
+        expect(result.环境.中地点).toBe('长安');
+    });
+
+    it('allows high-level environment location changes when the story explicitly arrives there', () => {
+        const state = 构建基础状态();
+        state.环境 = {
+            时间: '1:01:01:08:00',
+            大地点: '大唐',
+            中地点: '长安',
+            小地点: '西市',
+            具体地点: '客栈前厅'
+        } as any;
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '传送阵亮起，杨培强穿越界门，抵达大明帝国的京师城门外。' }
+            ],
+            tavern_commands: [
+                { action: 'set', key: '环境.大地点', value: '大明帝国' },
+                { action: 'set', key: '环境.中地点', value: '京师' }
+            ]
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect(result.环境.大地点).toBe('大明帝国');
+        expect(result.环境.中地点).toBe('京师');
+    });
+
     it('does not promote new dialogue speakers into long-term social records without stronger structured evidence', () => {
         const state = 构建基础状态();
         const result = 执行响应命令处理({

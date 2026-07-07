@@ -263,10 +263,6 @@ const 从复合提示词中剥离子块 = (composed: string, block: string): str
         .join('\n\n');
 };
 
-const 匹配酒馆COT占位符 = (content: string): boolean => (
-    /\{\{\s*cot\s*\}\}/i.test(typeof content === 'string' ? content : '')
-);
-
 const 匹配酒馆格式占位符 = (content: string): boolean => (
     /\{\{\s*格式\s*\}\}/i.test(typeof content === 'string' ? content : '')
     || /\{\{\s*format\s*\}\}/i.test(typeof content === 'string' ? content : '')
@@ -754,13 +750,6 @@ export const 构建酒馆预设消息链 = (params: {
     );
     const enabledOrderSlots = (Array.isArray(selectedOrder.order) ? selectedOrder.order : [])
         .filter((slot) => Boolean(slot) && slot.enabled !== false);
-    const useCotVariableInjection = enabledOrderSlots.some((slot) => {
-        const identifier = typeof slot.identifier === 'string' ? slot.identifier.trim() : '';
-        if (!identifier) return false;
-        const prompt = promptMap.get(identifier);
-        const rawContent = typeof prompt?.content === 'string' ? prompt.content : '';
-        return 匹配酒馆COT占位符(rawContent);
-    });
     const useFormatVariableInjection = enabledOrderSlots.some((slot) => {
         const identifier = typeof slot.identifier === 'string' ? slot.identifier.trim() : '';
         if (!identifier) return false;
@@ -781,7 +770,7 @@ export const 构建酒馆预设消息链 = (params: {
         params.context.contextPieces,
         params.context.shortMemoryContext,
         {
-            包含COT提示词: !useCotVariableInjection,
+            包含COT提示词: true,
             其他提示词覆盖: worldbookOtherPrompts,
             COT提示词覆盖: resolvedCotPrompt,
             剧情安排后附加文本: params.overrideStoryAppendPrompt

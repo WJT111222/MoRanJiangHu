@@ -154,6 +154,54 @@ const 是否环境时间命令 = (rawKey: string): boolean => {
     return normalizedKey === 'gameState.环境.时间';
 };
 
+const 环境高层地点字段集合 = new Set([
+    'gameState.环境.大地点',
+    'gameState.环境.中地点',
+    'gameState.环境.小地点'
+]);
+
+const 是否环境高层地点命令 = (rawKey: string): boolean => {
+    const normalizedKey = normalizeStateCommandKey(rawKey);
+    return 环境高层地点字段集合.has(normalizedKey);
+};
+
+const 读取环境地点字段 = (env: 环境信息结构 | undefined, rawKey: string): string => {
+    const normalizedKey = normalizeStateCommandKey(rawKey);
+    if (normalizedKey === 'gameState.环境.大地点') return typeof env?.大地点 === 'string' ? env.大地点 : '';
+    if (normalizedKey === 'gameState.环境.中地点') return typeof env?.中地点 === 'string' ? env.中地点 : '';
+    if (normalizedKey === 'gameState.环境.小地点') return typeof env?.小地点 === 'string' ? env.小地点 : '';
+    return '';
+};
+
+const 规范化地点证据文本 = (value: unknown): string => (
+    typeof value === 'string'
+        ? value.replace(/[\s"'“”‘’`<>《》【】\[\]（）(){}，,。.!！?？:：;；、/\\|_-]+/g, '').toLowerCase()
+        : ''
+);
+
+const 文本包含地点证据 = (factText: string, location: string): boolean => {
+    const normalizedFact = 规范化地点证据文本(factText);
+    const normalizedLocation = 规范化地点证据文本(location);
+    if (!normalizedFact || !normalizedLocation) return false;
+    if (normalizedFact.includes(normalizedLocation)) return true;
+    return normalizedLocation.length >= 3 && normalizedLocation.includes(normalizedFact);
+};
+
+const 是否缺少高层地点变更依据 = (
+    rawKey: string,
+    currentEnv: 环境信息结构 | undefined,
+    newValue: unknown,
+    responseFactText: string
+): boolean => {
+    if (!是否环境高层地点命令(rawKey)) return false;
+    if (typeof newValue !== 'string') return true;
+    const nextLocation = newValue.trim();
+    if (!nextLocation) return true;
+    const previousLocation = 读取环境地点字段(currentEnv, rawKey).trim();
+    if (!previousLocation || 规范化地点证据文本(previousLocation) === 规范化地点证据文本(nextLocation)) return false;
+    return !文本包含地点证据(responseFactText, nextLocation);
+};
+
 const 是否游戏初始时间命令 = (rawKey: string): boolean => {
     const normalizedKey = normalizeStateCommandKey(rawKey || '');
     if (normalizedKey === 'gameState.游戏初始时间') return true;
@@ -1519,6 +1567,9 @@ export const 执行响应命令处理 = (
                 if (是否时间回退或异常重置(envBuffer?.时间, safeCmd.value)) {
                     return;
                 }
+            }
+            if (safeCmd.action === 'set' && 是否缺少高层地点变更依据(safeCmd.key, envBuffer, safeCmd.value, responseFactText)) {
+                return;
             }
             const result = applyStateCommand(
                 charBuffer,
