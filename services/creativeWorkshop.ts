@@ -4,6 +4,7 @@ import { buildCreativeWorkshopContentFingerprint, filterCreativeWorkshopDuplicat
 import { isNativeCapacitorEnvironment } from '../utils/nativeRuntime';
 import { 规范化模式运行时配置 } from '../utils/modeRuntimeProfile';
 import { 规范化ComfyUI工作流JSON } from './ai/comfyWorkflowTools';
+import { 规范化酒馆预设 } from '../utils/tavernPreset';
 import { 读取云端游玩会话 } from './cloudPlayService';
 
 export const 已启用创意工坊模块存储键 = 'creative_workshop_enabled_modules';
@@ -237,7 +238,7 @@ const 规范化模块 = (raw: any, source: 创意工坊模块条目['source']): 
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
     const id = typeof raw.id === 'string' ? raw.id.trim() : '';
     const type = raw.type as 创意工坊模块类型;
-    if (!id || !['topic', 'world_rules', 'opening', 'ability', 'comfy_workflow'].includes(type)) return null;
+    if (!id || !['topic', 'world_rules', 'opening', 'ability', 'comfy_workflow', 'tavern_preset'].includes(type)) return null;
     const title = typeof raw.title === 'string' ? raw.title.trim() : '';
     if (!title) return null;
     return {
@@ -274,6 +275,7 @@ const 规范化模块 = (raw: any, source: 创意工坊模块条目['source']): 
         usagePrompt: typeof raw.usagePrompt === 'string' ? raw.usagePrompt.trim() : '',
         safetyNotes: Array.isArray(raw.safetyNotes) ? raw.safetyNotes.map((item: unknown) => String(item || '').trim()).filter(Boolean).slice(0, 12) : [],
         preset: raw.preset && typeof raw.preset === 'object' ? raw.preset : undefined,
+        tavernPreset: 规范化酒馆预设(raw.tavernPreset || raw.payload?.tavernPreset) || undefined,
         source,
         contributor: typeof raw.contributor === 'string' ? raw.contributor.trim() : '',
         createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : '',
@@ -283,6 +285,41 @@ const 规范化模块 = (raw: any, source: 创意工坊模块条目['source']): 
         ownerUserId: typeof raw.ownerUserId === 'string' ? raw.ownerUserId : undefined,
         ownerUsername: typeof raw.ownerUsername === 'string' ? raw.ownerUsername : undefined,
         anonymous: raw.anonymous === true
+    };
+};
+
+const 构建本地酒馆预设模块 = (rawPreset: unknown, fallbackTitle = ''): 创意工坊模块条目 | null => {
+    const normalized = 规范化酒馆预设(rawPreset);
+    if (!normalized) return null;
+    const title = fallbackTitle.trim().replace(/\.json$/i, '') || `酒馆预设 ${new Date().toLocaleString()}`;
+    const promptCount = normalized.prompts.length;
+    const orderCount = normalized.prompt_order.reduce((sum, group) => sum + group.order.length, 0);
+    const regexCount = normalized.兼容性?.正则脚本总数 || (Array.isArray((normalized.extensions as any)?.regex_scripts) ? ((normalized.extensions as any).regex_scripts as unknown[]).length : 0);
+    return {
+        id: `local-tavern-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        type: 'tavern_preset',
+        formatVersion: 2,
+        workshopKind: 'standard_module',
+        title,
+        subtitle: '玩家自行上传 · SillyTavern 酒馆预设',
+        description: '玩家上传的酒馆预设，可在酒馆预设设置中直接选择使用。',
+        tags: ['酒馆预设', 'SillyTavern'],
+        payload: {
+            schema: 'moranjianghu-creative-workshop-tavern-preset',
+            version: 1,
+            tavernPreset: normalized
+        },
+        tavernPreset: normalized,
+        usagePrompt: '在酒馆预设设置中选择该预设；提示词顺序、启用开关和正则脚本状态会随预设保留。',
+        safetyNotes: ['本地上传内容只保存在当前浏览器/设备；公开发布前请确认不包含私密信息。'],
+        injectionPreview: [
+            `提示词：${promptCount} 条`,
+            `顺序槽位：${orderCount} 项`,
+            `正则脚本：${regexCount} 条`,
+            '开关状态：保留 prompt_order enabled 与 regex_scripts disabled 状态'
+        ],
+        source: 'local',
+        contributor: ''
     };
 };
 
@@ -308,7 +345,10 @@ export const 保存本地创意工坊模块 = (modules: 创意工坊模块条目
 };
 
 export const 导入本地创意工坊模块 = (module: 创意工坊模块条目): 创意工坊模块条目 => {
-    const normalized = 规范化当前模块({ ...module, id: module.id || `local-${Date.now()}` }, 'local');
+    const localTavernModule = (module as any)?.type === 'tavern_preset'
+        ? null
+        : 构建本地酒馆预设模块(module, (module as any)?.title || (module as any)?.name || '');
+    const normalized = localTavernModule || 规范化当前模块({ ...module, id: module.id || `local-${Date.now()}` }, 'local');
     if (!normalized) throw new Error('模块 JSON 格式不完整');
     const next = [normalized, ...读取本地创意工坊模块().filter((item) => item.id !== normalized.id)].slice(0, 100);
     保存本地创意工坊模块(next);

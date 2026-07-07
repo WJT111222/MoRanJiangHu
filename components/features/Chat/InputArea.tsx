@@ -161,6 +161,15 @@ interface Props {
     onRetryLatestVariableGeneration?: (options?: {
         onVariableGenerationProgress?: (progress: VariableGenerationProgress) => void;
     }) => Promise<string | null> | string | null;
+    onRetryLatestStage?: (
+        stageId: 'polish' | 'world' | 'planning' | 'map',
+        options?: {
+            onPolishProgress?: (progress: PolishProgress) => void;
+            onWorldEvolutionProgress?: (progress: WorldEvolutionProgress) => void;
+            onPlanningProgress?: (progress: PlanningProgress) => void;
+            onMapUpdateProgress?: (progress: MapUpdateProgress) => void;
+        }
+    ) => Promise<string | null> | string | null;
     onRegenerate: () => Promise<string | null> | string | null;
     onRecoverParseErrorRaw?: (rawText: string, forceRepair?: boolean) => Promise<string | null> | string | null;
     onQuickRestart?: (mode: QuickRestartMode) => void | Promise<void>;
@@ -190,6 +199,7 @@ const InputArea: React.FC<Props> = ({
     onStop,
     onCancelVariableGeneration,
     onRetryLatestVariableGeneration,
+    onRetryLatestStage,
     onRegenerate,
     onRecoverParseErrorRaw,
     onQuickRestart,
@@ -554,6 +564,35 @@ const InputArea: React.FC<Props> = ({
         }
     };
 
+    const handleRetryStage = async (stageId: 'polish' | 'world' | 'planning' | 'map') => {
+        if (!onRetryLatestStage) return;
+        setQueueCollapsed(false);
+        const retryError = await Promise.resolve(onRetryLatestStage(stageId, {
+            onPolishProgress: (progress) => 记录并设置队列进度('polish.manual-retry', progress, setPolishProgress),
+            onWorldEvolutionProgress: (progress) => 记录并设置队列进度('world.manual-retry', progress, setWorldEvolutionProgress),
+            onPlanningProgress: (progress) => 记录并设置队列进度('planning.manual-retry', progress, setPlanningProgress),
+            onMapUpdateProgress: (progress) => 记录并设置队列进度('map.manual-retry', progress, setMapUpdateProgress)
+        }));
+        if (typeof retryError === 'string' && retryError.trim().length > 0) {
+            const message = retryError.trim();
+            const setErrorProgress = {
+                polish: setPolishProgress,
+                world: setWorldEvolutionProgress,
+                planning: setPlanningProgress,
+                map: setMapUpdateProgress
+            }[stageId];
+            setErrorProgress({
+                phase: 'error',
+                text: `${message}\n可稍后再次重新生成该阶段。`
+            } as never);
+            setErrorModal({
+                open: true,
+                title: '重新生成失败',
+                content: message
+            });
+        }
+    };
+
     const 复制队列文本 = async (text: string, label: string) => {
         const content = (text || '').trim();
         if (!content) return;
@@ -897,9 +936,11 @@ const InputArea: React.FC<Props> = ({
                                         const rerunAction = !isRunningStage && !variableGenerationRunning
                                             ? 获取队列阶段重新生成动作({
                                                 stageId: stage.id,
+                                                phase,
                                                 isOpeningQueue,
                                                 hasReroll: canReroll,
                                                 hasRetryLatestVariableGeneration: Boolean(canRetryLatestVariableGeneration && onRetryLatestVariableGeneration),
+                                                hasRetryLatestStage: Boolean(onRetryLatestStage),
                                                 hasQuickRestart: Boolean(canQuickRestart && onQuickRestart)
                                             })
                                             : null;
@@ -951,6 +992,8 @@ const InputArea: React.FC<Props> = ({
                                                                         void handleReroll();
                                                                     } else if (rerunAction === 'retry-variable') {
                                                                         void handleRetryVariableGeneration();
+                                                                    } else if (rerunAction === 'retry-stage' && (stage.id === 'polish' || stage.id === 'world' || stage.id === 'planning' || stage.id === 'map')) {
+                                                                        void handleRetryStage(stage.id);
                                                                     }
                                                                 }}
                                                                 className="text-xs px-2 py-1 border border-cyan-400/40 text-cyan-100 rounded hover:bg-cyan-500/10"

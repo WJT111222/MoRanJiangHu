@@ -7,18 +7,7 @@ export type 内置酒馆预设条目 = {
     path: string;
 };
 
-export const 内置酒馆预设列表: 内置酒馆预设条目[] = [
-    {
-        id: 'builtin_izumi_0503',
-        名称: 'Izumi 0503',
-        path: '/tavern-presets/izumi-0503.json'
-    },
-    {
-        id: 'builtin_izumi_0623',
-        名称: 'Izumi 0623',
-        path: '/tavern-presets/izumi-0623.json'
-    }
-];
+export const 内置酒馆预设列表: 内置酒馆预设条目[] = [];
 
 export const 加载内置酒馆预设 = async (entry: 内置酒馆预设条目): Promise<酒馆预设结构> => {
     const response = await fetch(entry.path, { cache: 'no-store' });

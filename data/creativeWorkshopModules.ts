@@ -1,11 +1,11 @@
 import type { 开局预设方案结构 } from './newGamePresets';
-import type { ModeRuntimeProfile, WorldMapDiyDraft, 世界书结构, 世界书条目结构, 世界书类型, 世界书作用域 } from '../types';
+import type { ModeRuntimeProfile, WorldMapDiyDraft, 世界书结构, 世界书条目结构, 世界书类型, 世界书作用域, 酒馆预设结构 } from '../types';
 import { 题材模式配置表, 题材模式顺序 } from '../utils/workshopEngine';
 import { 构建官方模式运行时配置, 规范化模式运行时配置, 渲染模式运行时配置世界书内容 } from '../utils/modeRuntimeProfile';
 import { 默认ComfyUI工作流JSON, 默认NSFWComfyUI工作流JSON } from './defaultComfyWorkflow';
 import { 获取题材预设背景, 获取题材预设天赋 } from './presets';
 
-export type 创意工坊模块类型 = 'topic' | 'world_rules' | 'opening' | 'ability' | 'comfy_workflow';
+export type 创意工坊模块类型 = 'topic' | 'world_rules' | 'opening' | 'ability' | 'comfy_workflow' | 'tavern_preset';
 export type 创意工坊模块来源 = 'builtin' | 'cloud' | 'local';
 
 export interface 创意工坊世界细节生成配置 {
@@ -40,6 +40,7 @@ export interface 创意工坊模块条目 {
     safetyNotes?: string[];
     injectionPreview: string[];
     preset?: 开局预设方案结构;
+    tavernPreset?: 酒馆预设结构;
     source?: 创意工坊模块来源;
     contributor?: string;
     createdAt?: string;
@@ -217,6 +218,7 @@ const 构建题材预设 = (
 
 export const 创意工坊模块分区: Array<{ id: 创意工坊模块类型; title: string; description: string }> = [
     { id: 'topic', title: '模式包', description: '一次注入题材模板、世界规则和能力体系。' },
+    { id: 'tavern_preset', title: '酒馆预设', description: '分享 SillyTavern 提示词、顺序开关和正则脚本配置。' },
     { id: 'comfy_workflow', title: 'ComfyUI 工作流', description: '分享可用于普通、场景或 NSFW 生图的 API workflow JSON。' }
 ];
 
@@ -380,9 +382,37 @@ const 构建ComfyUI工作流模块 = (
     };
 };
 
+const Izumi0623酒馆预设模块: 创意工坊模块条目 = {
+    id: 'tavern-preset-izumi-0623',
+    type: 'tavern_preset',
+    formatVersion: 2,
+    workshopKind: 'standard_module',
+    title: 'Izumi 0623',
+    subtitle: 'SillyTavern 酒馆预设',
+    description: '玩家上传的 Izumi 0623 酒馆预设，包含提示词顺序、启用开关、生成参数和正则脚本兼容信息。',
+    tags: ['酒馆预设', 'SillyTavern', 'Izumi'],
+    payload: {
+        schema: 'moranjianghu-creative-workshop-tavern-preset',
+        version: 1,
+        presetPath: '/tavern-presets/izumi-0623.json'
+    },
+    usagePrompt: '在设置里的酒馆预设下拉框选择后直接启用；预设内的提示词启用状态和正则脚本开关会随 JSON 保留。',
+    safetyNotes: ['该预设来自玩家上传内容，启用后请按当前模型能力复核提示词和正则脚本效果。'],
+    injectionPreview: [
+        '类型：SillyTavern 酒馆预设',
+        '来源：匿名玩家上传',
+        '包含：prompts、prompt_order、generation 参数、regex_scripts 扩展',
+        '开关状态：保留 prompt_order enabled 与 regex_scripts disabled 状态'
+    ],
+    source: 'builtin',
+    contributor: '匿名玩家',
+    anonymous: true
+};
+
 const 推断注入目标 = (entry: 创意工坊模块条目): NonNullable<创意工坊模块条目['contentBlocks']>[number]['injectionTarget'] => {
     if (entry.type === 'ability') return 'manualRealmPrompt';
     if (entry.type === 'comfy_workflow') return 'imageWorkflow';
+    if (entry.type === 'tavern_preset') return 'referenceOnly';
     if (entry.type === 'world_rules' || entry.type === 'topic' || entry.type === 'opening') return 'manualWorldPrompt';
     return 'referenceOnly';
 };
@@ -394,10 +424,14 @@ const 统一为标准模块格式 = (entry: 创意工坊模块条目): 创意工
         ? entry.payload.content
         : entry.type === 'comfy_workflow'
             ? String(entry.payload?.workflowJson || '')
+            : entry.type === 'tavern_preset'
+                ? String(entry.payload?.presetPath || JSON.stringify(entry.payload?.tavernPreset || entry.tavernPreset || {}, null, 2))
             : entry.injectionPreview.join('\n');
     const content = payloadContent.trim() || JSON.stringify(entry.payload || {}, null, 2);
     const blockTitle = entry.type === 'comfy_workflow'
         ? 'ComfyUI 工作流'
+        : entry.type === 'tavern_preset'
+            ? '酒馆预设'
         : entry.type === 'ability'
             ? '能力与境界规则'
             : entry.type === 'topic'
@@ -405,11 +439,15 @@ const 统一为标准模块格式 = (entry: 创意工坊模块条目): 创意工
                 : '世界规则';
     const usagePrompt = entry.type === 'comfy_workflow'
         ? '在文生图设置中选择该工作流；确保 ComfyUI API 工作流 JSON 有效，并按需要保留占位符。'
+        : entry.type === 'tavern_preset'
+            ? '在酒馆预设设置中选择该预设；提示词顺序、启用开关和正则脚本状态会随预设保留。'
         : entry.type === 'ability'
             ? '作为手动能力/境界提示词注入，用于约束成长体系、战力边界和技能命名。'
             : '作为手动世界观提示词注入，用于约束开局世界、势力、货币、地图和叙事边界。';
     const safetyNotes = entry.type === 'comfy_workflow'
         ? ['发布工作流前请移除本机路径、私有节点地址和个人密钥。']
+        : entry.type === 'tavern_preset'
+            ? ['发布酒馆预设前请确认 JSON 不包含账号密钥、本机路径或不可公开的私有内容。']
         : ['投稿内容应避免泄露个人隐私、账号密钥或不可公开的版权素材。'];
     const contentBlocks: NonNullable<创意工坊模块条目['contentBlocks']> = [
         {
@@ -1101,6 +1139,7 @@ const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创
 export const 整合创意工坊模式包 = (entries: 创意工坊模块条目[]): 创意工坊模块条目[] => {
     const passthrough = entries.filter((entry) => (
         entry.type === 'comfy_workflow'
+        || entry.type === 'tavern_preset'
         || entry.type === 'opening'
         || (entry.type === 'topic' && entry.payload?.packagePart === 'mode_package')
     ));
@@ -1147,6 +1186,7 @@ const 原始创意工坊模块列表: 创意工坊模块条目[] = [
     宝可梦题材模块,
     宝可梦世界规则模块,
     宝可梦能力模块,
+    Izumi0623酒馆预设模块,
     构建ComfyUI工作流模块('comfy-workflow-default-main', '默认普通 ComfyUI 工作流', '通用写实', 'main', 默认ComfyUI工作流JSON, '官方默认普通生图 workflow，适合 NPC、物品和常规画面。'),
     构建ComfyUI工作流模块('comfy-workflow-default-scene', '默认场景 ComfyUI 工作流', '场景氛围', 'scene', 默认ComfyUI工作流JSON, '官方默认场景生图 workflow，适合环境、地点和横竖屏场景图。'),
     构建ComfyUI工作流模块('comfy-workflow-default-nsfw', '默认 NSFW ComfyUI 工作流', 'NSFW 成人向', 'nsfw', 默认NSFWComfyUI工作流JSON, '官方默认 NSFW 生图 workflow，适合私密部位与成人向独立接口。')

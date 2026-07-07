@@ -75,6 +75,37 @@ type 历史回合工作流依赖 = {
     processResponseCommands: (response: GameResponse, baseState?: any, options?: { applyState?: boolean }) => any;
     按世界演变分流净化响应: (response: GameResponse, enabled: boolean) => { response: GameResponse };
     世界演变功能已开启: () => boolean;
+    执行世界演变更新?: (params?: {
+        来源?: 'manual' | 'auto_due' | 'story_dynamic' | 'story_dynamic_and_due';
+        动态世界线索?: string[];
+        到期摘要?: string[];
+        force?: boolean;
+        applyCommands?: boolean;
+        currentResponse?: GameResponse;
+        stateBase?: any;
+        signal?: AbortSignal;
+        onStreamDelta?: (delta: string, accumulated: string) => void;
+    }) => Promise<{ ok: boolean; phase: 'done' | 'error' | 'skipped'; commands: any[]; updates: string[]; rawText: string; statusText: string }>;
+    后台执行统一规划分析?: (params: {
+        state: any;
+        playerInput: string;
+        gameTime: string;
+        response: GameResponse;
+        shouldApply?: () => boolean;
+        onRetry?: (attempt: number, maxAttempts: number, reason: string) => void;
+        onStreamDelta?: (delta: string, accumulated: string) => void;
+        signal?: AbortSignal;
+    }) => Promise<{ updated: boolean; message: string; rawText?: string; commands: any[] }>;
+    执行地图自动更新?: (params: {
+        response: GameResponse;
+        stateBase: any;
+        onProgress?: (progress: {
+            phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
+            text?: string;
+            rawText?: string;
+            commandTexts?: string[];
+        }) => void;
+    }) => Promise<{ ok: boolean; phase: 'done' | 'error' | 'skipped'; commands: any[]; rawText: string; statusText: string }>;
     后台执行变量生成?: (params: {
         snapshot: 回合快照结构;
         parsedResponse: GameResponse;
@@ -528,6 +559,190 @@ export const 创建历史回合工作流 = (deps: 历史回合工作流依赖) =
         return null;
     };
 
+    const 序列化阶段命令文本 = (commands: any[]): string[] => (
+        (Array.isArray(commands) ? commands : [])
+            .map((cmd, index) => {
+                const action = typeof cmd?.action === 'string' ? cmd.action : 'set';
+                const key = typeof cmd?.key === 'string' ? cmd.key.replace(/^gameState\./, '') : '';
+                if (!key.trim()) return '';
+                if (action === 'delete') return `[#${index + 1}] delete ${key}`;
+                try {
+                    return `[#${index + 1}] ${action} ${key} = ${JSON.stringify(cmd?.value ?? null)}`;
+                } catch {
+                    return `[#${index + 1}] ${action} ${key} = ${String(cmd?.value ?? null)}`;
+                }
+            })
+            .filter(Boolean)
+    );
+
+    const 获取最新可处理AI回合 = (): {
+        snapshot: 回合快照结构;
+        target: 聊天记录结构;
+        latestAssistantIndex: number;
+        playerInput: string;
+        isOpeningTurn: boolean;
+        parsed: GameResponse;
+    } | string => {
+        const snapshot = deps.获取最新快照();
+        if (!snapshot) return '缺少上一轮快照，无法重新生成该阶段。';
+        const latestAssistantIndex = (() => {
+            for (let i = deps.历史记录.length - 1; i >= 0; i -= 1) {
+                if (deps.历史记录[i]?.role === 'assistant') return i;
+            }
+            return -1;
+        })();
+        if (latestAssistantIndex < 0) return '未找到可继续处理的最新 AI 回合。';
+        const target = deps.历史记录[latestAssistantIndex];
+        if (!target) return '目标 AI 回合不存在。';
+        const latestUserIndex = (() => {
+            for (let i = latestAssistantIndex - 1; i >= 0; i -= 1) {
+                if (deps.历史记录[i]?.role === 'user') return i;
+            }
+            return -1;
+        })();
+        const latestUserMsg = latestUserIndex >= 0 ? deps.历史记录[latestUserIndex] : null;
+        const playerInput = latestUserMsg?.role === 'user' ? (latestUserMsg.content || '').trim() : '';
+        const snapshotPlayerInput = (snapshot.玩家输入 || '').trim();
+        const isOpeningTurn = !playerInput && !snapshotPlayerInput;
+        if (!isOpeningTurn && playerInput !== snapshotPlayerInput) {
+            return '当前最新回合与上一轮快照不匹配，无法安全重新生成该阶段。';
+        }
+        let parsed: GameResponse;
+        if (target.structuredResponse) {
+            parsed = target.structuredResponse;
+        } else {
+            const rawSource = typeof target.rawJson === 'string' ? target.rawJson.trim() : '';
+            if (!rawSource) return '当前回合缺少结构化正文和原始响应，无法重新生成该阶段。';
+            try {
+                parsed = deps.parseStoryRawText(rawSource, deps.构建标签解析选项(deps.规范化游戏设置(deps.gameConfig)));
+            } catch (error: any) {
+                return deps.提取解析失败原始信息(error) || '无法从原始响应恢复结构化正文。';
+            }
+        }
+        return {
+            snapshot,
+            target,
+            latestAssistantIndex,
+            playerInput,
+            isOpeningTurn,
+            parsed
+        };
+    };
+
+    const handleRetryLatestStage = async (
+        stageId: 'polish' | 'world' | 'planning' | 'map',
+        options?: {
+            onPolishProgress?: (progress: { phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled'; text?: string; rawText?: string }) => void;
+            onWorldEvolutionProgress?: (progress: { phase: 'start' | 'stream' | 'done' | 'error' | 'skipped' | 'cancelled'; text?: string; rawText?: string; commandTexts?: string[] }) => void;
+            onPlanningProgress?: (progress: { phase: 'start' | 'stream' | 'done' | 'error' | 'skipped' | 'cancelled'; text?: string; rawText?: string; commandTexts?: string[] }) => void;
+            onMapUpdateProgress?: (progress: { phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled'; text?: string; rawText?: string; commandTexts?: string[] }) => void;
+        }
+    ): Promise<string | null> => {
+        if (deps.loading) return '当前仍在处理中，请稍后再试。';
+        if (deps.变量生成中) return '变量生成进行中，请等待完成后再重试后台阶段。';
+        const latest = 获取最新可处理AI回合();
+        if (typeof latest === 'string') return latest;
+        const snapshotState = deps.深拷贝(latest.snapshot.回档前状态);
+        const parsed = latest.parsed;
+        const playerInput = latest.isOpeningTurn ? '' : latest.playerInput;
+        try {
+            if (stageId === 'polish') {
+                options?.onPolishProgress?.({ phase: 'start', text: '正在重新执行文章优化...' });
+                const polished = await deps.执行正文润色(parsed, typeof latest.target.rawJson === 'string' ? latest.target.rawJson : '', {
+                    manual: true,
+                    playerInput
+                });
+                if (!polished.applied) {
+                    options?.onPolishProgress?.({ phase: 'skipped', text: polished.error || '文章优化未生效，已保留原文。' });
+                    return polished.error || null;
+                }
+                const nextHistory = [...deps.历史记录];
+                nextHistory[latest.latestAssistantIndex] = {
+                    ...latest.target,
+                    structuredResponse: polished.response,
+                    autoScrollToTurnIcon: true
+                };
+                deps.设置历史记录(nextHistory);
+                deps.应用并同步记忆系统(按历史重建记忆系统(nextHistory));
+                void deps.performAutoSave({ history: nextHistory });
+                options?.onPolishProgress?.({ phase: 'done', text: `文章优化重新生成完成（模型：${(polished.response as any).body_optimized_model || '未知'}）。` });
+                return null;
+            }
+
+            if (stageId === 'world') {
+                if (!deps.执行世界演变更新) return '当前版本未接入动态世界单阶段重试能力。';
+                options?.onWorldEvolutionProgress?.({ phase: 'start', text: '正在重新执行动态世界更新...' });
+                const result = await deps.执行世界演变更新({
+                    来源: 'story_dynamic',
+                    动态世界线索: [],
+                    applyCommands: true,
+                    currentResponse: parsed,
+                    stateBase: snapshotState,
+                    onStreamDelta: (_delta, accumulated) => options?.onWorldEvolutionProgress?.({ phase: 'stream', text: accumulated })
+                });
+                options?.onWorldEvolutionProgress?.({
+                    phase: result.phase,
+                    text: result.statusText || (result.ok ? '动态世界更新完成。' : '动态世界未产生更新。'),
+                    rawText: result.rawText,
+                    commandTexts: 序列化阶段命令文本(result.commands)
+                });
+                return result.phase === 'error' ? (result.statusText || '动态世界更新失败。') : null;
+            }
+
+            if (stageId === 'planning') {
+                if (!deps.后台执行统一规划分析) return '当前版本未接入规划分析单阶段重试能力。';
+                options?.onPlanningProgress?.({ phase: 'start', text: '正在重新执行规划分析...' });
+                const result = await deps.后台执行统一规划分析({
+                    state: {
+                        环境: snapshotState.环境,
+                        社交: snapshotState.社交,
+                        世界: snapshotState.世界,
+                        剧情: snapshotState.剧情,
+                        剧情规划: (snapshotState as any).剧情规划 || {},
+                        女主剧情规划: snapshotState.女主剧情规划
+                    },
+                    playerInput,
+                    gameTime: latest.snapshot.游戏时间 || '未知时间',
+                    response: parsed,
+                    shouldApply: () => true,
+                    onRetry: (attempt, maxAttempts, reason) => {
+                        options?.onPlanningProgress?.({
+                            phase: 'start',
+                            text: `规划分析请求失败，正在自动重试（${attempt}/${maxAttempts}）${reason ? `：${reason}` : ''}`
+                        });
+                    },
+                    onStreamDelta: (_delta, accumulated) => options?.onPlanningProgress?.({ phase: 'stream', text: accumulated })
+                });
+                options?.onPlanningProgress?.({
+                    phase: result.updated || result.commands.length > 0 ? 'done' : 'skipped',
+                    text: result.message,
+                    rawText: result.rawText,
+                    commandTexts: 序列化阶段命令文本(result.commands)
+                });
+                return null;
+            }
+
+            if (stageId === 'map') {
+                if (!deps.执行地图自动更新) return '当前版本未接入地图更新单阶段重试能力。';
+                options?.onMapUpdateProgress?.({ phase: 'start', text: '正在重新执行地图更新...' });
+                const result = await deps.执行地图自动更新({
+                    response: parsed,
+                    stateBase: snapshotState,
+                    onProgress: options?.onMapUpdateProgress
+                });
+                return result.phase === 'error' ? (result.statusText || '地图更新失败。') : null;
+            }
+        } catch (error: any) {
+            const message = deps.提取原始报错详情(error) || error?.message || '重新生成失败。';
+            if (stageId === 'polish') options?.onPolishProgress?.({ phase: 'error', text: message });
+            if (stageId === 'world') options?.onWorldEvolutionProgress?.({ phase: 'error', text: message });
+            if (stageId === 'planning') options?.onPlanningProgress?.({ phase: 'error', text: message });
+            if (stageId === 'map') options?.onMapUpdateProgress?.({ phase: 'error', text: message });
+            return message;
+        }
+        return '未知阶段，无法重新生成。';
+    };
+
     const handleRecoverFromParseErrorRaw = async (rawText: string, forceRepair: boolean = false): Promise<string | null> => {
         const snapshot = deps.获取最新快照();
         if (!snapshot) return '没有可恢复的解析失败回合。';
@@ -607,6 +822,7 @@ export const 创建历史回合工作流 = (deps: 历史回合工作流依赖) =
         updateHistoryItem,
         handleRegenerate,
         handleRetryLatestVariableGeneration,
+        handleRetryLatestStage,
         handleRecoverFromParseErrorRaw,
         handlePolishTurn
     };

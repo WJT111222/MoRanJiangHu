@@ -3302,6 +3302,46 @@ export const useGame = () => {
         processResponseCommands,
         按世界演变分流净化响应,
         世界演变功能已开启,
+        执行世界演变更新,
+        后台执行统一规划分析,
+        执行地图自动更新: async ({ response, stateBase, onProgress }) => {
+            const result = await 生成地图更新({
+                mode: 'auto_incremental',
+                apiSettings: apiConfig,
+                环境: stateBase?.环境 || 环境,
+                世界: stateBase?.世界 || 世界,
+                社交: stateBase?.社交 || 社交,
+                角色: stateBase?.角色 || 角色,
+                gameConfig,
+                worldbooks: 世界书列表,
+                currentResponse: response,
+                stateBase,
+                onDelta: (_delta, accumulated) => {
+                    onProgress?.({ phase: 'start', text: accumulated });
+                }
+            });
+            if (result.commands.length > 0) {
+                processResponseCommands({ ...response, tavern_commands: result.commands }, stateBase);
+                void performAutoSave({ force: true });
+            }
+            const commandTexts = result.commands.map((cmd, index) => {
+                const action = typeof cmd?.action === 'string' ? cmd.action : 'set';
+                const key = typeof cmd?.key === 'string' ? cmd.key.replace(/^gameState\./, '') : '';
+                if (action === 'delete') return `[#${index + 1}] delete ${key}`;
+                try {
+                    return `[#${index + 1}] ${action} ${key} = ${JSON.stringify(cmd?.value ?? null)}`;
+                } catch {
+                    return `[#${index + 1}] ${action} ${key} = ${String(cmd?.value ?? null)}`;
+                }
+            });
+            onProgress?.({
+                phase: result.phase,
+                text: result.statusText || (result.ok ? '地图更新完成。' : '地图更新未产生更新。'),
+                rawText: result.rawText,
+                commandTexts
+            });
+            return result;
+        },
         后台执行变量生成: (params) => 后台执行变量生成委托(params),
         执行重解析变量生成: (params) => 执行重解析变量生成委托(params),
         应用并同步记忆系统,

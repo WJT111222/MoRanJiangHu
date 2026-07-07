@@ -54,6 +54,31 @@ const 创建旧版开局模块 = () => ({
     source: 'local' as const
 });
 
+const 创建酒馆预设模块 = () => ({
+    id: 'local-tavern-demo',
+    type: 'tavern_preset' as const,
+    title: '玩家上传酒馆预设',
+    subtitle: 'SillyTavern preset',
+    description: '本地测试用酒馆预设。',
+    tags: ['酒馆预设'],
+    payload: {
+        tavernPreset: {
+            prompts: [{
+                identifier: 'main',
+                role: 'system',
+                content: '测试提示词'
+            }],
+            prompt_order: [{
+                character_id: 100001,
+                order: [{ identifier: 'main', enabled: true }]
+            }]
+        }
+    },
+    injectionPreview: ['提示词：1 条'],
+    source: 'local' as const,
+    contributor: '测试玩家'
+});
+
 describe('creativeWorkshop service compatibility', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
@@ -129,5 +154,20 @@ describe('creativeWorkshop service compatibility', () => {
         expect(updated.source).toBe('local');
         expect(updated.payload?.manualWorldPrompt).toBe('编辑后的完整 JSON 内容');
         expect(读取本地创意工坊模块().find((entry) => entry.id === imported.id)?.title).toBe('改名后的本地模式包');
+    });
+
+    it('本地酒馆预设模块可导入、列出并保持玩家上传来源', async () => {
+        const imported = 导入本地创意工坊模块(创建酒馆预设模块() as any);
+
+        expect(imported.type).toBe('tavern_preset');
+        expect(imported.source).toBe('local');
+        expect(imported.payload?.tavernPreset).toBeTruthy();
+
+        const modules = await 列出创意工坊模块();
+        const listed = modules.find((entry) => entry.id === imported.id);
+
+        expect(listed?.type).toBe('tavern_preset');
+        expect(listed?.source).toBe('local');
+        expect(listed?.contributor).toBe('测试玩家');
     });
 });

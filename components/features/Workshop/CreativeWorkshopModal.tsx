@@ -18,6 +18,7 @@ import {
 import { 读取云端游玩会话 } from '../../../services/cloudPlayService';
 import { 校验ComfyUI工作流可生图 } from '../../../services/ai/comfyWorkflowValidation';
 import CurrencySystemEditor from './CurrencySystemEditor';
+import { 规范化酒馆预设 } from '../../../utils/tavernPreset';
 
 interface Props {
     open: boolean;
@@ -29,7 +30,7 @@ interface Props {
 
 type 来源筛选 = 'all' | 'builtin' | 'cloud' | 'local';
 type 货币系统编辑模式 = 'dynamic' | 'legacy' | 'json';
-const 可展示工坊类型: 创意工坊模块类型[] = ['topic', 'comfy_workflow'];
+const 可展示工坊类型: 创意工坊模块类型[] = ['topic', 'tavern_preset', 'comfy_workflow'];
 const 可展示工坊类型集合 = new Set<创意工坊模块类型>(可展示工坊类型);
 const 可展示工坊分区 = 创意工坊模块分区.filter((section) => 可展示工坊类型集合.has(section.id));
 const 默认生成性别占位 = `${开局生成性别选项.map((item) => item.value).join('、')}；留空默认全选`;
@@ -560,18 +561,26 @@ const 构建贡献模块 = (draft: 贡献草稿, contributor: string, existingEn
     const existingVersions = existingEntries?.filter(e => (e.baseModuleId === baseId) || (e.title === title && e.contributor === contributor && !e.baseModuleId)) || [];
     const nextVersion = existingVersions.length + 1;
     const bodyLines = 分割文本行(draft.body);
+    const tavernPreset = (() => {
+        if (draft.type !== 'tavern_preset') return null;
+        try {
+            return 规范化酒馆预设(JSON.parse(draft.body.trim() || '{}'));
+        } catch {
+            return null;
+        }
+    })();
     const tags = [
-        draft.mode,
+        draft.type === 'tavern_preset' ? '酒馆预设' : draft.mode,
         ...draft.tags.split(/[，,、\s]+/).map((tag) => tag.trim()).filter(Boolean)
     ].filter((tag, index, list) => list.indexOf(tag) === index).slice(0, 12);
     const style = draft.style.trim();
     const scopeLabel = draft.scope === 'nsfw' ? 'NSFW 生图' : draft.scope === 'scene' ? '场景生图' : draft.scope === 'all' ? '通用生图' : '普通生图';
-    const injectionTarget = draft.type === 'ability' ? 'manualRealmPrompt' : draft.type === 'comfy_workflow' ? 'imageWorkflow' : 'manualWorldPrompt';
+    const injectionTarget = draft.type === 'ability' ? 'manualRealmPrompt' : draft.type === 'comfy_workflow' ? 'imageWorkflow' : draft.type === 'tavern_preset' ? 'referenceOnly' : 'manualWorldPrompt';
     const contentBlocks: NonNullable<创意工坊模块条目['contentBlocks']> = [
         {
             id: `${draft.type}-main`,
-            title: draft.type === 'ability' ? '能力与境界规则' : draft.type === 'comfy_workflow' ? 'ComfyUI 工作流' : '世界与题材规则',
-            purpose: draft.type === 'comfy_workflow' ? '提供可导入的生图工作流或工作流说明。' : '作为模型注入的主要规则内容。',
+            title: draft.type === 'ability' ? '能力与境界规则' : draft.type === 'comfy_workflow' ? 'ComfyUI 工作流' : draft.type === 'tavern_preset' ? '酒馆预设 JSON' : '世界与题材规则',
+            purpose: draft.type === 'comfy_workflow' ? '提供可导入的生图工作流或工作流说明。' : draft.type === 'tavern_preset' ? '提供可直接选择的 SillyTavern 酒馆预设。' : '作为模型注入的主要规则内容。',
             injectionTarget,
             content: draft.body.trim()
         }
@@ -579,6 +588,8 @@ const 构建贡献模块 = (draft: 贡献草稿, contributor: string, existingEn
     const safetyNotes = 分割文本行(draft.safetyNotes);
     const usagePrompt = draft.usagePrompt.trim() || (draft.type === 'comfy_workflow'
         ? '在文生图设置中选择该工作流；发布前请确认 JSON 可用。'
+        : draft.type === 'tavern_preset'
+            ? '在酒馆预设设置中选择该预设；提示词顺序、启用开关和正则脚本状态会随预设保留。'
         : draft.type === 'ability'
             ? '作为手动能力/境界提示词注入，用于约束成长体系和战力边界。'
             : '作为手动世界观提示词注入，用于约束开局世界、势力、货币、地图和叙事边界。');
@@ -590,6 +601,14 @@ const 构建贡献模块 = (draft: 贡献草稿, contributor: string, existingEn
             ...bodyLines.slice(0, 8),
             '注入方式：玩家在文生图设置里选择该工作流后，写入对应 ComfyUI Workflow JSON。'
         ].filter(Boolean)
+        : draft.type === 'tavern_preset'
+            ? [
+                '标准格式：v2 / tavern_preset',
+                `提示词：${tavernPreset?.prompts.length || 0} 条`,
+                `顺序槽位：${tavernPreset?.prompt_order.reduce((sum, group) => sum + group.order.length, 0) || 0} 项`,
+                `正则脚本：${tavernPreset?.兼容性?.正则脚本总数 || 0} 条`,
+                '开关状态：保留 prompt_order enabled 与 regex_scripts disabled 状态'
+            ]
         : [
             `标准格式：v2 / ${draft.type}`,
             `适用题材：${draft.mode}`,
@@ -603,12 +622,15 @@ const 构建贡献模块 = (draft: 贡献草稿, contributor: string, existingEn
         formatVersion: 2,
         workshopKind: 'standard_module',
         title,
-        subtitle: draft.subtitle.trim() || (draft.type === 'comfy_workflow' ? `${style || '自定义风格'} · ${scopeLabel}` : `${draft.mode} · 玩家贡献`),
-        description: draft.description.trim() || `${draft.mode}可用的玩家贡献模块。`,
+        subtitle: draft.subtitle.trim() || (draft.type === 'comfy_workflow' ? `${style || '自定义风格'} · ${scopeLabel}` : draft.type === 'tavern_preset' ? '玩家贡献 · SillyTavern 酒馆预设' : `${draft.mode} · 玩家贡献`),
+        description: draft.description.trim() || (draft.type === 'tavern_preset' ? '玩家贡献的酒馆预设，可在酒馆预设设置中直接选择使用。' : `${draft.mode}可用的玩家贡献模块。`),
         tags,
         payload: draft.type === 'comfy_workflow'
             ? { schema: 'moranjianghu-creative-workshop-standard-module', version: 2, scope: draft.scope, style, workflowJson: draft.body.trim(), content: draft.body.trim(), contentBlocks, usagePrompt, safetyNotes }
-            : { schema: 'moranjianghu-creative-workshop-standard-module', version: 2, mode: draft.mode, content: draft.body.trim(), contentBlocks, usagePrompt, safetyNotes },
+            : draft.type === 'tavern_preset'
+                ? { schema: 'moranjianghu-creative-workshop-tavern-preset', version: 1, tavernPreset, content: draft.body.trim(), contentBlocks, usagePrompt, safetyNotes }
+                : { schema: 'moranjianghu-creative-workshop-standard-module', version: 2, mode: draft.mode, content: draft.body.trim(), contentBlocks, usagePrompt, safetyNotes },
+        tavernPreset: tavernPreset || undefined,
         contentBlocks,
         usagePrompt,
         safetyNotes,
@@ -793,13 +815,13 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
     const jsonImportInputRef = useRef<HTMLInputElement | null>(null);
     const contributionModule = useMemo(() => 构建贡献模块(contributionDraft, contributor, entries), [contributionDraft, contributor, entries]);
     const contributionModules = useMemo(() => (
-        contributionDraft.type === 'comfy_workflow'
+        contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset'
             ? [contributionModule]
             : [构建模式包模块(contributionDraft, contributor, entries)]
     ), [contributionDraft, contributionModule, contributor]);
     const worldDetailsReady = contributionDraft.aiGenerateWorldDetails || 世界细节配置有自定义内容(构建世界细节生成配置(contributionDraft));
     const contributionReady = contributionDraft.title.trim().length > 0 && (
-        contributionDraft.type === 'comfy_workflow'
+        contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset'
             ? contributionDraft.body.trim().length > 0
             : contributionDraft.topicBody.trim().length > 0
                 && contributionDraft.worldRulesBody.trim().length > 0
@@ -1054,7 +1076,11 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
 
     const 发布贡献套装 = async () => {
         if (!contributionReady) {
-            setStatus(contributionDraft.type === 'comfy_workflow' ? '请先填写模块名称和工作流内容。' : '请完整填写模式元数据，以及模式专属世界书的题材口径、世界规则和能力体系三段内容。');
+            setStatus(contributionDraft.type === 'comfy_workflow' ? '请先填写模块名称和工作流内容。' : contributionDraft.type === 'tavern_preset' ? '请先填写预设名称并粘贴酒馆预设 JSON。' : '请完整填写模式元数据，以及模式专属世界书的题材口径、世界规则和能力体系三段内容。');
+            return;
+        }
+        if (contributionDraft.type === 'tavern_preset' && !contributionModule.tavernPreset) {
+            setStatus('酒馆预设 JSON 无效：需要包含 prompts 和 prompt_order。');
             return;
         }
         if (!cloudUsername) {
@@ -1071,7 +1097,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
             for (const module of contributionModules) {
                 published.push(await 发布创意工坊模块({ module, contributor, anonymous: anonymousContribution }));
             }
-            setStatus(contributionDraft.type === 'comfy_workflow'
+            setStatus(contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset'
                 ? `已发布到社区工坊：${published[0]?.title || contributionDraft.title}。`
                 : `已发布完整模式包「${contributionDraft.title.trim()}」。`);
             重置贡献草稿();
@@ -1187,10 +1213,14 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
             setStatus('请先填写模块名称和注入内容。');
             return;
         }
+        if (contributionDraft.type === 'tavern_preset' && !contributionModule.tavernPreset) {
+            setStatus('酒馆预设 JSON 无效：需要包含 prompts 和 prompt_order。');
+            return;
+        }
         try {
             const modules = contributionModules.map((module) => 导入本地创意工坊模块(module));
             const first = modules[0];
-            setStatus(contributionDraft.type === 'comfy_workflow'
+            setStatus(contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset'
                 ? `已保存本地测试「${first.title}」，可在本地导入分区预览；要分享给其他玩家请点击发布到社区。`
                 : `已保存完整模式包「${contributionDraft.title.trim()}」到本地测试列表；要分享给其他玩家请点击发布到社区。`);
             setActiveType(first.type);
@@ -1209,6 +1239,35 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         if (Array.isArray(payload.modules)) return payload.modules.flatMap((item: any) => 从JSON载荷提取创意工坊模块(item));
         if (payload.module && typeof payload.module === 'object') return 从JSON载荷提取创意工坊模块(payload.module);
         if (payload.type && payload.title) return [payload as 创意工坊模块条目];
+        const tavernPreset = 规范化酒馆预设(payload);
+        if (tavernPreset) {
+            return [{
+                id: `local-tavern-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                type: 'tavern_preset',
+                formatVersion: 2,
+                workshopKind: 'standard_module',
+                title: '玩家上传酒馆预设',
+                subtitle: '玩家自行上传 · SillyTavern 酒馆预设',
+                description: '玩家上传的酒馆预设，可在酒馆预设设置中直接选择使用。',
+                tags: ['酒馆预设', 'SillyTavern'],
+                payload: {
+                    schema: 'moranjianghu-creative-workshop-tavern-preset',
+                    version: 1,
+                    tavernPreset
+                },
+                tavernPreset,
+                usagePrompt: '在酒馆预设设置中选择该预设；提示词顺序、启用开关和正则脚本状态会随预设保留。',
+                safetyNotes: ['本地上传内容只保存在当前浏览器/设备；公开发布前请确认不包含私密信息。'],
+                injectionPreview: [
+                    `提示词：${tavernPreset.prompts.length} 条`,
+                    `顺序槽位：${tavernPreset.prompt_order.reduce((sum, group) => sum + group.order.length, 0)} 项`,
+                    `正则脚本：${tavernPreset.兼容性?.正则脚本总数 || 0} 条`,
+                    '开关状态：保留 prompt_order enabled 与 regex_scripts disabled 状态'
+                ],
+                source: 'local',
+                contributor: contributor.trim()
+            }];
+        }
         return [];
     };
 
@@ -1222,7 +1281,11 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
             for (const file of files) {
                 const text = await file.text();
                 const payload = JSON.parse(text);
-                const modules = 从JSON载荷提取创意工坊模块(payload);
+                const modules = 从JSON载荷提取创意工坊模块(payload).map((module) => (
+                    module.type === 'tavern_preset' && module.title === '玩家上传酒馆预设'
+                        ? { ...module, title: file.name.replace(/\.json$/i, '') || module.title }
+                        : module
+                ));
                 if (modules.length === 0) {
                     throw new Error(`${file.name} 不是可识别的创意工坊 JSON`);
                 }
@@ -1618,6 +1681,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                         贡献类型
                                         <select value={contributionDraft.type} onChange={(event) => setContributionDraft((prev) => ({ ...prev, type: event.target.value as 创意工坊模块类型 }))} className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-sm text-gray-100 outline-none focus:border-wuxia-gold/45">
                                             <option value="topic">完整模式包（模式专属世界书）</option>
+                                            <option value="tavern_preset">酒馆预设</option>
                                             <option value="comfy_workflow">ComfyUI 工作流</option>
                                         </select>
                                     </label>
@@ -1660,10 +1724,10 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                     简介
                                     <input value={contributionDraft.description} onChange={(event) => setContributionDraft((prev) => ({ ...prev, description: event.target.value }))} placeholder="一句话说明这个预设会改变什么体验" className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-sm text-gray-100 outline-none placeholder:text-gray-500 focus:border-wuxia-gold/45" />
                                 </label>
-                                {contributionDraft.type === 'comfy_workflow' ? (
+                                {contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset' ? (
                                     <label className="block text-xs text-gray-300">
-                                        工作流内容
-                                        <textarea value={contributionDraft.body} onChange={(event) => setContributionDraft((prev) => ({ ...prev, body: event.target.value }))} placeholder="粘贴 ComfyUI API Workflow JSON，或写清工作流下载/使用说明。" className="mt-1 min-h-36 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm leading-6 text-gray-100 outline-none placeholder:text-gray-500 focus:border-wuxia-gold/45" />
+                                        {contributionDraft.type === 'tavern_preset' ? '酒馆预设 JSON' : '工作流内容'}
+                                        <textarea value={contributionDraft.body} onChange={(event) => setContributionDraft((prev) => ({ ...prev, body: event.target.value }))} placeholder={contributionDraft.type === 'tavern_preset' ? '粘贴 SillyTavern 酒馆预设 JSON，prompts / prompt_order 以及开关状态会被保留。' : '粘贴 ComfyUI API Workflow JSON，或写清工作流下载/使用说明。'} className="mt-1 min-h-36 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm leading-6 text-gray-100 outline-none placeholder:text-gray-500 focus:border-wuxia-gold/45" />
                                     </label>
                                 ) : (
                                     <div className="grid gap-3">
@@ -2055,15 +2119,15 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                             <div className="rounded-lg border border-white/10 bg-black/25 p-3">
                                 <div className="text-xs font-bold tracking-[0.14em] text-wuxia-gold">实时预览</div>
                                 <div className="mt-3 text-base font-serif font-bold text-gray-100">{contributionDraft.title.trim() || '未命名预设'}</div>
-                                <div className="mt-1 text-xs text-wuxia-gold/80">{contributionDraft.type === 'comfy_workflow' ? contributionModule.subtitle : `${contributionDraft.mode} · 完整模式包`}</div>
-                                <p className="mt-2 text-sm leading-6 text-gray-300">{contributionDraft.description.trim() || (contributionDraft.type === 'comfy_workflow' ? contributionModule.description : '一次贡献一个模式专属世界书，包含题材口径、世界规则和能力体系。')}</p>
+                                <div className="mt-1 text-xs text-wuxia-gold/80">{contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset' ? contributionModule.subtitle : `${contributionDraft.mode} · 完整模式包`}</div>
+                                <p className="mt-2 text-sm leading-6 text-gray-300">{contributionDraft.description.trim() || (contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset' ? contributionModule.description : '一次贡献一个模式专属世界书，包含题材口径、世界规则和能力体系。')}</p>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {contributionModules[0]?.tags.map((tag) => <span key={tag} className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-gray-300">{tag}</span>)}
                                 </div>
                                 <div className="mt-3 rounded-lg border border-wuxia-gold/15 bg-black/30 p-3">
                                     <div className="text-xs font-bold tracking-[0.14em] text-wuxia-gold">标准格式预览</div>
-                                    <div className="mt-2 text-xs leading-5 text-gray-300">使用提示：{contributionDraft.type === 'comfy_workflow' ? contributionModule.usagePrompt : '完整模式包会以模式专属世界书的形式统一生效。'}</div>
-                                    {contributionDraft.type !== 'comfy_workflow' && (
+                                    <div className="mt-2 text-xs leading-5 text-gray-300">使用提示：{contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset' ? contributionModule.usagePrompt : '完整模式包会以模式专属世界书的形式统一生效。'}</div>
+                                    {contributionDraft.type !== 'comfy_workflow' && contributionDraft.type !== 'tavern_preset' && (
                                         <div className="mt-2 rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-1.5 text-[11px] leading-5 text-emerald-100">
                                             世界细节：{contributionDraft.aiGenerateWorldDetails ? 'AI 默认生成' : '贡献者自定义'}
                                         </div>

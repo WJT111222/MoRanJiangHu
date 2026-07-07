@@ -1120,6 +1120,10 @@ export interface 酒馆预设条目结构 {
     预设: 酒馆预设结构;
     角色ID?: number | null;
     导入时间?: number;
+    来源?: '创意工坊' | '玩家自行上传';
+    工坊模块ID?: string;
+    工坊来源?: 'builtin' | 'cloud' | 'local';
+    贡献者?: string;
 }
 
 export interface 叙事状态结构 {

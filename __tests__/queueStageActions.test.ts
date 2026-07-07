@@ -60,12 +60,37 @@ describe('queue stage rerun actions', () => {
         })).toBeNull();
     });
 
-    it('does not expose a rerun button for normal stages with no real handler', () => {
+    it('exposes stage retry for failed normal independent stages when a real handler is available', () => {
+        for (const stageId of ['polish', 'world', 'planning', 'map']) {
+            expect(获取队列阶段重新生成动作({
+                stageId,
+                phase: 'error',
+                isOpeningQueue: false,
+                hasReroll: true,
+                hasRetryLatestVariableGeneration: true,
+                hasRetryLatestStage: true,
+                hasQuickRestart: true
+            })).toBe('retry-stage');
+        }
+    });
+
+    it('exposes stage retry for failed-then-skipped normal independent stages', () => {
+        expect(获取队列阶段重新生成动作({
+            stageId: 'planning',
+            phase: 'skipped',
+            isOpeningQueue: false,
+            hasRetryLatestStage: true
+        })).toBe('retry-stage');
+    });
+
+    it('does not expose a rerun button for normal independent stages without a real handler', () => {
         expect(获取队列阶段重新生成动作({
             stageId: 'world',
+            phase: 'error',
             isOpeningQueue: false,
             hasReroll: true,
             hasRetryLatestVariableGeneration: true,
+            hasRetryLatestStage: false,
             hasQuickRestart: true
         })).toBeNull();
     });

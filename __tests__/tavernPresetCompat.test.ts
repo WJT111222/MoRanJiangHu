@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { 内置酒馆预设列表 } from '../data/bundledTavernPresets';
+import { 创意工坊模块列表 } from '../data/creativeWorkshopModules';
 import { 规范化酒馆预设 } from '../utils/tavernPreset';
 
 const loadBundledPreset = (fileName: string): unknown => {
@@ -21,8 +22,8 @@ const loadUserIzumiPreset = (): unknown => {
 };
 
 describe('酒馆预设兼容导入', () => {
-    it('保留 Izumi 预设的 regex_scripts 扩展并区分可安全执行的清理脚本', () => {
-        const normalized = 规范化酒馆预设(loadBundledPreset('izumi-0503.json'));
+    it('保留 Izumi 0623 预设的 regex_scripts 扩展并区分可安全执行的清理脚本', () => {
+        const normalized = 规范化酒馆预设(loadBundledPreset('izumi-0623.json'));
 
         expect(normalized).not.toBeNull();
         expect(normalized?.extensions?.regex_scripts).toHaveLength(26);
@@ -37,12 +38,18 @@ describe('酒馆预设兼容导入', () => {
         expect(normalized?.兼容性?.说明.some(item => item.includes('沙箱 iframe'))).toBe(true);
     });
 
-    it('将 Izumi 0623 注册为允许导入的内置酒馆预设', () => {
-        const entry = 内置酒馆预设列表.find(item => item.id === 'builtin_izumi_0623');
+    it('不再通过内置导入列表提供 Izumi，改由创意工坊酒馆预设提供 Izumi 0623', () => {
+        const entry = 创意工坊模块列表.find(item => item.id === 'tavern-preset-izumi-0623');
 
+        expect(内置酒馆预设列表).toEqual([]);
         expect(entry).toMatchObject({
-            名称: 'Izumi 0623',
-            path: '/tavern-presets/izumi-0623.json'
+            title: 'Izumi 0623',
+            type: 'tavern_preset',
+            contributor: '匿名玩家',
+            anonymous: true,
+            payload: {
+                presetPath: '/tavern-presets/izumi-0623.json'
+            }
         });
         expect(规范化酒馆预设(loadBundledPreset('izumi-0623.json'))).not.toBeNull();
     });

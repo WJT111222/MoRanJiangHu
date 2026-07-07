@@ -3261,6 +3261,7 @@ const App: React.FC = () => {
                                     onStop={actions.handleStop}
                                     onCancelVariableGeneration={actions.handleCancelVariableGeneration}
                                     onRetryLatestVariableGeneration={actions.handleRetryLatestVariableGeneration}
+                                    onRetryLatestStage={actions.handleRetryLatestStage}
                                     onRegenerate={actions.handleRegenerate}
                                     onRecoverParseErrorRaw={actions.handleRecoverFromParseErrorRaw}
                                     onQuickRestart={actions.handleQuickRestart}

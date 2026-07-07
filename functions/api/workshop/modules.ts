@@ -14,7 +14,7 @@ const encoder = new TextEncoder();
 
 type WorkshopModuleEntry = {
     id: string;
-    type: 'topic' | 'world_rules' | 'opening' | 'ability' | 'comfy_workflow';
+    type: 'topic' | 'world_rules' | 'opening' | 'ability' | 'comfy_workflow' | 'tavern_preset';
     formatVersion?: number;
     workshopKind?: 'standard_module';
     title: string;
@@ -36,6 +36,7 @@ type WorkshopModuleEntry = {
     safetyNotes?: string[];
     injectionPreview: string[];
     preset?: unknown;
+    tavernPreset?: unknown;
     contributor: string;
     createdAt: string;
     updatedAt: string;
@@ -167,7 +168,7 @@ const sanitizeContentBlocks = (value: unknown): WorkshopModuleEntry['contentBloc
 );
 
 const normalizeType = (value: unknown): WorkshopModuleEntry['type'] | '' => (
-    value === 'topic' || value === 'world_rules' || value === 'opening' || value === 'ability' || value === 'comfy_workflow' ? value : ''
+    value === 'topic' || value === 'world_rules' || value === 'opening' || value === 'ability' || value === 'comfy_workflow' || value === 'tavern_preset' ? value : ''
 );
 
 const buildId = (type: string): string => {
@@ -256,7 +257,7 @@ const normalizeModule = async (raw: any, contributorInput = '', owner?: CloudPla
         : Array.isArray((payload as any).modeWorldbooks)
             ? (payload as any).modeWorldbooks
             : undefined;
-    if (type !== 'comfy_workflow' && !readString((payload as any).suiteId)) {
+    if (type !== 'comfy_workflow' && type !== 'tavern_preset' && !readString((payload as any).suiteId)) {
         throw new Error('题材模板、世界规则和能力体系必须作为同一个完整模式包贡献，请在创意工坊表单中一次填写三段内容。');
     }
     const entry: Omit<WorkshopModuleEntry, 'sha256' | 'r2Key'> = {
@@ -277,6 +278,11 @@ const normalizeModule = async (raw: any, contributorInput = '', owner?: CloudPla
         safetyNotes: Array.isArray(module?.safetyNotes) ? module.safetyNotes.map((item: unknown) => sanitizeText(item, 200)).filter(Boolean).slice(0, 12) : [],
         injectionPreview: Array.isArray(module?.injectionPreview) ? module.injectionPreview.map((item: unknown) => sanitizeText(item, 400)).filter(Boolean).slice(0, 12) : [],
         preset: module?.preset && typeof module.preset === 'object' ? module.preset : undefined,
+        tavernPreset: module?.tavernPreset && typeof module.tavernPreset === 'object'
+            ? module.tavernPreset
+            : (payload as any)?.tavernPreset && typeof (payload as any).tavernPreset === 'object'
+                ? (payload as any).tavernPreset
+                : undefined,
         contributor: anonymous ? '匿名玩家' : (sanitizeText(contributorInput || module?.contributor, 40) || owner?.username || '匿名玩家'),
         createdAt,
         updatedAt: createdAt,
@@ -339,6 +345,11 @@ const sanitizeUpdatedModule = async (
             ? modulePatch.injectionPreview.map((item: unknown) => sanitizeText(item, 400)).filter(Boolean).slice(0, 12)
             : target.injectionPreview,
         preset: modulePatch.preset && typeof modulePatch.preset === 'object' ? modulePatch.preset : target.preset,
+        tavernPreset: modulePatch.tavernPreset && typeof modulePatch.tavernPreset === 'object'
+            ? modulePatch.tavernPreset
+            : (payload as any)?.tavernPreset && typeof (payload as any).tavernPreset === 'object'
+                ? (payload as any).tavernPreset
+                : target.tavernPreset,
         contributor: anonymous ? '匿名玩家' : (sanitizeText(patch.contributor, 40) || sanitizeText(modulePatch.contributor, 40) || user.username),
         anonymous,
         ownerUserId: target.ownerUserId,

@@ -7,10 +7,23 @@ import { 获取题材预设背景, 获取题材预设天赋 } from '../data/pres
 describe('creativeWorkshopModules', () => {
     it('规划分区均有当前可用模块', () => {
         const sectionIds = 创意工坊模块分区.map((section) => section.id);
-        expect(sectionIds).toEqual(['topic', 'comfy_workflow']);
+        expect(sectionIds).toEqual(['topic', 'tavern_preset', 'comfy_workflow']);
         for (const sectionId of sectionIds) {
             expect(创意工坊模块列表.some((entry) => entry.type === sectionId)).toBe(true);
         }
+    });
+
+    it('Izumi 0623 作为匿名玩家上传的酒馆预设展示，Izumi 0503 不再内置', () => {
+        const tavernEntries = 创意工坊模块列表.filter((entry) => entry.type === 'tavern_preset');
+        const izumi0623 = tavernEntries.find((entry) => entry.id === 'tavern-preset-izumi-0623');
+
+        expect(tavernEntries.some((entry) => /0503/i.test(entry.title) || /0503/i.test(entry.id))).toBe(false);
+        expect(izumi0623).toBeTruthy();
+        expect(izumi0623?.source).toBe('builtin');
+        expect(izumi0623?.contributor).toBe('匿名玩家');
+        expect(izumi0623?.anonymous).toBe(true);
+        expect(izumi0623?.payload?.presetPath).toBe('/tavern-presets/izumi-0623.json');
+        expect(izumi0623?.tags).toEqual(expect.arrayContaining(['酒馆预设', 'SillyTavern']));
     });
 
     it('每个题材模式都有一个整合后的官方模式包', () => {

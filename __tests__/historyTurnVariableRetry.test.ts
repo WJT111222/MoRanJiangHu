@@ -121,4 +121,32 @@ describe('history turn variable retry', () => {
         expect(progress.some(item => item.phase === 'start')).toBe(true);
         expect(result).toContain('MiMo variable failed');
     });
+
+    it('可以基于最新正文单独重试失败的动态世界阶段', async () => {
+        const progress: Array<{ phase?: string; text?: string; commandTexts?: string[] }> = [];
+        const workflow = 创建历史回合工作流(createBaseDeps({
+            执行世界演变更新: async (params: any) => {
+                expect(params.applyCommands).toBe(true);
+                expect(params.currentResponse.body).toBe('正文仍应保留');
+                params.onStreamDelta?.('世界', '世界演变流式内容');
+                return {
+                    ok: true,
+                    phase: 'done',
+                    commands: [{ action: 'set', key: '世界.传闻', value: ['新传闻'] }],
+                    updates: ['新传闻流入江湖'],
+                    rawText: '<世界演变>完成</世界演变>',
+                    statusText: '动态世界更新完成'
+                };
+            }
+        }) as any);
+
+        const result = await (workflow.handleRetryLatestStage as any)('world', {
+            onWorldEvolutionProgress: (item: { phase?: string; text?: string; commandTexts?: string[] }) => progress.push(item)
+        });
+
+        expect(result).toBeNull();
+        expect(progress.some(item => item.phase === 'stream' && item.text === '世界演变流式内容')).toBe(true);
+        expect(progress.at(-1)?.phase).toBe('done');
+        expect(progress.at(-1)?.commandTexts?.[0]).toContain('世界.传闻');
+    });
 });

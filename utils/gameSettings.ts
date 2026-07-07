@@ -299,7 +299,11 @@ export const 规范化酒馆预设列表 = (
             角色ID: 解析酒馆预设角色ID(source.角色ID, preset),
             导入时间: typeof source.导入时间 === 'number' && Number.isFinite(source.导入时间)
                 ? Math.floor(source.导入时间)
-                : Date.now()
+                : Date.now(),
+            来源: source.来源 === '创意工坊' ? '创意工坊' : source.来源 === '玩家自行上传' ? '玩家自行上传' : undefined,
+            工坊模块ID: 读取文本(source.工坊模块ID).trim() || undefined,
+            工坊来源: source.工坊来源 === 'builtin' || source.工坊来源 === 'cloud' || source.工坊来源 === 'local' ? source.工坊来源 : undefined,
+            贡献者: 读取文本(source.贡献者).trim() || undefined
         });
         return acc;
     }, []);
