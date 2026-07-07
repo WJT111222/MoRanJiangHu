@@ -303,12 +303,61 @@ const 收集有效名器档案名称 = (currentSocial: any[]): string[] => {
     return Array.from(names).sort((a, b) => b.length - a.length);
 };
 
+export type 名器档案名称正文命中 = {
+    名称: string;
+    句子: string;
+    logIndex: number;
+    sentenceIndex: number;
+    sender?: string;
+};
+
 const 构建玩家可见正文文本 = (response: GameResponse): string => (
     (Array.isArray(response?.logs) ? response.logs : [])
         .map((log: any) => typeof log?.text === 'string' ? log.text : '')
         .filter(Boolean)
         .join('\n')
 );
+
+const 切分正文句子 = (text: string): string[] => {
+    const source = typeof text === 'string' ? text : '';
+    if (!source.trim()) return [];
+    const matches = source.match(/[^。！？!?；;\n]+[。！？!?；;]?|[^\n]+/g);
+    return (matches || [source])
+        .map(item => item.trim())
+        .filter(Boolean);
+};
+
+export const 提取响应名器档案名称命中 = (
+    response: GameResponse,
+    currentSocial: any[]
+): 名器档案名称正文命中[] => {
+    const names = 收集有效名器档案名称(currentSocial);
+    if (names.length <= 0) return [];
+    const logs = Array.isArray(response?.logs) ? response.logs : [];
+    const hits: 名器档案名称正文命中[] = [];
+    const seen = new Set<string>();
+    logs.forEach((log: any, logIndex) => {
+        const text = typeof log?.text === 'string' ? log.text : '';
+        if (!text.trim()) return;
+        切分正文句子(text).forEach((sentence, sentenceIndex) => {
+            const normalizedSentence = 规范化名器档案名称(sentence);
+            names.forEach((name) => {
+                if (!normalizedSentence.includes(name)) return;
+                const key = `${logIndex}:${sentenceIndex}:${name}`;
+                if (seen.has(key)) return;
+                seen.add(key);
+                hits.push({
+                    名称: name,
+                    句子: sentence,
+                    logIndex,
+                    sentenceIndex,
+                    sender: typeof log?.sender === 'string' ? log.sender : undefined
+                });
+            });
+        });
+    });
+    return hits;
+};
 
 const 统计固定词出现次数 = (source: string, word: string): number => {
     if (!source || !word) return 0;
@@ -356,14 +405,9 @@ export const 校验响应未泄露名器档案名称 = (
     rawText: string,
     stageLabel = '主剧情'
 ) => {
-    const bodyText = 规范化名器档案名称(构建玩家可见正文文本(response));
-    if (!bodyText) return;
-    const leaked = 收集有效名器档案名称(currentSocial).filter((name) => bodyText.includes(name));
-    if (leaked.length <= 0) return;
-    const detail = `${stageLabel}正文泄露了内部名器档案名称：${leaked.slice(0, 5).join('、')}。名器档案名称只能用于结构化档案、判定和生图内部提示，不得出现在玩家可见正文；请完整重写本回合正文，改用代称、体质特征或自然描写。`;
-    const error = new textAIService.StoryResponseParseError(detail, rawText, detail);
-    (error as any).parseDetail = detail;
-    throw error;
+    void rawText;
+    void stageLabel;
+    return 提取响应名器档案名称命中(response, currentSocial);
 };
 
 export const 校验响应正文词汇审查 = (
@@ -391,6 +435,140 @@ export const 校验响应正文词汇审查 = (
         rawText,
         stageLabel
     );
+};
+
+type 名器句子审查决策 = {
+    decision: 'keep' | 'rewrite';
+    sentence?: string;
+    reason?: string;
+};
+
+const 解析名器句子审查结果 = (bodyText: string): 名器句子审查决策 | null => {
+    const source = (bodyText || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+    if (!source) return null;
+    const jsonText = (() => {
+        if (source.startsWith('{') && source.endsWith('}')) return source;
+        const match = source.match(/\{[\s\S]*\}/);
+        return match ? match[0] : '';
+    })();
+    if (!jsonText) return null;
+    try {
+        const parsed = JSON.parse(jsonText);
+        const rawDecision = typeof parsed?.decision === 'string' ? parsed.decision.trim().toLowerCase() : '';
+        const decision = rawDecision === 'keep' || rawDecision === '保留'
+            ? 'keep'
+            : (rawDecision === 'rewrite' || rawDecision === '改写' ? 'rewrite' : '');
+        if (!decision) return null;
+        return {
+            decision,
+            sentence: typeof parsed?.sentence === 'string' ? parsed.sentence.trim() : '',
+            reason: typeof parsed?.reason === 'string' ? parsed.reason.trim() : ''
+        };
+    } catch {
+        return null;
+    }
+};
+
+const 构建名器句子级审查提示 = (params: {
+    stageLabel: string;
+    hit: 名器档案名称正文命中;
+    bodyText: string;
+}) => [
+    `你是《墨色江湖》的正文局部审查器，只判断一句正文里的“名器名称”是否自然。`,
+    '任务：不要重写全文，只处理用户给出的一句话。',
+    '判断标准：如果该名称在当前上下文里像角色自然说出的称呼、江湖传闻、玩家可理解的外号，且不破坏行文，就保留；如果它像内部档案字段、设定标签、生图/判定用名，或突然暴露私密档案导致违和，就只改写这一句。',
+    '改写要求：保持原句事实、语气、人物关系、地点、动作和前后承接，不新增事件，不输出命令、记忆或解释。',
+    '输出严格 JSON，放在 <正文> 标签内：{"decision":"keep","reason":"一句话理由","sentence":"原句"} 或 {"decision":"rewrite","reason":"一句话理由","sentence":"改写后的单句"}。',
+    '',
+    `【阶段】${params.stageLabel}`,
+    `【命中的名器名称】${params.hit.名称}`,
+    `【说话/叙述者】${params.hit.sender || '旁白'}`,
+    '【命中句子】',
+    params.hit.句子,
+    '',
+    '【正文上下文】',
+    params.bodyText
+].join('\n');
+
+const 本地兜底改写名器句子 = (sentence: string, names: string[]): string => {
+    let next = sentence || '';
+    names.forEach((name) => {
+        if (!name) return;
+        next = next.replace(new RegExp(转义正则片段(name), 'g'), '那处隐秘体质');
+    });
+    return next || sentence;
+};
+
+const 替换响应日志句子 = (
+    response: GameResponse,
+    hit: 名器档案名称正文命中,
+    nextSentence: string
+): GameResponse => {
+    const logs = Array.isArray(response?.logs) ? response.logs : [];
+    if (!nextSentence.trim() || hit.logIndex < 0 || hit.logIndex >= logs.length) return response;
+    const nextLogs = logs.map((log: any, index) => {
+        if (index !== hit.logIndex || typeof log?.text !== 'string') return log;
+        const originalText = log.text;
+        const replacedText = originalText.includes(hit.句子)
+            ? originalText.replace(hit.句子, nextSentence.trim())
+            : originalText.replace(new RegExp(转义正则片段(hit.名称), 'g'), '那处隐秘体质');
+        return replacedText === originalText ? log : { ...log, text: replacedText };
+    });
+    return { ...response, logs: nextLogs };
+};
+
+const 执行响应名器档案名称句子级审查 = async (params: {
+    response: GameResponse;
+    currentSocial: any[];
+    apiConfig?: any;
+    signal?: AbortSignal;
+    stageLabel?: string;
+}): Promise<GameResponse> => {
+    let nextResponse = params.response;
+    const apiConfig = params.apiConfig;
+    const stageLabel = params.stageLabel || '主剧情';
+    const keptHits = new Set<string>();
+    for (let guard = 0; guard < 5; guard += 1) {
+        const hit = 提取响应名器档案名称命中(nextResponse, params.currentSocial)
+            .find(item => !keptHits.has(`${item.logIndex}:${item.sentenceIndex}:${item.名称}:${item.句子}`));
+        if (!hit) return nextResponse;
+        const hitKey = `${hit.logIndex}:${hit.sentenceIndex}:${hit.名称}:${hit.句子}`;
+        const bodyText = 构建玩家可见正文文本(nextResponse);
+        if (!apiConfig || !接口配置是否可用(apiConfig)) {
+            nextResponse = 替换响应日志句子(
+                nextResponse,
+                hit,
+                本地兜底改写名器句子(hit.句子, [hit.名称])
+            );
+            continue;
+        }
+        try {
+            const result = await textAIService.generatePolishedBody(
+                hit.句子,
+                构建名器句子级审查提示({ stageLabel, hit, bodyText }),
+                apiConfig,
+                params.signal,
+                '',
+                ''
+            );
+            const decision = 解析名器句子审查结果(result.bodyText || result.rawText || '');
+            if (decision?.decision === 'keep') {
+                keptHits.add(hitKey);
+                continue;
+            }
+            const replacement = decision?.sentence && decision.sentence !== hit.句子
+                ? decision.sentence
+                : 本地兜底改写名器句子(hit.句子, [hit.名称]);
+            nextResponse = 替换响应日志句子(nextResponse, hit, replacement);
+        } catch {
+            nextResponse = 替换响应日志句子(
+                nextResponse,
+                hit,
+                本地兜底改写名器句子(hit.句子, [hit.名称])
+            );
+        }
+    }
+    return nextResponse;
 };
 
 const 叙事人称元信息行正则 = /(?:玩家输入|玩家指令|当前指令|系统提示|任务提示|行动选项|选项|提示|总结|Step|已知事实|协议命中|当前地点|当前时间)/i;
@@ -1750,31 +1928,43 @@ export const 执行主剧情发送工作流 = async (
                         })
                     );
                 const rawStoryText = deps.获取原始AI消息(storyResult.rawText);
+                const reviewedResponse = runtimeGameConfig.启用正文词汇审查 === false
+                    ? storyResult.response
+                    : await 执行响应名器档案名称句子级审查({
+                        response: storyResult.response,
+                        currentSocial: currentState.社交,
+                        apiConfig: activeApi,
+                        signal: controller.signal,
+                        stageLabel: "主剧情"
+                    });
+                const reviewedStoryResult = reviewedResponse === storyResult.response
+                    ? storyResult
+                    : { ...storyResult, response: reviewedResponse };
                 校验响应正文词汇审查(
-                    storyResult.response,
+                    reviewedStoryResult.response,
                     currentState.社交,
                     rawStoryText,
                     "主剧情",
                     runtimeGameConfig.启用正文词汇审查 !== false
                 );
                 校验响应人称一致性(
-                    storyResult.response,
+                    reviewedStoryResult.response,
                     rawStoryText,
                     runtimeGameConfig.叙事人称 || '第二人称'
                 );
                 校验响应未改写既有NPC姓名(
-                    storyResult.response,
+                    reviewedStoryResult.response,
                     currentState.社交,
                     rawStoryText,
                     "主剧情"
                 );
                 校验响应未删除既有NPC(
-                    storyResult.response,
+                    reviewedStoryResult.response,
                     currentState.社交,
                     rawStoryText,
                     "主剧情"
                 );
-                return storyResult;
+                return reviewedStoryResult;
             }
         });
         recordDiagnosticLog('info', ['主剧情解析成功', {
