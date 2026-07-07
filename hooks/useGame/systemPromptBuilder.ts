@@ -37,7 +37,8 @@ import {
 import { 构建主剧情难度摘要提示词 } from '../../prompts/runtime/promptOwnership';
 import { 获取内置提示词槽位内容 } from '../../utils/builtinPrompts';
 import { 按功能开关过滤提示词内容, 裁剪修炼体系上下文数据 } from '../../utils/promptFeatureToggles';
-import { 提取叙事约束块 } from '../../utils/narrativeConstraint';
+import { 构建主剧情COT内容 } from '../../prompts/core/cot';
+import { 提取叙事约束块, 是否有叙事约束 } from '../../utils/narrativeConstraint';
 import {
     构建运行时提示词池,
     剥离NoControl关联提示词,
@@ -1499,9 +1500,16 @@ export const 构建系统提示词 = ({
     const difficultyPromptSummary = 按当前设置过滤提示词(
         构建主剧情难度摘要提示词(promptPool)
     );
+    const hasNarrativeConstraint = 是否有叙事约束(statePayload?.角色?.天赋列表);
     const cotPromptEntries = enabledPrompts
         .filter(p => selectedCotPromptIds.includes(p.id))
-        .map(p => ({ id: p.id, content: 应用境界区块替换(应用写作设置(p.id, 渲染提示词文本(读取主剧情内置槽位覆盖(p.id, p.内容)))) }));
+        .map(p => {
+            let content = p.内容;
+            if (hasNarrativeConstraint && (p.id === 'core_cot' || p.id === 'core_cot_fandom')) {
+                content = 构建主剧情COT内容({ hasNarrativeConstraint: true, fandom: p.id === 'core_cot_fandom' });
+            }
+            return { id: p.id, content: 应用境界区块替换(应用写作设置(p.id, 渲染提示词文本(读取主剧情内置槽位覆盖(p.id, content)))) };
+        });
     const formatPromptEntries = enabledPrompts
         .filter(p => p.id === 'core_format')
         .map(p => ({ id: p.id, content: 应用境界区块替换(应用写作设置(p.id, 渲染提示词文本(读取主剧情内置槽位覆盖(p.id, p.内容)))) }));

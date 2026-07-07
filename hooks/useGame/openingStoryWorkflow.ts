@@ -37,7 +37,7 @@ import { 构建运行时额外提示词 } from '../../prompts/runtime/nsfw';
 import { 获取DeepSeek主剧情兼容提示词 } from '../../prompts/runtime/deepseekMode';
 import { 获取GLM主剧情兼容提示词 } from '../../prompts/runtime/glmMode';
 import { 包装繁体任务提示, 获取繁体输出指令 } from '../../utils/traditionalChinese';
-import { 提取叙事约束块 } from '../../utils/narrativeConstraint';
+import { 提取叙事约束块, 是否有叙事约束 } from '../../utils/narrativeConstraint';
 import { 构建标签缺失补充提示 } from '../../utils/parseErrorHints';
 import { 构建世界演变COT提示词, 世界演变COT伪装历史消息提示词 } from '../../prompts/runtime/worldEvolutionCot';
 import { 构建开局世界演变初始化上下文, 开局世界演变初始化附加提示词 } from '../../prompts/runtime/openingWorldEvolutionInit';
@@ -732,12 +732,13 @@ export const 执行开场剧情生成工作流 = async (
             }
         };
         const 启用修炼体系 = openingGameConfig.启用修炼体系 !== false;
+        const openingHasNarrativeConstraint = 是否有叙事约束((openingStatePayload?.角色 || deps.角色)?.天赋列表);
         let openingPromptSnapshot = promptSnapshot.map(p => {
             if (p.id === 'core_cot') {
                 return {
                     ...核心_开局思维链,
                     id: 'core_cot',
-                    内容: 获取开局思维链提示词(openingGameConfig),
+                    内容: 获取开局思维链提示词(openingGameConfig, { hasNarrativeConstraint: openingHasNarrativeConstraint }),
                     启用: true
                 };
             }
