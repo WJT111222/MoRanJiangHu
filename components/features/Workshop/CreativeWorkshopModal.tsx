@@ -392,6 +392,9 @@ const 提取模块世界细节生成配置 = (entry: 创意工坊模块条目): 
 };
 
 const 构建预览页说明 = (entry: 创意工坊模块条目): string => {
+    if (entry.type === 'tavern_preset') {
+        return '完整只读预设页。这里展示该酒馆预设携带的 prompts、prompt_order、每个选项的启用状态和原始模块数据。';
+    }
     if (entry.type === 'comfy_workflow') {
         return '完整只读配置页。这里展示该工作流实际携带的基础信息、使用提示、工作流内容、内容块和原始模块数据。';
     }
@@ -803,6 +806,8 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
     const [anonymousContribution, setAnonymousContribution] = useState(false);
     const [cloudUsername, setCloudUsername] = useState('');
     const [previewEntry, setPreviewEntry] = useState<创意工坊模块条目 | null>(null);
+    const [previewTavernPreset, setPreviewTavernPreset] = useState<ReturnType<typeof 规范化酒馆预设> | null>(null);
+    const [previewTavernPresetStatus, setPreviewTavernPresetStatus] = useState('');
     const [editingEntryId, setEditingEntryId] = useState('');
     const [editingDraft, setEditingDraft] = useState({ title: '', subtitle: '', description: '', tags: '', contributor: '', anonymous: false, moduleJson: '' });
     const [contributionDraft, setContributionDraft] = useState<贡献草稿>(() => 空贡献草稿());
@@ -846,6 +851,43 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                 : contributionDraft.modeRuntimeProfile.economy.currencySystem ? 'dynamic' : 'legacy'
         ));
     }, [contributionDraft.modeRuntimeProfile.economy.currencySystem]);
+
+    useEffect(() => {
+        let cancelled = false;
+        setPreviewTavernPreset(null);
+        setPreviewTavernPresetStatus('');
+        if (!previewEntry || previewEntry.type !== 'tavern_preset') return () => { cancelled = true; };
+
+        const 加载预设 = async () => {
+            try {
+                const rawPreset = previewEntry.tavernPreset || previewEntry.payload?.tavernPreset;
+                if (rawPreset) {
+                    const normalized = 规范化酒馆预设(rawPreset);
+                    if (!normalized) throw new Error('该条目携带的预设 JSON 缺少 prompts / prompt_order。');
+                    if (!cancelled) setPreviewTavernPreset(normalized);
+                    return;
+                }
+                if (typeof previewEntry.payload?.presetPath === 'string') {
+                    setPreviewTavernPresetStatus('正在读取酒馆预设 JSON...');
+                    const response = await fetch(String(previewEntry.payload.presetPath), { cache: 'no-store' });
+                    if (!response.ok) throw new Error(`预设读取失败（HTTP ${response.status}）。`);
+                    const normalized = 规范化酒馆预设(await response.json());
+                    if (!normalized) throw new Error('该预设 JSON 缺少 prompts / prompt_order。');
+                    if (!cancelled) {
+                        setPreviewTavernPreset(normalized);
+                        setPreviewTavernPresetStatus('');
+                    }
+                    return;
+                }
+                throw new Error('该条目没有可读取的酒馆预设 JSON。');
+            } catch (error: any) {
+                if (!cancelled) setPreviewTavernPresetStatus(`无法读取预设：${error?.message || '未知错误'}`);
+            }
+        };
+
+        void 加载预设();
+        return () => { cancelled = true; };
+    }, [previewEntry]);
 
     const 重置贡献草稿 = () => {
         const nextDraft = 空贡献草稿();
@@ -1417,7 +1459,101 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         );
     };
 
+    const 渲染酒馆预设预览页面 = (entry: 创意工坊模块条目) => {
+        const preset = previewTavernPreset;
+        const promptMap = new Map<string, NonNullable<typeof preset>['prompts'][number]>();
+        (preset?.prompts || []).forEach((prompt) => {
+            if (prompt.identifier && !promptMap.has(prompt.identifier)) promptMap.set(prompt.identifier, prompt);
+        });
+        const regexCount = Array.isArray((preset?.extensions as any)?.regex_scripts) ? (preset!.extensions as any).regex_scripts.length : 0;
+
+        return (
+            <div className="space-y-4">
+                <section className="rounded-xl border border-wuxia-gold/15 bg-white/[0.035] p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <div className="text-xs font-bold tracking-[0.14em] text-wuxia-gold">只读酒馆预设</div>
+                            <h3 className="mt-2 text-xl font-serif font-bold text-gray-100">{entry.title}</h3>
+                            <div className="mt-1 text-sm text-wuxia-gold/80">{entry.subtitle}</div>
+                            <p className="mt-3 max-w-4xl text-sm leading-6 text-gray-300">{entry.description}</p>
+                        </div>
+                        <div className="shrink-0 rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-xs text-gray-300">{entry.contributor || (entry.anonymous ? '匿名玩家' : '创意工坊')}</div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        {entry.tags.map((tag) => <span key={tag} className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-gray-300">{tag}</span>)}
+                    </div>
+                    {entry.usagePrompt && <div className="mt-3 rounded-lg border border-white/10 bg-black/25 p-3 text-xs leading-5 text-gray-300">使用提示：{entry.usagePrompt}</div>}
+                </section>
+
+                {previewTavernPresetStatus ? (
+                    <section className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">{previewTavernPresetStatus}</section>
+                ) : null}
+
+                {preset ? (
+                    <>
+                        <section className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.045] p-4">
+                            <div className="text-xs font-bold tracking-[0.14em] text-emerald-200">预设概览</div>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-4">
+                                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                                    <div className="text-[11px] text-gray-400">Prompts</div>
+                                    <div className="mt-1 text-lg font-bold text-gray-100">{preset.prompts.length}</div>
+                                </div>
+                                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                                    <div className="text-[11px] text-gray-400">角色槽位</div>
+                                    <div className="mt-1 text-lg font-bold text-gray-100">{preset.prompt_order.length}</div>
+                                </div>
+                                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                                    <div className="text-[11px] text-gray-400">正则脚本</div>
+                                    <div className="mt-1 text-lg font-bold text-gray-100">{regexCount}</div>
+                                </div>
+                                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                                    <div className="text-[11px] text-gray-400">生成参数</div>
+                                    <div className="mt-1 text-lg font-bold text-gray-100">{preset.generationParams ? '已携带' : '未携带'}</div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="rounded-xl border border-white/10 bg-black/20 p-4">
+                            <div className="text-xs font-bold tracking-[0.14em] text-wuxia-gold">Prompt Order 与开启状态</div>
+                            <div className="mt-3 space-y-4">
+                                {preset.prompt_order.map((group) => (
+                                    <div key={group.character_id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                                        <div className="text-sm font-bold text-gray-100">角色槽位 {group.character_id}</div>
+                                        <div className="mt-3 space-y-2">
+                                            {group.order.map((orderItem, index) => {
+                                                const prompt = promptMap.get(orderItem.identifier);
+                                                const enabled = orderItem.enabled === true;
+                                                return (
+                                                    <div key={`${group.character_id}-${orderItem.identifier}-${index}`} className="rounded-lg border border-white/10 bg-black/25 p-3">
+                                                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                                                            <span className={`rounded-full border px-2 py-0.5 ${enabled ? 'border-emerald-400/35 bg-emerald-500/15 text-emerald-100' : 'border-gray-500/30 bg-gray-500/10 text-gray-400'}`}>{enabled ? '已开启' : '已关闭'}</span>
+                                                            <span className="font-mono text-gray-400">#{index + 1}</span>
+                                                            <span className="font-mono text-wuxia-gold">{orderItem.identifier}</span>
+                                                            {prompt?.name && <span className="font-bold text-gray-100">{prompt.name}</span>}
+                                                            {prompt?.role && <span className="text-gray-500">{prompt.role}</span>}
+                                                        </div>
+                                                        <pre className="mt-2 max-h-36 overflow-auto whitespace-pre-wrap text-xs leading-5 text-gray-300">{prompt?.content || '未找到对应 prompt 内容。'}</pre>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        <details className="rounded-xl border border-white/10 bg-black/25 p-4">
+                            <summary className="cursor-pointer text-xs font-bold text-gray-200">原始酒馆预设 JSON</summary>
+                            <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap text-xs leading-5 text-gray-400">{JSON.stringify(preset, null, 2)}</pre>
+                        </details>
+                    </>
+                ) : null}
+            </div>
+        );
+    };
+
     const 渲染注入预览页面 = (entry: 创意工坊模块条目) => {
+        if (entry.type === 'tavern_preset') return 渲染酒馆预设预览页面(entry);
         const runtimeProfile = 提取模块运行时配置(entry);
         const modeWorldbooks = 提取模块模式世界书(entry);
         const modeMetadata = 提取模块模式元数据(entry);
@@ -1588,7 +1724,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                     {previewEntry ? (
                         <div className="min-w-0">
                             <button type="button" onClick={() => setPreviewEntry(null)} className="mb-3 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-gray-200 hover:border-white/25">返回工坊</button>
-                            <div className="text-xs font-mono tracking-[0.28em] text-wuxia-gold">INJECTION PREVIEW</div>
+                            <div className="text-xs font-mono tracking-[0.28em] text-wuxia-gold">{previewEntry.type === 'tavern_preset' ? 'PRESET PREVIEW' : 'INJECTION PREVIEW'}</div>
                             <h2 className="mt-2 truncate text-lg font-serif font-bold tracking-[0.18em] text-wuxia-gold">{previewEntry.title}</h2>
                             <p className="mt-2 max-w-4xl text-sm leading-6 text-amber-50/75">
                                 {构建预览页说明(previewEntry)}
@@ -2210,7 +2346,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                         </div>
                                     )}
                                     <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                                        <button type="button" onClick={() => setPreviewEntry(entry)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">预览注入</button>
+                                        <button type="button" onClick={() => setPreviewEntry(entry)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">{entry.type === 'tavern_preset' ? '预览预设' : '预览注入'}</button>
                                         <button type="button" onClick={() => 下载JSON(entry)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">下载 JSON</button>
                                         <button type="button" onClick={() => void 复制文本(构建模块摘要(entry)).then((ok) => setStatus(ok ? `已复制「${entry.title}」注入摘要。` : '复制失败，请改用下载 JSON。'))} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">复制摘要</button>
                                         {canPublishEntry && (

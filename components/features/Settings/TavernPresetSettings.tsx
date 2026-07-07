@@ -5,8 +5,6 @@ import GameButton from '../../ui/GameButton';
 import { parseJsonWithRepair } from '../../../utils/jsonRepair';
 import { 酒馆提示词后处理选项 } from '../../../utils/gameSettings';
 import { 规范化酒馆预设, 获取酒馆预设角色ID列表, 获取酒馆预设顺序 } from '../../../utils/tavernPreset';
-import { 列出创意工坊模块 } from '../../../services/creativeWorkshop';
-import type { 创意工坊模块条目 } from '../../../data/creativeWorkshopModules';
 
 interface Props {
     settings: 游戏设置结构;
@@ -35,7 +33,6 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
     const [expandedItemKey, setExpandedItemKey] = useState<string | null>(null);
     const [message, setMessage] = useState('');
     const [dirty, setDirty] = useState(false);
-    const [workshopTavernEntries, setWorkshopTavernEntries] = useState<创意工坊模块条目[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
@@ -44,29 +41,9 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
         setExpandedItemKey(null);
     }, [settings]);
 
-    useEffect(() => {
-        let cancelled = false;
-        void 列出创意工坊模块()
-            .then((entries) => {
-                if (cancelled) return;
-                setWorkshopTavernEntries(entries.filter((entry) => entry.type === 'tavern_preset'));
-            })
-            .catch(() => {
-                if (!cancelled) setWorkshopTavernEntries([]);
-            });
-        return () => { cancelled = true; };
-    }, []);
-
     const presetList = useMemo(() => (
         Array.isArray(form.酒馆预设列表) ? form.酒馆预设列表 : []
     ), [form.酒馆预设列表]);
-    const workshopPresetOptions = useMemo(() => (
-        workshopTavernEntries.map((entry) => ({
-            key: `workshop:${entry.source || 'builtin'}:${entry.id}`,
-            entry,
-            label: `${entry.title} · ${entry.source === 'local' ? '玩家自行上传' : '创意工坊'}`
-        }))
-    ), [workshopTavernEntries]);
     const selectedPresetId = useMemo(() => {
         const rawId = typeof form.当前酒馆预设ID === 'string' ? form.当前酒馆预设ID.trim() : '';
         if (rawId && presetList.some((item) => item.id === rawId)) return rawId;
@@ -394,53 +371,6 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
         应用配置(nextConfig, { autoSave: true, tip: `已删除预设，当前切换为：${nextEntry.名称}` });
     };
 
-    const 应用工坊预设 = async (entry: 创意工坊模块条目) => {
-        try {
-            const rawPreset = entry.tavernPreset || entry.payload?.tavernPreset;
-            const normalized = rawPreset
-                ? 规范化酒馆预设(rawPreset)
-                : typeof entry.payload?.presetPath === 'string'
-                    ? await fetch(String(entry.payload.presetPath), { cache: 'no-store' }).then(async (response) => {
-                        if (!response.ok) throw new Error(`预设读取失败（HTTP ${response.status}）。`);
-                        return 规范化酒馆预设(await response.json());
-                    })
-                    : null;
-            if (!normalized) throw new Error('该创意工坊条目没有可用的酒馆预设 JSON。');
-            const sourceLabel = entry.source === 'local' ? '玩家自行上传' : '创意工坊';
-            const id = `workshop_${entry.source || 'builtin'}_${entry.id}`;
-            const existing = presetList.find((item) => item.id === id);
-            const nextEntry = {
-                id,
-                名称: entry.title,
-                预设: normalized,
-                角色ID: 解析角色ID(normalized, existing?.角色ID ?? null),
-                导入时间: existing?.导入时间 || Date.now(),
-                来源: sourceLabel as '创意工坊' | '玩家自行上传',
-                工坊模块ID: entry.id,
-                工坊来源: entry.source,
-                贡献者: entry.contributor || ''
-            };
-            const nextList = existing
-                ? presetList.map((item) => item.id === id ? nextEntry : item)
-                : [...presetList, nextEntry];
-            const nextConfig: 游戏设置结构 = {
-                ...form,
-                启用酒馆预设模式: true,
-                酒馆预设列表: nextList,
-                当前酒馆预设ID: nextEntry.id,
-                酒馆预设: nextEntry.预设,
-                酒馆预设角色ID: nextEntry.角色ID ?? null,
-                酒馆预设名称: nextEntry.名称
-            };
-            应用配置(nextConfig, {
-                autoSave: true,
-                tip: existing ? `已刷新并切换到${sourceLabel}预设：${entry.title}` : `已切换到${sourceLabel}预设：${entry.title}`
-            });
-        } catch (error: any) {
-            setMessage(`切换创意工坊预设失败：${error?.message || '未知错误'}`);
-        }
-    };
-
     return (
         <div className="space-y-6 text-sm animate-fadeIn">
             <div className="flex justify-between items-center border-b border-wuxia-gold/30 pb-3 mb-6">
@@ -508,30 +438,17 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
                         <select
                             value={selectedPresetId ?? ''}
                             onChange={(e) => {
-                                const value = e.target.value;
-                                const workshopOption = workshopPresetOptions.find((item) => item.key === value);
-                                if (workshopOption) {
-                                    void 应用工坊预设(workshopOption.entry);
-                                    return;
-                                }
-                                切换预设(value);
+                                切换预设(e.target.value);
                             }}
                             className="w-full bg-black/50 border border-gray-700 p-2 text-white rounded-md outline-none focus:border-wuxia-gold text-xs"
                         >
-                            {presetList.length === 0 && workshopPresetOptions.length === 0 && <option value="">暂无预设</option>}
+                            {presetList.length === 0 && <option value="">暂无预设</option>}
                             {presetList.map((item, index) => (
                                 <option key={item.id} value={item.id}>{index + 1}. [{item.来源 || '玩家自行上传'}] {item.名称}</option>
                             ))}
-                            {workshopPresetOptions.length > 0 && (
-                                <optgroup label="创意工坊可选预设">
-                                    {workshopPresetOptions.map((item) => (
-                                        <option key={item.key} value={item.key}>[{item.entry.source === 'local' ? '玩家自行上传' : '创意工坊'}] {item.entry.title}{item.entry.contributor ? ` · ${item.entry.contributor}` : ''}</option>
-                                    ))}
-                                </optgroup>
-                            )}
                         </select>
                         <div className="text-[11px] text-gray-500">
-                            选择创意工坊条目会自动应用到当前酒馆预设；玩家本地上传与工坊来源会分别标注。
+                            这里只切换已加入列表的预设；玩家本地上传与创意工坊来源会分别标注。
                         </div>
                     </div>
 
