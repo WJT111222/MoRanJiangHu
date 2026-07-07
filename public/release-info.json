@@ -1,10 +1,10 @@
 {
-  "versionCode": 582,
-  "versionName": "1.0.582",
+  "versionCode": 583,
+  "versionName": "1.0.583",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "优化创意工坊酒馆预设预览：酒馆预设卡片改为“预览预设”，点开后可查看 prompts、prompt_order、每个选项的开启/关闭状态和原始 JSON。",
-    "优化酒馆预设设置页：当前预设下拉框只显示已经加入列表的预设，不再额外重复显示“创意工坊可选预设”分组；玩家上传和创意工坊来源仍会分别标注。",
+    "修复对象存储“上传全部设置”大包报 Out of Memory 的问题：设置包和关联图片资源较大时会直接分片上传，不再先构造完整内联数据包。",
+    "优化对象存储上传稳定性：较大的存档包也会优先走分片路径，减少重试后仍失败的情况。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
@@ -448,11 +448,11 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "优化创意工坊酒馆预设预览：酒馆预设卡片改为“预览预设”，点开后可查看 prompts、prompt_order、每个选项的开启/关闭状态和原始 JSON。",
-    "优化酒馆预设设置页：当前预设下拉框只显示已经加入列表的预设，不再额外重复显示“创意工坊可选预设”分组；玩家上传和创意工坊来源仍会分别标注。",
+    "修复对象存储“上传全部设置”大包报 Out of Memory 的问题：设置包和关联图片资源较大时会直接分片上传，不再先构造完整内联数据包。",
+    "优化对象存储上传稳定性：较大的存档包也会优先走分片路径，减少重试后仍失败的情况。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
-  "notes": "优化创意工坊酒馆预设预览：酒馆预设卡片改为“预览预设”，点开后可查看 prompts、prompt_order、每个选项的开启/关闭状态和原始 JSON。\n优化酒馆预设设置页：当前预设下拉框只显示已经加入列表的预设，不再额外重复显示“创意工坊可选预设”分组；玩家上传和创意工坊来源仍会分别标注。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-  "releasePublishedAt": "2026-07-08T02:31:08.684+08:00"
+  "notes": "修复对象存储“上传全部设置”大包报 Out of Memory 的问题：设置包和关联图片资源较大时会直接分片上传，不再先构造完整内联数据包。\n优化对象存储上传稳定性：较大的存档包也会优先走分片路径，减少重试后仍失败的情况。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
+  "releasePublishedAt": "2026-07-08T03:04:43+08:00"
 }

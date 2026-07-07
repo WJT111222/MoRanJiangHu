@@ -63,10 +63,8 @@ describe('对象存储同步', () => {
         vi.restoreAllMocks();
     });
 
-    it('整包上传失败后回退分片，并并发上传多个存档', async () => {
+    it('大存档包直接分片上传，并并发处理多个存档', async () => {
         const directSaveKeys = new Set<string>();
-        let activeWholeUploads = 0;
-        let maxActiveWholeUploads = 0;
         let fallbackChunkUploads = 0;
 
         vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
@@ -88,11 +86,7 @@ describe('对象存储同步', () => {
                 && String(init?.body || '').includes('"archiveBase64"')
             ) {
                 directSaveKeys.add(key);
-                activeWholeUploads += 1;
-                maxActiveWholeUploads = Math.max(maxActiveWholeUploads, activeWholeUploads);
-                await new Promise((resolve) => setTimeout(resolve, 10));
-                activeWholeUploads -= 1;
-                return new Response('too large', { status: 413 });
+                throw new Error('大存档包不应以内联 archiveBase64 形式上传');
             }
 
             if (method === 'PUT' && key.includes('/chunks/saves/')) {
@@ -114,9 +108,79 @@ describe('对象存储同步', () => {
 
         expect(result.uploaded).toBe(3);
         expect(result.skipped).toBe(0);
-        expect(directSaveKeys.size).toBe(3);
+        expect(directSaveKeys.size).toBe(0);
         expect(fallbackChunkUploads).toBeGreaterThan(3);
-        expect(maxActiveWholeUploads).toBeGreaterThan(1);
+    });
+
+    it('上传大设置包时直接分片，避免构造完整内联数据包', async () => {
+        const githubSync = await import('../services/githubSync');
+        const bigSettingsBytes = new Uint8Array(2 * 1024 * 1024);
+        bigSettingsBytes.fill(65);
+        vi.mocked(githubSync.extractSettingsSyncData).mockResolvedValueOnce(bigSettingsBytes);
+
+        const chunkUploads: Array<{ key: string; size: number }> = [];
+        let inlineSettingsUploadAttempts = 0;
+        let settingsIndex: any = null;
+        let writtenManifest: any = null;
+
+        vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+            const headers = new Headers(init?.headers);
+            const method = headers.get('X-Object-Storage-Method') || '';
+            const key = headers.get('X-Object-Storage-Key') || '';
+            if (!method) {
+                throw new TypeError('CORS blocked direct object storage request');
+            }
+
+            if (method === 'GET' && key.endsWith('/manifest.json')) {
+                return new Response('', { status: 404 });
+            }
+
+            if (method === 'PUT' && key.endsWith('/settings.json')) {
+                const body = init?.body instanceof Blob
+                    ? await init.body.text()
+                    : String(init?.body || '');
+                if (body.includes('"archiveBase64"')) {
+                    inlineSettingsUploadAttempts += 1;
+                    throw new Error('大设置包不应以内联 archiveBase64 形式上传');
+                }
+                settingsIndex = JSON.parse(body);
+                return new Response('', { status: 200 });
+            }
+
+            if (method === 'PUT' && key.includes('/chunks/settings/')) {
+                const body = init?.body instanceof Blob
+                    ? await init.body.text()
+                    : String(init?.body || '');
+                chunkUploads.push({ key, size: body.length });
+                expect(body.length).toBeLessThanOrEqual(768 * 1024);
+                return new Response('', { status: 200 });
+            }
+
+            if (method === 'PUT' && key.endsWith('/manifest.json')) {
+                const body = init?.body instanceof Blob
+                    ? await init.body.text()
+                    : String(init?.body || '{}');
+                writtenManifest = JSON.parse(body);
+                return new Response('', { status: 200 });
+            }
+
+            return new Response('', { status: 200 });
+        }));
+
+        const { 上传设置到对象存储 } = await import('../services/objectStorageSync');
+        const metadata = await 上传设置到对象存储(config);
+
+        expect(metadata.size).toBe(bigSettingsBytes.length);
+        expect(inlineSettingsUploadAttempts).toBe(0);
+        expect(chunkUploads.length).toBeGreaterThan(1);
+        expect(settingsIndex).toMatchObject({
+            format: 'moranjianghu-object-storage-settings-package',
+            storage: 'chunks',
+            metadata: expect.objectContaining({ size: bigSettingsBytes.length })
+        });
+        expect(settingsIndex.totalBase64Length).toBe(chunkUploads.reduce((sum, item) => sum + item.size, 0));
+        expect(settingsIndex.chunks).toHaveLength(chunkUploads.length);
+        expect(writtenManifest.settings).toEqual(expect.objectContaining({ size: bigSettingsBytes.length }));
     });
 
     it('增量导入会下载同同步键云存档，再交给本地精确去重', async () => {
