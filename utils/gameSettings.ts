@@ -353,10 +353,22 @@ export const 规范化游戏设置 = (
         source.酒馆预设列表 ?? fallback.酒馆预设列表
     );
     const selectedPresetIdRaw = 读取文本(source.当前酒馆预设ID ?? fallback.当前酒馆预设ID).trim();
+    const sourcePreset = 规范化酒馆预设(source.酒馆预设);
+    const sourcePresetName = 读取文本(source.酒馆预设名称).trim();
+    const selectedWorkshopPresetEntry = selectedPresetIdRaw.startsWith('workshop:') && sourcePreset
+        ? {
+            id: selectedPresetIdRaw,
+            名称: sourcePresetName || '创意工坊酒馆预设',
+            预设: sourcePreset,
+            角色ID: 解析酒馆预设角色ID(source.酒馆预设角色ID, sourcePreset),
+            来源: '创意工坊' as const,
+        }
+        : null;
     const selectedPresetEntry = (
         (selectedPresetIdRaw
             ? normalizedPresetList.find((item) => item.id === selectedPresetIdRaw)
             : null)
+        || selectedWorkshopPresetEntry
         || normalizedPresetList[0]
         || null
     );

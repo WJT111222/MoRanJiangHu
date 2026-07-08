@@ -5,6 +5,8 @@ import GameButton from '../../ui/GameButton';
 import { parseJsonWithRepair } from '../../../utils/jsonRepair';
 import { 酒馆提示词后处理选项 } from '../../../utils/gameSettings';
 import { 规范化酒馆预设, 获取酒馆预设角色ID列表, 获取酒馆预设顺序 } from '../../../utils/tavernPreset';
+import { 创意工坊模块列表 } from '../../../data/creativeWorkshopModules';
+import { 构建酒馆预设选择列表, 酒馆预设条目可删除 } from '../../../utils/tavernPresetSelection';
 
 interface Props {
     settings: 游戏设置结构;
@@ -33,6 +35,7 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
     const [expandedItemKey, setExpandedItemKey] = useState<string | null>(null);
     const [message, setMessage] = useState('');
     const [dirty, setDirty] = useState(false);
+    const [workshopPresetCache, setWorkshopPresetCache] = useState<Record<string, 酒馆预设结构 | null | undefined>>({});
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
@@ -41,9 +44,12 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
         setExpandedItemKey(null);
     }, [settings]);
 
-    const presetList = useMemo(() => (
+    const localPresetList = useMemo(() => (
         Array.isArray(form.酒馆预设列表) ? form.酒馆预设列表 : []
     ), [form.酒馆预设列表]);
+    const presetList = useMemo(() => (
+        构建酒馆预设选择列表(localPresetList, 创意工坊模块列表, workshopPresetCache)
+    ), [localPresetList, workshopPresetCache]);
     const selectedPresetId = useMemo(() => {
         const rawId = typeof form.当前酒馆预设ID === 'string' ? form.当前酒馆预设ID.trim() : '';
         if (rawId && presetList.some((item) => item.id === rawId)) return rawId;
@@ -52,7 +58,29 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
     const selectedEntry = useMemo(() => (
         presetList.find((item) => item.id === selectedPresetId) || null
     ), [presetList, selectedPresetId]);
-    const preset = selectedEntry?.预设 || form.酒馆预设 || null;
+    const preset = selectedEntry?.预设 || null;
+
+    useEffect(() => {
+        const pending = presetList.filter((item) => item.来源 === '创意工坊' && item.工坊模块ID && item.工坊预设路径 && item.加载状态 === 'loading');
+        pending.forEach((item) => {
+            const moduleId = item.工坊模块ID!;
+            fetch(item.工坊预设路径!)
+                .then((response) => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
+                .then((payload) => 规范化酒馆预设(payload))
+                .then((normalized) => {
+                    setWorkshopPresetCache((prev) => ({
+                        ...prev,
+                        [moduleId]: normalized || null,
+                    }));
+                })
+                .catch(() => {
+                    setWorkshopPresetCache((prev) => ({ ...prev, [moduleId]: null }));
+                });
+        });
+    }, [presetList]);
     const characterIds = useMemo(() => 获取酒馆预设角色ID列表(preset), [preset]);
     const selectedCharacterId = useMemo(() => {
         const candidate = form.酒馆预设角色ID ?? selectedEntry?.角色ID ?? null;
@@ -94,7 +122,11 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
         options?: { autoSave?: boolean; tip?: string }
     ) => {
         if (!selectedEntry) return;
-        const nextList = presetList.map((entry) => {
+        if (selectedEntry.来源 === '创意工坊') {
+            setMessage('创意工坊预设不可直接编辑，请导出后作为本地预设再修改。');
+            return;
+        }
+        const nextList = localPresetList.map((entry) => {
             if (entry.id !== selectedEntry.id) return entry;
             const nextPreset = patch.预设 || entry.预设;
             const nextRoleId = patch.角色ID !== undefined ? patch.角色ID : entry.角色ID;
@@ -120,6 +152,10 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
     const 切换预设 = (presetId: string) => {
         const nextEntry = presetList.find((item) => item.id === presetId) || null;
         if (!nextEntry) return;
+        if (!nextEntry.预设) {
+            setMessage(nextEntry.加载状态 === 'error' ? '创意工坊预设加载失败，请稍后重试。' : '创意工坊预设正在加载，请稍后再试。');
+            return;
+        }
         const nextCharacterId = 解析角色ID(nextEntry.预设, nextEntry.角色ID);
         const nextConfig: 游戏设置结构 = {
             ...form,
@@ -252,13 +288,13 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
 
             const nextEntry = {
                 id: 生成预设ID(),
-                名称: file.name || `酒馆预设_${presetList.length + 1}`,
+                名称: file.name || `酒馆预设_${localPresetList.length + 1}`,
                 预设: normalized,
                 角色ID: 解析角色ID(normalized, null),
                 导入时间: Date.now(),
                 来源: '玩家自行上传' as const
             };
-            const nextList = [...presetList, nextEntry];
+            const nextList = [...localPresetList, nextEntry];
             const nextConfig: 游戏设置结构 = {
                 ...form,
                 启用酒馆预设模式: true,
@@ -342,9 +378,18 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
 
     const 删除当前预设 = () => {
         if (!selectedEntry) return;
-        const currentIndex = presetList.findIndex((item) => item.id === selectedEntry.id);
-        const nextList = presetList.filter((item) => item.id !== selectedEntry.id);
-        if (nextList.length === 0) {
+        if (!酒馆预设条目可删除(selectedEntry)) {
+            setMessage('创意工坊预设不可删除。');
+            return;
+        }
+        if (selectedEntry.来源 === '玩家自行上传' && !window.confirm(`确定删除本地上传的酒馆预设「${selectedEntry.名称}」吗？此操作不会影响创意工坊预设。`)) {
+            return;
+        }
+        const currentIndex = localPresetList.findIndex((item) => item.id === selectedEntry.id);
+        const nextList = localPresetList.filter((item) => item.id !== selectedEntry.id);
+        const fallbackCandidates = 构建酒馆预设选择列表(nextList, 创意工坊模块列表, workshopPresetCache)
+            .filter((item) => item.id !== selectedEntry.id);
+        if (fallbackCandidates.length === 0) {
             const nextConfig: 游戏设置结构 = {
                 ...form,
                 启用酒馆预设模式: false,
@@ -358,14 +403,14 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
             return;
         }
 
-        const fallbackIndex = Math.min(currentIndex, nextList.length - 1);
-        const nextEntry = nextList[fallbackIndex];
+        const fallbackIndex = Math.min(Math.max(currentIndex, 0), fallbackCandidates.length - 1);
+        const nextEntry = fallbackCandidates[fallbackIndex];
         const nextConfig: 游戏设置结构 = {
             ...form,
             酒馆预设列表: nextList,
             当前酒馆预设ID: nextEntry.id,
-            酒馆预设: nextEntry.预设,
-            酒馆预设角色ID: 解析角色ID(nextEntry.预设, nextEntry.角色ID),
+            酒馆预设: nextEntry.预设 || null,
+            酒馆预设角色ID: 解析角色ID(nextEntry.预设 || null, nextEntry.角色ID),
             酒馆预设名称: nextEntry.名称
         };
         应用配置(nextConfig, { autoSave: true, tip: `已删除预设，当前切换为：${nextEntry.名称}` });
