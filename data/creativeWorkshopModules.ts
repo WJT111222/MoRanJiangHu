@@ -55,6 +55,13 @@ export interface 创意工坊模块条目 {
     anonymous?: boolean;
 }
 
+export const 获取创意工坊模块来源标签 = (entry: Pick<创意工坊模块条目, 'source' | 'type' | 'anonymous' | 'contributor'>): string => {
+    if (entry.source === 'cloud') return '社区贡献';
+    if (entry.source === 'local') return '本地导入';
+    if (entry.type === 'tavern_preset' && entry.anonymous && entry.contributor === '匿名玩家') return '社区贡献';
+    return '官方预设';
+};
+
 const 全流程模式世界书作用域: 世界书作用域[] = ['main', 'opening', 'world_evolution', 'variable_calibration', 'story_plan', 'heroine_plan', 'tavern'];
 
 const 构建模式世界书条目 = (
@@ -388,7 +395,7 @@ const Izumi0623酒馆预设模块: 创意工坊模块条目 = {
     formatVersion: 2,
     workshopKind: 'standard_module',
     title: 'Izumi 0623',
-    subtitle: 'SillyTavern 酒馆预设',
+    subtitle: '玩家贡献 · SillyTavern 酒馆预设',
     description: '玩家上传的 Izumi 0623 酒馆预设，包含提示词顺序、启用开关、生成参数和正则脚本兼容信息。',
     tags: ['酒馆预设', 'SillyTavern', 'Izumi'],
     payload: {

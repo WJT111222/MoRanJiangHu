@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { 选择最佳可用模型 } from '../components/features/Settings/ApiSettings';
-import { 创建接口配置模板, 获取剧情回忆接口配置, 获取世界演变接口配置, 获取规划分析接口配置, 规范化接口设置, 推断供应商, 供应商标签 } from '../utils/apiConfig';
+import { 创建接口配置模板, 构建OpenAI兼容模型列表候选地址, 获取剧情回忆接口配置, 获取世界演变接口配置, 获取规划分析接口配置, 规范化接口设置, 推断供应商, 供应商标签 } from '../utils/apiConfig';
 
 describe('接口模型自动选择', () => {
     it('优先选择同渠道返回列表中版本号更大的高能力模型', () => {
@@ -53,6 +53,30 @@ describe('小米 MiMo 接口配置', () => {
         expect(推断供应商('https://api.xiaomimimo.com/anthropic')).toBe('mimo_api');
         expect(推断供应商('https://token-plan-cn.xiaomimimo.com/v1')).toBe('mimo_token_plan');
         expect(推断供应商('https://token-plan-cn.xiaomimimo.com/anthropic')).toBe('mimo_token_plan');
+    });
+});
+
+describe('OpenAI 兼容模型列表地址', () => {
+    it('优先使用百度千帆 v2 的模型列表地址，避免错误插入 /v1', () => {
+        expect(构建OpenAI兼容模型列表候选地址('https://qianfan.baidubce.com/v2/')).toEqual([
+            'https://qianfan.baidubce.com/v2/models',
+            'https://qianfan.baidubce.com/models'
+        ]);
+    });
+
+    it('优先使用自定义 OpenAI 兼容版本路径的模型列表地址，避免错误插入 /v1', () => {
+        expect(构建OpenAI兼容模型列表候选地址('https://example.com/api/paas/v4')).toEqual([
+            'https://example.com/api/paas/v4/models',
+            'https://example.com/api/paas/models',
+            'https://example.com/models'
+        ]);
+    });
+
+    it('保留普通 OpenAI 兼容地址的 v1/models 兼容探测顺序', () => {
+        expect(构建OpenAI兼容模型列表候选地址('https://example.com/v1')).toEqual([
+            'https://example.com/v1/models',
+            'https://example.com/models'
+        ]);
     });
 });
 

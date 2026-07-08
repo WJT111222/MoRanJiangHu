@@ -9,6 +9,7 @@ import InlineSelect from '../../ui/InlineSelect';
 import * as textAIService from '../../../services/ai/text';
 import {
     创建接口配置模板,
+    构建OpenAI兼容模型列表候选地址,
     供应商标签,
     规范化接口设置
 } from '../../../utils/apiConfig';
@@ -276,13 +277,7 @@ const ApiSettings: React.FC<Props> = ({ settings, onSave }) => {
             return null;
         }
         try {
-            const base = baseUrlForRequest.replace(/\/+$/, '');
-            const normalized = base.replace(/\/v1$/i, '');
-            const candidateUrls = Array.from(new Set([
-                `${normalized}/v1/models`,
-                `${normalized}/models`,
-                `${base}/models`
-            ]));
+            const candidateUrls = 构建OpenAI兼容模型列表候选地址(baseUrlForRequest);
             for (const url of candidateUrls) {
                 const isMimo = activeConfig?.供应商 === 'mimo_api'
                     || activeConfig?.供应商 === 'mimo_token_plan'

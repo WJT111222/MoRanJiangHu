@@ -16,7 +16,7 @@ import InlineSelect from '../../ui/InlineSelect';
 import { RELEASE_INFO } from '../../../data/releaseInfo';
 import { 默认ComfyUI工作流JSON, 默认NSFWComfyUI工作流JSON } from '../../../data/defaultComfyWorkflow';
 import { openExternalUrl } from '../../../services/appUpdate';
-import { 规范化接口设置, 获取文生图接口配置, 获取NSFW文生图接口配置, 接口配置是否可用, type 当前可用接口结构 } from '../../../utils/apiConfig';
+import { 规范化接口设置, 获取文生图接口配置, 获取NSFW文生图接口配置, 接口配置是否可用, 构建OpenAI兼容模型列表候选地址, type 当前可用接口结构 } from '../../../utils/apiConfig';
 import { 自动场景横屏尺寸选项, 自动场景竖屏尺寸选项 } from '../../../utils/imageSizeOptions';
 import {
     buildDiscoveredBackendLabel,
@@ -1427,13 +1427,7 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                     // 继续按通用模型列表探测。
                 }
             }
-            const base = normalizedModelBase.replace(/\/+$/, '');
-            const normalized = base.replace(/\/v1$/i, '');
-            const candidateUrls = Array.from(new Set([
-                `${normalized}/v1/models`,
-                `${normalized}/models`,
-                `${base}/models`
-            ]));
+            const candidateUrls = 构建OpenAI兼容模型列表候选地址(normalizedModelBase);
             for (const url of candidateUrls) {
                 const res = await fetch(url, {
                     headers: targetNeedsAuth ? { Authorization: `Bearer ${resolvedApiKey}` } : undefined

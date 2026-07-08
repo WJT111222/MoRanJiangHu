@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { 接口设置结构, 单接口配置结构, 功能模型占位配置结构 } from '../../../types';
 import GameButton from '../../ui/GameButton';
 import InlineSelect from '../../ui/InlineSelect';
+import { 构建OpenAI兼容模型列表候选地址 } from '../../../utils/apiConfig';
 
 type PlaceholderKey = keyof 功能模型占位配置结构;
 
@@ -71,13 +72,7 @@ const StageApiModelSelector: React.FC<Props> = ({
         setLoadingModels(true);
         setMessage('');
         try {
-            const base = resolvedBaseUrl.replace(/\/+$/, '');
-            const normalized = base.replace(/\/v1$/i, '');
-            const candidateUrls = Array.from(new Set([
-                `${normalized}/v1/models`,
-                `${normalized}/models`,
-                `${base}/models`
-            ]));
+            const candidateUrls = 构建OpenAI兼容模型列表候选地址(resolvedBaseUrl);
             for (const url of candidateUrls) {
                 const res = await fetch(url, { headers: { Authorization: `Bearer ${resolvedApiKey}` } });
                 if (!res.ok) continue;

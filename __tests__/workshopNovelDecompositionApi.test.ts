@@ -392,14 +392,14 @@ describe('workshop novel decomposition API', () => {
         expect(putKeys.some((key) => key.includes('/packages/'))).toBe(false);
     });
 
-    it('falls back to uploading large workshop ZIPs as OneDrive parts when the whole ZIP is rejected', async () => {
+    it('uploads large workshop ZIPs directly as OneDrive parts without first trying a whole ZIP upload', async () => {
         const workshopBucket = createWorkshopBucket();
         const authBucket = await createAuthBucket('tester', 'secret123');
         const uploadedPartSizes: number[] = [];
         const fetchMock = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
             const filePath = new Headers(init?.headers).get('File-Path') || '';
             if (filePath.endsWith('.zip')) {
-                return new Response(JSON.stringify({ code: 403, message: 'HTTP 403' }), { status: 403 });
+                throw new Error(`large ZIP should not use whole OpenList upload: ${filePath}`);
             }
             if (filePath.includes('/parts/')) {
                 const body = init?.body as any;
@@ -446,8 +446,73 @@ describe('workshop novel decomposition API', () => {
         expect(payload.entry.oneDriveParts.length).toBeGreaterThan(1);
         expect(uploadedPartSizes.reduce((sum, size) => sum + size, 0)).toBe(largeZip.byteLength);
         expect(uploadedPartSizes.every((size) => size > 0 && size <= 2 * 1024 * 1024)).toBe(true);
+        expect(fetchMock.mock.calls.every(([, init]) => {
+            const filePath = new Headers(init?.headers).get('File-Path') || '';
+            return !filePath.endsWith('.zip');
+        })).toBe(true);
         expect(putKeys).toContain(indexKey);
         expect(putKeys.some((key) => key.includes('/packages/'))).toBe(false);
+    });
+
+    it('falls back to the public OpenList upload endpoint when the direct origin rejects a part', async () => {
+        const workshopBucket = createWorkshopBucket();
+        const authBucket = await createAuthBucket('tester', 'secret123');
+        const fetchMock = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+            const textUrl = String(url);
+            const filePath = new Headers(init?.headers).get('File-Path') || '';
+            if (filePath.endsWith('.zip')) {
+                throw new Error(`large ZIP should not use whole OpenList upload: ${filePath}`);
+            }
+            if (!filePath.includes('/parts/')) {
+                throw new Error(`unexpected OpenList upload path: ${filePath}`);
+            }
+            if (textUrl.startsWith('http://159.138.7.126:5244/')) {
+                return new Response(JSON.stringify({ code: 403, message: 'HTTP 403' }), { status: 403 });
+            }
+            if (textUrl.startsWith('https://openlist.bacon.de5.net/')) {
+                return new Response(JSON.stringify({ code: 200, message: 'success' }), { status: 200 });
+            }
+            throw new Error(`unexpected OpenList upload URL: ${textUrl}`);
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        const largeZip = new Uint8Array(5 * 1024 * 1024);
+        largeZip[0] = 0x50;
+        largeZip[1] = 0x4b;
+
+        const formData = new FormData();
+        formData.append('metadata', JSON.stringify({
+            title: '大包上传兜底模块',
+            workName: '遮天',
+            fileName: 'large-fallback-demo.zip',
+            chapterCount: 1,
+            segmentCount: 1,
+            sourceType: 'txt',
+            auth: { username: 'tester', password: 'secret123' }
+        }));
+        formData.append('zip', new Blob([largeZip], { type: 'application/zip' }), 'large-fallback-demo.zip');
+
+        const response = await onRequestPost({
+            request: new Request('https://msjh.bacon159.pp.ua/api/workshop/novel-decomposition', {
+                method: 'POST',
+                body: formData
+            }),
+            env: {
+                WORKSHOP_R2: workshopBucket,
+                CLOUD_PLAY_R2: authBucket,
+                MORAN_OPENLIST_AUTH_TOKEN: 'test-token',
+                MORAN_OPENLIST_API_BASE_URL: 'http://159.138.7.126:5244/',
+                MORAN_OPENLIST_BASE_URL: 'https://openlist.bacon.de5.net/'
+            }
+        });
+        const payload: any = await response.json();
+        const calledUrls = fetchMock.mock.calls.map((call) => String(call[0]));
+
+        expect(response.status).toBe(200);
+        expect(payload.ok).toBe(true);
+        expect(payload.entry.oneDriveParts.length).toBeGreaterThan(1);
+        expect(calledUrls).toContain('http://159.138.7.126:5244/api/fs/put');
+        expect(calledUrls).toContain('https://openlist.bacon.de5.net/api/fs/put');
+        expect(workshopBucket.put.mock.calls.map((call) => String(call[0]))).toContain(indexKey);
     });
 
     it('downloads and merges OneDrive part uploads when the full ZIP was too large to upload', async () => {

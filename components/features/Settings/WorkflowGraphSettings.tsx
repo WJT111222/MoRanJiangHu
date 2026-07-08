@@ -12,6 +12,7 @@ import {
     获取记忆总结接口配置,
     获取记忆精炼接口配置,
     获取小说拆分接口配置,
+    构建OpenAI兼容模型列表候选地址,
     接口配置是否可用,
     规范化接口设置
 } from '../../../utils/apiConfig';
@@ -556,13 +557,7 @@ const WorkflowGraphSettings: React.FC<{
         setLoadingStageId(stage.id);
         setStageMessage(stage.id, '');
         try {
-            const base = api.baseUrl.replace(/\/+$/, '');
-            const normalizedBase = base.replace(/\/v1$/i, '');
-            const candidateUrls = Array.from(new Set([
-                `${normalizedBase}/v1/models`,
-                `${normalizedBase}/models`,
-                `${base}/models`
-            ]));
+            const candidateUrls = 构建OpenAI兼容模型列表候选地址(api.baseUrl);
             for (const url of candidateUrls) {
                 const res = await fetch(url, { headers: { Authorization: `Bearer ${api.apiKey}` } });
                 if (!res.ok) continue;

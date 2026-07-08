@@ -25,6 +25,13 @@ import {
     recordImageBackendConnectionFailure,
     sortDiscoveredImageBackendsByPreference
 } from '../services/ai/imageBackendRegistry';
+import {
+    OpenAI兼容地址已包含版本路径,
+    去除OpenAI兼容聊天端点,
+    构建OpenAI兼容版本路径父地址,
+    清理OpenAI兼容地址末尾斜杠,
+    读取OpenAI兼容地址源站
+} from './openAICompatibleEndpoint';
 
 export const 供应商标签: Record<接口供应商类型, string> = {
     gemini: 'Gemini',
@@ -51,6 +58,44 @@ export const 请求协议覆盖标签: Record<请求协议覆盖类型, string> 
     claude: 'Claude 协议',
     deepseek: 'DeepSeek 协议',
     glm: '智谱 GLM 协议'
+};
+
+export const 构建OpenAI兼容模型列表候选地址 = (baseUrlRaw: unknown): string[] => {
+    const base = 清理OpenAI兼容地址末尾斜杠(baseUrlRaw);
+    if (!base) return [];
+
+    const pushUnique = (items: string[], value: string) => {
+        if (value && !items.includes(value)) items.push(value);
+    };
+    const candidates: string[] = [];
+    const lowerBase = base.toLowerCase();
+
+    if (lowerBase.includes('qianfan.baidubce.com')) {
+        const endpointBase = base.replace(/\/chat\/completions$/i, '');
+        if (/\/v2(?:\/coding)?$/i.test(endpointBase)) {
+            pushUnique(candidates, `${endpointBase}/models`);
+            pushUnique(candidates, `${endpointBase.replace(/\/v2(?:\/coding)?$/i, '')}/models`);
+            return candidates;
+        }
+        pushUnique(candidates, `${endpointBase}/models`);
+        return candidates;
+    }
+
+    const endpointBase = 去除OpenAI兼容聊天端点(base);
+    if (OpenAI兼容地址已包含版本路径(endpointBase)) {
+        pushUnique(candidates, `${endpointBase}/models`);
+        const parentBase = 构建OpenAI兼容版本路径父地址(endpointBase);
+        if (parentBase && parentBase !== endpointBase) pushUnique(candidates, `${parentBase}/models`);
+        const origin = 读取OpenAI兼容地址源站(endpointBase);
+        if (origin) pushUnique(candidates, `${origin}/models`);
+        return candidates;
+    }
+
+    const normalized = endpointBase.replace(/\/v1$/i, '');
+    pushUnique(candidates, `${normalized}/v1/models`);
+    pushUnique(candidates, `${normalized}/models`);
+    pushUnique(candidates, `${endpointBase}/models`);
+    return candidates;
 };
 
 const GPT_IMAGE_2_通用正面提示词 = 'best quality, masterpiece, very aesthetic, amazing quality, highres, absurdres, ultra detailed, 8k, premium quality key visual, cinematic rendering, high-end character key art, polished digital painting, luxury visual quality, delicate skin shading, natural luminous skin, realistic material response, silk gloss, metal highlights, glass-like reflections, jewel-like sparkle, soft glow, dramatic rim lighting, cinematic lighting, volumetric light, atmospheric depth, shallow depth of field, rich color grading, elegant composition, clean composition, immersive atmosphere, refined details, smooth polished rendering, cover art quality, ultra high definition rendering, rich detail, clear subject focus';

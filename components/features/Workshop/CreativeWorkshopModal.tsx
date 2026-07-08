@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { 从模式世界书提取提示词, 创意工坊模块分区, type 创意工坊模块条目, type 创意工坊模块类型, type 创意工坊世界细节生成配置 } from '../../../data/creativeWorkshopModules';
+import { 从模式世界书提取提示词, 创意工坊模块分区, 获取创意工坊模块来源标签, type 创意工坊模块条目, type 创意工坊模块类型, type 创意工坊世界细节生成配置 } from '../../../data/creativeWorkshopModules';
 import type { 接口设置结构, ModeRuntimeProfile, 世界书结构 } from '../../../types';
 import type { CurrencySystem, 题材模式类型 } from '../../../models/system';
 import { 题材模式配置表, 题材模式顺序 } from '../../../utils/topicModeProfiles';
@@ -1582,7 +1582,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                             <div className="mt-1 text-sm text-wuxia-gold/80">{entry.subtitle}</div>
                             <p className="mt-3 max-w-4xl text-sm leading-6 text-gray-300">{entry.description}</p>
                         </div>
-                        <div className="shrink-0 rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-xs text-gray-300">{entry.source === 'cloud' ? '社区贡献' : entry.source === 'local' ? '本地导入' : '官方预设'}</div>
+                        <div className="shrink-0 rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-xs text-gray-300">{获取创意工坊模块来源标签(entry)}</div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                         {entry.tags.map((tag) => <span key={tag} className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-gray-300">{tag}</span>)}
@@ -2308,7 +2308,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                                 </select>
                                             )}
                                             <div className="mt-1 text-xs text-wuxia-gold/80">{entry.subtitle}</div>
-                                            <div className="mt-1 text-[11px] text-gray-500">{entry.source === 'cloud' ? '社区贡献' : entry.source === 'local' ? '本地导入' : '官方预设'} · {entry.contributor || '匿名'}{entry.versionNote ? ` · ${entry.versionNote}` : ''}</div>
+                                            <div className="mt-1 text-[11px] text-gray-500">{获取创意工坊模块来源标签(entry)} · {entry.contributor || '匿名'}{entry.versionNote ? ` · ${entry.versionNote}` : ''}</div>
                                         </div>
                                         <div className="shrink-0 border border-white/15 px-2 py-0.5 text-[10px] text-gray-300">可注入</div>
                                     </div>

@@ -126,6 +126,8 @@ const getOpenListSigningApiBases = (env: any): string[] => {
     return Array.from(new Set(candidates.filter(Boolean)));
 };
 
+const getOpenListUploadApiBases = (env: any): string[] => getOpenListSigningApiBases(env);
+
 const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}, timeoutMs: number): Promise<Response> => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -315,31 +317,36 @@ const putBytesToOneDrive = async (
 ): Promise<OneDrivePutResult> => {
     const token = getOpenListToken(env);
     if (!token) return { ok: false, error: '缺少 MORAN_OPENLIST_AUTH_TOKEN' };
-    const apiBase = getOpenListApiBase(env);
-    try {
-        const response = await fetch(`${apiBase}/api/fs/put`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': token,
-                'Content-Type': contentType,
-                'File-Path': oneDrivePath
-            },
-            body: bytes
-        });
-        const text = await response.text().catch(() => '');
-        let payload: any = null;
+    const errors: string[] = [];
+    for (const apiBase of getOpenListUploadApiBases(env)) {
         try {
-            payload = text ? JSON.parse(text) : null;
-        } catch {
-            return { ok: false, error: `OpenList 上传返回非 JSON：HTTP ${response.status}，${text.slice(0, 240) || '空响应'}` };
+            const response = await fetch(`${apiBase}/api/fs/put`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': token,
+                    'Content-Type': contentType,
+                    'File-Path': oneDrivePath
+                },
+                body: bytes
+            });
+            const text = await response.text().catch(() => '');
+            let payload: any = null;
+            try {
+                payload = text ? JSON.parse(text) : null;
+            } catch {
+                errors.push(`${apiBase}：OpenList 上传返回非 JSON：HTTP ${response.status}，${text.slice(0, 240) || '空响应'}`);
+                continue;
+            }
+            if (!response.ok || payload?.code !== 200) {
+                errors.push(`${apiBase}：${describeOpenListUploadFailure(response, text, payload)}`);
+                continue;
+            }
+            return { ok: true, path: oneDrivePath };
+        } catch (error: any) {
+            errors.push(`${apiBase}：OpenList 上传请求异常：${error?.message || error || '未知错误'}`);
         }
-        if (!response.ok || payload?.code !== 200) {
-            return { ok: false, error: describeOpenListUploadFailure(response, text, payload) };
-        }
-        return { ok: true, path: oneDrivePath };
-    } catch (error: any) {
-        return { ok: false, error: `OpenList 上传请求异常：${error?.message || error || '未知错误'}` };
     }
+    return { ok: false, error: errors.join('；') || 'OpenList 上传失败：没有可用上传入口' };
 };
 
 const putToOneDrive = async (env: any, oneDrivePath: string, zipBytes: Uint8Array): Promise<OneDrivePutResult> => (
@@ -931,18 +938,17 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
 
         // Upload ZIP: OneDrive primary when configured; D1 is only the fallback.
         if (useOneDrive) {
-            const odResult = await putToOneDrive(env, odPath, zipBytes);
-            if (!odResult.ok) {
-                const uploadError = odResult.error ? `原因：${odResult.error}` : '原因：未知错误';
-                if (zipBytes.byteLength > MAX_D1_ZIP_FALLBACK_BYTES) {
-                    const partResult = await putToOneDriveParts(env, odPath, zipBytes);
-                    if (!partResult.ok || !partResult.parts?.length) {
-                        const partError = partResult.error ? `分片原因：${partResult.error}` : '分片原因：未知错误';
-                        throw new Error(`OneDrive 上传失败，当前 ZIP 较大，整包上传失败后分片上传也失败，已停止发布以避免生成不可下载的创意工坊模块。${uploadError}；${partError}`);
-                    }
-                    entry.oneDrivePath = undefined;
-                    entry.oneDriveParts = partResult.parts;
-                } else {
+            if (zipBytes.byteLength > MAX_D1_ZIP_FALLBACK_BYTES) {
+                const partResult = await putToOneDriveParts(env, odPath, zipBytes);
+                if (!partResult.ok || !partResult.parts?.length) {
+                    const partError = partResult.error ? `分片原因：${partResult.error}` : '分片原因：未知错误';
+                    throw new Error(`OneDrive 上传失败，当前 ZIP 较大，已停止发布以避免生成不可下载的创意工坊模块。${partError}`);
+                }
+                entry.oneDrivePath = undefined;
+                entry.oneDriveParts = partResult.parts;
+            } else {
+                const odResult = await putToOneDrive(env, odPath, zipBytes);
+                if (!odResult.ok) {
                     // OneDrive upload failed — small ZIPs can still use D1 fallback.
                     entry.oneDrivePath = undefined;
                     await bucket.put(keys.zipKey, zipBytesToJsonArray(zipBytes), {

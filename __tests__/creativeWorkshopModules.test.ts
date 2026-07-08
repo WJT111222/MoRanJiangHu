@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { 创意工坊模块分区, 创意工坊模块列表 } from '../data/creativeWorkshopModules';
+import { 创意工坊模块分区, 创意工坊模块列表, 获取创意工坊模块来源标签 } from '../data/creativeWorkshopModules';
 import { 标准化开局预设方案, 构建预设表单恢复结果 } from '../utils/customNewGamePresets';
 import { 题材模式顺序 } from '../utils/topicModeProfiles';
 import { 获取题材预设背景, 获取题材预设天赋 } from '../data/presets';
@@ -20,8 +20,10 @@ describe('creativeWorkshopModules', () => {
         expect(tavernEntries.some((entry) => /0503/i.test(entry.title) || /0503/i.test(entry.id))).toBe(false);
         expect(izumi0623).toBeTruthy();
         expect(izumi0623?.source).toBe('builtin');
+        expect(izumi0623?.subtitle).toBe('玩家贡献 · SillyTavern 酒馆预设');
         expect(izumi0623?.contributor).toBe('匿名玩家');
         expect(izumi0623?.anonymous).toBe(true);
+        expect(获取创意工坊模块来源标签(izumi0623!)).toBe('社区贡献');
         expect(izumi0623?.payload?.presetPath).toBe('/tavern-presets/izumi-0623.json');
         expect(izumi0623?.tags).toEqual(expect.arrayContaining(['酒馆预设', 'SillyTavern']));
     });

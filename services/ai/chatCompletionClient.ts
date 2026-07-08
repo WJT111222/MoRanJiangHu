@@ -1,6 +1,7 @@
 import { registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 import type { 当前可用接口结构 } from '../../utils/apiConfig';
 import { isNativeCapacitorEnvironment } from '../../utils/nativeRuntime';
+import { OpenAI兼容地址已包含版本路径, 去除OpenAI兼容聊天端点 } from '../../utils/openAICompatibleEndpoint';
 import { 小米MiMo稳定输出预设 } from '../../prompts/providers/xiaomiMiMoStablePreset';
 import { GLM稳定输出预设 } from '../../prompts/providers/glmStablePreset';
 
@@ -1513,9 +1514,9 @@ const 构建OpenAI端点 = (
     if (!base) return '';
 
     const lowerBase = base.toLowerCase();
-    const looksLikeQianfanCoding = lowerBase.includes('qianfan.baidubce.com')
-        && /\/v2\/coding(?:\/chat\/completions)?$/i.test(base);
-    if (looksLikeQianfanCoding) {
+    const looksLikeQianfan = lowerBase.includes('qianfan.baidubce.com')
+        && /\/v2(?:\/coding)?(?:\/chat\/completions)?$/i.test(base);
+    if (looksLikeQianfan) {
         return /\/chat\/completions$/i.test(base) ? base : `${base}/chat/completions`;
     }
 
@@ -1549,6 +1550,10 @@ const 构建OpenAI端点 = (
     }
 
     if (/\/v1\/chat\/completions$/i.test(base) || /\/chat\/completions$/i.test(base)) return base;
+    const versionedEndpointBase = 去除OpenAI兼容聊天端点(base);
+    if (OpenAI兼容地址已包含版本路径(versionedEndpointBase)) {
+        return `${versionedEndpointBase}/chat/completions`;
+    }
     if (/\/v1$/i.test(base)) return `${base}/chat/completions`;
     return `${base}/v1/chat/completions`;
 };

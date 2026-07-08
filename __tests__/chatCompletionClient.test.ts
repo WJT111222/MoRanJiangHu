@@ -71,6 +71,52 @@ describe('chatCompletionClient Claude compatible message normalization', () => {
         expect(String(fetchMock.mock.calls[0][0])).toBe('https://qianfan.baidubce.com/v2/coding/chat/completions');
     });
 
+    it('uses the Qianfan v2 chat completions path without inserting /v1', async () => {
+        const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+            choices: [{ message: { content: 'pong' } }]
+        }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+        }));
+
+        const result = await 请求模型文本({
+            ...baseConfig,
+            baseUrl: 'https://qianfan.baidubce.com/v2/',
+            model: 'deepseek-v3.2'
+        }, [{ role: 'user', content: 'ping' }], {
+            signal: undefined,
+            streamOptions: { stream: false },
+            errorDetailLimit: 500
+        });
+
+        expect(result).toBe('pong');
+        expect(fetchMock).toHaveBeenCalled();
+        expect(String(fetchMock.mock.calls[0][0])).toBe('https://qianfan.baidubce.com/v2/chat/completions');
+    });
+
+    it('appends chat completions to custom OpenAI-compatible versioned paths without inserting /v1', async () => {
+        const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+            choices: [{ message: { content: 'pong' } }]
+        }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+        }));
+
+        const result = await 请求模型文本({
+            ...baseConfig,
+            baseUrl: 'https://example.com/api/paas/v4',
+            model: 'custom-chat-model'
+        }, [{ role: 'user', content: 'ping' }], {
+            signal: undefined,
+            streamOptions: { stream: false },
+            errorDetailLimit: 500
+        });
+
+        expect(result).toBe('pong');
+        expect(fetchMock).toHaveBeenCalled();
+        expect(String(fetchMock.mock.calls[0][0])).toBe('https://example.com/api/paas/v4/chat/completions');
+    });
+
     it('strips Chinese display suffixes from OpenAI-compatible model ids before sending requests', async () => {
         expect(规范化请求模型名称('gemini-3.1-pro-high-search-真流-[星星公益站-CLI渠道]'))
             .toBe('gemini-3.1-pro-high-search');
