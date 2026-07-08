@@ -170,4 +170,60 @@ describe('creativeWorkshop service compatibility', () => {
         expect(listed?.source).toBe('local');
         expect(listed?.contributor).toBe('测试玩家');
     });
+
+    it('本地静态站接口被首页兜底时会从主站拉取完整社区酒馆预设', async () => {
+        vi.stubGlobal('window', {
+            location: {
+                protocol: 'http:',
+                origin: 'http://127.0.0.1:4173'
+            }
+        });
+        const fetchMock = vi.fn(async (url: string) => {
+            if (url === 'http://127.0.0.1:4173/api/workshop/modules') {
+                return new Response('<!doctype html><title>墨染江湖</title>', {
+                    status: 200,
+                    headers: { 'Content-Type': 'text/html;charset=utf-8' }
+                });
+            }
+            if (url === 'https://msjh.bacon159.pp.ua/api/workshop/modules') {
+                return new Response(JSON.stringify({
+                    ok: true,
+                    entries: [{
+                        id: 'CWM-TAVERN_PRESET-20260708190037-0C4P0M6S',
+                        type: 'tavern_preset',
+                        title: '双人成行v10.0_青云上_MoRan墨染江湖净化完整版',
+                        subtitle: '社区酒馆预设',
+                        description: '云端社区贡献的酒馆预设。',
+                        tags: ['酒馆预设'],
+                        payload: {
+                            tavernPreset: {
+                                prompts: [{
+                                    identifier: 'main',
+                                    role: 'system',
+                                    content: '社区预设提示词'
+                                }],
+                                prompt_order: [{
+                                    character_id: 100001,
+                                    order: [{ identifier: 'main', enabled: true }]
+                                }]
+                            }
+                        },
+                        injectionPreview: ['提示词：1 条']
+                    }]
+                }), { headers: { 'Content-Type': 'application/json' } });
+            }
+            return new Response(JSON.stringify({ ok: true, entries: [] }));
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const modules = await 列出创意工坊模块();
+
+        expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:4173/api/workshop/modules', { method: 'GET', headers: { Accept: 'application/json' } });
+        expect(fetchMock).toHaveBeenCalledWith('https://msjh.bacon159.pp.ua/api/workshop/modules', { method: 'GET', headers: { Accept: 'application/json' } });
+        const cloudTavernPreset = modules.find((entry) => entry.id === 'CWM-TAVERN_PRESET-20260708190037-0C4P0M6S');
+        expect(cloudTavernPreset?.title).toBe('双人成行v10.0_青云上_MoRan墨染江湖净化完整版');
+        expect(cloudTavernPreset?.type).toBe('tavern_preset');
+        expect(cloudTavernPreset?.source).toBe('cloud');
+        expect(cloudTavernPreset?.tavernPreset).toBeTruthy();
+    });
 });

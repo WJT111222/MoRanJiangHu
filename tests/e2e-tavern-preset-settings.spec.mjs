@@ -93,6 +93,16 @@ test('tavern preset dropdown keeps workshop presets and protects deletion flows'
   await expect(select.locator('option[value="workshop:tavern-preset-izumi-0623"]')).toHaveCount(1);
   await expect(select.locator('option[value="local-upload-e2e"]')).toHaveCount(1);
 
+  await expect
+    .poll(async () => await select.locator('option').evaluateAll((options) => options.map((option) => option.textContent || '')), { timeout: 20000 })
+    .toContainEqual(expect.stringContaining('双人成行v10.0_青云上_MoRan墨染江湖净化完整版'));
+
+  const doublePresetOptionValue = await select.locator('option').evaluateAll((options) => {
+    const option = options.find((item) => (item.textContent || '').includes('双人成行v10.0_青云上_MoRan墨染江湖净化完整版'));
+    return option?.value || '';
+  });
+  expect(doublePresetOptionValue).toMatch(/^workshop:/);
+
   await expect(page.getByText('这里只切换已加入列表的预设').filter({ visible: true }).first()).toBeVisible();
 
   await expect.poll(async () => {

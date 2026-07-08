@@ -51,6 +51,24 @@ const 构建创意工坊API地址 = (search = ''): string => {
     return `${base}${suffix}`;
 };
 
+const 规范化基础地址 = (value: unknown): string => (
+    typeof value === 'string' ? value.trim().replace(/\/+$/, '') : ''
+);
+
+const 构建创意工坊列表API候选地址 = (): string[] => {
+    const currentBase = 规范化基础地址(获取创意工坊API基础地址());
+    const releaseBase = 规范化基础地址(RELEASE_INFO.websiteUrl) || 'https://msjh.bacon159.pp.ua';
+    const seen = new Set<string>();
+    return [currentBase, releaseBase]
+        .filter(Boolean)
+        .map((base) => `${base}${API_PATH}`)
+        .filter((url) => {
+            if (seen.has(url)) return false;
+            seen.add(url);
+            return true;
+        });
+};
+
 const 读取响应JSON = async (response: Response): Promise<any> => {
     const text = await response.text();
     if (看起来像HTML页面(text)) return { ok: false, error: HTML_FALLBACK_ERROR };
@@ -384,15 +402,18 @@ export const 删除本地创意工坊模块 = (id: string): void => {
 
 export const 列出创意工坊模块 = async (): Promise<创意工坊模块条目[]> => {
     let cloudEntries: 创意工坊模块条目[] = [];
-    try {
-        const response = await fetch(构建创意工坊API地址(), { method: 'GET', headers: { Accept: 'application/json' } });
-        const payload = await 读取响应JSON(response);
-        if (response.ok && payload?.ok !== false && Array.isArray(payload?.entries)) {
-            cloudEntries = (payload.entries.map((entry: unknown) => 规范化当前模块(entry, 'cloud')).filter(Boolean) as 创意工坊模块条目[])
-                .filter((entry) => !已迁移旧版创意工坊云端模块ID集合.has(entry.id));
+    for (const url of 构建创意工坊列表API候选地址()) {
+        try {
+            const response = await fetch(url, { method: 'GET', headers: { Accept: 'application/json' } });
+            const payload = await 读取响应JSON(response);
+            if (response.ok && payload?.ok !== false && Array.isArray(payload?.entries)) {
+                cloudEntries = (payload.entries.map((entry: unknown) => 规范化当前模块(entry, 'cloud')).filter(Boolean) as 创意工坊模块条目[])
+                    .filter((entry) => !已迁移旧版创意工坊云端模块ID集合.has(entry.id));
+                break;
+            }
+        } catch {
+            cloudEntries = [];
         }
-    } catch {
-        cloudEntries = [];
     }
     const seen = new Set<string>();
     return filterCreativeWorkshopDuplicates(整合创意工坊模式包([...创意工坊模块列表, ...读取本地创意工坊模块(), ...cloudEntries])

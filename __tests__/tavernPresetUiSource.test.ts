@@ -68,6 +68,12 @@ describe('酒馆预设 UI 源码约束', () => {
         expect(source).toContain('创意工坊预设不可删除');
     });
 
+    it('设置页从完整创意工坊服务同步社区与本地酒馆预设', () => {
+        const source = readSource('components/features/Settings/TavernPresetSettings.tsx');
+
+        expect(source).toContain('列出创意工坊模块');
+    });
+
     it('创意工坊酒馆预设入口使用预览预设文案', () => {
         const source = readSource('components/features/Workshop/CreativeWorkshopModal.tsx');
 

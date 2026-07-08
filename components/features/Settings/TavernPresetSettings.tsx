@@ -5,7 +5,8 @@ import GameButton from '../../ui/GameButton';
 import { parseJsonWithRepair } from '../../../utils/jsonRepair';
 import { 酒馆提示词后处理选项 } from '../../../utils/gameSettings';
 import { 规范化酒馆预设, 获取酒馆预设角色ID列表, 获取酒馆预设顺序 } from '../../../utils/tavernPreset';
-import { 创意工坊模块列表 } from '../../../data/creativeWorkshopModules';
+import { 创意工坊模块列表, type 创意工坊模块条目 } from '../../../data/creativeWorkshopModules';
+import { 列出创意工坊模块 } from '../../../services/creativeWorkshop';
 import { 构建酒馆预设选择列表, 酒馆预设条目可删除 } from '../../../utils/tavernPresetSelection';
 
 interface Props {
@@ -35,6 +36,7 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
     const [expandedItemKey, setExpandedItemKey] = useState<string | null>(null);
     const [message, setMessage] = useState('');
     const [dirty, setDirty] = useState(false);
+    const [workshopModules, setWorkshopModules] = useState<创意工坊模块条目[]>(创意工坊模块列表);
     const [workshopPresetCache, setWorkshopPresetCache] = useState<Record<string, 酒馆预设结构 | null | undefined>>({});
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -47,9 +49,22 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
     const localPresetList = useMemo(() => (
         Array.isArray(form.酒馆预设列表) ? form.酒馆预设列表 : []
     ), [form.酒馆预设列表]);
+
+    useEffect(() => {
+        let cancelled = false;
+        列出创意工坊模块()
+            .then((modules) => {
+                if (!cancelled) setWorkshopModules(modules.length > 0 ? modules : 创意工坊模块列表);
+            })
+            .catch(() => {
+                if (!cancelled) setWorkshopModules(创意工坊模块列表);
+            });
+        return () => { cancelled = true; };
+    }, []);
+
     const presetList = useMemo(() => (
-        构建酒馆预设选择列表(localPresetList, 创意工坊模块列表, workshopPresetCache)
-    ), [localPresetList, workshopPresetCache]);
+        构建酒馆预设选择列表(localPresetList, workshopModules, workshopPresetCache)
+    ), [localPresetList, workshopModules, workshopPresetCache]);
     const selectedPresetId = useMemo(() => {
         const rawId = typeof form.当前酒馆预设ID === 'string' ? form.当前酒馆预设ID.trim() : '';
         if (rawId && presetList.some((item) => item.id === rawId)) return rawId;
@@ -387,7 +402,7 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
         }
         const currentIndex = localPresetList.findIndex((item) => item.id === selectedEntry.id);
         const nextList = localPresetList.filter((item) => item.id !== selectedEntry.id);
-        const fallbackCandidates = 构建酒馆预设选择列表(nextList, 创意工坊模块列表, workshopPresetCache)
+        const fallbackCandidates = 构建酒馆预设选择列表(nextList, workshopModules, workshopPresetCache)
             .filter((item) => item.id !== selectedEntry.id);
         if (fallbackCandidates.length === 0) {
             const nextConfig: 游戏设置结构 = {
