@@ -3,6 +3,7 @@ import { 游戏设置结构 } from '../../../types';
 import GameButton from '../../ui/GameButton';
 import ToggleSwitch from '../../ui/ToggleSwitch';
 import { normalizeCanonicalGameTime } from '../../../hooks/useGame/timeUtils';
+import { 规范化游玩请求超时设置, 游玩请求超时上限秒, 游玩请求超时下限秒 } from '../../../utils/gameRequestTimeouts';
 
 interface Props {
     settings: 游戏设置结构;
@@ -106,10 +107,16 @@ const GameSettings: React.FC<Props> = ({ settings, onSave, gameInitialTime, curr
     };
     const 当前为DeepSeek模式 = 当前主剧情消息模式 === 'DeepSeek标准' || 当前主剧情消息模式 === 'DeepSeek锁格式';
     const 当前为GLM模式 = 当前主剧情消息模式 === 'GLM标准' || 当前主剧情消息模式 === 'GLM锁格式';
+    const 当前游玩请求超时设置 = 规范化游玩请求超时设置(form.游玩请求超时设置);
     const 解析百分比输入 = (value: string, fallback: number): number => {
         const parsed = Number(value);
         if (!Number.isFinite(parsed)) return fallback;
         return Math.max(0, Math.min(100, parsed));
+    };
+    const 解析超时秒数输入 = (value: string, fallback: number): number => {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) return fallback;
+        return Math.max(游玩请求超时下限秒, Math.min(游玩请求超时上限秒, Math.floor(parsed)));
     };
     useEffect(() => {
         setForm(settings);
@@ -286,6 +293,48 @@ const GameSettings: React.FC<Props> = ({ settings, onSave, gameInitialTime, curr
                     })}
                     <div className="text-xs text-gray-500">{主剧情消息模式选项.find(option => option.value === 当前主剧情消息模式)?.description}</div>
                 </div>
+            </div>
+
+            <div className="space-y-3 rounded-md border border-wuxia-gold/20 bg-black/30 p-4">
+                <div>
+                    <div className="text-sm text-wuxia-cyan font-bold">AI 请求超时</div>
+                    <div className="text-xs text-gray-400 mt-1">控制游玩、开局和后台剧情阶段等待模型响应的时间。</div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                    <label className="block space-y-1">
+                        <span className="text-xs text-gray-300">等待首次响应 (秒)</span>
+                        <input
+                            type="number"
+                            min={游玩请求超时下限秒}
+                            max={游玩请求超时上限秒}
+                            value={当前游玩请求超时设置.首次响应超时秒}
+                            onChange={(event) => 实时应用更新({
+                                游玩请求超时设置: 规范化游玩请求超时设置({
+                                    ...当前游玩请求超时设置,
+                                    首次响应超时秒: 解析超时秒数输入(event.target.value, 当前游玩请求超时设置.首次响应超时秒)
+                                })
+                            })}
+                            className="w-full bg-black/50 border border-wuxia-gold/25 p-2 text-white outline-none rounded-md"
+                        />
+                    </label>
+                    <label className="block space-y-1">
+                        <span className="text-xs text-gray-300">流式空闲超时 (秒)</span>
+                        <input
+                            type="number"
+                            min={游玩请求超时下限秒}
+                            max={游玩请求超时上限秒}
+                            value={当前游玩请求超时设置.流式空闲超时秒}
+                            onChange={(event) => 实时应用更新({
+                                游玩请求超时设置: 规范化游玩请求超时设置({
+                                    ...当前游玩请求超时设置,
+                                    流式空闲超时秒: 解析超时秒数输入(event.target.value, 当前游玩请求超时设置.流式空闲超时秒)
+                                })
+                            })}
+                            className="w-full bg-black/50 border border-wuxia-gold/25 p-2 text-white outline-none rounded-md"
+                        />
+                    </label>
+                </div>
+                <div className="text-xs text-gray-500">可设置范围 {游玩请求超时下限秒}-{游玩请求超时上限秒} 秒。</div>
             </div>
 
             {当前为DeepSeek模式 && (

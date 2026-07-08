@@ -748,6 +748,7 @@ export interface OpeningConfig {
     初始关系模板: 初始关系模板类型;
     关系侧重: 关系侧重类型[];
     开局切入偏好: 开局切入偏好类型;
+    自定义开局时间?: string;
     开局生成门派: boolean;
     开局生成同门: boolean;
     允许生成性别: 开局生成性别类型[];
@@ -1140,6 +1141,11 @@ export interface 叙事平静值配置结构 {
     阈值文本: string[];          // 从最低触发阈值到上限等分若干段，每段一个文本（默认 6 段）
 }
 
+export interface 游玩请求超时设置结构 {
+    首次响应超时秒: number;
+    流式空闲超时秒: number;
+}
+
 export interface 游戏设置结构 {
     字数要求: number; // Minimum logs body length
     字数不足处理方式?: '重新生成' | '仅提示'; // Whether short body should trigger regeneration or only a warning
@@ -1191,6 +1197,7 @@ export interface 游戏设置结构 {
     };
     额外提示词: string; // Custom prompt injected at the end
     activeModuleExtraRules?: string; // Creative workshop module safety/usage rules, injected as system_rule
+    游玩请求超时设置?: 游玩请求超时设置结构; // Main gameplay AI request timeout, in seconds
     性别比例自动演变?: boolean; // 是否允许世界演变自动更新世界性别比例，默认false；未设置时使用题材预设
     叙事平静值配置?: 叙事平静值配置结构; // Narrative blandness value config
 }

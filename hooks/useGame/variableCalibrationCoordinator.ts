@@ -12,6 +12,7 @@ import type {
     叙事状态结构
 } from '../../types';
 import { recordDiagnosticLog, type DiagnosticLogLevel } from '../../services/diagnosticLog';
+import { 获取游玩请求超时毫秒 } from '../../utils/gameRequestTimeouts';
 
 type 回合快照结构 = {
     玩家输入: string;
@@ -200,8 +201,9 @@ export const 创建变量校准协调器 = (deps: 变量生成工作流依赖) =
                 if (流式空闲计时器) window.clearTimeout(流式空闲计时器);
             };
             const 执行变量模型带流式空闲超时 = async <T,>(task: () => Promise<T>): Promise<T> => {
-                const firstResponseTimeout = 变量首次响应超时毫秒;
-                const idleTimeout = 变量流式空闲超时毫秒;
+                const requestTimeouts = 获取游玩请求超时毫秒(deps.gameConfig?.游玩请求超时设置);
+                const firstResponseTimeout = requestTimeouts.firstResponseMs || 变量首次响应超时毫秒;
+                const idleTimeout = requestTimeouts.idleMs || 变量流式空闲超时毫秒;
                 let rejectFn: ((reason: Error) => void) | null = null;
                 const startIdleTimer = (ms: number, label: string) => {
                     重置流式空闲计时器();

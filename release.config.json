@@ -1,10 +1,10 @@
 {
-  "versionCode": 583,
-  "versionName": "1.0.583",
+  "versionCode": 584,
+  "versionName": "1.0.584",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "修复对象存储“上传全部设置”大包报 Out of Memory 的问题：设置包和关联图片资源较大时会直接分片上传，不再先构造完整内联数据包。",
-    "优化对象存储上传稳定性：较大的存档包也会优先走分片路径，减少重试后仍失败的情况。",
+    "新增 AI 请求超时设置：玩家可在游戏设定里调整正文、开局、规划、动态世界等请求的等待时间，默认保持 120 秒。",
+    "新增开局时间设置：新建存档时可自定义初始年月日时刻，并会同步写入环境时间和天气结束时间。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
@@ -448,11 +448,11 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "修复对象存储“上传全部设置”大包报 Out of Memory 的问题：设置包和关联图片资源较大时会直接分片上传，不再先构造完整内联数据包。",
-    "优化对象存储上传稳定性：较大的存档包也会优先走分片路径，减少重试后仍失败的情况。",
+    "新增 AI 请求超时设置：玩家可在游戏设定里调整正文、开局、规划、动态世界等请求的等待时间，默认保持 120 秒。",
+    "新增开局时间设置：新建存档时可自定义初始年月日时刻，并会同步写入环境时间和天气结束时间。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
-  "notes": "修复对象存储“上传全部设置”大包报 Out of Memory 的问题：设置包和关联图片资源较大时会直接分片上传，不再先构造完整内联数据包。\n优化对象存储上传稳定性：较大的存档包也会优先走分片路径，减少重试后仍失败的情况。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-  "releasePublishedAt": "2026-07-08T03:04:43+08:00"
+  "notes": "新增 AI 请求超时设置：玩家可在游戏设定里调整正文、开局、规划、动态世界等请求的等待时间，默认保持 120 秒。\n新增开局时间设置：新建存档时可自定义初始年月日时刻，并会同步写入环境时间和天气结束时间。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
+  "releasePublishedAt": "2026-07-09T04:11:13+08:00"
 }

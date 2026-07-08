@@ -52,6 +52,7 @@ import {
     构建开局变量生成审计重点
 } from '../../prompts/runtime/openingVariableGenerationInit';
 import { 规范化游戏设置 } from '../../utils/gameSettings';
+import { 获取游玩请求超时毫秒 } from '../../utils/gameRequestTimeouts';
 import { 设置键 } from '../../utils/settingsSchema';
 import {
     世界书本体槽位,
@@ -441,8 +442,8 @@ const 过滤规划补丁命令 = (commands: TavernCommand[] | undefined, targets
     })
 );
 
-const 创建开局规划超时错误 = (): Error => {
-    const error = new Error(`开局规划分析请求超时（${Math.max(1, Math.ceil(开局规划分析请求超时毫秒 / 1000))} 秒）`);
+const 创建开局规划超时错误 = (timeoutMs = 开局规划分析请求超时毫秒): Error => {
+    const error = new Error(`开局规划分析请求超时（${Math.max(1, Math.ceil(timeoutMs / 1000))} 秒）`);
     error.name = 'TimeoutError';
     return error;
 };
@@ -455,7 +456,8 @@ const 创建开场剧情流式超时错误 = (label: string, timeoutMs: number):
 
 const 执行开场剧情流式请求带空闲超时 = async <T,>(
     parentSignal: AbortSignal,
-    task: (signal: AbortSignal, markStreamActivity: () => void) => Promise<T>
+    task: (signal: AbortSignal, markStreamActivity: () => void) => Promise<T>,
+    requestTimeouts?: { firstResponseMs?: number; idleMs?: number }
 ): Promise<T> => {
     if (parentSignal.aborted) {
         throw new DOMException('Aborted', 'AbortError');
@@ -483,10 +485,10 @@ const 执行开场剧情流式请求带空闲超时 = async <T,>(
         }, timeoutMs);
     };
     const markStreamActivity = () => {
-        startTimer(开场剧情流式空闲超时毫秒, '流式输出空闲超时');
+        startTimer(requestTimeouts?.idleMs || 开场剧情流式空闲超时毫秒, '流式输出空闲超时');
     };
     parentSignal.addEventListener('abort', abortByParent, { once: true });
-    startTimer(开场剧情首次流式响应超时毫秒, '等待首次响应超时');
+    startTimer(requestTimeouts?.firstResponseMs || 开场剧情首次流式响应超时毫秒, '等待首次响应超时');
     try {
         return await Promise.race([
             task(requestController.signal, markStreamActivity),
@@ -508,13 +510,14 @@ const 执行开场剧情流式请求带空闲超时 = async <T,>(
 
 const 执行开局规划带超时 = async <T,>(
     parentSignal: AbortSignal,
-    task: (signal: AbortSignal) => Promise<T>
+    task: (signal: AbortSignal) => Promise<T>,
+    timeoutMs = 开局规划分析请求超时毫秒
 ): Promise<T> => {
     if (parentSignal.aborted) {
         throw new DOMException('Aborted', 'AbortError');
     }
     const controller = new AbortController();
-    const timeoutError = 创建开局规划超时错误();
+    const timeoutError = 创建开局规划超时错误(timeoutMs);
     let timer: ReturnType<typeof setTimeout> | null = null;
     const abortByParent = () => controller.abort(parentSignal.reason || new DOMException('Aborted', 'AbortError'));
     parentSignal.addEventListener('abort', abortByParent, { once: true });
@@ -527,7 +530,7 @@ const 执行开局规划带超时 = async <T,>(
                         controller.abort(timeoutError);
                     }
                     reject(timeoutError);
-                }, 开局规划分析请求超时毫秒);
+                }, timeoutMs);
             })
         ]);
     } catch (error) {
@@ -1158,7 +1161,8 @@ export const 执行开场剧情生成工作流 = async (
                 }
                 return 执行开场剧情流式请求带空闲超时(
                     controller.signal,
-                    (signal, markStreamActivity) => requestOpeningStory(signal, markStreamActivity)
+                    (signal, markStreamActivity) => requestOpeningStory(signal, markStreamActivity),
+                    获取游玩请求超时毫秒(openingGameConfig.游玩请求超时设置)
                 );
             }
         });
@@ -1925,6 +1929,7 @@ export const 执行开场剧情生成工作流 = async (
                     ]
                         .filter(Boolean)
                         .join('\n\n');
+                    const planningTimeouts = 获取游玩请求超时毫秒(openingGameConfig.游玩请求超时设置);
                     const planningResult = await 执行开局规划带超时(controller.signal, (signal) => textAIService.generatePlanningAnalysis({
                         playerName: (simulatedOpeningState.角色?.姓名 || deps.角色?.姓名 || '').trim() || '未命名',
                         currentStoryJson: JSON.stringify(裁剪修炼体系上下文数据({
@@ -1949,7 +1954,7 @@ export const 执行开场剧情生成工作流 = async (
                         fandomEnabled,
                         extraPrompt: planningExtraPrompt,
                         gptMode: openingGameConfig.独立APIGPT模式?.规划分析 === true
-                    }, openingPlanningApi, signal));
+                    }, openingPlanningApi, signal), planningTimeouts.firstResponseMs);
                     const planningCommands = [
                         ...过滤规划补丁命令(planningResult.commands, ['剧情', 'gameState.剧情']),
                         ...过滤规划补丁命令(planningResult.commands, activeStoryPlanTargets),

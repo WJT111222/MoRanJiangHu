@@ -1,6 +1,7 @@
 import { 游戏设置结构, 叙事平静值配置结构 } from '../types';
 import { 默认额外系统提示词, 旧版默认额外系统提示词 } from '../prompts/runtime/defaults';
 import { 获取酒馆预设顺序, 规范化酒馆预设 } from './tavernPreset';
+import { 默认游玩请求超时设置, 规范化游玩请求超时设置 } from './gameRequestTimeouts';
 
 const 最低字数要求 = 50;
 
@@ -248,6 +249,7 @@ export const 默认游戏设置: 游戏设置结构 = {
     酒馆预设名称: '',
     独立APIGPT模式: 默认独立APIGPT模式设置,
     额外提示词: 默认额外系统提示词,
+    游玩请求超时设置: 默认游玩请求超时设置,
     叙事平静值配置: {
         启用: false,
         无标签增量: 2,
@@ -412,6 +414,7 @@ export const 规范化游戏设置 = (
             fallback.独立APIGPT模式 || 默认独立APIGPT模式设置
         ),
         额外提示词: 规范化额外提示词(source.额外提示词, fallback.额外提示词),
+        游玩请求超时设置: 规范化游玩请求超时设置(source.游玩请求超时设置 ?? fallback.游玩请求超时设置),
         叙事平静值配置: 规范化叙事平静值配置(source.叙事平静值配置, fallback.叙事平静值配置)
     };
 };

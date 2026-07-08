@@ -21,6 +21,7 @@ import {
     获取创意工坊属性字段,
     获取创意工坊新开局步骤列表
 } from './workshopEngine';
+import { normalizeCanonicalGameTime } from '../hooks/useGame/timeUtils';
 
 export const 新开局步骤定义列表 = 获取创意工坊新开局步骤列表();
 export const 新开局步骤列表 = 新开局步骤定义列表.map((step) => step.label);
@@ -31,6 +32,12 @@ export const 默认属性值 = 属性字段定义列表[0]?.defaultValue ?? 3;
 export const 属性最小值 = Math.min(...属性字段定义列表.map((field) => field.min));
 export const 属性最大值 = Math.max(...属性字段定义列表.map((field) => field.max));
 export type 属性分配结构 = Record<typeof 属性键列表[number], number>;
+
+export const 默认开局时间 = '1:01:01:00:00';
+
+export const 规范化开局时间 = (value?: unknown): string => (
+    normalizeCanonicalGameTime(typeof value === 'string' ? value : '') || 默认开局时间
+);
 
 export type 难度设定结构 = {
     id: 游戏难度;
@@ -422,7 +429,8 @@ export const 默认开局配置 = (): OpeningConfig => ({
     ...创建主题默认开局配置('武侠'),
     modeRuntimeProfile: 构建官方模式运行时配置('武侠'),
     允许生成性别: [...默认开局生成性别列表],
-    生成性别锁定: false
+    生成性别锁定: false,
+    自定义开局时间: 默认开局时间
 });
 
 export const 默认初始伙伴配置 = (): 初始伙伴配置结构 => ({
@@ -807,6 +815,7 @@ export const 规范化开局配置 = (raw?: any): OpeningConfig => {
         初始关系模板,
         关系侧重: 关系侧重.length > 0 ? 关系侧重 : fallback.关系侧重,
         开局切入偏好,
+        自定义开局时间: 规范化开局时间(raw?.自定义开局时间 ?? fallback.自定义开局时间),
         开局生成门派: raw?.开局生成门派 !== false,
         开局生成同门: raw?.开局生成同门 !== false,
         允许生成性别: 规范化开局生成性别列表(

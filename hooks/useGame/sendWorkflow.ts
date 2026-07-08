@@ -4,6 +4,7 @@ import { recordDiagnosticLog } from '../../services/diagnosticLog';
 import type { GameResponse, OpeningConfig, 聊天记录结构, 记忆系统结构, 角色数据结构, 剧情系统结构, 剧情规划结构, 女主剧情规划结构, 同人剧情规划结构, 同人女主剧情规划结构, 世界书结构, 内置提示词条目结构, 叙事状态结构, 叙事平静值配置结构 } from '../../types';
 import { 获取主剧情接口配置, 获取剧情回忆接口配置, 获取文章优化接口配置, 获取变量计算接口配置, 获取世界演变接口配置, 获取规划分析接口配置, 获取地图自动更新接口配置, 接口配置是否可用, 变量校准功能已启用 as 变量生成功能已启用 } from '../../utils/apiConfig';
 import { 规范化游戏设置 } from '../../utils/gameSettings';
+import { 获取游玩请求超时毫秒 } from '../../utils/gameRequestTimeouts';
 import { 计算正文字数容错字数, 正文字数差距在容错内 } from '../../utils/bodyLengthTolerance';
 import { 构建世界书注入文本 } from '../../utils/worldbook';
 import { 规范化记忆配置, 规范化记忆系统, 构建即时记忆条目, 构建短期记忆条目, 写入四段记忆 } from './memoryUtils';
@@ -803,7 +804,8 @@ const 构建正文质量失败自动重写提示 = (reason: string): string => [
 const 执行主剧情流式请求带空闲超时 = async <T,>(
     parentSignal: AbortSignal,
     task: (signal: AbortSignal, markStreamActivity: () => void) => Promise<T>,
-    resolveCompletedDraft?: () => T | null
+    resolveCompletedDraft?: () => T | null,
+    requestTimeouts?: { firstResponseMs?: number; idleMs?: number }
 ): Promise<T> => {
     if (parentSignal.aborted) {
         throw new DOMException('Aborted', 'AbortError');
@@ -831,7 +833,9 @@ const 执行主剧情流式请求带空闲超时 = async <T,>(
     };
     const startTimer = () => {
         clearTimer();
-        const timeoutMs = hasStreamActivity ? 主剧情流式空闲超时毫秒 : 主剧情首次响应超时毫秒;
+        const timeoutMs = hasStreamActivity
+            ? (requestTimeouts?.idleMs || 主剧情流式空闲超时毫秒)
+            : (requestTimeouts?.firstResponseMs || 主剧情首次响应超时毫秒);
         timer = setTimeout(() => {
             const completedResult = hasStreamActivity ? resolveCompletedDraft?.() : null;
             if (completedResult) {
@@ -1925,7 +1929,8 @@ export const 执行主剧情发送工作流 = async (
                             requireActionOptionsTag: runtimeGameConfig.启用行动选项 !== false,
                             validateDialogueFormat: runtimeGameConfig.启用严格正文对白格式 !== false,
                             knownSpeakers: knownDialogueSpeakers
-                        })
+                        }),
+                        获取游玩请求超时毫秒(runtimeGameConfig.游玩请求超时设置)
                     );
                 const rawStoryText = deps.获取原始AI消息(storyResult.rawText);
                 const reviewedResponse = runtimeGameConfig.启用正文词汇审查 === false

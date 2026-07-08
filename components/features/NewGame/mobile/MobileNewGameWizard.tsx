@@ -28,6 +28,7 @@ import {
     新开局步骤定义列表,
     默认初始伙伴配置,
     默认开局配置,
+    默认开局时间,
     获取题材化难度设定,
     获取难度总属性点,
     获取同人角色替换规则列表,
@@ -3061,6 +3062,16 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                                         <div className="text-[11px] text-gray-500 leading-6">
                                             {当前开局切入偏好选项.find((item) => item.value === openingConfig.开局切入偏好)?.hint}
                                         </div>
+                                        <div className="pt-2 space-y-2">
+                                            <label className="text-sm text-wuxia-cyan font-bold">开局时间</label>
+                                            <input
+                                                value={openingConfig.自定义开局时间 || 默认开局时间}
+                                                onChange={(e) => setOpeningConfig((prev) => ({ ...prev, 自定义开局时间: e.target.value }))}
+                                                placeholder={默认开局时间}
+                                                className="w-full bg-black/40 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 outline-none focus:border-wuxia-gold/60"
+                                            />
+                                            <div className="text-[11px] text-gray-500 leading-5">格式：年:月:日:时:分，例如 {默认开局时间}。</div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -3192,6 +3203,7 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
                                     <p>题材模式: <span className="text-white">{openingConfig.题材模式}</span></p>
                                     <p>关系侧重: <span className="text-white">{openingConfigEnabled ? (openingConfig.关系侧重.join('、') || '无') : '未设置'}</span></p>
                                     <p>开局切入: <span className="text-white">{openingConfigEnabled ? openingConfig.开局切入偏好 : '未设置'}</span></p>
+                                    <p>开局时间: <span className="text-white">{openingConfigEnabled ? (openingConfig.自定义开局时间 || 默认开局时间) : '未设置'}</span></p>
                                     <p>生成性别: <span className="text-white">{openingConfigEnabled ? openingConfig.允许生成性别.join('、') : '未设置'}</span></p>
                                     <p>同人融合: <span className="text-white">{openingConfigEnabled ? (openingConfig.同人融合.enabled ? `${openingConfig.同人融合.作品名 || '未命名作品'} / ${openingConfig.同人融合.融合强度}` : '关闭') : '未设置'}</span></p>
                                     <p>角色替换: <span className="text-white">{openingConfigEnabled ? (openingConfig.同人融合.启用角色替换 ? (格式化角色替换规则摘要(当前角色替换规则列表) || '未填写规则') : '关闭') : '未设置'}</span></p>

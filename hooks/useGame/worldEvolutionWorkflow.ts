@@ -3,6 +3,7 @@ import type { GameResponse, OpeningConfig, 接口设置结构, 提示词结构, 
 import type { 当前可用接口结构 } from '../../utils/apiConfig';
 import { 获取世界演变接口配置, 接口配置是否可用 } from '../../utils/apiConfig';
 import { 规范化游戏设置, 计算远处联动阈值 } from '../../utils/gameSettings';
+import { 获取游玩请求超时毫秒 } from '../../utils/gameRequestTimeouts';
 import { 获取繁体输出指令 } from '../../utils/traditionalChinese';
 import { 构建世界书注入文本 } from '../../utils/worldbook';
 import { 数值_世界演化 } from '../../prompts/stats/world';
@@ -105,8 +106,8 @@ const 序列化上下文命令 = (commands: any[]): string => (
 
 const 世界演变请求超时毫秒 = 90000;
 
-const 创建世界演变超时错误 = (): Error => {
-    const error = new Error(`世界演变请求超时（${Math.max(1, Math.ceil(世界演变请求超时毫秒 / 1000))} 秒）`);
+const 创建世界演变超时错误 = (timeoutMs = 世界演变请求超时毫秒): Error => {
+    const error = new Error(`世界演变请求超时（${Math.max(1, Math.ceil(timeoutMs / 1000))} 秒）`);
     error.name = 'TimeoutError';
     return error;
 };
@@ -123,7 +124,8 @@ const 检查世界演变中断 = (signal?: AbortSignal): void => {
 
 const 执行世界演变带超时 = async <T,>(
     task: (signal: AbortSignal) => Promise<T>,
-    parentSignal?: AbortSignal
+    parentSignal?: AbortSignal,
+    timeoutMs = 世界演变请求超时毫秒
 ): Promise<T> => {
     检查世界演变中断(parentSignal);
     const controller = new AbortController();
@@ -137,7 +139,7 @@ const 执行世界演变带超时 = async <T,>(
     };
     parentSignal?.addEventListener('abort', abortFromParent, { once: true });
     console.info('[性能诊断][世界演变] 模型请求开始', {
-        timeoutMs: 世界演变请求超时毫秒
+        timeoutMs
     });
     try {
         const value = await Promise.race([
@@ -145,8 +147,8 @@ const 执行世界演变带超时 = async <T,>(
             new Promise<T>((_, reject) => {
                 timer = window.setTimeout(() => {
                     controller.abort();
-                    reject(创建世界演变超时错误());
-                }, 世界演变请求超时毫秒);
+                    reject(创建世界演变超时错误(timeoutMs));
+                }, timeoutMs);
             }),
             new Promise<T>((_, reject) => {
                 rejectAbort = reject;
@@ -209,8 +211,11 @@ export const 执行世界演变更新工作流 = async (
         return { ok: false, phase: 'skipped', commands: [], updates: [], rawText: '', statusText: '世界演变更新中...' };
     }
 
+    const worldRuntimeGameConfig = 规范化游戏设置(deps.gameConfig);
+    const worldEvolutionTimeoutMs = 获取游玩请求超时毫秒(worldRuntimeGameConfig.游玩请求超时设置).firstResponseMs;
+
     const probe = 创建工作流性能诊断('世界演变', {
-        timeoutMs: 世界演变请求超时毫秒,
+        timeoutMs: worldEvolutionTimeoutMs,
         triggerSource,
         dynamicHints: dynamicHints.length,
         dueHints: dueHints.length,
@@ -226,7 +231,7 @@ export const 执行世界演变更新工作流 = async (
 
         const worldStateBase = params?.stateBase;
         const worldEnv = probe.time('规范化世界演变环境', () => deps.规范化环境信息(worldStateBase?.环境 || deps.环境));
-        const worldRuntimeGameConfig = probe.time('规范化游戏设置', () => 规范化游戏设置(deps.gameConfig));
+        probe.mark('规范化游戏设置完成');
         const 启用修炼体系 = worldRuntimeGameConfig.启用修炼体系 !== false;
         const worldState = probe.time('规范化并裁剪世界状态', () => 裁剪修炼体系上下文数据(
             deps.规范化世界状态(worldStateBase?.世界 || deps.世界),
@@ -417,7 +422,7 @@ export const 执行世界演变更新工作流 = async (
                         ? { stream: true, onDelta: params.onStreamDelta }
                         : undefined
             )
-        ), params?.signal), { timeoutMs: 世界演变请求超时毫秒 });
+        ), params?.signal, worldEvolutionTimeoutMs), { timeoutMs: worldEvolutionTimeoutMs });
         检查世界演变中断(params?.signal);
         probe.mark('世界演变模型返回', {
             rawCommandCount: Array.isArray(result.commands) ? result.commands.length : 0,

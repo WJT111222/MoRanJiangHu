@@ -13,6 +13,7 @@ import type {
 import * as textAIService from '../../services/ai/text';
 import { 获取规划分析接口配置, 接口配置是否可用 } from '../../utils/apiConfig';
 import { 规范化游戏设置 } from '../../utils/gameSettings';
+import { 获取游玩请求超时毫秒 } from '../../utils/gameRequestTimeouts';
 import { 解析当前有效性别比例 } from '../../utils/genderRatioUtils';
 import { 获取繁体输出指令 } from '../../utils/traditionalChinese';
 import { applyStateCommand } from '../../utils/stateHelpers';
@@ -114,7 +115,8 @@ const 检查规划分析中断 = (signal?: AbortSignal): void => {
 
 const 执行规划分析带超时 = async <T,>(
     task: (signal: AbortSignal, markStreamActivity: () => void) => Promise<T>,
-    parentSignal?: AbortSignal
+    parentSignal?: AbortSignal,
+    requestTimeouts?: { firstResponseMs?: number; idleMs?: number }
 ): Promise<T> => {
     检查规划分析中断(parentSignal);
     const controller = new AbortController();
@@ -122,15 +124,17 @@ const 执行规划分析带超时 = async <T,>(
     let rejectTimeout: ((reason?: any) => void) | null = null;
     let hasStreamActivity = false;
     let timeoutError = 创建规划分析超时错误(
-        `规划分析等待首次响应超时（${Math.max(1, Math.ceil(规划分析首次响应超时毫秒 / 1000))} 秒）`
+        `规划分析等待首次响应超时（${Math.max(1, Math.ceil((requestTimeouts?.firstResponseMs || 规划分析首次响应超时毫秒) / 1000))} 秒）`
     );
     const resetTimer = () => {
         if (timer) clearTimeout(timer);
-        const timeoutMs = hasStreamActivity ? 规划分析流式空闲超时毫秒 : 规划分析首次响应超时毫秒;
+        const timeoutMs = hasStreamActivity
+            ? (requestTimeouts?.idleMs || 规划分析流式空闲超时毫秒)
+            : (requestTimeouts?.firstResponseMs || 规划分析首次响应超时毫秒);
         timeoutError = 创建规划分析超时错误(
             hasStreamActivity
-                ? `规划分析流式输出空闲超时（${Math.max(1, Math.ceil(规划分析流式空闲超时毫秒 / 1000))} 秒无新数据）`
-                : `规划分析等待首次响应超时（${Math.max(1, Math.ceil(规划分析首次响应超时毫秒 / 1000))} 秒）`
+                ? `规划分析流式输出空闲超时（${Math.max(1, Math.ceil(timeoutMs / 1000))} 秒无新数据）`
+                : `规划分析等待首次响应超时（${Math.max(1, Math.ceil(timeoutMs / 1000))} 秒）`
         );
         timer = setTimeout(() => {
             if (!controller.signal.aborted) {
@@ -181,7 +185,8 @@ const 提取规划分析重试原因 = (error: any): string => {
 const 执行规划分析带超时和重试 = async <T,>(
     task: (signal: AbortSignal, markStreamActivity: () => void) => Promise<T>,
     onRetry?: (attempt: number, maxAttempts: number, reason: string) => void,
-    parentSignal?: AbortSignal
+    parentSignal?: AbortSignal,
+    requestTimeouts?: { firstResponseMs?: number; idleMs?: number }
 ): Promise<T> => {
     let lastError: any = null;
     for (let attempt = 1; attempt <= 规划分析自动重试最大次数; attempt += 1) {
@@ -190,11 +195,11 @@ const 执行规划分析带超时和重试 = async <T,>(
         console.info('[性能诊断][规划分析] 模型请求尝试开始', {
             attempt,
             maxAttempts: 规划分析自动重试最大次数,
-            firstResponseTimeoutMs: 规划分析首次响应超时毫秒,
-            streamIdleTimeoutMs: 规划分析流式空闲超时毫秒
+            firstResponseTimeoutMs: requestTimeouts?.firstResponseMs || 规划分析首次响应超时毫秒,
+            streamIdleTimeoutMs: requestTimeouts?.idleMs || 规划分析流式空闲超时毫秒
         });
         try {
-            const value = await 执行规划分析带超时(task, parentSignal);
+            const value = await 执行规划分析带超时(task, parentSignal, requestTimeouts);
             console.info('[性能诊断][规划分析] 模型请求尝试完成', {
                 attempt,
                 elapsedMs: Date.now() - attemptStartedAt
@@ -333,9 +338,11 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
         if (deps.规划分析进行中Ref) {
             deps.规划分析进行中Ref.current = true;
         }
+        const normalizedGameConfig = 规范化游戏设置(deps.gameConfig);
+        const planningRequestTimeouts = 获取游玩请求超时毫秒(normalizedGameConfig.游玩请求超时设置);
         const probe = 创建工作流性能诊断('规划分析', {
-            firstResponseTimeoutMs: 规划分析首次响应超时毫秒,
-            streamIdleTimeoutMs: 规划分析流式空闲超时毫秒,
+            firstResponseTimeoutMs: planningRequestTimeouts.firstResponseMs,
+            streamIdleTimeoutMs: planningRequestTimeouts.idleMs,
             maxAttempts: 规划分析自动重试最大次数,
             historyCount: Array.isArray(deps.历史记录) ? deps.历史记录.length : 0,
             gameTime: params.gameTime,
@@ -389,8 +396,7 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
 
         const heroineEnabled = deps.开局配置?.启用女主剧情规划 !== undefined
             ? deps.开局配置.启用女主剧情规划 === true
-            : 规范化游戏设置(deps.gameConfig).启用女主剧情规划 === true;
-        const normalizedGameConfig = 规范化游戏设置(deps.gameConfig);
+            : normalizedGameConfig.启用女主剧情规划 === true;
         const 启用修炼体系 = normalizedGameConfig.启用修炼体系 !== false;
         const 独立规划分析GPT模式 = normalizedGameConfig.独立APIGPT模式?.规划分析 === true;
         const worldPrompt = (() => {
@@ -583,9 +589,9 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
                     console.error('[规划分析] onStreamDelta 回调异常', err);
                 }
             }
-        }), params.onRetry, params.signal), {
-            firstResponseTimeoutMs: 规划分析首次响应超时毫秒,
-            streamIdleTimeoutMs: 规划分析流式空闲超时毫秒,
+        }), params.onRetry, params.signal, planningRequestTimeouts), {
+            firstResponseTimeoutMs: planningRequestTimeouts.firstResponseMs,
+            streamIdleTimeoutMs: planningRequestTimeouts.idleMs,
             maxAttempts: 规划分析自动重试最大次数
         });
         检查规划分析中断(params.signal);
