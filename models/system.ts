@@ -1363,16 +1363,19 @@ export interface TransformBatchConfig {
     process?: string;
 }
 
+/** 货币单位定义（多货币汇率系统） */
 export interface UnitDefinition {
     displayName: string;
     displayOrder: number;
     inMarket?: boolean;
+    /** 是否排除估值（不可上市交易） */
     excludeFromValuation?: boolean;
     aliases?: string[];
     qualityUpgradeTo?: string;
     qualityUpgradeRatio?: number;
 }
 
+/** 展开后的体系配置（多货币汇率系统） */
 export interface ExpandedSystemConfig {
     displayName: string;
     displayOrder: number;
@@ -1384,12 +1387,14 @@ export interface ExpandedSystemConfig {
     transformsTo?: TransformBatchConfig;
 }
 
+/** 完整展开的货币系统（多货币汇率系统） */
 export interface ExpandedCurrencySystem {
     systems: Record<string, ExpandedSystemConfig>;
     transforms: TransformDefinition[];
     validatedPolicies?: ExchangeRatePolicies;
 }
 
+/** 汇率策略（多货币汇率系统） */
 export interface ExchangeRatePolicy {
     fromUnit: string;
     toUnit: string;
@@ -1403,6 +1408,7 @@ export interface ExchangeRatePolicy {
     description?: string;
 }
 
+/** 汇率策略字典（多货币汇率系统） */
 export interface ExchangeRatePolicies {
     [policyId: string]: ExchangeRatePolicy;
 }

@@ -139,31 +139,14 @@ export const 构建变量模型系统提示词 = (options?: {
     worldEvolutionUpdated?: boolean;
     survivalNeedsEnabled?: boolean;
     cultivationSystemEnabled?: boolean;
-    expandedCurrencySystem?: any;
-    世界?: any;
-}): string => {
-    // 多货币汇率系统：汇率生成任务消费
-    const 汇率生成任务 = options?.世界?._汇率生成任务 || '';
-    if (汇率生成任务) {
-        options.世界._汇率生成任务 = undefined;  // 消费后清空
-    }
-    // 货币比例参考
-    const 货币比例参考 = options?.expandedCurrencySystem
-        ? 构建货币比例参考(options.expandedCurrencySystem)
-        : '';
-
-    return 格式化多段文本([
-        构建变量模型身份提示词(),
-        '',
-        构建变量模型职责提示词({
-            survivalNeedsEnabled: options?.survivalNeedsEnabled !== false,
-            cultivationSystemEnabled: options?.cultivationSystemEnabled !== false,
-            expandedCurrencySystem: options?.expandedCurrencySystem
-        }),
-        ...(货币比例参考 ? [货币比例参考] : []),
-        ...(汇率生成任务 ? [汇率生成任务] : [])
-    ].join('\n'));
-};
+}): string => 格式化多段文本([
+    构建变量模型身份提示词(),
+    '',
+    构建变量模型职责提示词({
+        survivalNeedsEnabled: options?.survivalNeedsEnabled !== false,
+        cultivationSystemEnabled: options?.cultivationSystemEnabled !== false
+    })
+].join('\n'));
 
 export const 构建变量模型输出格式提示词 = (): string => 格式化多段文本([
     '【输出格式】',
