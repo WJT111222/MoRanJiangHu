@@ -25,10 +25,11 @@ import {
 } from './chatCompletionClient';
 
 import * as dbService from '../dbService';
-import { 压缩图片资源字段, 是否图片资源引用 } from '../../utils/imageAssets';
+import { 压缩图片资源字段, 是否图片资源引用, 注册远程图片兜底引用, 创建图片资源引用 } from '../../utils/imageAssets';
 import { parseJsonWithRepair } from '../../utils/jsonRepair';
 import { RELEASE_INFO } from '../../data/releaseInfo';
 import { buildSyncApiUrl, isNativeCapacitorEnvironment, requiresRemoteSyncApi } from '../../utils/nativeRuntime';
+import { recordDiagnosticLog } from '../diagnosticLog';
 import {
     判断疑似网络或跨域错误,
     构建ComfyUI精确连接失败提示,
@@ -36,7 +37,8 @@ import {
     构建OpenAI图片生成端点,
     构建通用生图连接失败提示,
     规范化OpenAI图片基础地址,
-    规范化OpenAI图片模型名称
+    规范化OpenAI图片模型名称,
+    获取代理决策
 } from './imageGenerationDiagnostics';
 
 const NOVELAI_TRIAL_RECAPTCHA_PATTERN = /recaptcha token is required for trial generation/i;
@@ -378,7 +380,7 @@ const 获取NovelAI代理基础地址 = (baseUrlRaw: string): string => {
 };
 
 
-const 构建图片端点 = (baseUrlRaw: string, customPathRaw?: string): string => {
+const 构建图片端点 = (baseUrlRaw: string, customPathRaw?: string, 供应商ID?: string, 自定义图片代理地址?: string, 图片需要代理?: boolean): string => {
     const normalizedBaseRaw = 规范化OpenAI图片基础地址(规范化NovelAI基础地址(baseUrlRaw || ''));
     const base = 清理末尾斜杠(normalizedBaseRaw || '');
     const customPath = (customPathRaw || '').trim();
@@ -391,7 +393,7 @@ const 构建图片端点 = (baseUrlRaw: string, customPathRaw?: string): string 
             : '/ai/generate-image';
         return `${novelAiProxyBase}/api/novelai${targetPath}`;
     }
-    return 构建OpenAI图片生成端点(base, customPath, { useRuntimeProxy: true });
+    return 构建OpenAI图片生成端点(base, customPath, { useRuntimeProxy: true, 供应商ID, 自定义图片代理地址, 图片需要代理 });
 };
 
 export const __测试__构建图片端点 = 构建图片端点;
@@ -4678,7 +4680,7 @@ export const generateImageByPrompt = async (
     signal?: AbortSignal,
     options?: { 构图?: 生图构图类型; 场景类型?: 场景生成类型; 附加正向提示词?: string; 附加负面提示词?: string; 尺寸?: string; 跳过基础负面提示词?: boolean; PNG参数?: PNG解析参数结构; 启用NSFW模式?: boolean }
 ): Promise<图片生成结果> => {
-    const endpoint = 构建图片端点(apiConfig.baseUrl, apiConfig.图片接口路径);
+    const endpoint = 构建图片端点(apiConfig.baseUrl, apiConfig.图片接口路径, apiConfig.供应商, apiConfig.自定义图片代理地址, apiConfig.图片需要代理);
     if (!endpoint) throw new Error('Missing API Base URL');
     const promptBundle = 构建最终图片提示词(prompt, apiConfig, options);
     const normalizedPromptRaw = promptBundle.最终正向提示词;
@@ -5073,6 +5075,15 @@ const 校验下载结果是图片 = async (blob: Blob, sourceUrl: string): Promi
     throw new Error(`下载结果不是有效图片，未保存为空白图片：Content-Type=${contentType || '未知'}，大小=${blob.size}${sourceHint}${snippet ? `，返回内容：${snippet}` : ''}`);
 };
 
+const 保存图片资源或降级 = async (dataUrl: string): Promise<string> => {
+    try {
+        return await dbService.保存图片资源(dataUrl);
+    } catch (error: any) {
+        recordDiagnosticLog('warn', '图片本地保存失败，降级为内联存储', { error: error?.message || String(error) });
+        return dataUrl;
+    }
+};
+
 export const persistImageAssetLocally = async (
     result: 图片生成结果
 ): Promise<图片生成结果> => {
@@ -5099,7 +5110,7 @@ export const persistImageAssetLocally = async (
         };
     }
     if (local && /^data:image\//i.test(local)) {
-        const assetRef = await dbService.保存图片资源(local);
+        const assetRef = await 保存图片资源或降级(local);
         console.info('[persistImage] 本地dataUrl已保存到IndexedDB', { refPrefix: assetRef?.slice(0, 60) || '(empty)' });
         return {
             ...compactResult,
@@ -5127,7 +5138,7 @@ export const persistImageAssetLocally = async (
         throw new Error('没有可保存的图片地址');
     }
     if (/^data:image\//i.test(imageUrl)) {
-        const assetRef = await dbService.保存图片资源(imageUrl);
+        const assetRef = await 保存图片资源或降级(imageUrl);
         console.info('[persistImage] 远程dataUrl已保存到IndexedDB', { refPrefix: assetRef?.slice(0, 60) || '(empty)' });
         return {
             ...compactResult,
@@ -5146,7 +5157,7 @@ export const persistImageAssetLocally = async (
         if (!dataUrl) {
             throw new Error('保存本地副本失败：图片内容为空');
         }
-        const assetRef = await dbService.保存图片资源(dataUrl);
+        const assetRef = await 保存图片资源或降级(dataUrl);
         console.info('[persistImage] blob已转dataUrl并保存到IndexedDB', { refPrefix: assetRef?.slice(0, 60) || '(empty)' });
         return {
             ...compactResult,
@@ -5164,31 +5175,73 @@ export const persistImageAssetLocally = async (
 
     const shouldUseTemporaryImageProxy = /^http:\/\//i.test(imageUrl) && !是否本机或局域网图片地址(imageUrl);
     const proxyUrl = 构建临时图片下载代理地址(imageUrl);
-    let response: Response;
+    const 原始图片Url = imageUrl;
+
+    // 1) 拉取图片字节：仅"网络可达性失败"才降级为远程兜底引用（HTTP 临时地址不降级，因代理仅支持 https）
+    let response: Response | null = null;
+    let networkError: any = null;
+    let 尝试路径: string[] = [];
     try {
-        response = await fetch(shouldUseTemporaryImageProxy ? proxyUrl : imageUrl);
+        try {
+            const firstUrl = shouldUseTemporaryImageProxy ? proxyUrl : imageUrl;
+            尝试路径.push(firstUrl);
+            response = await fetch(firstUrl);
+        } catch (error: any) {
+            if (!shouldUseTemporaryImageProxy && /^https:\/\//i.test(imageUrl)) {
+                尝试路径.push(proxyUrl);
+                response = await fetch(proxyUrl);
+            } else {
+                throw error;
+            }
+        }
     } catch (error: any) {
-        if (!shouldUseTemporaryImageProxy && /^https:\/\//i.test(imageUrl)) {
-            response = await fetch(proxyUrl);
-        } else {
-            throw error;
-        }
+        networkError = error;
     }
-    if (!response.ok) {
-        const detail = await response.text().catch(() => '');
-        console.error('[persistImage] HTTP下载失败', { status: response.status, urlPrefix: imageUrl.slice(0, 80) });
+
+    if (networkError) {
+        if (/^https:\/\//i.test(imageUrl)) {
+            const fallbackId = `img_remote_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            注册远程图片兜底引用(imageUrl, fallbackId);
+            recordDiagnosticLog('warn', '图片本地化失败，已登记远程兜底引用', {
+                原始图片Url,
+                代理地址: proxyUrl,
+                尝试路径,
+                错误类型: networkError?.name,
+                错误信息: networkError?.message || String(networkError),
+                '建议': '直连和代理均失败；已登记远程兜底引用，图片将在 <img> 加载时尝试直接从原始 URL 获取'
+            });
+            return {
+                ...compactResult,
+                图片URL: undefined,
+                本地路径: 创建图片资源引用(fallbackId)
+            };
+        }
+        throw networkError;
+    }
+
+    if (!response || !response.ok) {
+        const detail = await (response ? response.text().catch(() => '') : Promise.resolve(''));
+        recordDiagnosticLog('error', '图片下载 HTTP 错误', {
+            原始图片Url,
+            代理地址: proxyUrl,
+            尝试路径,
+            状态码: response?.status,
+            返回内容前200字: detail?.slice(0, 200)
+        });
         if (/^http:\/\//i.test(imageUrl)) {
-            throw new Error(`图片已经生成，但返回的是 HTTP 临时图片地址，当前页面无法直接保存或访问它。请改用支持 data/base64 返回的图片接口，或让服务端改为 HTTPS/可下载的稳定图片地址。原始错误：${response.status}${detail ? ` - ${detail.slice(0, 200)}` : ''}`);
+            throw new Error(`图片已经生成，但返回的是 HTTP 临时图片地址，当前页面无法直接保存或访问它。请改用支持 data/base64 返回的图片接口，或让服务端改为 HTTPS/可下载的稳定图片地址。原始错误：${response?.status}${detail ? ` - ${detail.slice(0, 200)}` : ''}`);
         }
-        throw new Error(`保存本地副本失败: ${response.status}${detail ? ` - ${detail.slice(0, 200)}` : ''}`);
+        throw new Error(`保存本地副本失败: ${response?.status}${detail ? ` - ${detail.slice(0, 200)}` : ''}`);
     }
+
+    // 2) 内容校验与本地保存：失败如实抛出（不降级），避免把非图片内容当成功落盘
     const blob = await response.blob();
     await 校验下载结果是图片(blob, imageUrl);
     const dataUrl = await blob转DataUrl(blob);
     if (!dataUrl) {
         throw new Error('保存本地副本失败：图片内容为空');
     }
-    const assetRef = await dbService.保存图片资源(dataUrl);
+    const assetRef = await 保存图片资源或降级(dataUrl);
     console.info('[persistImage] HTTP图片已下载并保存到IndexedDB', { refPrefix: assetRef?.slice(0, 60) || '(empty)', blobSize: blob.size });
     return {
         ...compactResult,
