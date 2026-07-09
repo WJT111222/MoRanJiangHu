@@ -22,3 +22,14 @@ export const 提取人物头像地址 = (person: any): string => {
     const avatar = 提取人物头像图片记录(person);
     return 获取图片展示地址(avatar) || 获取图片资源文本地址(person?.头像图片URL);
 };
+
+export const 提取人物立绘地址 = (person: any): string => {
+    if (person?.立绘图片URL) return 获取图片资源文本地址(person.立绘图片URL);
+    const archive = person?.图片档案 && typeof person.图片档案 === 'object' ? person.图片档案 : {};
+    const history = Array.isArray(archive?.生图历史) ? archive.生图历史 : [];
+    const selectedPortraitId = typeof archive?.已选立绘图片ID === 'string' ? archive.已选立绘图片ID.trim() : '';
+    const selected = selectedPortraitId ? history.find((item: any) => item?.id === selectedPortraitId) : null;
+    if (获取图片展示地址(selected)) return 获取图片展示地址(selected);
+    const portraitRecord = history.find((item: any) => item?.状态 === 'success' && (item?.构图 === '立绘' || item?.构图 === '半身') && 获取图片展示地址(item));
+    return 获取图片展示地址(portraitRecord) || '';
+};
