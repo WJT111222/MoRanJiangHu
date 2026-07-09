@@ -1203,7 +1203,8 @@ export interface 游戏设置结构 {
     activeModuleExtraRules?: string; // Creative workshop module safety/usage rules, injected as system_rule
     游玩请求超时设置?: 游玩请求超时设置结构; // Main gameplay AI request timeout, in seconds
     性别比例自动演变?: boolean; // 是否允许世界演变自动更新世界性别比例，默认false；未设置时使用题材预设
-    叙事平静值配置?: 叙事平静值配置结构; // Narrative blandness value config
+     叙事平静值配置?: 叙事平静值配置结构; // Narrative blandness value config
+     自动存档最大保留数?: number; // 自动存档保留数量上限，范围 5-50，默认 15
 }
 
 export interface 记忆配置结构 {

@@ -507,6 +507,7 @@ const App: React.FC = () => {
     }, [state.角色]);
     const [showCharacter, setShowCharacter] = React.useState(false);
     const [showImageManager, setShowImageManager] = React.useState(false);
+    const [imageManagerInitialTab, setImageManagerInitialTab] = React.useState<string | undefined>();
     const [showWorldbookManager, setShowWorldbookManager] = React.useState(false);
     const [showNovelDecompositionWorkbench, setShowNovelDecompositionWorkbench] = React.useState(false);
     const [showNovelExport, setShowNovelExport] = React.useState(false);
@@ -2354,8 +2355,29 @@ const App: React.FC = () => {
             });
             actions.pushNotification({ title: '物品重生图失败', message, tone: 'error' });
             throw error;
+         }
+      }, [actions, setters, state.apiConfig, state.角色]);
+    const handleSaveItemToGallery = React.useCallback(async (targetItem: 游戏物品) => {
+        const itemName = (targetItem as any)?.名称 || '无名物品';
+        try {
+            const { 获取物品已选图标记录, 存入用户图库 } = await import('./utils/itemImage');
+            const record = 获取物品已选图标记录(targetItem);
+            if (!record) {
+                actions.pushNotification({ title: '存入图库失败', message: `「${itemName}」没有可用的图标`, tone: 'error' });
+                return;
+            }
+            await 存入用户图库(
+                targetItem,
+                record,
+                state.开局配置?.题材模式 ?? '武侠',
+                state.开局配置?.modeRuntimeProfile?.identity?.modeId ?? ''
+            );
+            actions.pushNotification({ title: '已存入图库', message: `「${itemName}」的图片已存入用户图库`, tone: 'success' });
+        } catch (error) {
+            actions.pushNotification({ title: '存入图库失败', message: `「${itemName}」存入失败：${error instanceof Error ? error.message : '未知错误'}`, tone: 'error' });
         }
-    }, [actions, setters, state.apiConfig, state.角色]);
+    }, [actions, state.开局配置?.题材模式, state.开局配置?.modeRuntimeProfile?.identity?.modeId]);
+
     const handleDeleteMemory = React.useCallback((round: number) => {
         const prevMemorySystem = state.记忆系统;
         if (!prevMemorySystem) return;
@@ -3878,6 +3900,7 @@ const App: React.FC = () => {
                     {isMobile ? (
                         <ModalErrorBoundary title="图册打开失败" onClose={() => setShowImageManager(false)}>
                         <MobileImageManagerModal
+                            initialTab={imageManagerInitialTab as any}
                             socialList={state.社交}
                             playerCharacter={state.角色}
                             cultivationSystemEnabled={启用修炼体系}
@@ -3944,6 +3967,7 @@ const App: React.FC = () => {
                         </ModalErrorBoundary>
                     ) : (
                         <ImageManagerModal
+                            initialTab={imageManagerInitialTab as any}
                             socialList={state.社交}
                             playerCharacter={state.角色}
                             cultivationSystemEnabled={启用修炼体系}
@@ -4022,6 +4046,12 @@ const App: React.FC = () => {
                                     onSellAllMisc={handleSellAllMiscItems}
                                     onDiscardAllMisc={handleDiscardAllMiscItems}
                                     onRegenerateItemImage={handleRegenerateBagItemImage}
+                                     onSaveItemToGallery={handleSaveItemToGallery}
+                                    onNavigateToGallery={() => {
+                                        setters.setShowInventory(false);
+                                        setImageManagerInitialTab('itemGallery');
+                                        setShowImageManager(true);
+                                    }}
                                     onClose={() => setters.setShowInventory(false)} 
                                 />
                             ) : (
@@ -4038,6 +4068,12 @@ const App: React.FC = () => {
                                     onSellAllMisc={handleSellAllMiscItems}
                                     onDiscardAllMisc={handleDiscardAllMiscItems}
                                     onRegenerateItemImage={handleRegenerateBagItemImage}
+                                    onSaveItemToGallery={handleSaveItemToGallery}
+                                    onNavigateToGallery={() => {
+                                        setters.setShowInventory(false);
+                                        setImageManagerInitialTab('itemGallery');
+                                        setShowImageManager(true);
+                                    }}
                                     onClose={() => setters.setShowInventory(false)} 
                                 />
                             )}

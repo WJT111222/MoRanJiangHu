@@ -9,7 +9,8 @@ import {
     获取物品可装备槽位,
     获取装备槽位标签
 } from '../../../utils/equipmentActions';
-import { 获取物品已选图标地址 } from '../../../utils/itemImage';
+import { 获取物品已选图标地址, 获取物品已选图标记录, 物品已在图库中, 提取图库物品名称, 查询用户图库图片 } from '../../../utils/itemImage';
+import type { 用户图库条目 } from '../../../services/dbService';
 import { 获取物品明细分组 } from '../../../utils/rulebook';
 import { 是否杂物类物品 } from '../../../utils/inventoryActions';
 import { 规范化消耗品使用效果 } from '../../../utils/itemEffects';
@@ -21,11 +22,13 @@ interface Props {
     openingConfig?: any;
     onClose: () => void;
     onCharacterChange?: (nextCharacter: any) => void;
-    onSellItem?: (itemId: string) => { ok: boolean; message: string } | void;
-    onDiscardItem?: (itemId: string) => { ok: boolean; message: string } | void;
-    onSellAllMisc?: () => { ok: boolean; message: string } | void;
-    onDiscardAllMisc?: () => { ok: boolean; message: string } | void;
-    onRegenerateItemImage?: (item: any, extraPrompt?: string) => Promise<void> | void;
+    onSellItem?: (itemId: string) => { ok: boolean; message: string } | undefined;
+    onDiscardItem?: (itemId: string) => { ok: boolean; message: string } | undefined;
+    onSellAllMisc?: () => { ok: boolean; message: string } | undefined;
+    onDiscardAllMisc?: () => { ok: boolean; message: string } | undefined;
+    onRegenerateItemImage?: (item: any, extraPrompt?: string) => Promise<void> | undefined;
+    onSaveItemToGallery?: (item: any) => Promise<void> | void;
+    onNavigateToGallery?: () => void;
     initialSelectedItemRef?: string;
 }
 
@@ -187,12 +190,14 @@ const renderItemIcon = (type: string, className: string) => {
     return icons[type] || icons.杂物;
 };
 
-const InventoryModal: React.FC<Props> = ({ character, openingConfig, onClose, onCharacterChange, onSellItem, onDiscardItem, onSellAllMisc, onDiscardAllMisc, onRegenerateItemImage, initialSelectedItemRef = '' }) => {
+const InventoryModal: React.FC<Props> = ({ character, openingConfig, onClose, onCharacterChange, onSellItem, onDiscardItem, onSellAllMisc, onDiscardAllMisc, onRegenerateItemImage, onSaveItemToGallery, onNavigateToGallery, initialSelectedItemRef = '' }) => {
     const [activeCategory, setActiveCategory] = useState<ItemCategory>('全部');
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [actionMessage, setActionMessage] = useState('');
     const [imageViewer, setImageViewer] = useState<{ src: string; alt: string } | null>(null);
     const [customPrompt, setCustomPrompt] = useState('');
+    const [galleryStatus, setGalleryStatus] = useState<'idle' | 'checking' | 'saving' | 'saved' | 'in-gallery'>('idle');
+    const [galleryOverwriteTarget, setGalleryOverwriteTarget] = useState<用户图库条目 | null>(null);
     const 界面文案 = 获取题材界面文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
 
     const items = Array.isArray(character?.物品列表) ? character.物品列表 : [];
@@ -202,7 +207,7 @@ const InventoryModal: React.FC<Props> = ({ character, openingConfig, onClose, on
     const isOverloaded = totalWeight > maxWeight;
 
     const displayItems = useMemo(() => {
-        const filtered = items.filter((item) => {
+        const filtered = items.filter((item: any) => {
             const type = getSafeText(item?.类型);
             if (activeCategory === '全部') return true;
             if (activeCategory === '装备') return ['武器', '防具', '饰品'].includes(type);
@@ -248,7 +253,7 @@ const InventoryModal: React.FC<Props> = ({ character, openingConfig, onClose, on
         }
     }, [initialSelectedItemRef, items]);
 
-    const totalValue = items.reduce((sum, item) => (
+    const totalValue = items.reduce((sum: any, item: any) => (
         sum + getSafeNumber(item?.价值) * getSafeNumber(item?.堆叠数量, 1)
     ), 0);
     const currencyMode = 获取货币显示模式(openingConfig, character);
@@ -345,7 +350,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                 : null;
             setSelectedItem(nextItem || null);
         }
-        setActionMessage(result.message);
+        setActionMessage((result && result.message) || '');
     };
 
     const handleSellSelected = () => {
@@ -353,7 +358,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
         const itemRef = getSafeText(selectedItem?.ID);
         if (!itemRef) return;
         const result = onSellItem(itemRef);
-        setActionMessage(result?.message || '已送入拍卖行寄卖');
+        setActionMessage((result && result.message) || '已送入拍卖行寄卖');
         if (!result || result.ok) setSelectedItem(null);
     };
 
@@ -362,28 +367,108 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
         const itemRef = getSafeText(selectedItem?.ID);
         if (!itemRef) return;
         const result = onDiscardItem(itemRef);
-        setActionMessage(result?.message || '已丢弃物品');
+        setActionMessage((result && result.message) || '已丢弃物品');
         if (!result || result.ok) setSelectedItem(null);
     };
 
     const handleRegenerateSelectedImage = async () => {
         if (!selectedItem || !onRegenerateItemImage) return;
         const extraPrompt = customPrompt.trim();
-        await onRegenerateItemImage(selectedItem, extraPrompt);
-        setActionMessage(extraPrompt ? '已提交自定义提示词重生图' : '已提交物品重生图');
+        try {
+            await onRegenerateItemImage(selectedItem, extraPrompt);
+            setActionMessage(extraPrompt ? '已提交自定义提示词重生图' : '已提交物品重生图');
+        } catch {
+            // 错误已由 onRegenerateItemImage 内部记录并推送通知，此处无需重复处理
+        }
+    };
+
+    const 检查图库状态 = React.useCallback(async () => {
+        if (!selectedItem || !openingConfig?.题材模式) {
+            setGalleryStatus('idle');
+            return;
+        }
+        const itemName = 提取图库物品名称(selectedItem);
+        if (!itemName) {
+            setGalleryStatus('idle');
+            return;
+        }
+        setGalleryStatus('checking');
+        try {
+            const exists = await 物品已在图库中(
+                selectedItem,
+                openingConfig.题材模式,
+                openingConfig?.modeRuntimeProfile?.identity?.modeId || ''
+            );
+            setGalleryStatus(exists ? 'in-gallery' : 'idle');
+        } catch {
+            setGalleryStatus('idle');
+        }
+    }, [selectedItem, openingConfig?.题材模式, openingConfig?.modeRuntimeProfile?.identity?.modeId]);
+
+    React.useEffect(() => {
+        检查图库状态();
+    }, [检查图库状态]);
+
+    const handleSaveToGallery = async () => {
+        if (!selectedItem || !onSaveItemToGallery) return;
+        const hasIcon = Boolean(获取物品已选图标地址(selectedItem));
+        if (!hasIcon) return;
+
+        const itemName = 提取图库物品名称(selectedItem);
+        if (itemName && openingConfig?.题材模式) {
+            try {
+                const existing = await 查询用户图库图片(
+                    selectedItem,
+                    openingConfig.题材模式,
+                    openingConfig?.modeRuntimeProfile?.identity?.modeId || ''
+                );
+                if (existing?.assetId) {
+                    setGalleryOverwriteTarget(existing);
+                    return;
+                }
+            } catch {
+                // 查询失败时直接存入
+            }
+        }
+
+        setGalleryStatus('saving');
+        try {
+            await onSaveItemToGallery(selectedItem);
+            setGalleryStatus('saved');
+            setActionMessage('已存入用户图库');
+            setTimeout(() => setGalleryStatus('in-gallery'), 1500);
+        } catch {
+            setGalleryStatus('idle');
+            setActionMessage('存入图库失败');
+        }
+    };
+
+    const handleConfirmOverwrite = async () => {
+        if (!selectedItem || !onSaveItemToGallery) return;
+        setGalleryOverwriteTarget(null);
+        setGalleryStatus('saving');
+        try {
+            await onSaveItemToGallery(selectedItem);
+            setGalleryStatus('saved');
+            setActionMessage('已更新用户图库');
+            setTimeout(() => setGalleryStatus('in-gallery'), 1500);
+        } catch {
+            setGalleryStatus('idle');
+            setActionMessage('更新图库失败');
+        }
     };
 
     const handleSellAllMisc = () => {
         if (!onSellAllMisc) return;
         const result = onSellAllMisc();
-        setActionMessage(result?.message || '已一键寄售杂物');
+        setActionMessage((result && result.message) || '已一键寄售杂物');
         if (!result || result.ok) setSelectedItem(null);
     };
 
     const handleDiscardAllMisc = () => {
         if (!onDiscardAllMisc) return;
         const result = onDiscardAllMisc();
-        setActionMessage(result?.message || '已一键丢弃杂物');
+        setActionMessage((result && result.message) || '已一键丢弃杂物');
         if (!result || result.ok) setSelectedItem(null);
     };
 
@@ -689,7 +774,7 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                             placeholder="可选：输入额外提示词，例如“更古朴、木纹更明显、背景更淡”"
                                             className="mb-2 h-16 w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs leading-5 text-gray-100 outline-none placeholder:text-gray-500 focus:border-cyan-400/50"
                                         />
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-3 gap-2">
                                             <button
                                                 type="button"
                                                 onClick={handleRegenerateSelectedImage}
@@ -706,6 +791,23 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                                             >
                                                 出售
                                             </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveToGallery}
+                                                disabled={!onSaveItemToGallery || galleryStatus === 'checking' || galleryStatus === 'saving' || galleryStatus === 'saved'}
+                                                className="rounded-lg border border-violet-400/35 bg-violet-500/10 px-3 py-2.5 text-sm font-semibold text-violet-50 transition hover:border-violet-300/60 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                {galleryStatus === 'checking' ? '检查中' : galleryStatus === 'saving' ? '存入中' : galleryStatus === 'saved' ? '已存入' : galleryStatus === 'in-gallery' ? '更新图库' : '存入图库'}
+                                            </button>
+                                            {(galleryStatus === 'saved' || galleryStatus === 'in-gallery') && onNavigateToGallery ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={onNavigateToGallery}
+                                                    className="text-xs text-violet-400 hover:text-violet-300 underline ml-2 whitespace-nowrap"
+                                                >
+                                                    查看图库 ≫
+                                                </button>
+                                            ) : null}
                                         </div>
                                     </div>
 
@@ -834,6 +936,73 @@ const DetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ groupT
                     </button>
                     <div className="relative max-h-full max-w-[92vw]" onClick={(event) => event.stopPropagation()}>
                         <img src={imageViewer.src} alt={imageViewer.alt} className="max-h-[86vh] max-w-[92vw] rounded-lg border border-white/25 object-contain shadow-2xl" />
+                    </div>
+                </div>
+            ), document.body)}
+            {galleryOverwriteTarget && typeof document !== 'undefined' && createPortal((
+                <div
+                    className="fixed inset-0 z-[370] flex items-center justify-center p-4 backdrop-blur-sm"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.88)' }}
+                    onClick={() => setGalleryOverwriteTarget(null)}
+                    role="dialog"
+                    aria-label="确认更新图库"
+                >
+                    <div className="relative w-full max-w-2xl rounded-2xl border border-white/15 bg-gray-900 p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+                        <button
+                            type="button"
+                            onClick={() => setGalleryOverwriteTarget(null)}
+                            className="absolute top-3 right-3 w-12 h-12 flex items-center justify-center rounded-full bg-red-600/90 hover:bg-red-500 border-2 border-white/80 text-white shadow-[0_0_20px_rgba(220,38,38,0.6)] transition-all hover:scale-110 z-10"
+                            title="关闭"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <h3 className="mb-4 text-lg font-bold text-white">确认更新图库图片？</h3>
+                        <p className="mb-4 text-sm text-gray-300">
+                            物品：{selectedItem?.名称 || '未知'} ({openingConfig?.题材模式}·{selectedItem?.类型 || '未知'}·{selectedItem?.品质 || '未知'})
+                        </p>
+                        <div className="mb-4 flex items-center gap-4">
+                            <div className="flex-1 text-center">
+                                <p className="mb-2 text-xs text-gray-400">旧图（存于 {new Date(galleryOverwriteTarget.createdAt).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}）</p>
+                                {galleryOverwriteTarget.thumbnailDataUrl ? (
+                                    <img src={galleryOverwriteTarget.thumbnailDataUrl} alt="旧图" className="mx-auto max-h-40 rounded-lg border border-white/15 object-contain" />
+                                ) : (
+                                    <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-lg border border-white/15 bg-black/30 text-xs text-gray-500">无缩略图</div>
+                                )}
+                                <p className="mt-2 truncate text-xs text-gray-400">{galleryOverwriteTarget.prompt.slice(0, 100) || '无描述'}</p>
+                            </div>
+                            <div className="text-2xl text-gray-500">→</div>
+                            <div className="flex-1 text-center">
+                                <p className="mb-2 text-xs text-gray-400">新图（当前生成）</p>
+                                {(() => {
+                                    const newSrc = 获取物品已选图标地址(selectedItem);
+                                    return newSrc ? (
+                                        <img src={newSrc} alt="新图" className="mx-auto max-h-40 rounded-lg border border-white/15 object-contain" />
+                                    ) : (
+                                        <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-lg border border-white/15 bg-black/30 text-xs text-gray-500">无图片</div>
+                                    );
+                                })()}
+                                 <p className="mt-2 truncate text-xs text-gray-400">{获取物品已选图标记录(selectedItem)?.生图词组?.slice(0, 100) || '无描述'}</p>
+                            </div>
+                        </div>
+                        <p className="mb-4 text-center text-sm font-semibold text-amber-400">⚠️ 更新后旧图将被替换且无法恢复</p>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setGalleryOverwriteTarget(null)}
+                                className="flex-1 rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-gray-200 transition hover:bg-white/10"
+                            >
+                                取消
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmOverwrite}
+                                className="flex-1 rounded-lg border border-violet-400/35 bg-violet-500/10 px-4 py-2.5 text-sm font-semibold text-violet-50 transition hover:border-violet-300/60 hover:bg-violet-500/20"
+                            >
+                                确认更新
+                            </button>
+                        </div>
                     </div>
                 </div>
             ), document.body)}

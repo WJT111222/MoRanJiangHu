@@ -4,8 +4,19 @@ import {
     规范化OpenAI图片基础地址,
     规范化OpenAI图片模型名称
 } from './imageGenerationDiagnostics';
+import { buildSyncApiUrl } from '../../utils/nativeRuntime';
 
 const OPENAI图片测试超时MS = 25_000;
+
+export const 探测图片Url取回代理 = async (): Promise<string> => {
+    try {
+        const probe = `${buildSyncApiUrl('/api/image-backend/fetch-image')}?url=${encodeURIComponent('https://example.com/__moran_probe__.png')}`;
+        const res = await fetch(probe, { method: 'GET' });
+        return `url 取回代理可达（HTTP ${res.status}）；若实际生图仍 Failed to fetch，请确认该端点返回的图片 URL 可被同域代理取回。`;
+    } catch (error: any) {
+        return `url 取回代理不可达：${error?.message || error}（本地 dev 需 M2 中间件或生产 Worker；否则生产 url 模式可能 Failed to fetch）。`;
+    }
+};
 
 type OpenAI图片测试结果 = {
     message: string;
@@ -65,6 +76,8 @@ export const 测试OpenAI兼容图片接口 = async (params: {
     path?: string;
     responseFormat?: 功能模型占位配置结构['文生图响应格式'];
     label: string;
+    供应商ID?: string;
+    自定义图片代理地址?: string;
     setTimeoutFn?: typeof setTimeout;
     clearTimeoutFn?: typeof clearTimeout;
 }): Promise<OpenAI图片测试结果> => {
@@ -74,7 +87,7 @@ export const 测试OpenAI兼容图片接口 = async (params: {
     const endpoint = 构建OpenAI图片生成端点(
         params.rawBaseUrl,
         isGptImageModel ? '/v1/images/generations' : params.path,
-        { useRuntimeProxy: true }
+        { useRuntimeProxy: true, 供应商ID: params.供应商ID, 自定义图片代理地址: params.自定义图片代理地址 }
     );
     if (!endpoint) throw new Error('OpenAI 兼容图片接口缺少 API 地址。');
     const headers: Record<string, string> = {
@@ -138,8 +151,9 @@ export const 测试OpenAI兼容图片接口 = async (params: {
         if (!previewUrl) {
             throw new Error(`${params.label}返回成功状态，但没有返回可显示的图片。原始响应：${detail.slice(0, 500)}`);
         }
+        const url取回提示 = await 探测图片Url取回代理().catch(() => '');
         return {
-            message: `${params.label}真实生图测试成功：${endpoint} 可访问，已返回图片预览。${normalizedNote}${modelNote}`,
+            message: `${params.label}真实生图测试成功：${endpoint} 可访问，已返回图片预览（本次测试使用 b64_json 内联）。${normalizedNote}${modelNote}${url取回提示 ? ` ${url取回提示}` : ''}`,
             previewUrl
         };
     }

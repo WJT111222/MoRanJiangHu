@@ -19,13 +19,14 @@ import type {
     PNG画风预设结构
 } from '../../../types';
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
-import { 获取图片安全预览地址 as 获取图片展示地址, 获取图片资源文本地址, 是否存在本地图片副本, 格式化本地图片描述 } from '../../../utils/imageAssets';
+import { 获取图片安全预览地址 as 获取图片展示地址, 获取图片资源文本地址, 是否存在本地图片副本, 格式化本地图片描述, 是否图片资源引用, 读取图片资源远程兜底地址 } from '../../../utils/imageAssets';
 import ToggleSwitch from '../../ui/ToggleSwitch';
 import DataUrlSafeImage from '../../ui/DataUrlSafeImage';
 import { 获取命中模型词组转化器预设, 规范化接口设置 } from '../../../utils/apiConfig';
 import { 自动场景横屏尺寸选项, 自动场景竖屏尺寸选项 } from '../../../utils/imageSizeOptions';
 import { IconScroll } from '../../ui/Icons';
-import { 获取本地图片图床迁移状态, 订阅本地图片图床迁移状态 } from '../../../services/dbService';
+import { 获取本地图片图床迁移状态, 订阅本地图片图床迁移状态, 获取用户图库全部条目, 删除用户图库条目, 用户图库条目 } from '../../../services/dbService';
+import { 读取图片资源 } from '../../../services/dbService';
 import ImageMigrationStatusPanel from './ImageMigrationStatusPanel';
 import { NPC是否男性或男娘 } from '../../../utils/npcGenderFlags';
 import { 构建角色锚点绑定选项, 主角角色锚点绑定ID } from '../../../utils/characterAnchorOptions';
@@ -40,6 +41,7 @@ type 物品历史展示记录 = 物品生图结果 & {
 };
 
 interface Props {
+    initialTab?: 页面标签类型;
     socialList: NPC结构[];
     playerCharacter?: 角色数据结构 | null;
     cultivationSystemEnabled?: boolean;
@@ -96,7 +98,7 @@ interface Props {
 }
 
 type 手动流程阶段 = 'idle' | 'confirm' | 'submitting';
-type 页面标签类型 = 'manual' | 'library' | 'scene' | 'queue' | 'history' | 'presets' | 'rules' | 'migration';
+type 页面标签类型 = 'manual' | 'library' | 'scene' | 'queue' | 'history' | 'presets' | 'rules' | 'migration' | 'itemGallery';
 
 type NPC图库分组 = {
     npc: NPC结构;
@@ -432,7 +434,8 @@ const ImageManagerModal: React.FC<Props> = ({
         角色姓名: '',
         状态: '全部'
     });
-    const [activeTab, setActiveTab] = React.useState<页面标签类型>('manual');
+    const initialTabRef = React.useRef(props.initialTab);
+    const [activeTab, setActiveTab] = React.useState<页面标签类型>(initialTabRef.current || 'manual');
     const [legacyImageMigrationStatus, setLegacyImageMigrationStatus] = React.useState(() => 获取本地图片图床迁移状态());
     const [modelRulePanelOpen, setModelRulePanelOpen] = React.useState(false);
     const [activeRuleSection, setActiveRuleSection] = React.useState<'npc' | 'scene' | 'scene_judge'>('npc');
@@ -465,6 +468,11 @@ const ImageManagerModal: React.FC<Props> = ({
     const [secretExtraRequirement, setSecretExtraRequirement] = React.useState('');
     const [manualFlowStage, setManualFlowStage] = React.useState<手动流程阶段>('idle');
     const [manualSubmitAt, setManualSubmitAt] = React.useState<number>(0);
+    const [galleryEntries, setGalleryEntries] = React.useState<用户图库条目[]>([]);
+    const [galleryFilterMode, setGalleryFilterMode] = React.useState<string>('全部');
+    const [galleryPreviewEntry, setGalleryPreviewEntry] = React.useState<用户图库条目 | null>(null);
+    const [galleryPreviewOriginal, setGalleryPreviewOriginal] = React.useState<string>('');
+    const [galleryPreviewError, setGalleryPreviewError] = React.useState('');
 
     const 手动尺寸基准: Record<'1:1' | '3:4' | '9:16' | '16:9', { 宽: number; 高: number; 描述: string }> = {
         '1:1': { 宽: 1024, 高: 1024, 描述: '1:1 正方' },
@@ -1283,6 +1291,94 @@ const ImageManagerModal: React.FC<Props> = ({
         if (!normalizedSrc) return;
         setImageViewer({ src: normalizedSrc, alt: (alt || '图片预览').trim() || '图片预览' });
     }, []);
+
+    React.useEffect(() => {
+        if (!galleryPreviewEntry) {
+            setGalleryPreviewOriginal('');
+            setGalleryPreviewError('');
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            try {
+                setGalleryPreviewError('');
+                const result = await 读取图片资源(galleryPreviewEntry.assetId);
+                if (!cancelled) {
+                    if (是否图片资源引用(result)) {
+                        const fallback = 读取图片资源远程兜底地址(galleryPreviewEntry.assetId);
+                        if (fallback) {
+                            setGalleryPreviewOriginal(fallback);
+                        } else {
+                            setGalleryPreviewError('图片引用无效，且无远程兜底地址。');
+                        }
+                    } else {
+                        setGalleryPreviewOriginal(result);
+                    }
+                }
+            } catch (err: any) {
+                if (!cancelled) {
+                    setGalleryPreviewError(err?.message || '加载原图失败');
+                }
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [galleryPreviewEntry]);
+
+    const refreshGallery = React.useCallback(async (silent = false) => {
+        try {
+            const entries = await 获取用户图库全部条目();
+            const valid: 用户图库条目[] = [];
+            for (const e of entries) {
+                if (!e.assetId && e.imageUrl) {
+                    try { await 删除用户图库条目(e.id); } catch { }
+                    continue;
+                }
+                if (是否图片资源引用(e.assetId) || e.assetId.startsWith('data:')) {
+                    valid.push(e);
+                } else {
+                    try { await 删除用户图库条目(e.id); } catch { }
+                }
+            }
+            setGalleryEntries(valid);
+        } catch {
+            if (!silent) setGalleryPreviewError('读取图库失败');
+        }
+    }, []);
+
+    React.useEffect(() => {
+        if (activeTab !== 'itemGallery') return;
+        void refreshGallery(true);
+        const id = window.setInterval(() => void refreshGallery(true), 15_000);
+        return () => window.clearInterval(id);
+    }, [activeTab, refreshGallery]);
+
+    const handleDeleteGalleryEntry = React.useCallback(async (entry: 用户图库条目) => {
+        try {
+            await 删除用户图库条目(entry.id);
+            setGalleryEntries((prev) => prev.filter((e) => e.id !== entry.id));
+        } catch (err: any) {
+            setGalleryPreviewError(err?.message || '删除失败');
+        }
+    }, []);
+
+    const filteredGalleryEntries = React.useMemo(() => {
+        if (galleryFilterMode === '全部') return galleryEntries;
+        return galleryEntries.filter((e) => e.itemType === galleryFilterMode);
+    }, [galleryEntries, galleryFilterMode]);
+
+    const galleryItemTypes = React.useMemo(() => {
+        const types = new Set(galleryEntries.map(e => e.itemType));
+        const priority = ['装备', '武器', '丹药', '秘籍', '杂物'];
+        const sorted = priority.filter(t => types.has(t));
+        const rest = [...types].filter(t => !priority.includes(t)).sort();
+        return ['全部', ...sorted, ...rest];
+    }, [galleryEntries]);
+
+    React.useEffect(() => {
+        if (galleryFilterMode !== '全部' && !galleryItemTypes.includes(galleryFilterMode)) {
+            setGalleryFilterMode('全部');
+        }
+    }, [galleryFilterMode, galleryItemTypes]);
 
     const canSubmitManual = Boolean(onGenerateImage && selectedNpcId && manualFlowStage !== 'submitting');
 
@@ -3779,37 +3875,135 @@ const ImageManagerModal: React.FC<Props> = ({
         </div>
     );
 
-    const renderHistoryTab = (queueMode = false) => (
+    const renderItemGalleryTab = () => (
+        <div className="flex flex-col h-full bg-[#0c0d0f]/90 border border-wuxia-gold/30 rounded shadow-[0_0_30px_rgba(212,175,55,0.05)] p-5 relative">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.03)_0%,transparent_100%)] pointer-events-none"></div>
+            <div className="relative z-10 flex flex-col h-full">
+                <div className="flex flex-wrap items-center justify-between border-b border-wuxia-gold/10 pb-4 mb-4 shrink-0 gap-4">
+                    <div>
+                        <div className="text-wuxia-gold font-serif text-xl tracking-wider text-shadow-glow">物品图库</div>
+                        <div className="text-[10px] text-gray-500 mt-1">本地保存的物品生图结果</div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {galleryItemTypes.map((t) => (
+                            <button
+                                key={t}
+                                type="button"
+                                onClick={() => setGalleryFilterMode(t)}
+                                className={`px-3 py-1.5 text-xs rounded border transition-all ${
+                                    galleryFilterMode === t
+                                        ? 'border-wuxia-gold/70 text-wuxia-gold bg-wuxia-gold/10 shadow-[0_0_10px_rgba(212,175,55,0.15)]'
+                                        : 'border-gray-700/50 text-gray-400 bg-black/30 hover:border-gray-500'
+                                }`}
+                            >
+                                {t}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+                        {filteredGalleryEntries.length === 0 ? (
+                            <div className="col-span-full">
+                                <空状态 title="图库为空" desc="暂无本地保存的物品生图记录。" />
+                            </div>
+                        ) : (
+                            filteredGalleryEntries.map((entry) => {
+                                const displaySrc = entry.thumbnailDataUrl || entry.imageUrl || '';
+                                return (
+                                    <div
+                                        key={entry.id}
+                                        className="group relative rounded border border-wuxia-gold/15 bg-black/40 p-3 hover:border-wuxia-gold/40 transition-all cursor-pointer"
+                                        onClick={() => setGalleryPreviewEntry(entry)}
+                                    >
+                                        <div className="aspect-square rounded overflow-hidden bg-black/60 mb-2 flex items-center justify-center">
+                                            {displaySrc ? (
+                                                <DataUrlSafeImage src={displaySrc} alt={entry.itemName} className="w-full h-full object-contain" />
+                                            ) : (
+                                                <span className="text-[10px] text-gray-600">无缩略图</span>
+                                            )}
+                                        </div>
+                                        <div className="text-xs text-gray-300 truncate font-serif" title={entry.itemName}>{entry.itemName}</div>
+                                        <div className="flex items-center justify-between mt-1">
+                                            <span className="text-[10px] text-wuxia-gold/60">{entry.itemType}</span>
+                                            <span className="text-[10px] text-gray-600">{entry.quality || '—'}</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); void handleDeleteGalleryEntry(entry); }}
+                                            className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded bg-red-900/60 opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all text-white text-xs"
+                                            title="删除"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {galleryPreviewEntry && (
+                <div
+                    className="absolute inset-0 z-[240] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={() => setGalleryPreviewEntry(null)}
+                >
+                    <div
+                        className="relative max-w-4xl w-full max-h-[90vh] rounded border border-wuxia-gold/30 bg-[#0c0d0f]/95 shadow-[0_0_60px_rgba(212,175,55,0.2)] p-5 overflow-y-auto custom-scrollbar"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setGalleryPreviewEntry(null)}
+                            className="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-red-600/90 hover:bg-red-500 border-2 border-white/80 text-white shadow-[0_0_20px_rgba(220,38,38,0.6)] transition-all hover:scale-110 z-10"
+                            title="关闭"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="text-wuxia-gold font-serif text-lg tracking-wider">{galleryPreviewEntry.itemName}</div>
+                                    <div className="text-[11px] text-gray-500 mt-1">{galleryPreviewEntry.itemType} · {galleryPreviewEntry.quality || '无品质'}</div>
+                                </div>
+                            </div>
+                            <div className="aspect-video rounded overflow-hidden bg-black/60 flex items-center justify-center border border-wuxia-gold/10">
+                                {galleryPreviewError ? (
+                                    <div className="text-red-400 text-xs p-4 text-center">{galleryPreviewError}</div>
+                                ) : galleryPreviewOriginal ? (
+                                    <DataUrlSafeImage src={galleryPreviewOriginal} alt={galleryPreviewEntry.itemName} className="max-w-full max-h-full object-contain" />
+                                ) : (
+                                    <div className="text-gray-500 text-xs">加载中...</div>
+                                )}
+                            </div>
+                            <div>
+                                <div className="text-xs text-gray-400 mb-1">生成 Prompt</div>
+                                <div className="text-xs text-gray-300 bg-black/40 rounded border border-wuxia-gold/10 p-3 max-h-[120px] overflow-y-auto custom-scrollbar whitespace-pre-wrap break-words font-mono leading-relaxed">
+                                    {galleryPreviewEntry.prompt || '无记录'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+
+    const renderHistoryTab = () => (
         <div className="flex flex-col h-full bg-[#0c0d0f]/90 border border-wuxia-gold/30 rounded shadow-[0_0_30px_rgba(212,175,55,0.05)] p-5 relative">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.03)_0%,transparent_100%)] pointer-events-none"></div>
             
             <div className="relative z-10 flex flex-col h-full">
                 <div className="flex flex-wrap items-center justify-between border-b border-wuxia-gold/10 pb-4 mb-4 shrink-0 gap-4">
                     <div>
-                        <div className="text-wuxia-gold font-serif text-xl tracking-wider text-shadow-glow">{queueMode ? '生成队列' : '全部生成历史'}</div>
-                        <div className="text-[10px] text-gray-500 mt-1">{queueMode ? '以生成历史框架展示所有记录，并补充实时队列进度、重试与删除操作。' : 'Chronicles of the Past'}</div>
+                        <div className="text-wuxia-gold font-serif text-xl tracking-wider text-shadow-glow">全部生成历史</div>
+                        <div className="text-[10px] text-gray-500 mt-1">Chronicles of the Past</div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        {queueMode && onClearQueue && (
-                            <>
-                                <button type="button" onClick={() => { void handleClearQueue('completed'); }} disabled={busyActionKey === 'clear_queue_completed'} className={次级按钮样式(true)}>
-                                    清空已完成 NPC 任务
-                                </button>
-                                <button type="button" onClick={() => { void handleClearQueue('all'); }} disabled={busyActionKey === 'clear_queue_all'} className={次级按钮样式(true)}>
-                                    清空全部 NPC 任务
-                                </button>
-                            </>
-                        )}
-                        {queueMode && onClearSceneQueue && (
-                            <>
-                                <button type="button" onClick={() => { void handleClearSceneQueue('completed'); }} disabled={busyActionKey === 'clear_scene_queue_completed'} className={次级按钮样式(true)}>
-                                    清空已完成场景任务
-                                </button>
-                                <button type="button" onClick={() => { void handleClearSceneQueue('all'); }} disabled={busyActionKey === 'clear_scene_queue_all'} className={次级按钮样式(true)}>
-                                    清空全部场景任务
-                                </button>
-                            </>
-                        )}
                         {onClearImageHistory && (
                             <button
                                 type="button"
@@ -3843,74 +4037,6 @@ const ImageManagerModal: React.FC<Props> = ({
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-5">
-                    {queueMode && filteredCombinedQueue.length > 0 && (
-                        <div className="rounded border border-cyan-400/20 bg-cyan-950/10 p-4">
-                            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <div className="text-cyan-100 font-serif text-base tracking-wider">实时队列状态</div>
-                                    <div className="mt-1 text-[10px] text-cyan-100/50">只显示任务现场信息；完整图片、提示词和原始描述在下方历史卡片中查看。</div>
-                                </div>
-                                <div className="text-[11px] text-cyan-100/70">{filteredCombinedQueue.length} 条</div>
-                            </div>
-                            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                                {filteredCombinedQueue.map((entry) => {
-                                    if (entry.类型 === 'item' && entry.itemRecord) {
-                                        const item = entry.itemRecord;
-                                        const status = 从图片状态推导队列状态(item.状态);
-                                        return (
-                                            <div key={`queue_${entry.id}`} className="rounded border border-cyan-300/15 bg-black/35 px-3 py-2 text-[11px]">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className="truncate font-serif text-cyan-100" title={item.物品名称}>{item.物品名称 || '物品生图'}</span>
-                                                    <span className={`shrink-0 rounded border px-1.5 py-0.5 ${队列状态样式[status]}`}>{获取图片状态文案(item)}</span>
-                                                </div>
-                                                <div className="mt-1 text-cyan-100/55">{item.错误信息 || (获取图片展示地址(item) ? '图片已返回并写入历史。' : '等待图片后端返回或本地化。')}</div>
-                                                <div className="mt-1 font-mono text-[10px] text-gray-500">{格式化时间(item.生成时间)}</div>
-                                            </div>
-                                        );
-                                    }
-                                    if (entry.类型 === 'scene' && entry.task) {
-                                        const task = entry.task as 场景生图任务记录;
-                                        return (
-                                            <div key={`queue_${entry.id}`} className="rounded border border-cyan-300/15 bg-black/35 px-3 py-2 text-[11px]">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className="truncate font-serif text-cyan-100" title={task.摘要 || '场景生成任务'}>{task.摘要 || '场景生成任务'}</span>
-                                                    <span className={`shrink-0 rounded border px-1.5 py-0.5 ${队列状态样式[task.状态]}`}>{队列状态文案[task.状态]}</span>
-                                                </div>
-                                                <div className="mt-1 text-cyan-100/55">{task.进度文本 || task.错误信息 || 获取生图阶段中文(task.进度阶段 || 从任务状态推导阶段(task.状态))}</div>
-                                                <div className="mt-2 flex items-center justify-between gap-2">
-                                                    <span className="font-mono text-[10px] text-gray-500">{格式化时间(task.创建时间)}</span>
-                                                    {onDeleteSceneQueueTask && (
-                                                        <button type="button" onClick={() => { void handleDeleteSceneQueueTask(task.id); }} disabled={busyActionKey === `delete_scene_queue_${task.id}`} className={次级按钮样式(true)}>删除</button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    const task = entry.task as NPC生图任务记录;
-                                    return (
-                                        <div key={`queue_${entry.id}`} className="rounded border border-wuxia-gold/15 bg-black/35 px-3 py-2 text-[11px]">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <span className="truncate font-serif text-wuxia-gold/90" title={task.NPC姓名}>{task.NPC姓名 || '角色生图'} · {获取NPC构图文案(task.构图, task.部位)}</span>
-                                                <span className={`shrink-0 rounded border px-1.5 py-0.5 ${队列状态样式[task.状态]}`}>{队列状态文案[task.状态]}</span>
-                                            </div>
-                                            <div className="mt-1 text-wuxia-gold/55">{task.进度文本 || task.错误信息 || 获取生图阶段中文(task.进度阶段 || 从任务状态推导阶段(task.状态))}</div>
-                                            <div className="mt-2 flex items-center justify-between gap-2">
-                                                <span className="font-mono text-[10px] text-gray-500">{格式化时间(task.创建时间)}</span>
-                                                <div className="flex gap-2">
-                                                    {task.状态 === 'failed' && task.构图 !== '部位特写' && onRetryImage && (
-                                                        <button type="button" onClick={() => { void handleRetryImage(从任务标识提取NPCID(task.NPC标识)); }} disabled={busyActionKey === `retry_${task.NPC标识}`} className={次级按钮样式()}>重试</button>
-                                                    )}
-                                                    {onDeleteQueueTask && (
-                                                        <button type="button" onClick={() => { void handleDeleteQueueTask(task.id); }} disabled={busyActionKey === `delete_queue_${task.id}`} className={次级按钮样式(true)}>删除</button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
                     {combinedHistoryRecords.length > 0 ? (
                         <div className="grid grid-cols-1 gap-5 pb-4">
                             {combinedHistoryRecords.map((entry) => {
@@ -5274,6 +5400,10 @@ const ImageManagerModal: React.FC<Props> = ({
                             <span className="md:hidden text-lg w-full text-center">图</span>
                             <span className="hidden md:inline">生成队列</span>
                         </button>
+                        <button type="button" onClick={() => setActiveTab('itemGallery')} className={标签按钮样式(activeTab === 'itemGallery')}>
+                            <span className="md:hidden text-lg w-full text-center">库</span>
+                            <span className="hidden md:inline">物品图库</span>
+                        </button>
                         <button type="button" onClick={() => setActiveTab('presets')} className={标签按钮样式(activeTab === 'presets')}>
                             <span className="md:hidden text-lg w-full text-center">设</span>
                             <span className="hidden md:inline">资源配置</span>
@@ -5303,7 +5433,7 @@ const ImageManagerModal: React.FC<Props> = ({
                     </button>
 
                     <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
-                        {activeTab !== 'manual' && activeTab !== 'scene' && activeTab !== 'presets' && activeTab !== 'rules' && activeTab !== 'migration' && (
+                        {activeTab !== 'manual' && activeTab !== 'scene' && activeTab !== 'presets' && activeTab !== 'rules' && activeTab !== 'migration' && activeTab !== 'itemGallery' && (
                             <div className="shrink-0 px-6 py-6 border-b border-wuxia-gold/10 bg-black/30 space-y-5">
                                 <div className="pr-12">
                                     <div className="text-wuxia-gold/90 font-serif text-lg tracking-wider">图片筛选</div>
@@ -5349,7 +5479,8 @@ const ImageManagerModal: React.FC<Props> = ({
                                             <span>当前视图</span>
                                             <span className="text-wuxia-gold font-medium tracking-widest drop-shadow-md">
                                             {activeTab === 'library' && `${npcLibraryGroups.length} 个角色`}
-                                            {activeTab === 'queue' && `${filteredCombinedQueue.length} 条生成记录`}
+                                            {activeTab === 'queue' && `${filteredCombinedQueue.length} 条队列`}
+                                            {activeTab === 'itemGallery' && `${galleryEntries.length} 条图库`}
                                             </span>
                                         </div>
                                     </div>
@@ -5367,7 +5498,8 @@ const ImageManagerModal: React.FC<Props> = ({
                             {activeTab === 'manual' && renderManualTab()}
                             {activeTab === 'library' && renderLibraryTab()}
                             {activeTab === 'scene' && renderSceneTab()}
-                            {activeTab === 'queue' && renderHistoryTab(true)}
+                            {activeTab === 'queue' && <>{renderQueueTab()}<div className="mt-6">{renderHistoryTab()}</div></>}
+                            {activeTab === 'itemGallery' && renderItemGalleryTab()}
                             {activeTab === 'presets' && renderPresetsTab()}
                             {activeTab === 'rules' && renderRulesTab()}
                             {activeTab === 'migration' && renderMigrationTab()}

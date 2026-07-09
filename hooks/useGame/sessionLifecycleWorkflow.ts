@@ -120,6 +120,7 @@ type 会话生命周期依赖 = {
     setWorldEvents: (value: any[]) => void;
     应用并同步记忆系统: (memory: any, options?: { 静默总结提示?: boolean }) => void;
     清空变量生成上下文缓存: () => void;
+    清空NPC生图等待队列: () => void;
     创建开场基础状态: (charData: 角色数据结构, worldConfig: WorldGenConfig, openingConfig?: OpeningConfig) => any;
     构建前端清空开场状态: (openingBase: any) => any;
     创建开场命令基态: (角色?: any) => any;
@@ -402,6 +403,7 @@ export const 创建会话生命周期工作流 = (deps: 会话生命周期依赖
         deps.重置自动存档状态();
         deps.设置最近开局配置(null);
         deps.设置开局配置(undefined);
+        deps.清空NPC生图等待队列();
         deps.setView('home');
         return true;
     };

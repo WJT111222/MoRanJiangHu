@@ -46,7 +46,6 @@ type 主角图片工作流依赖 = {
 
 export const 创建主角图片工作流 = (deps: 主角图片工作流依赖) => {
     const 主角头像自动补全失败冷却毫秒 = 10 * 60 * 1000;
-    const 主角自动生图进行中识别毫秒 = 30 * 60 * 1000;
     let 主角头像自动补全下次允许时间 = 0;
 
     const 主角锚点是否匹配当前角色 = (anchor: any, playerSnapshot: 角色数据结构): boolean => {
@@ -213,47 +212,41 @@ export const 创建主角图片工作流 = (deps: 主角图片工作流依赖) =
         });
     };
 
-    const 角色图片记录可视为自动占位 = (item: any, compositions: string[]): boolean => {
-        if (!item || typeof item !== 'object') return false;
-        if (!compositions.includes(String(item?.构图 || ''))) return false;
-        if (item?.状态 === 'success') {
-            return 图片资源记录含可恢复地址(item);
-        }
-        if (item?.状态 !== 'pending' && item?.状态 !== 'running') return false;
-        const time = Number(item?.生成时间 || item?.创建时间 || item?.开始时间 || Date.now());
-        return !Number.isFinite(time) || time <= 0 || Date.now() - time <= 主角自动生图进行中识别毫秒;
-    };
-
-    const 主角已有构图或正在生成 = (
-        playerSnapshot: 角色数据结构 | undefined,
-        compositions: string[],
-        options?: { 检查头像URL?: boolean; selectedField?: '已选头像图片ID' | '已选立绘图片ID' }
-    ): boolean => {
+    const 主角已有头像 = (playerSnapshot?: 角色数据结构): boolean => {
         const player = playerSnapshot || deps.获取角色();
-        if (options?.检查头像URL && typeof player?.头像图片URL === 'string' && player.头像图片URL.trim()) return true;
         const archive = player?.图片档案 && typeof player.图片档案 === 'object' ? player.图片档案 : {};
         const history = Array.isArray(archive?.生图历史) ? archive.生图历史 : [];
-        const selectedId = options?.selectedField && typeof archive?.[options.selectedField] === 'string'
-            ? archive[options.selectedField].trim()
-            : '';
-        if (selectedId && history.some((item: any) => item?.id === selectedId && 角色图片记录可视为自动占位(item, compositions))) {
+        const selectedId = typeof archive?.已选头像图片ID === 'string' ? archive.已选头像图片ID.trim() : '';
+        if (selectedId && history.some((item: any) => item?.id === selectedId && item?.构图 === '头像' && item?.状态 === 'success' && 图片资源记录含可恢复地址(item))) {
             return true;
         }
         const recent = archive?.最近生图结果 || player?.最近生图结果;
-        return [recent, ...history].some((item: any) => 角色图片记录可视为自动占位(item, compositions));
-    };
-
-    const 主角已有头像 = (playerSnapshot?: 角色数据结构): boolean => {
-        return 主角已有构图或正在生成(playerSnapshot, ['头像'], {
-            检查头像URL: true,
-            selectedField: '已选头像图片ID'
-        });
+        return [recent, ...history].some((item: any) => (
+            item?.状态 === 'success'
+            && item?.构图 === '头像'
+            && 图片资源记录含可恢复地址(item)
+        ));
     };
 
     const 主角已有非头像构图 = (playerSnapshot: 角色数据结构 | undefined, compositions: string[]): boolean => {
-        return 主角已有构图或正在生成(playerSnapshot, compositions, {
-            selectedField: '已选立绘图片ID'
-        });
+        const player = playerSnapshot || deps.获取角色();
+        const archive = player?.图片档案 && typeof player.图片档案 === 'object' ? player.图片档案 : {};
+        const history = Array.isArray(archive?.生图历史) ? archive.生图历史 : [];
+        const selectedPortraitId = typeof archive?.已选立绘图片ID === 'string' ? archive.已选立绘图片ID.trim() : '';
+        if (selectedPortraitId && history.some((item: any) => (
+            item?.id === selectedPortraitId
+            && compositions.includes(String(item?.构图 || ''))
+            && item?.状态 === 'success'
+            && 图片资源记录含可恢复地址(item)
+        ))) {
+            return true;
+        }
+        const recent = archive?.最近生图结果 || player?.最近生图结果;
+        return [recent, ...history].some((item: any) => (
+            item?.状态 === 'success'
+            && compositions.includes(String(item?.构图 || ''))
+            && 图片资源记录含可恢复地址(item)
+        ));
     };
 
     const selectPlayerAvatarImage = (imageId: string) => 更新玩家选图字段(
@@ -472,22 +465,17 @@ export const 创建主角图片工作流 = (deps: 主角图片工作流依赖) =
     const generatePlayerImagesAutomatically = async (playerSnapshot?: 角色数据结构) => {
         const imageFeature = deps.读取文生图功能配置();
         if (!imageFeature?.总开关) return;
-        const 当前主角已有头像 = () => 主角已有头像(playerSnapshot) || 主角已有头像(deps.获取角色());
-        const 当前主角已有非头像构图 = (compositions: string[]) => (
-            主角已有非头像构图(playerSnapshot, compositions)
-            || 主角已有非头像构图(deps.获取角色(), compositions)
-        );
         const targets: 主角生图选项[] = [
-            当前主角已有头像() ? null : { 构图: '头像', 额外要求: '开局自动生成主角头像，强调面部辨识度、清晰五官与稳定角色特征。' },
-            当前主角已有非头像构图(['半身']) ? null : { 构图: '半身', 额外要求: '开局自动生成主角半身像，强调上半身服饰、姿态、气质与身份辨识。' },
-            当前主角已有非头像构图(['立绘']) ? null : { 构图: '立绘', 额外要求: '开局自动生成主角全身立绘，强调完整服饰、体态、武侠气质与角色稳定外观。' }
+            主角已有头像(playerSnapshot) ? null : { 构图: '头像', 额外要求: '开局自动生成主角头像，强调面部辨识度、清晰五官与稳定角色特征。' },
+            主角已有非头像构图(playerSnapshot, ['半身']) ? null : { 构图: '半身', 额外要求: '开局自动生成主角半身像，强调上半身服饰、姿态、气质与身份辨识。' },
+            主角已有非头像构图(playerSnapshot, ['立绘']) ? null : { 构图: '立绘', 额外要求: '开局自动生成主角全身立绘，强调完整服饰、体态、武侠气质与角色稳定外观。' }
         ].filter(Boolean) as 主角生图选项[];
         if (targets.length === 0) return;
         let failedCount = 0;
         for (const target of targets) {
-            if (target.构图 === '头像' && 当前主角已有头像()) continue;
-            if (target.构图 === '半身' && 当前主角已有非头像构图(['半身'])) continue;
-            if (target.构图 === '立绘' && 当前主角已有非头像构图(['立绘'])) continue;
+            if (target.构图 === '头像' && 主角已有头像(playerSnapshot)) continue;
+            if (target.构图 === '半身' && 主角已有非头像构图(playerSnapshot, ['半身'])) continue;
+            if (target.构图 === '立绘' && 主角已有非头像构图(playerSnapshot, ['立绘'])) continue;
             try {
                 await generatePlayerImage(target, {
                     source: 'auto',
@@ -517,7 +505,7 @@ export const 创建主角图片工作流 = (deps: 主角图片工作流依赖) =
         const imageFeature = deps.读取文生图功能配置();
         if (!imageFeature?.总开关) return;
         const player = playerSnapshot || deps.获取角色();
-        if (主角已有头像(player) || 主角已有头像(deps.获取角色())) return;
+        if (主角已有头像(player)) return;
         const now = Date.now();
         if (主角头像自动补全下次允许时间 > now) return;
         try {

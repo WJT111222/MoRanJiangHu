@@ -1,13 +1,15 @@
+import type { NPC性别 } from './social';
+
 export type 生图目标类型 = 'npc' | 'scene' | 'item';
 export type 生图筛选性别类型 = '男' | '女' | '全部';
 export type 生图筛选重要性类型 = '仅重要' | '全部';
-export type 图片生成状态类型 = 'success' | 'failed' | 'pending';
+export type 图片生成状态类型 = 'success' | 'failed' | 'pending' | '未生成';
 export type 生图任务状态类型 = 'queued' | 'running' | 'success' | 'failed';
 export type 生图任务来源类型 = 'auto' | 'manual' | 'retry';
 export type 生图构图类型 = '头像' | '半身' | '立绘' | '场景' | '部位特写' | '物品图标' | '物品特写' | '物品展示';
 export type 场景生成类型 = '场景快照' | '风景场景' | '剧照场景';
 export type 香闺秘档部位类型 = '胸部' | '小穴' | '屁穴' | '肉棒';
-export type 图片记录来源类型 = 'generated' | 'upload' | 'hosted';
+export type 图片记录来源类型 = 'generated' | 'upload' | 'hosted' | 'gallery';
 export type 物品生图构图类型 = '物品图标' | '物品特写' | '物品展示';
 export type 物品生图渲染风格 = '写实道具' | '国风插画' | '像素图标' | '3D渲染';
 
@@ -110,9 +112,9 @@ export interface NPC图片记录 {
     目标类型: 'npc';
     NPC标识: string;
     NPC姓名: string;
-    NPC性别?: '男' | '女' | '男娘' | '扶她';
-    NPC身份?: string;
-    是否主要角色?: boolean;
+     NPC性别?: NPC性别;
+     NPC身份?: string;
+     是否主要角色?: boolean;
      结果: NPC生图结果;
  }
 
@@ -202,8 +204,9 @@ export interface NPC生图任务记录 {
     目标类型: 'npc';
     NPC标识: string;
     NPC姓名: string;
-    NPC性别?: '男' | '女' | '男娘' | '扶她';
-    NPC性别状态?: 'explicit' | 'unknown';
+     NPC性别?: NPC性别;
+     NPC身份?: string;
+     NPC性别状态?: 'explicit' | 'unknown';
     是否主要角色?: boolean;
     来源: 生图任务来源类型;
     状态: 生图任务状态类型;

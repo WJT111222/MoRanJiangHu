@@ -285,6 +285,6 @@ export interface NPC结构 {
      图片档案?: NPC图片档案;
      最近生图结果?: NPC图片档案['最近生图结果'];
       性转记录?: string; // 历史追溯字段，记录曾经发生的性转事实
-    头像图片URL?: string; // 头像图片地址
-    立绘图片URL?: string; // 立绘图片地址
+     头像图片URL?: string; // 头像图片地址
+     立绘图片URL?: string; // 立绘图片地址
 }

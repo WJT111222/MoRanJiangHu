@@ -1,4 +1,5 @@
 import type { 游戏物品, 物品生图结果 } from '../models/item';
+import type { 题材模式类型 } from '../models/system';
 import { 获取图片展示地址, 是否远程图片地址 } from './imageAssets';
 import { 获取预置物品图片URL, 精确匹配预置图片 } from '../data/presetItemImages';
 
@@ -195,7 +196,7 @@ const 生成缩略图 = async (dataUrl: string, maxSize = 128): Promise<string> 
 export const 存入用户图库 = async (
     item: 游戏物品,
     record: 物品生图结果,
-    mode: string,
+    mode: 题材模式类型,
     workshopModuleId: string
 ): Promise<string> => {
     const itemName = 提取图库物品名称(item);
@@ -232,7 +233,7 @@ export const 存入用户图库 = async (
 
 export const 查询用户图库图片 = async (
     item: 游戏物品,
-    mode: string,
+    mode: 题材模式类型,
     workshopModuleId: string
 ): Promise<用户图库条目 | null> => {
     const itemName = 提取图库物品名称(item);
@@ -242,7 +243,7 @@ export const 查询用户图库图片 = async (
 
 export const 物品已在图库中 = async (
     item: 游戏物品,
-    mode: string,
+    mode: 题材模式类型,
     workshopModuleId: string
 ): Promise<boolean> => {
     const entry = await 查询用户图库图片(item, mode, workshopModuleId);
@@ -251,7 +252,7 @@ export const 物品已在图库中 = async (
 
 export const 从用户图库移除 = async (
     item: 游戏物品,
-    mode: string,
+    mode: 题材模式类型,
     workshopModuleId: string
 ): Promise<void> => {
     const entry = await 查询用户图库图片(item, mode, workshopModuleId);

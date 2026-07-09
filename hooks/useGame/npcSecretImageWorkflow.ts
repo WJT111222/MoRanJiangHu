@@ -8,6 +8,8 @@ import type {
 import { 获取词组转化器预设上下文, type 当前可用接口结构 } from '../../utils/apiConfig';
 import { 生图最大自动重试次数, 执行生图模型调用带重试 } from '../../utils/imageGenerationRetry';
 import type { PNG解析参数结构, 角色锚点结构 } from '../../models/system';
+
+const NPC生图运行中计数 = { current: 0 };
 import { recordDiagnosticLog } from '../../services/diagnosticLog';
 type 图片功能配置 = {
     总开关: boolean;
@@ -47,12 +49,6 @@ type NPC秘档部位生图工作流依赖 = {
     读取文生图功能配置: () => 图片功能配置;
     NPC私密部位生图进行中集合: Set<string>;
     提取NPC香闺秘档部位生图数据: (npc: any, part: 香闺秘档部位类型) => any;
-    补齐NPC香闺秘档部位描述?: (npc: any, part: 香闺秘档部位类型, context: {
-        npcKey: string;
-        taskSource: 生图任务来源类型;
-        baseData: any;
-        描述字段: string;
-    }) => Promise<any>;
     创建NPC生图任务: (params: {
         npc: any;
         npcKey: string;
@@ -125,6 +121,7 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
 
     const uniqueTaskKey = `${npcKey}::${part}`;
     if (deps.NPC私密部位生图进行中集合.has(uniqueTaskKey)) return;
+    if (NPC生图运行中计数.current >= 1) return;
 
     const imageApi = deps.获取文生图接口配置(deps.apiConfig);
     const imageFeature = deps.读取文生图功能配置();
@@ -164,6 +161,7 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
     }));
 
     deps.NPC私密部位生图进行中集合.add(uniqueTaskKey);
+    NPC生图运行中计数.current += 1;
     let baseData: any = undefined;
     let partDescription = '';
     let 前置正向提示词 = '';
@@ -186,33 +184,6 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
         baseData = deps.提取NPC香闺秘档部位生图数据(npc, part);
         const partDescriptionField = part === '胸部' ? '胸部描述' : part === '小穴' ? '小穴描述' : part === '肉棒' ? '肉棒描述' : '屁穴描述';
         partDescription = typeof baseData?.[partDescriptionField] === 'string' ? baseData[partDescriptionField].trim() : '';
-        if (!partDescription && deps.补齐NPC香闺秘档部位描述) {
-            deps.更新NPC生图任务(task.id, (currentTask) => ({
-                ...currentTask,
-                状态: 'running',
-                进度阶段: 'prompting',
-                进度文本: `${part}描述为空，正在自动补齐私密部位档案。`
-            }));
-            const filledData = await deps.补齐NPC香闺秘档部位描述(npc, part, {
-                npcKey,
-                taskSource,
-                baseData,
-                描述字段: partDescriptionField
-            });
-            if (filledData && typeof filledData === 'object') {
-                baseData = {
-                    ...baseData,
-                    ...filledData
-                };
-                partDescription = typeof baseData?.[partDescriptionField] === 'string' ? baseData[partDescriptionField].trim() : '';
-                recordDiagnosticLog(partDescription ? 'info' : 'warn', '[NPC私密部位生图链路] 自动补齐部位描述结果', {
-                    npcKey,
-                    part,
-                    descriptionFilled: Boolean(partDescription),
-                    descriptionLength: partDescription.length
-                });
-            }
-        }
         // [修复] 部位描述为空时，使用NPC外貌/身材描写作为降级描述，而不是直接报错
         if (!partDescription) {
             const fallbackDesc = [
@@ -575,6 +546,7 @@ export const 执行NPC香闺秘档部位生图工作流 = async (
         }));
         throw error;
     } finally {
+        NPC生图运行中计数.current -= 1;
         deps.NPC私密部位生图进行中集合.delete(uniqueTaskKey);
     }
 };

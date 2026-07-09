@@ -723,7 +723,6 @@ const 构建物品视觉主体描述 = (item: any): string => {
     const isAncientMedicine = !isCigarette && 物品是否古代药物(item);
     const isModernMedicine = !isCigarette && !isAncientMedicine && 物品是否现代药剂(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
-    const isTalismanPaper = 物品是否符纸符箓(item);
     const typeEn = isLivingMount ? 'living mount animal' : isLivingAnimal ? 'living animal' : isFan ? 'folded Chinese hand fan' : isModernFirearm ? 'modern firearm' : isEnergyWeapon ? 'sci-fi energy weapon' : isCrossbow ? 'crossbow' : isQuiver ? 'arrow container' : isArrowAmmo ? 'arrow ammunition' : isWeapon ? 'weapon' : isSoftGarment ? 'cloth garment' : isTacticalVest ? 'wearable tactical vest' : isWearableArmor ? 'wearable torso armor vest' : isAncientMedicine ? 'ancient medicinal powder or pills' : isModernMedicine ? 'modern medicine vial or ampoule' : isBotanicalHerb ? 'botanical medicinal herb' : 物品类型转英文(读取文本(item?.类型, '物品'));
     const qualityEn = 物品品质转英文(读取文本(item?.品质, '普通'));
     const nameEn = 物品名称转英文描述(name);
@@ -749,7 +748,7 @@ const 构建物品视觉主体描述 = (item: any): string => {
         isAncientMedicine ? 'ancient Chinese medicine presentation, herbal powder or pills, folded paper packet, cloth sachet, small ceramic medicine vial, apothecary prop, pre-modern wuxia era' : '',
         isModernMedicine ? 'strict medicine stabilizer prop: small amber glass vial, ampoule, syringe-free serum bottle or compact blank medicine case, sealed cap, transparent liquid, no label, no text, no book shape' : '',
         isBotanicalHerb ? 'strict botanical herb or flower specimen: organic petals, leaves, roots or stems, natural plant anatomy, no manufactured device, no electronics' : '',
-        isTalismanPaper ? 'strict talisman paper material: thin yellow paper slips, handmade paper fiber texture, slightly curled corners, stacked sheets or bundled paper charms, red cinnabar abstract unreadable talisman strokes, not a plastic panel, not a blank board' : '',
+        '',
         description,
         tags
     ].filter(Boolean).join('\n');
@@ -776,7 +775,6 @@ export const 构建物品负面提示词 = (item: any): string => {
     const isAncientMedicine = !isCigarette && 物品是否古代药物(item);
     const isModernMedicine = !isCigarette && !isAncientMedicine && 物品是否现代药剂(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
-    const isTalismanPaper = 物品是否符纸符箓(item);
     const negativePrompt = [
         全局无文字负面提示词,
         isLivingMount ? 'rider, saddle covering the body, harness covering the body, cart, carriage, vehicle, boat' : isLivingAnimal ? 'person, human handler, leash held by person, cage, carrier bag, framed portrait, stuffed display, taxidermy scene' : 'person, human, face, hand, foot, feet, body part, skin, portrait, headshot, framed portrait, photo frame, picture frame',
@@ -802,7 +800,7 @@ export const 构建物品负面提示词 = (item: any): string => {
         isClothShoe ? 'feet, toes, legs, socks, person wearing shoes, shoe model, leather dress shoe, polished leather shoe, oxford shoe, loafer, business shoe, high heel, glossy leather, hard stacked heel' : '',
         isBandageDressing ? 'patient, wounded person, nurse, doctor, face, portrait, hand wrapping bandage, arm, leg, injury, blood, hospital bed, medical scene, photo frame, framed portrait' : ''
     ].filter(Boolean).join(', ');
-    return isTalismanPaper ? 过滤符箓负面提示词(negativePrompt) : negativePrompt;
+    return negativePrompt;
 };
 
 export const 构建物品图提示词 = (
@@ -830,7 +828,6 @@ export const 构建物品图提示词 = (
     const isAncientMedicine = !isCigarette && 物品是否古代药物(item);
     const isModernMedicine = !isCigarette && !isAncientMedicine && 物品是否现代药剂(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && !isModernMedicine && 物品是否草药植物(item);
-    const isTalismanPaper = 物品是否符纸符箓(item);
     const softGarmentGuard = isSoftGarment
         ? 'for clothing items: soft fabric garment laid flat or neatly folded, visible cloth weave, seams, wrinkles, flexible drape'
         : '';
@@ -874,7 +871,7 @@ export const 构建物品图提示词 = (
         isAncientMedicine ? 'strict ancient wuxia medicine prop only: folded paper medicine packet, small cloth sachet, ceramic medicine vial, herbal powder or pills; absolutely pre-modern, no modern technology' : '',
         isModernMedicine ? 'strict medicine stabilizer prop only: one small unlabelled amber glass vial or ampoule kit, sealed cap, transparent liquid, compact blank medical case, no book, no label, no text' : '',
         isBotanicalHerb ? 'strict botanical herb or flower only: natural plant specimen, visible petals leaves roots or stems, organic plant anatomy, not a manufactured object' : '',
-        isTalismanPaper ? 'strict talisman paper prop only: small stack of thin yellow paper sheets, visible handmade paper fiber, soft curled corners, red cinnabar abstract unreadable talisman strokes, not a plastic panel, not a blank rectangular board' : '',
+        '',
         isTacticalVest ? 'strict wearable tactical vest item: fabric upper-body vest with MOLLE webbing, shoulder straps, front buckles or zipper, pouch panels, arm holes and waist hem; product photo of clothing-shaped protective gear, no shield' : '',
         isWearableArmor && !isTacticalVest ? 'strict wearable armor item: upper-body vest or cuirass garment shape, sleeveless torso armor with arm holes, shoulder straps, chest and back panels, waist hem; product photo of clothing-shaped protective gear' : '',
         构建物品视觉主体描述(item),

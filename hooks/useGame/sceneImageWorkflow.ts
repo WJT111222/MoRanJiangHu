@@ -43,6 +43,16 @@ type 场景生图依赖 = {
     当前任务允许写入?: () => boolean;
 };
 
+const 构建带经过时间文本 = (开始时间: number | undefined, 基础文本: string): string => {
+    if (!开始时间 || 开始时间 <= 0) return 基础文本;
+    const 经过秒数 = Math.floor((Date.now() - 开始时间) / 1000);
+    if (经过秒数 < 5) return 基础文本;
+    const 格式化 = 经过秒数 >= 60
+        ? `${Math.floor(经过秒数 / 60)} 分 ${经过秒数 % 60} 秒`
+        : `${经过秒数} 秒`;
+    return `${基础文本}（已运行 ${格式化}）`;
+};
+
 const 获取画风附加要求 = (style?: 当前可用接口结构['画风']): string => {
     switch (style) {
         case '二次元':
@@ -170,19 +180,20 @@ export const 执行场景生图工作流 = async (
         摘要: params.摘要
     });
     const recordId = deps.生成场景生图记录ID();
+    const 任务开始时间 = Date.now();
 
     deps.追加场景生图任务(task);
     deps.更新场景生图任务(task.id, (currentTask) => ({
         ...currentTask,
         状态: 'running',
-        开始时间: Date.now(),
+        开始时间: 任务开始时间,
         原始描述: JSON.stringify(params.sceneContext ?? {}, null, 2),
         构图: '场景',
         画风,
         额外要求: params.额外要求,
         尺寸: params.尺寸,
         进度阶段: 'prompting',
-        进度文本: '正在根据最新正文整理场景快照词组。'
+        进度文本: 构建带经过时间文本(任务开始时间, '正在根据最新正文整理场景快照词组。')
     }));
     deps.更新场景图片档案((archive) => ({
         ...archive,
@@ -247,11 +258,11 @@ export const 执行场景生图工作流 = async (
             场景类型,
             场景判定说明,
             进度阶段: 'generating',
-            进度文本: 场景类型 === '风景场景'
+            进度文本: 构建带经过时间文本(currentTask.开始时间, 场景类型 === '风景场景'
                 ? '当前正文不适合直接做场景快照，已转为风景场景生成。'
                 : 场景类型 === '剧照场景'
                     ? '词组转换完成，正在生成剧照场景。'
-                    : '词组转换完成，正在生成场景快照。'
+                    : '词组转换完成，正在生成场景快照。')
         }));
         deps.更新场景图片档案((archive) => ({
             ...archive,
@@ -298,7 +309,7 @@ export const 执行场景生图工作流 = async (
                         重试次数: Math.max(0, attempt - 1),
                         最大重试次数: 生图最大自动重试次数,
                         进度阶段: 'generating',
-                        进度文本: `词组转换完成，正在生成${场景类型 === '剧照场景' ? '剧照场景' : '场景快照'}（第 ${attempt}/${totalAttempts} 次尝试）。`
+                        进度文本: 构建带经过时间文本(currentTask.开始时间, `词组转换完成，正在生成${场景类型 === '剧照场景' ? '剧照场景' : '场景快照'}（第 ${attempt}/${totalAttempts} 次尝试）。`)
                     }));
                 },
                 onRetry: (attempt, totalAttempts, errorMessage) => {
@@ -309,7 +320,7 @@ export const 执行场景生图工作流 = async (
                         最大重试次数: 生图最大自动重试次数,
                         错误信息: errorMessage,
                         进度阶段: 'generating',
-                        进度文本: `第 ${attempt}/${totalAttempts} 次场景生成失败：${errorMessage}；正在自动重试。`
+                        进度文本: 构建带经过时间文本(currentTask.开始时间, `第 ${attempt}/${totalAttempts} 次场景生成失败：${errorMessage}；正在自动重试。`)
                     }));
                 }
             }
@@ -323,7 +334,7 @@ export const 执行场景生图工作流 = async (
         deps.更新场景生图任务(task.id, (currentTask) => ({
             ...currentTask,
             进度阶段: 'saving',
-            进度文本: localizedImageResult.客户提示 || '图片已生成，正在写入场景壁纸档案。'
+            进度文本: 构建带经过时间文本(currentTask.开始时间, localizedImageResult.客户提示 || '图片已生成，正在写入场景壁纸档案。')
         }));
 
         const result = {
@@ -384,9 +395,9 @@ export const 执行场景生图工作流 = async (
             错误信息: undefined,
             调试链路,
             进度阶段: 'success',
-            进度文本: localizedImageResult.客户提示
+            进度文本: 构建带经过时间文本(currentTask.开始时间, localizedImageResult.客户提示
                 ? `${localizedImageResult.客户提示}，${appliedAsWallpaper ? '图片已生成并自动应用为壁纸。' : '图片已生成并写入场景档案。'}`
-                : (appliedAsWallpaper ? '图片已生成并自动应用为壁纸。' : '图片已生成并写入场景档案。'),
+                : (appliedAsWallpaper ? '图片已生成并自动应用为壁纸。' : '图片已生成并写入场景档案。')),
             已应用为壁纸: appliedAsWallpaper
         }));
     } catch (error: any) {
