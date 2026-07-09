@@ -17,7 +17,8 @@ const STORE_NAME = 'saves';
 const SAVE_SUMMARIES_STORE = 'save_summaries';
 const SETTINGS_STORE = 'settings';
 const IMAGE_ASSETS_STORE = 'image_assets';
-const VERSION = 3;
+const USER_IMAGE_GALLERY_STORE = 'user_image_gallery';
+const VERSION = 4;
 const 自动存档最大保留数 = 5;
 const 存档导出版本 = 1;
 const 存档保护设置键 = 设置键.存档保护;
@@ -794,6 +795,11 @@ export const 初始化数据库 = (): Promise<IDBDatabase> => {
             }
             if (!db.objectStoreNames.contains(IMAGE_ASSETS_STORE)) {
                 db.createObjectStore(IMAGE_ASSETS_STORE, { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains(USER_IMAGE_GALLERY_STORE)) {
+                const store = db.createObjectStore(USER_IMAGE_GALLERY_STORE, { keyPath: 'id' });
+                store.createIndex('by_item_mode_workshop', ['itemName', 'mode', 'workshopModuleId'], { unique: false });
+                store.createIndex('by_mode', 'mode', { unique: false });
             }
         };
     });
@@ -1690,9 +1696,32 @@ export const 清理未引用图片资源 = async (): Promise<number> => {
             读取已引用图片资源ID集合(),
             读取全部图片资源记录()
         ]);
+        // 收集图库引用的 assetId，防止被误删
+        const galleryReferencedIds = new Set<string>();
+        const db0 = await 初始化数据库();
+        if (db0.objectStoreNames.contains(USER_IMAGE_GALLERY_STORE)) {
+            await new Promise<void>((resolve, reject) => {
+                const transaction = db0.transaction([USER_IMAGE_GALLERY_STORE], 'readonly');
+                const store = transaction.objectStore(USER_IMAGE_GALLERY_STORE);
+                const request = store.openCursor();
+                request.onsuccess = () => {
+                    const cursor = request.result;
+                    if (cursor) {
+                        const galleryEntry = cursor.value as { assetId?: string; imageUrl?: string } | undefined;
+                        if (galleryEntry?.assetId) {
+                            galleryReferencedIds.add(galleryEntry.assetId);
+                        }
+                        cursor.continue();
+                    } else {
+                        resolve();
+                    }
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
         const unusedIds = assetEntries
             .map((item) => item.id)
-            .filter((id) => !referencedIds.has(id));
+            .filter((id) => !referencedIds.has(id) && !galleryReferencedIds.has(id));
         if (unusedIds.length <= 0) return 0;
 
         const db = await 初始化数据库();
@@ -3374,3 +3403,91 @@ export const 清空数据库 = async (保留APIKey: boolean): Promise<void> => {
 };
 
 export { 收集存档树节点ID, 删除存档树并重新保存全量存档 } from './dbService_saveTree';
+
+// ─── 用户物品图库 ─────────────────────────────────────────────────────
+
+export interface 用户图库条目 {
+    id: string;
+    itemName: string;
+    mode: string;
+    workshopModuleId: string;
+    assetId: string;
+    imageUrl?: string;
+    prompt: string;
+    itemType: string;
+    quality: string;
+    createdAt: number;
+    thumbnailDataUrl?: string;
+}
+
+export const 保存到用户图库 = async (entry: 用户图库条目): Promise<string> => {
+    const db = await 初始化数据库();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([USER_IMAGE_GALLERY_STORE], 'readwrite');
+        const store = tx.objectStore(USER_IMAGE_GALLERY_STORE);
+        const index = store.index('by_item_mode_workshop');
+        const query = index.get([entry.itemName, entry.mode, entry.workshopModuleId]);
+        query.onsuccess = () => {
+            const existing = query.result as 用户图库条目 | undefined;
+            const finalEntry = existing ? { ...entry, id: existing.id } : entry;
+            const putReq = store.put(finalEntry);
+            putReq.onsuccess = () => resolve(finalEntry.id);
+            putReq.onerror = () => reject(putReq.error);
+        };
+        query.onerror = () => reject(query.error);
+    });
+};
+
+export const 查询用户图库图片 = async (
+    itemName: string,
+    mode: string,
+    workshopModuleId: string
+): Promise<用户图库条目 | null> => {
+    const db = await 初始化数据库();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([USER_IMAGE_GALLERY_STORE], 'readonly');
+        const store = tx.objectStore(USER_IMAGE_GALLERY_STORE);
+        const index = store.index('by_item_mode_workshop');
+        const req = index.get([itemName, mode, workshopModuleId]);
+        req.onsuccess = () => resolve((req.result as 用户图库条目) || null);
+        req.onerror = () => reject(req.error);
+    });
+};
+
+export const 获取用户图库全部条目 = async (): Promise<用户图库条目[]> => {
+    const db = await 初始化数据库();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([USER_IMAGE_GALLERY_STORE], 'readonly');
+        const store = tx.objectStore(USER_IMAGE_GALLERY_STORE);
+        const req = store.getAll();
+        req.onsuccess = () => {
+            const entries = (req.result as 用户图库条目[]) || [];
+            entries.sort((a, b) => b.createdAt - a.createdAt);
+            resolve(entries);
+        };
+        req.onerror = () => reject(req.error);
+    });
+};
+
+export const 按题材模式获取用户图库 = async (mode: string): Promise<用户图库条目[]> => {
+    const db = await 初始化数据库();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([USER_IMAGE_GALLERY_STORE], 'readonly');
+        const store = tx.objectStore(USER_IMAGE_GALLERY_STORE);
+        const index = store.index('by_mode');
+        const req = index.getAll(mode);
+        req.onsuccess = () => resolve((req.result as 用户图库条目[]) || []);
+        req.onerror = () => reject(req.error);
+    });
+};
+
+export const 删除用户图库条目 = async (id: string): Promise<void> => {
+    const db = await 初始化数据库();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([USER_IMAGE_GALLERY_STORE], 'readwrite');
+        const store = tx.objectStore(USER_IMAGE_GALLERY_STORE);
+        const req = store.delete(id);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+    });
+};
