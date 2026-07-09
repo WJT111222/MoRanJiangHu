@@ -68,6 +68,8 @@ import { 构建题材模式提示词 } from '../../prompts/runtime/openingConfig
 import { 构建女性姓名候选提示词, 收集女性姓名候选已用名 } from '../../utils/femaleNameCandidatePrompt';
 import { 构建模板姓名黑名单提示词 } from '../../utils/templateNameBlacklist';
 import { 构建角色金钱显示快照 } from '../../utils/currencyDisplay';
+import { 构建货币快照, 构建货币参考注入, 构建当前地点汇率快照 } from '../../../prompts/runtime/currencyReference';
+import { 获取展开货币系统 } from '../../../utils/apiConfig';
 
 export type 运行时提示词状态 = {
     当前启用: boolean;
@@ -437,14 +439,20 @@ export const 构建系统提示词 = ({
             效果: 取文本(出身背景原始?.效果)
         };
         const 金钱原始 = role?.金钱 && typeof role.金钱 === 'object' ? role.金钱 : {};
-        const 金钱 = {
-            ...构建角色金钱显示快照(
-                金钱原始,
-                openingConfig || source?.开局配置 || source?.openingConfig,
-                role
-            ),
-            写入说明: '真实写入仍使用 角色.金钱；程序兼容 baseAmount 与旧三层字段。'
-        };
+        const 运行时配置 = openingConfig || source?.开局配置 || source?.openingConfig;
+        const 展开货币 = 获取展开货币系统(运行时配置?.modeRuntimeProfile);
+        let 金钱: Record<string, any>;
+        if (展开货币 && 金钱原始.货币桶) {
+            金钱 = {
+                ...构建货币快照(金钱原始.货币桶, 展开货币),
+                写入说明: '真实写入仍使用 角色.金钱；多货币系统下使用 角色.金钱.货币桶。'
+            };
+        } else {
+            金钱 = {
+                ...构建角色金钱显示快照(金钱原始, 运行时配置, role),
+                写入说明: '真实写入仍使用 角色.金钱；程序兼容 baseAmount 与旧三层字段。'
+            };
+        }
         const 装备原始 = role?.装备 && typeof role.装备 === 'object' ? role.装备 : {};
         const 装备 = {
             头部: 取文本(装备原始?.头部),
@@ -1638,10 +1646,19 @@ export const 构建系统提示词 = ({
     });
     const contextMapAndBuilding = 构建地图建筑状态文本(statePayload);
     const contextCurrencySystem = 构建当前货币系统提示词();
+    // 多货币汇率系统：货币参考注入 + 汇率快照
+    const 展开货币系统 = 获取展开货币系统(openingConfig?.modeRuntimeProfile);
+    const 货币参考注入 = 展开货币系统 ? 构建货币参考注入(展开货币系统) : '';
+    const 当前汇率快照 = 展开货币系统?.validatedPolicies
+        ? 构建当前地点汇率快照(statePayload?.环境?.具体地点, statePayload?.世界?.地图层级, 展开货币系统.validatedPolicies)
+        : '';
+
     const promptHeader = [
         worldPrompt.trim(),
         contextMapAndBuilding,
         contextCurrencySystem,
+        ...(货币参考注入 ? [货币参考注入] : []),
+        ...(当前汇率快照 ? [当前汇率快照] : []),
         npcContext.离场数据块,
         构建女性姓名候选提示词({
             usedNames: 收集女性姓名候选已用名({

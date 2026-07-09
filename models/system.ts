@@ -609,6 +609,10 @@ export interface CurrencySystem {
     baseUnitId: string;
     units: CurrencyUnit[];
     formatStyle?: 'single' | 'compound';
+    /** 多货币汇率系统扩展：多体系共存（可选） */
+    systems?: Record<string, ExpandedSystemConfig>;
+    /** 多货币汇率系统扩展：动态汇率策略（可选） */
+    exchangeRatePolicies?: ExchangeRatePolicies;
 }
 
 export interface MoneyAmount {
@@ -1327,4 +1331,69 @@ export interface 节日结构 {
     日: number;
     描述: string;
     效果: string; // 如：鬼怪出现率增加
+}
+
+// ========== 多货币汇率系统（MCX）接口定义 ==========
+
+export interface QualityTemplate {
+    baseUnit: string;
+    qualities: string[];
+    qualityUpgradeRatio?: number;
+    inMarket?: boolean;
+    excludeFromValuation?: boolean;
+}
+
+export interface TransformDefinition {
+    fromUnit: string;
+    toUnit: string;
+    ratio: number;
+    process?: string;
+}
+
+export interface TransformBatchConfig {
+    targetSystem: string;
+    targetTemplate: string;
+    autoMapQualities?: boolean;
+    qualityMapping?: Record<string, string>;
+}
+
+export interface UnitDefinition {
+    displayName: string;
+    displayOrder: number;
+    inMarket?: boolean;
+    aliases?: string[];
+    qualityUpgradeTo?: string;
+    qualityUpgradeRatio?: number;
+}
+
+export interface ExpandedSystemConfig {
+    displayName: string;
+    displayOrder: number;
+    exchangeable?: boolean;
+    units: Record<string, UnitDefinition>;
+    qualityTemplate?: QualityTemplate;
+    transforms?: TransformDefinition[];
+}
+
+export interface ExpandedCurrencySystem {
+    systems: Record<string, ExpandedSystemConfig>;
+    transforms: TransformDefinition[];
+    validatedPolicies?: ExchangeRatePolicies;
+}
+
+export interface ExchangeRatePolicy {
+    fromUnit: string;
+    toUnit: string;
+    type: 'fixed' | 'range';
+    fixedRate?: number;
+    minRate?: number;
+    maxRate?: number;
+    defaultRate?: number;
+    symmetric?: boolean;
+    expireByLayer?: Record<string, number>;
+    description?: string;
+}
+
+export interface ExchangeRatePolicies {
+    [policyId: string]: ExchangeRatePolicy;
 }

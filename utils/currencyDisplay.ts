@@ -3,6 +3,7 @@ import type { 角色金钱 } from '../models/character';
 import { 推断单位仙侠 } from './realmDisplay';
 import { 获取题材模式配置, 题材是否仙侠 } from './topicModeProfiles';
 import type { CurrencySystem, CurrencyUnit, ModeRuntimeProfile } from '../models/system';
+import { 获取展开货币系统, 是否多货币模式 } from './apiConfig';
 
 export type 货币显示模式 = 'wuxia' | 'xianxia' | 'fantasy' | 'urban' | 'modern' | 'apocalypse' | 'infinite';
 export type 货币层级键 = '上层货币' | '中层货币' | '底层货币';
@@ -491,11 +492,49 @@ export const 获取角色金钱显示列表 = (
     return 格式化角色金钱行(money, mode).split(' / ');
 };
 
+/** 多货币汇率系统：构建多体系货币快照 */
+const 构建多系统货币快照 = (
+    money: Partial<角色金钱> | null | undefined,
+    profile: any
+): 角色金钱世界观显示快照 | null => {
+    if (!是否多货币模式(profile)) return null;
+    const expandedSystem = 获取展开货币系统(profile);
+    if (!expandedSystem) return null;
+    const 货币桶 = (money as any)?.货币桶;
+    if (!货币桶) return null;
+    const sortedSystems = Object.entries(expandedSystem.systems)
+        .sort(([, a], [, b]) => a.displayOrder - b.displayOrder);
+    const systemParts: string[] = [];
+    for (const [systemId, systemConfig] of sortedSystems) {
+        const systemUnits = 货币桶[systemId];
+        if (!systemUnits) continue;
+        const sortedUnits = Object.entries(systemConfig.units)
+            .sort(([, a], [, b]) => b.displayOrder - a.displayOrder);
+        for (const [unitId, unitDef] of sortedUnits) {
+            const amount = (systemUnits as any)[unitId];
+            if (!amount || amount <= 0) continue;
+            systemParts.push(`${amount} ${unitDef.displayName}`);
+        }
+    }
+    if (systemParts.length === 0) return null;
+    return {
+        baseAmount: 0,
+        显示: systemParts.join(' + '),
+        货币体系: sortedSystems.map(([, s]) => s.displayName).join('/'),
+        基础单位: sortedSystems[0]?.[1]?.units?.[Object.keys(sortedSystems[0][1].units)[0]]?.displayName || '',
+        单位列表: []
+    };
+};
+
 export const 构建角色金钱显示快照 = (
     money?: Partial<角色金钱> | null,
     openingConfig?: OpeningConfig | null,
     character?: Partial<角色数据结构> | null
 ): 角色金钱世界观显示快照 => {
+    // 多货币汇率系统优先
+    const multiSnapshot = 构建多系统货币快照(money, openingConfig?.modeRuntimeProfile);
+    if (multiSnapshot && multiSnapshot.显示) return multiSnapshot;
+
     const mode = 获取货币显示模式(openingConfig, character);
     const baseAmount = 获取角色金钱BaseAmount(money, openingConfig?.modeRuntimeProfile, mode);
     const explicitSystem = 获取显式世界观货币系统(openingConfig, character);

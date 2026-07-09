@@ -15,8 +15,10 @@
     角色锚点特征结构,
     图片词组序列化策略类型,
     图片响应格式类型,
-    发现图片后端记录结构
+    发现图片后端记录结构,
+    ExpandedCurrencySystem
 } from '../models/system';
+import { 加载并展开货币系统 } from './currencySystemLoader';
 import { 默认ComfyUI工作流JSON, 默认NSFWComfyUI工作流JSON } from '../data/defaultComfyWorkflow';
 import { 默认文章优化提示词 } from '../prompts/runtime/defaults';
 import {
@@ -2798,3 +2800,38 @@ export const 接口配置是否可用 = (config: 当前可用接口结构 | null
     const hasModel = Boolean(config.model?.trim());
     return hasRequiredConnection && hasModel;
 };
+
+// ========== 多货币汇率系统（MCX）接口 ==========
+
+let _expandedCurrencySystem: ExpandedCurrencySystem | undefined;
+let _cachedProfileKey: string | undefined;
+
+/** 判断是否启用多货币汇率系统（配置中包含 systems 字段） */
+export function 是否多货币模式(profile: any): boolean {
+    const systems = profile?.economy?.currencySystem?.systems;
+    return !!(systems && Object.keys(systems).length > 0);
+}
+
+/** 获取展开后的货币系统（带内容哈希缓存） */
+export function 获取展开货币系统(profile: any): ExpandedCurrencySystem | undefined {
+    if (!是否多货币模式(profile)) {
+        _expandedCurrencySystem = undefined;
+        _cachedProfileKey = undefined;
+        return undefined;
+    }
+    const systems = profile?.economy?.currencySystem?.systems;
+    const policies = profile?.economy?.currencySystem?.exchangeRatePolicies;
+    const profileKey = JSON.stringify({ systems, policies });
+    if (_cachedProfileKey === profileKey && _expandedCurrencySystem) {
+        return _expandedCurrencySystem;
+    }
+    _expandedCurrencySystem = 加载并展开货币系统({ systems }, policies);
+    _cachedProfileKey = profileKey;
+    return _expandedCurrencySystem;
+}
+
+/** 强制清空货币系统缓存 */
+export function 重置货币系统缓存(): void {
+    _expandedCurrencySystem = undefined;
+    _cachedProfileKey = undefined;
+}
