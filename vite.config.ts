@@ -186,24 +186,37 @@ const handleOpenAiImageProxyRequest = async (
       return;
     }
 
-    const proxyPrefix = '/api/image-backend/openai-image-proxy';
-    const pathPart = requestUrl.pathname.startsWith(proxyPrefix)
-      ? requestUrl.pathname.slice(proxyPrefix.length) || '/'
-      : requestUrl.pathname || '/';
-    if (!/^\/(?:v1\/)?(?:images\/(?:generations|edits)|tasks\/[^/?#]+)$/i.test(pathPart)) {
-      res.statusCode = 404;
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.end(JSON.stringify({ error: 'Unsupported OpenAI image proxy path' }));
-      return;
+    // ?url= 模式：目标地址已编码在 query 参数中，跳过 pathname 路径白名单校验
+    const isUrlMode = !!targetBase;
+
+    if (!isUrlMode) {
+      // ?provider= 模式：路径在 pathname 里，需要白名单校验
+      const proxyPrefix = '/api/image-backend/openai-image-proxy';
+      const pathPart = requestUrl.pathname.startsWith(proxyPrefix)
+        ? requestUrl.pathname.slice(proxyPrefix.length) || '/'
+        : requestUrl.pathname || '/';
+      if (!/^\/(?:v1\/)?(?:images\/(?:generations|edits)|tasks\/[^/?#]+)$/i.test(pathPart)) {
+        res.statusCode = 404;
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({ error: 'Unsupported OpenAI image proxy path' }));
+        return;
+      }
     }
 
     const target = new URL(targetBase);
     const basePath = target.pathname.replace(/\/+$/, '');
-    const normalizedPath = basePath.endsWith('/v1') && pathPart.startsWith('/v1/')
-      ? pathPart.replace(/^\/v1/i, '')
-      : (pathPart.startsWith('/v1/') ? pathPart : `${basePath.endsWith('/v1') ? '' : '/v1'}${pathPart}`);
-    target.pathname = `${basePath}${normalizedPath}`;
+    // ?url= 模式：目标地址已包含完整路径，直接使用
+    if (!isUrlMode) {
+      const proxyPrefix = '/api/image-backend/openai-image-proxy';
+      const pathPart = requestUrl.pathname.startsWith(proxyPrefix)
+        ? requestUrl.pathname.slice(proxyPrefix.length) || '/'
+        : requestUrl.pathname || '/';
+      const normalizedPath = basePath.endsWith('/v1') && pathPart.startsWith('/v1/')
+        ? pathPart.replace(/^\/v1/i, '')
+        : (pathPart.startsWith('/v1/') ? pathPart : `${basePath.endsWith('/v1') ? '' : '/v1'}${pathPart}`);
+      target.pathname = `${basePath}${normalizedPath}`;
+    }
     target.search = '';
     requestUrl.searchParams.forEach((value, key) => {
       if (key !== 'url') target.searchParams.append(key, value);
@@ -245,6 +258,71 @@ const handleOpenAiImageProxyRequest = async (
       error: 'OpenAI image dev proxy failed',
       detail: error?.message || String(error)
     }));
+  }
+};
+
+// 本地 dev / preview 下同域图片取回代理：对应生产 Worker 的 /api/image-backend/fetch-image
+// 仅用于把"生图返回的远程图片 URL"取回为同源资源，避免浏览器跨域（CORS）失败。
+const isAllowedFetchImageTarget = (value: string): boolean => {
+  try {
+    const url = new URL(value);
+    return /^https?:$/i.test(url.protocol) && !isPrivateHostname(url.hostname);
+  } catch {
+    return false;
+  }
+};
+
+const handleFetchImageProxyRequest = async (
+  req: any,
+  res: any,
+  next: () => void,
+  logger: { error: (message: string) => void }
+) => {
+  if (!req.url) {
+    next();
+    return;
+  }
+
+  if (String(req.method || '').toUpperCase() === 'OPTIONS') {
+    res.statusCode = 204;
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    res.end();
+    return;
+  }
+
+  try {
+    const requestUrl = new URL(req.url, 'http://local-fetch-image');
+    const target = String(requestUrl.searchParams.get('url') || '').trim();
+    if (!target || !isAllowedFetchImageTarget(target)) {
+      res.statusCode = 400;
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify({ error: 'Invalid fetch-image target URL' }));
+      return;
+    }
+
+    const upstream = await fetch(target, { headers: { Accept: 'image/*,*/*;q=0.8' } });
+    if (!upstream.ok) {
+      res.statusCode = upstream.status;
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify({ error: 'fetch-image upstream failed', status: upstream.status }));
+      return;
+    }
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.statusCode = 200;
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', upstream.headers.get('content-type') || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.end(buf);
+  } catch (error: any) {
+    logger.error(`[fetch-image-dev-proxy] ${error?.message || error}`);
+    res.statusCode = 502;
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(JSON.stringify({ error: 'fetch-image dev proxy failed', detail: error?.message || String(error) }));
   }
 };
 
@@ -351,6 +429,9 @@ const imageDevProxyPlugin = (): Plugin => ({
     server.middlewares.use('/api/image-backend/comfyui-proxy', async (req, res, next) => {
       await handleComfyUiProxyRequest(req, res, next, server.config.logger);
     });
+    server.middlewares.use('/api/image-backend/fetch-image', async (req, res, next) => {
+      await handleFetchImageProxyRequest(req, res, next, server.config.logger);
+    });
   },
   configureServer(server) {
     server.middlewares.use('/api/novelai', async (req, res, next) => {
@@ -364,6 +445,9 @@ const imageDevProxyPlugin = (): Plugin => ({
     });
     server.middlewares.use('/api/image-backend/comfyui-proxy', async (req, res, next) => {
       await handleComfyUiProxyRequest(req, res, next, server.config.logger);
+    });
+    server.middlewares.use('/api/image-backend/fetch-image', async (req, res, next) => {
+      await handleFetchImageProxyRequest(req, res, next, server.config.logger);
     });
   }
 });
