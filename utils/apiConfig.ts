@@ -1820,6 +1820,8 @@ export const 写入接口设置本地镜像 = (settings: 接口设置结构): vo
 export type 当前可用接口结构 = Pick<单接口配置结构, 'id' | '名称' | '供应商' | '协议覆盖' | 'baseUrl' | 'apiKey' | 'model' | 'maxTokens' | 'temperature' | 'topP'> & {
     图片后端类型?: 功能模型占位配置结构['文生图后端类型'];
     图片接口路径?: string;
+    图片需要代理?: boolean;
+    自定义图片代理地址?: string;
     图片接口路径模式?: 功能模型占位配置结构['文生图接口路径模式'];
     图片预设接口路径?: 功能模型占位配置结构['文生图预设接口路径'];
     图片响应格式?: 图片响应格式类型;
@@ -2395,6 +2397,8 @@ export const 获取文生图接口配置 = (
         图片接口路径模式,
         图片预设接口路径,
         图片接口路径,
+        图片需要代理: Boolean(feature?.图片需要代理),
+        自定义图片代理地址: typeof feature?.自定义图片代理地址 === 'string' ? feature.自定义图片代理地址.trim() : '',
         图片响应格式: feature?.文生图响应格式 === 'b64_json' || feature?.文生图响应格式 === 'base64' ? feature.文生图响应格式 : 'url',
         图片走OpenAI自定义格式: Boolean(feature?.文生图OpenAI自定义格式),
         画师串预设列表: Array.isArray(feature?.画师串预设列表) ? feature.画师串预设列表 : [],
@@ -2715,6 +2719,9 @@ export const 获取NSFW文生图接口配置 = (settings: 接口设置结构, di
         ? 规范化图片接口路径(sharedConfig?.图片接口路径, nsfwBackend, 图片预设接口路径映射[图片预设接口路径])
         : 图片预设接口路径映射[图片预设接口路径];
 
+    const nsfw自定义代理地址 = 读取字符串(feature?.NSFW自定义图片代理地址).trim();
+    const nsfw图片需要代理 = Boolean(feature?.NSFW图片需要代理);
+
     const result: 当前可用接口结构 = {
         ...baseConfig,
         供应商: supplier,
@@ -2726,6 +2733,8 @@ export const 获取NSFW文生图接口配置 = (settings: 接口设置结构, di
         图片接口路径模式,
         图片预设接口路径,
         图片接口路径,
+        图片需要代理: nsfw图片需要代理,
+        自定义图片代理地址: nsfw自定义代理地址 || (canReuseSharedConnection ? (sharedConfig?.自定义图片代理地址 || '') : ''),
         图片响应格式: nsfwBackend === 'openai' ? sharedConfig?.图片响应格式 : 'url',
         图片走OpenAI自定义格式: nsfwBackend === 'openai' ? Boolean(sharedConfig?.图片走OpenAI自定义格式) : false,
         NPC生图使用词组转化器: nsfwBackend === 'novelai' ? true : sharedConfig?.NPC生图使用词组转化器,
