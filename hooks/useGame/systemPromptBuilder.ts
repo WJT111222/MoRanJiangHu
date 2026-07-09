@@ -68,7 +68,7 @@ import { 构建题材模式提示词 } from '../../prompts/runtime/openingConfig
 import { 构建女性姓名候选提示词, 收集女性姓名候选已用名 } from '../../utils/femaleNameCandidatePrompt';
 import { 构建模板姓名黑名单提示词 } from '../../utils/templateNameBlacklist';
 import { 构建角色金钱显示快照 } from '../../utils/currencyDisplay';
-import { 构建货币快照, 构建货币参考注入, 构建当前地点汇率快照 } from '../../../prompts/runtime/currencyReference';
+import { 构建货币快照, 构建货币参考注入, 构建当前地点汇率快照 } from '../../prompts/runtime/currencyReference';
 import { 获取展开货币系统 } from '../../../utils/apiConfig';
 
 export type 运行时提示词状态 = {

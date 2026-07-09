@@ -1355,12 +1355,19 @@ export interface TransformBatchConfig {
     targetTemplate: string;
     autoMapQualities?: boolean;
     qualityMapping?: Record<string, string>;
+    /** 目标品质模板（autoMapQualities 模式使用） */
+    targetQualityTemplate?: QualityTemplate;
+    /** 转化比率 */
+    ratio?: number;
+    /** 转化流程说明 */
+    process?: string;
 }
 
 export interface UnitDefinition {
     displayName: string;
     displayOrder: number;
     inMarket?: boolean;
+    excludeFromValuation?: boolean;
     aliases?: string[];
     qualityUpgradeTo?: string;
     qualityUpgradeRatio?: number;
@@ -1373,6 +1380,8 @@ export interface ExpandedSystemConfig {
     units: Record<string, UnitDefinition>;
     qualityTemplate?: QualityTemplate;
     transforms?: TransformDefinition[];
+    /** 批量转化配置：按品质模板自动映射到目标体系 */
+    transformsTo?: TransformBatchConfig;
 }
 
 export interface ExpandedCurrencySystem {

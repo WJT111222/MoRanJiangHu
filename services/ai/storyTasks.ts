@@ -874,6 +874,10 @@ export const generateVariableCalibrationUpdate = async (
             openingRoleSetupText?: string;
             openingConfigText?: string;
         };
+        /** 多货币汇率系统：展开后的货币系统配置 */
+        expandedCurrencySystem?: any;
+        /** 多货币汇率系统：当前世界状态（用于消费汇率生成任务） */
+        world?: any;
     },
     apiConfig: 当前可用接口结构,
     signal?: AbortSignal,
