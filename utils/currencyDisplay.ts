@@ -492,7 +492,6 @@ export const 获取角色金钱显示列表 = (
     return 格式化角色金钱行(money, mode).split(' / ');
 };
 
-/** 多货币汇率系统：构建多体系货币快照 */
 const 构建多系统货币快照 = (
     money: Partial<角色金钱> | null | undefined,
     profile: any
@@ -500,28 +499,44 @@ const 构建多系统货币快照 = (
     if (!是否多货币模式(profile)) return null;
     const expandedSystem = 获取展开货币系统(profile);
     if (!expandedSystem) return null;
+
     const 货币桶 = (money as any)?.货币桶;
     if (!货币桶) return null;
+
     const sortedSystems = Object.entries(expandedSystem.systems)
         .sort(([, a], [, b]) => a.displayOrder - b.displayOrder);
-    const systemParts: string[] = [];
-    for (const [systemId, systemConfig] of sortedSystems) {
+
+    let lines: string[] = [];
+    let hasAnyAmount = false;
+
+    for (const [systemId, system] of sortedSystems) {
         const systemUnits = 货币桶[systemId];
         if (!systemUnits) continue;
-        const sortedUnits = Object.entries(systemConfig.units)
-            .sort(([, a], [, b]) => b.displayOrder - a.displayOrder);
-        for (const [unitId, unitDef] of sortedUnits) {
-            const amount = (systemUnits as any)[unitId];
-            if (!amount || amount <= 0) continue;
-            systemParts.push(`${amount} ${unitDef.displayName}`);
+
+        const sortedUnits = Object.entries(system.units)
+            .sort(([, a], [, b]) => a.displayOrder - b.displayOrder);
+
+        let systemParts: string[] = [];
+        for (const [unitId, unit] of sortedUnits) {
+            const amount = (systemUnits as any)?.[unitId] ?? 0;
+            if (amount > 0 && unit.inMarket) {
+                systemParts.push(`${unit.displayName}×${amount}`);
+                hasAnyAmount = true;
+            }
+        }
+
+        if (systemParts.length > 0) {
+            lines.push(`【${system.displayName}】${systemParts.join('  ')}`);
         }
     }
-    if (systemParts.length === 0) return null;
+
+    if (!hasAnyAmount) return null;
+
     return {
         baseAmount: 0,
-        显示: systemParts.join(' + '),
-        货币体系: sortedSystems.map(([, s]) => s.displayName).join('/'),
-        基础单位: sortedSystems[0]?.[1]?.units?.[Object.keys(sortedSystems[0][1].units)[0]]?.displayName || '',
+        显示: lines.join('\n'),
+        货币体系: '多货币体系',
+        基础单位: '',
         单位列表: []
     };
 };
@@ -531,9 +546,8 @@ export const 构建角色金钱显示快照 = (
     openingConfig?: OpeningConfig | null,
     character?: Partial<角色数据结构> | null
 ): 角色金钱世界观显示快照 => {
-    // 多货币汇率系统优先
     const multiSnapshot = 构建多系统货币快照(money, openingConfig?.modeRuntimeProfile);
-    if (multiSnapshot && multiSnapshot.显示) return multiSnapshot;
+    if (multiSnapshot) return multiSnapshot;
 
     const mode = 获取货币显示模式(openingConfig, character);
     const baseAmount = 获取角色金钱BaseAmount(money, openingConfig?.modeRuntimeProfile, mode);
@@ -621,7 +635,7 @@ export const 确保角色金钱BaseAmount = <T extends Record<string, any> | nul
         ...source,
         ...normalized,
         baseAmount: 获取角色金钱BaseAmount(normalized, profile, mode)
-    } as NonNullable<T> & { baseAmount: number };
+    } as unknown as NonNullable<T> & { baseAmount: number };
 };
 
 export const 获取货币兼容字段路径 = (key: 货币层级键): string[] => [
