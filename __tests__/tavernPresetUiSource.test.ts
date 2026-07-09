@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { 创意工坊模块列表 } from '../data/creativeWorkshopModules';
 import { 规范化游戏设置 } from '../utils/gameSettings';
-import { 构建酒馆预设选择列表, 酒馆预设条目可删除 } from '../utils/tavernPresetSelection';
+import { 应用酒馆预设条目改动, 构建酒馆预设选择列表, 酒馆预设条目可删除 } from '../utils/tavernPresetSelection';
 import type { 酒馆预设条目结构 } from '../types';
 
 const minimalPreset = {
@@ -59,6 +59,61 @@ describe('酒馆预设 UI 源码约束', () => {
         expect(normalized.酒馆预设名称).toBe('Izumi 0623');
         expect(normalized.酒馆预设?.prompts[0]).toMatchObject({ identifier: 'main', content: 'content' });
         expect(normalized.酒馆预设角色ID).toBe(100001);
+    });
+
+    it('编辑创意工坊酒馆预设时保存为玩家本地副本，不改写工坊默认项', () => {
+        const workshopEntry = 构建酒馆预设选择列表([], [{
+            id: 'tavern-preset-double',
+            type: 'tavern_preset',
+            title: '双人成行',
+            subtitle: '酒馆预设',
+            description: '创意工坊预设',
+            tags: [],
+            payload: {},
+            injectionPreview: [],
+            source: 'cloud',
+            tavernPreset: minimalPreset,
+        }], {})[0];
+
+        const editedPreset = {
+            ...minimalPreset,
+            prompt_order: [{
+                character_id: 100001,
+                order: [{ identifier: 'main', enabled: false }],
+            }],
+        };
+
+        const result = 应用酒馆预设条目改动({
+            form: {
+                启用酒馆预设模式: true,
+                酒馆预设列表: [],
+                当前酒馆预设ID: workshopEntry.id,
+                酒馆预设: minimalPreset,
+                酒馆预设名称: workshopEntry.名称,
+                酒馆预设角色ID: 100001,
+            } as any,
+            localPresetList: [],
+            selectedEntry: workshopEntry,
+            patch: { 预设: editedPreset },
+            generateId: () => 'preset_local_double',
+            now: () => 123456,
+            resolveRoleId: (preset, value) => (
+                preset?.prompt_order.some((group) => group.character_id === value) ? Number(value) : null
+            ),
+        });
+
+        expect(result?.createdLocalCopy).toBe(true);
+        expect(result?.nextConfig.当前酒馆预设ID).toBe('preset_local_double');
+        expect(result?.nextConfig.酒馆预设列表).toHaveLength(1);
+        expect(result?.nextConfig.酒馆预设列表?.[0]).toMatchObject({
+            id: 'preset_local_double',
+            名称: '双人成行',
+            来源: '玩家自行上传',
+            工坊模块ID: 'tavern-preset-double',
+            工坊来源: 'cloud',
+        });
+        expect(result?.nextConfig.酒馆预设列表?.[0]?.预设.prompt_order[0].order[0].enabled).toBe(false);
+        expect(workshopEntry.预设?.prompt_order[0].order[0].enabled).toBe(true);
     });
 
     it('源码包含本地上传删除前确认与工坊预设删除保护', () => {

@@ -74,6 +74,35 @@ const presetSelect = (page) => page
   .filter({ visible: true })
   .first();
 
+const findDoublePresetOptionValue = async (select) => {
+  await expect
+    .poll(async () => await select.locator('option').evaluateAll((options) => options.map((option) => option.textContent || '')), { timeout: 20000 })
+    .toContainEqual(expect.stringContaining('双人成行v10.0_青云上_MoRan墨染江湖净化完整版'));
+
+  const value = await select.locator('option').evaluateAll((options) => {
+    const option = options.find((item) => (item.textContent || '').includes('双人成行v10.0_青云上_MoRan墨染江湖净化完整版'));
+    return option?.value || '';
+  });
+  expect(value).toMatch(/^workshop:/);
+  return value;
+};
+
+const readGameSettings = async (page) => page.evaluate(async () => {
+  const request = indexedDB.open('WuxiaGameDB', 3);
+  const db = await new Promise((resolve, reject) => {
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+  });
+  const settings = await new Promise((resolve, reject) => {
+    const tx = db.transaction(['settings'], 'readonly');
+    const get = tx.objectStore('settings').get('game_settings');
+    get.onsuccess = () => resolve(get.result?.value || null);
+    get.onerror = () => reject(get.error);
+  });
+  db.close();
+  return settings;
+});
+
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(() => {
@@ -93,15 +122,7 @@ test('tavern preset dropdown keeps workshop presets and protects deletion flows'
   await expect(select.locator('option[value="workshop:tavern-preset-izumi-0623"]')).toHaveCount(1);
   await expect(select.locator('option[value="local-upload-e2e"]')).toHaveCount(1);
 
-  await expect
-    .poll(async () => await select.locator('option').evaluateAll((options) => options.map((option) => option.textContent || '')), { timeout: 20000 })
-    .toContainEqual(expect.stringContaining('双人成行v10.0_青云上_MoRan墨染江湖净化完整版'));
-
-  const doublePresetOptionValue = await select.locator('option').evaluateAll((options) => {
-    const option = options.find((item) => (item.textContent || '').includes('双人成行v10.0_青云上_MoRan墨染江湖净化完整版'));
-    return option?.value || '';
-  });
-  expect(doublePresetOptionValue).toMatch(/^workshop:/);
+  await findDoublePresetOptionValue(select);
 
   await expect(page.getByText('这里只切换已加入列表的预设').filter({ visible: true }).first()).toBeVisible();
 
@@ -134,4 +155,46 @@ test('tavern preset dropdown keeps workshop presets and protects deletion flows'
 
   await expect(select.locator('option[value="local-upload-e2e"]')).toHaveCount(0);
   await expect(select.locator('option[value="workshop:tavern-preset-izumi-0623"]')).toHaveCount(1);
+});
+
+test('editing a workshop tavern preset creates and saves a local player copy', async ({ page }) => {
+  test.setTimeout(45000);
+  await openTavernPresetSettings(page);
+
+  const select = presetSelect(page);
+  const doublePresetOptionValue = await findDoublePresetOptionValue(select);
+
+  await expect.poll(async () => {
+    await select.selectOption(doublePresetOptionValue);
+    return await select.inputValue();
+  }, { timeout: 10000 }).toBe(doublePresetOptionValue);
+
+  const firstOrderSwitch = page.getByRole('switch', { name: /切换 .* 启用状态/ }).first();
+  await expect(firstOrderSwitch).toBeVisible();
+  const originalChecked = await firstOrderSwitch.getAttribute('aria-checked');
+
+  await firstOrderSwitch.click();
+
+  await expect.poll(async () => await select.inputValue(), { timeout: 10000 }).toMatch(/^preset_/);
+  const localCopyId = await select.inputValue();
+  await expect(select.locator(`option[value="${localCopyId}"]`)).toContainText('[玩家自行上传]');
+  await expect(select.locator(`option[value="${doublePresetOptionValue}"]`)).toHaveCount(1);
+
+  await page.getByRole('button', { name: '保存预设改动' }).click();
+  await expect(page.getByRole('button', { name: '无未保存改动' })).toBeVisible();
+
+  const savedSettings = await readGameSettings(page);
+  const savedCopy = savedSettings?.酒馆预设列表?.find((entry) => entry.id === localCopyId);
+  expect(savedSettings?.当前酒馆预设ID).toBe(localCopyId);
+  expect(savedCopy).toMatchObject({
+    来源: '玩家自行上传',
+    工坊模块ID: doublePresetOptionValue.replace(/^workshop:/, ''),
+    工坊来源: 'cloud',
+  });
+
+  await expect.poll(async () => {
+    await select.selectOption(doublePresetOptionValue);
+    return await select.inputValue();
+  }, { timeout: 10000 }).toBe(doublePresetOptionValue);
+  await expect(firstOrderSwitch).toHaveAttribute('aria-checked', originalChecked || 'false');
 });
