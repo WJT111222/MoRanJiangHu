@@ -46,7 +46,7 @@ export function 展开批量转化(
         transforms.push({
           fromUnit: `${quality}${sourceTemplate.baseUnit}`,
           toUnit: targetUnit,
-          ratio: config.ratio,
+          ratio: config.ratio ?? 1,
           process: config.process,
         });
       }
@@ -65,7 +65,7 @@ export function 展开批量转化(
       transforms.push({
         fromUnit: `${quality}${sourceTemplate.baseUnit}`,
         toUnit: targetUnit,
-        ratio: config.ratio,
+        ratio: config.ratio ?? 1,
         process: config.process,
       });
     });
