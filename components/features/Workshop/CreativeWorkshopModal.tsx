@@ -167,7 +167,7 @@ const 运行时配置分区列表: 运行时配置分区[] = [
         title: '世界叙事',
         fields: [
             { label: '性别比例自动演变', path: ['性别比例演变预设'], type: 'bool' },
-            { label: 'NPC 男女比例（男:女）', path: ['npc', 'genderRatio'], type: 'record' },
+            { label: 'NPC 男女比例（男:女）', path: ['npc', 'genderRatio'], type: 'text' },
             { label: '启用叙事平静值', path: ['叙事平静值配置', '启用'], type: 'bool' },
             { label: '无标签增量', path: ['叙事平静值配置', '无标签增量'], type: 'number' },
             { label: '延续增量', path: ['叙事平静值配置', '延续增量'], type: 'number' },
@@ -986,16 +986,22 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
 
     const 更新运行时配置字段 = (field: 运行时配置字段, value: any) => {
         setContributionDraft((prev) => {
-            const parsedValue = field.type === 'list'
-                ? 分割短语(String(value || ''))
-                : field.type === 'record'
-                    ? Object.fromEntries(
-                        String(value || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
-                            const eqIdx = l.indexOf('=');
-                            return eqIdx === -1 ? [l, ''] : [l.slice(0, eqIdx).trim(), l.slice(eqIdx + 1).trim()];
-                        })
-                    )
-                    : value;
+            let parsedValue: any;
+            if (field.type === 'list') {
+                parsedValue = 分割短语(String(value || ''));
+            } else if (field.type === 'record') {
+                parsedValue = Object.fromEntries(
+                    String(value || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
+                        const eqIdx = l.indexOf('=');
+                        return eqIdx === -1 ? [l, ''] : [l.slice(0, eqIdx).trim(), l.slice(eqIdx + 1).trim()];
+                    })
+                );
+            } else if (field.type === 'number') {
+                const num = Number(value);
+                parsedValue = Number.isFinite(num) ? num : 0;
+            } else {
+                parsedValue = value;
+            }
             const isBaseModeChange = field.path.join('.') === 'identity.baseMode' && 题材模式顺序.includes(parsedValue as 题材模式类型);
             if (isBaseModeChange) {
                 const nextMode = parsedValue as 题材模式类型;

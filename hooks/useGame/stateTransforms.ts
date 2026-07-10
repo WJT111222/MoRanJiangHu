@@ -3953,8 +3953,9 @@ const 合并占位NPC列表 = (list: any[], options?: { 合并精确同名?: boo
     return merged;
 };
 
-const 规范化社交列表 = (list: any[], options?: { 合并同名?: boolean; 保留非姓名库主要女性名?: boolean }): any[] => {
-    if (!Array.isArray(list)) return [];
+const 规范化社交列表 = (raw?: any[], options?: { 合并同名?: boolean; 保留非姓名库主要女性名?: boolean }): any[] => {
+    if (!Array.isArray(raw)) return [];
+    const list = raw;
     const filtered = list.filter((npc) => !是否应丢弃NPC条目(npc));
     const normalized = filtered.map((npc, index) => 标准化单个NPC(npc, index));
     const merged = options?.合并同名 === false

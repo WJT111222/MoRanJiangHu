@@ -2095,8 +2095,12 @@ const App: React.FC = () => {
             品质: good.品质 || '良品',
             重量: good.重量 || 0.5,
             堆叠数量: 1,
-            是否可堆叠: false
-        };
+            是否可堆叠: false,
+            价值: 0,
+            当前耐久: 100,
+            最大耐久: 100,
+            词条列表: []
+        } as 游戏物品;
         const currentItems = Array.isArray(state.角色?.物品列表) ? state.角色.物品列表 : [];
         const nextCharacter = { ...state.角色, 物品列表: [...currentItems, newItem] };
         setters.setPlayerSect(nextSect);
@@ -3629,6 +3633,7 @@ const App: React.FC = () => {
                             currentStory={state.剧情}
                             openingConfig={state.开局配置}
                             contextSnapshot={contextSnapshot}
+                            当前叙事平静值={state.叙事平静值 ?? null}
                             onSaveApi={actions.saveSettings}
                             onSaveVisual={actions.saveVisualSettings}
                             onSaveGame={actions.saveGameSettings}
@@ -3675,6 +3680,7 @@ const App: React.FC = () => {
                             currentStory={state.剧情}
                             openingConfig={state.开局配置}
                             contextSnapshot={contextSnapshot}
+                            当前叙事平静值={state.叙事平静值 ?? null}
                             onSaveApi={actions.saveSettings}
                             onSaveVisual={actions.saveVisualSettings}
                             onSaveGame={actions.saveGameSettings}

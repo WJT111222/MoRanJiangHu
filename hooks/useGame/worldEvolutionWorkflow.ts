@@ -187,8 +187,8 @@ export const 执行世界演变更新工作流 = async (
         const 取文本 = (value: any) => (typeof value === 'string' ? value : '');
         const 取数组 = (value: any) => (Array.isArray(value) ? value : []);
         const 远处候选 = [
-            ...取数组(worldForHints?.待执行事件).filter((e: any) => (Number(e?.主角参与度) || 0) <= 0.5),
-            ...取数组(worldForHints?.进行中事件).filter((e: any) => (Number(e?.主角参与度) || 0) <= 0.5)
+            ...取数组(worldForHints?.待执行事件).filter((e: any) => (Number(e?.主角参与度) || 0) <= 0.2),
+            ...取数组(worldForHints?.进行中事件).filter((e: any) => (Number(e?.主角参与度) || 0) <= 0.2)
         ].slice(0, 2);
         for (const e of 远处候选) {
             const 名 = 取文本(e?.事件名);

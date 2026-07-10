@@ -31,7 +31,7 @@ type RecallProgress = {
 };
 
 type PolishProgress = {
-    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
+    phase: 'start' | 'stream' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
     channelName?: string;
@@ -66,7 +66,7 @@ type PlanningProgress = {
 };
 
 type VariableGenerationProgress = {
-    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
+    phase: 'start' | 'stream' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
     commandTexts?: string[];
@@ -78,7 +78,7 @@ type VariableGenerationProgress = {
 };
 
 type MapUpdateProgress = {
-    phase: 'start' | 'done' | 'error' | 'skipped' | 'cancelled';
+    phase: 'start' | 'stream' | 'done' | 'error' | 'skipped' | 'cancelled';
     text?: string;
     rawText?: string;
     commandTexts?: string[];

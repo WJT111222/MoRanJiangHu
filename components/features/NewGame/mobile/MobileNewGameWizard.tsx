@@ -96,7 +96,8 @@ const 创意工坊类型标签: Record<创意工坊模块类型, string> = {
     world_rules: '世界规则',
     opening: '开局配置',
     ability: '能力体系',
-    comfy_workflow: 'ComfyUI 工作流'
+    comfy_workflow: 'ComfyUI 工作流',
+    tavern_preset: '酒馆预设'
 };
 type DropdownProps = {
     value: number;
