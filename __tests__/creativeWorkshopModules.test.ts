@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { 创意工坊模块分区, 创意工坊模块列表, 获取创意工坊模块来源标签 } from '../data/creativeWorkshopModules';
+import { 创意工坊模块分区, 创意工坊模块可发布到社区, 创意工坊模块列表, 获取创意工坊模块来源标签 } from '../data/creativeWorkshopModules';
 import { 标准化开局预设方案, 构建预设表单恢复结果 } from '../utils/customNewGamePresets';
 import { 题材模式顺序 } from '../utils/topicModeProfiles';
 import { 获取题材预设背景, 获取题材预设天赋 } from '../data/presets';
@@ -26,6 +26,27 @@ describe('creativeWorkshopModules', () => {
         expect(获取创意工坊模块来源标签(izumi0623!)).toBe('社区贡献');
         expect(izumi0623?.payload?.presetPath).toBe('/tavern-presets/izumi-0623.json');
         expect(izumi0623?.tags).toEqual(expect.arrayContaining(['酒馆预设', 'SillyTavern']));
+    });
+
+    it('本地导入的酒馆预设允许显示发布入口', () => {
+        expect(创意工坊模块可发布到社区({
+            id: 'local-tavern-preset',
+            type: 'tavern_preset',
+            formatVersion: 2,
+            workshopKind: 'standard_module',
+            title: '玩家导入酒馆预设',
+            subtitle: 'SillyTavern 酒馆预设',
+            description: '本地 JSON 测试预设。',
+            tags: ['酒馆预设'],
+            payload: {
+                tavernPreset: {
+                    prompts: [{ identifier: 'main', role: 'system', content: '测试提示词' }],
+                    prompt_order: [{ character_id: 100001, order: [{ identifier: 'main', enabled: true }] }]
+                }
+            },
+            injectionPreview: ['提示词：1 条'],
+            source: 'local'
+        })).toBe(true);
     });
 
     it('每个题材模式都有一个整合后的官方模式包', () => {

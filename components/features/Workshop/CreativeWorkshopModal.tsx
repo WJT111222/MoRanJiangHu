@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { 从模式世界书提取提示词, 创意工坊模块分区, 获取创意工坊模块来源标签, type 创意工坊模块条目, type 创意工坊模块类型, type 创意工坊世界细节生成配置 } from '../../../data/creativeWorkshopModules';
+import { 从模式世界书提取提示词, 创意工坊模块分区, 创意工坊模块可发布到社区, 获取创意工坊模块来源标签, type 创意工坊模块条目, type 创意工坊模块类型, type 创意工坊世界细节生成配置 } from '../../../data/creativeWorkshopModules';
 import type { 接口设置结构, ModeRuntimeProfile, 世界书结构 } from '../../../types';
 import type { CurrencySystem, 题材模式类型 } from '../../../models/system';
 import { 题材模式配置表, 题材模式顺序 } from '../../../utils/topicModeProfiles';
@@ -2281,9 +2281,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                     <div className="grid gap-3 lg:grid-cols-2">
                         {groupedEntries.map((group) => {
                             const entry = getDisplayEntry(group);
-                            const canPublishEntry = entry.source !== 'builtin' && entry.source !== 'cloud' && (
-                                entry.type === 'comfy_workflow' || typeof (entry.payload as any)?.suiteId === 'string'
-                            );
+                            const canPublishEntry = 创意工坊模块可发布到社区(entry);
                             const canManageEntry = entry.source === 'cloud' && Boolean(cloudUsername) && entry.ownerUsername === cloudUsername;
                             const canDeleteLocalEntry = entry.source === 'local';
                             const canEditEntry = canDeleteLocalEntry || canManageEntry;

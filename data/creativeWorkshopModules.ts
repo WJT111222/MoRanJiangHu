@@ -62,6 +62,13 @@ export const 获取创意工坊模块来源标签 = (entry: Pick<创意工坊模
     return '官方预设';
 };
 
+export const 创意工坊模块可发布到社区 = (entry: 创意工坊模块条目): boolean => {
+    if (entry.source !== 'local') return false;
+    if (entry.type === 'comfy_workflow' || entry.type === 'tavern_preset') return true;
+    if (entry.type !== 'topic') return false;
+    return entry.workshopKind === 'standard_module' || typeof (entry.payload as any)?.suiteId === 'string';
+};
+
 const 全流程模式世界书作用域: 世界书作用域[] = ['main', 'opening', 'world_evolution', 'variable_calibration', 'story_plan', 'heroine_plan', 'tavern'];
 
 const 构建模式世界书条目 = (
