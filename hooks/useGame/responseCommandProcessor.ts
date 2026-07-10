@@ -202,16 +202,6 @@ const 是否缺少高层地点变更依据 = (
     return !文本包含地点证据(responseFactText, nextLocation);
 };
 
-const 是否时间回退或异常重置 = (currentTime: string | undefined, newTime: string): boolean => {
-    if (newTime.trim() === 占位开局时间) return true;
-    const currentMinuteValue = 解析标准时间分值(currentTime);
-    const newMinuteValue = 解析标准时间分值(newTime);
-    if (newMinuteValue === null) return true;
-    if (currentMinuteValue === null) return false;
-    return newMinuteValue < currentMinuteValue;
-};
-};
-
 const 是否游戏初始时间命令 = (rawKey: string): boolean => {
     const normalizedKey = normalizeStateCommandKey(rawKey || '');
     if (normalizedKey === 'gameState.游戏初始时间') return true;
