@@ -918,3 +918,7 @@ When onboarding another AI assistant (Cursor, Claude, etc.) to work on this proj
   - `MSJH_IMAGE_BACKEND_SYNC_TOKEN` — backend registry sync token. Store as a secret, never in repo.
 - MoRanJiangHu frontend should use the generic cloud backend registry path `/api/image-backend/sync`; keep `/api/image-backend/cnb-sync` only as backward compatibility.
 - Do not record real Cloud Studio tokens, sync tokens, or preview URLs that contain secrets in AGENTS files, commits, logs, screenshots, or customer changelogs.
+
+## Notes
+
+- AGENTS.md

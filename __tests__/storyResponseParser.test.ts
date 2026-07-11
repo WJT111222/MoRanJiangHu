@@ -173,6 +173,32 @@ describe('storyResponseParser', () => {
         ]);
     });
 
+    it('strips leaked variable/memory command block appended after body', () => {
+        const parsed = parseStoryRawText([
+            '<正文>',
+            '【旁白】厚重的朱漆大门已然敞开，殿内隐约可见几盏长明灯的昏黄火光。',
+            '【环境.时间】',
+            '"1:01:01:07:00"',
+            '【俞月荷.好感度】',
+            '=62',
+            '【俞月荷.记忆】',
+            '=push 社交[0].记忆 {',
+            '"内容": "清晨指点入门剑法，随后一同抵达外务堂",',
+            '"时间": "1:01:01:07:00"',
+            '}',
+            '</正文>',
+            '<短期记忆>两人抵达外务堂准备登记。</短期记忆>'
+        ].join('\n'));
+
+        expect(parsed.logs).toEqual([
+            { sender: '旁白', text: '厚重的朱漆大门已然敞开，殿内隐约可见几盏长明灯的昏黄火光。' }
+        ]);
+        const body = parsed.logs.map(item => item.text).join('\n');
+        expect(body).not.toContain('环境.时间');
+        expect(body).not.toContain('好感度');
+        expect(body).not.toContain('push 社交[0].记忆');
+    });
+
     it('rejects bare canonical game time lines during strict story parsing', () => {
         expect(() => parseStoryRawText([
             '<正文>',

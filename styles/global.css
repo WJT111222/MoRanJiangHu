@@ -658,6 +658,28 @@ html[data-theme="day"] .release-notes-panel [class*="text-gray-500"] {
   opacity: 1 !important;
 }
 
+/* Faction relation graph readability in day mode */
+html[data-theme="day"] .world-faction-graph {
+  background: rgba(255, 249, 236, 0.86) !important;
+  border-color: rgba(181, 130, 66, 0.28) !important;
+}
+
+html[data-theme="day"] .world-faction-graph-canvas {
+  background: radial-gradient(circle at center, rgba(245, 222, 176, 0.72), rgba(255, 250, 240, 0.95) 58%, rgba(238, 222, 191, 0.86)) !important;
+  border-color: rgba(154, 102, 39, 0.28) !important;
+}
+
+html[data-theme="day"] .world-faction-node {
+  background: rgba(255, 252, 244, 0.96) !important;
+  border-color: rgba(163, 96, 31, 0.62) !important;
+  color: rgb(87, 52, 22) !important;
+  box-shadow: 0 8px 18px rgba(104, 64, 22, 0.16) !important;
+}
+
+html[data-theme="day"] .world-faction-edge-label {
+  fill: rgb(67, 51, 31) !important;
+}
+
 /* Day mode final contrast pass.
    This sits after the generic dark-modal readability rules so light mode cannot
    be pulled back to pale gray text by later selectors or inline visual styles. */

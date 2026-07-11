@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 世界数据结构 } from '../../../models/world';
 import { normalizeCanonicalGameTime, 结构化时间转标准串 } from '../../../hooks/useGame/timeUtils';
 import { IconBolt, IconEye, IconScroll, IconSwords, IconMapPin } from '../../ui/Icons';
+import { 势力关系图边, 势力关系图节点, 归类势力关系色调, 构建世界显示名解析器, 构建势力关系图数据, 构建势力名称索引, 解析势力关系条目 } from '../../../utils/worldFactionRelations';
 
 interface Props {
     world: 世界数据结构;
@@ -52,6 +53,72 @@ const 取数字数组 = (value: unknown): number[] => Array.isArray(value)
 
 const 取文本 = (value: unknown): string => typeof value === 'string' ? value.trim() : '';
 
+const 清洗数组显示名 = (values: unknown, resolveName: (value: unknown, fallback?: string) => string): string[] => (
+    Array.isArray(values) ? values : []
+)
+    .map((item) => resolveName(item))
+    .filter(Boolean);
+
+const 势力图颜色 = (tone: 势力关系图边['tone']): { line: string; badge: string } => {
+    if (tone === 'bad') return { line: '#ef4444', badge: 'border-red-500/45 bg-red-500/10 text-red-200' };
+    if (tone === 'good') return { line: '#22c55e', badge: 'border-emerald-500/45 bg-emerald-500/10 text-emerald-100' };
+    return { line: '#9ca3af', badge: 'border-gray-500/45 bg-white/5 text-gray-200' };
+};
+
+const 势力关系标签样式 = (relation: string): string => 势力图颜色(归类势力关系色调(relation)).badge;
+
+const 势力关系图: React.FC<{ nodes: 势力关系图节点[]; edges: 势力关系图边[] }> = ({ nodes, edges }) => {
+    if (nodes.length < 2) return null;
+    return (
+        <div className="world-faction-graph mb-5 rounded-2xl border border-orange-900/25 bg-black/30 p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="text-sm font-serif font-bold tracking-[0.22em] text-orange-200">势力关系图</div>
+                <div className="text-[10px] text-gray-500">{edges.length} 条关系</div>
+            </div>
+            <div className="world-faction-graph-canvas relative mx-auto aspect-[16/9] min-h-[260px] w-full max-w-4xl overflow-hidden rounded-xl border border-gray-800/80 bg-[radial-gradient(circle_at_center,rgba(120,72,24,0.24),rgba(0,0,0,0.18)_58%,rgba(0,0,0,0.35))]">
+                <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" role="img" aria-label="势力关系连线图">
+                    {edges.map((edge, idx) => {
+                        const color = 势力图颜色(edge.tone).line;
+                        const midX = (edge.sourceX + edge.targetX) / 2;
+                        const midY = (edge.sourceY + edge.targetY) / 2;
+                        return (
+                            <g key={`${edge.sourceId}-${edge.targetId}-${edge.relation}-${idx}`}>
+                                <line
+                                    x1={edge.sourceX}
+                                    y1={edge.sourceY}
+                                    x2={edge.targetX}
+                                    y2={edge.targetY}
+                                    stroke={color}
+                                    strokeWidth={edge.tone === 'neutral' ? 0.42 : 0.62}
+                                    strokeOpacity={edge.tone === 'neutral' ? 0.62 : 0.88}
+                                />
+                                <text x={midX} y={midY - 1.4} textAnchor="middle" className="world-faction-edge-label fill-gray-200 text-[2.7px] font-semibold">
+                                    {edge.relation}
+                                </text>
+                            </g>
+                        );
+                    })}
+                </svg>
+                {nodes.map((node) => (
+                    <div
+                        key={node.id}
+                        className="world-faction-node absolute flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-orange-300/45 bg-[#24160e]/95 px-2 text-center text-xs font-bold leading-4 text-orange-100 shadow-[0_0_24px_rgba(251,146,60,0.18)]"
+                        style={{ left: `${node.x}%`, top: `${node.y}%` }}
+                        title={node.name}
+                    >
+                        <span className="line-clamp-2 break-all">{node.name}</span>
+                    </div>
+                ))}
+            </div>
+            <div className="mt-3 flex flex-wrap justify-end gap-2 text-[10px]">
+                <span className={`rounded-full border px-2 py-0.5 ${势力图颜色('good').badge}`}>绿色：友好/联盟</span>
+                <span className={`rounded-full border px-2 py-0.5 ${势力图颜色('neutral').badge}`}>灰色：中立</span>
+                <span className={`rounded-full border px-2 py-0.5 ${势力图颜色('bad').badge}`}>红色：敌对</span>
+            </div>
+        </div>
+    );
+};
+
 const WorldModal: React.FC<Props> = ({
     world,
     worldEvolutionEnabled = false,
@@ -77,6 +144,11 @@ const WorldModal: React.FC<Props> = ({
     const 势力列表 = Array.isArray(world?.势力列表) ? world.势力列表 : [];
     const 势力互动历史 = Array.isArray(world?.势力互动历史) ? world.势力互动历史 : [];
     const 拍卖行待投放物品 = Array.isArray(world?.拍卖行待投放物品) ? world.拍卖行待投放物品 : [];
+    const 势力名称索引 = useMemo(() => 构建势力名称索引(势力列表), [势力列表]);
+    const 势力关系图数据 = useMemo(() => 构建势力关系图数据(势力列表), [势力列表]);
+    const 解析世界显示名 = useMemo(() => 构建世界显示名解析器(势力列表), [势力列表]);
+    const 显示关联列表 = (values: unknown): string[] => 清洗数组显示名(values, 解析世界显示名);
+    const 显示单名 = (value: unknown, fallback = ''): string => 解析世界显示名(value, fallback);
 
     const handleForceUpdate = async () => {
         if (!onForceUpdate || worldEvolutionUpdating) return;
@@ -218,7 +290,7 @@ const WorldModal: React.FC<Props> = ({
                                                 {(取数组(evt.关联人物).length > 0 || 取数组(evt.关联地点).length > 0 || 取数组(evt.关联势力).length > 0 || 取数组(evt.关联分歧线).length > 0 || 取数字数组(evt.关联分解组).length > 0) && (
                                                     <div className="mt-3 pt-3 border-t border-gray-800/50 flex flex-wrap gap-2 text-[10px]">
                                                         {取数组(evt.关联人物).map((p, i) => <span key={`p-${i}`} className="bg-cyan-900/30 text-cyan-500 px-2 py-0.5 rounded">@{p}</span>)}
-                                                        {取数组(evt.关联势力).map((p, i) => <span key={`f-${i}`} className="bg-orange-900/30 text-orange-500 px-2 py-0.5 rounded">{p}</span>)}
+                                                        {显示关联列表(evt.关联势力).map((p, i) => <span key={`f-${i}`} className="bg-orange-900/30 text-orange-500 px-2 py-0.5 rounded">{p}</span>)}
                                                         {取数组(evt.关联地点).map((l, i) => <span key={`l-${i}`} className="bg-green-900/30 text-green-500 px-2 py-0.5 rounded">📍{l}</span>)}
                                                         {取数字数组(evt.关联分解组).map((g, i) => <span key={`g-${i}`} className="bg-purple-900/30 text-purple-400 px-2 py-0.5 rounded">分解组{g}</span>)}
                                                         {取数组(evt.关联分歧线).map((b, i) => <span key={`b-${i}`} className="bg-pink-900/30 text-pink-400 px-2 py-0.5 rounded">分歧:{b}</span>)}
@@ -267,7 +339,7 @@ const WorldModal: React.FC<Props> = ({
                                                 {(取数组(evt.关联人物).length > 0 || 取数组(evt.关联地点).length > 0 || 取数组(evt.关联势力).length > 0 || 取数组(evt.关联分歧线).length > 0 || 取数字数组(evt.关联分解组).length > 0) && (
                                                     <div className="mt-3 pt-3 border-t border-gray-800/50 flex flex-wrap gap-2 text-[10px]">
                                                         {取数组(evt.关联人物).map((p, i) => <span key={`op-${i}`} className="bg-cyan-900/30 text-cyan-500 px-2 py-0.5 rounded">@{p}</span>)}
-                                                        {取数组(evt.关联势力).map((p, i) => <span key={`of-${i}`} className="bg-orange-900/30 text-orange-500 px-2 py-0.5 rounded">{p}</span>)}
+                                                        {显示关联列表(evt.关联势力).map((p, i) => <span key={`of-${i}`} className="bg-orange-900/30 text-orange-500 px-2 py-0.5 rounded">{p}</span>)}
                                                         {取数组(evt.关联地点).map((l, i) => <span key={`ol-${i}`} className="bg-green-900/30 text-green-500 px-2 py-0.5 rounded">📍{l}</span>)}
                                                         {取数字数组(evt.关联分解组).map((g, i) => <span key={`og-${i}`} className="bg-purple-900/30 text-purple-400 px-2 py-0.5 rounded">分解组{g}</span>)}
                                                         {取数组(evt.关联分歧线).map((b, i) => <span key={`ob-${i}`} className="bg-pink-900/30 text-pink-400 px-2 py-0.5 rounded">分歧:{b}</span>)}
@@ -287,13 +359,14 @@ const WorldModal: React.FC<Props> = ({
                                         <div className="text-sm font-serif font-bold text-orange-300 tracking-[0.25em]">江湖势力</div>
                                         <div className="text-[10px] text-gray-500">共 {势力列表.length} 方</div>
                                     </div>
+                                    <势力关系图 nodes={势力关系图数据.nodes} edges={势力关系图数据.edges} />
                                     {势力列表.length > 0 ? (
                                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                                             {势力列表.map((faction, idx) => (
                                                 <div key={`faction-${faction.ID || idx}`} className="rounded-xl border border-orange-900/25 bg-orange-950/10 p-4">
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div>
-                                                            <div className="text-lg font-serif font-bold text-orange-200">{faction.名称 || `势力 ${idx + 1}`}</div>
+                                                            <div className="text-lg font-serif font-bold text-orange-200">{显示单名(faction.名称 || faction.ID, `势力 ${idx + 1}`)}</div>
                                                             <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
                                                                 <span className="rounded bg-orange-900/30 px-2 py-0.5 text-orange-300">{faction.类型 || '势力'}</span>
                                                                 {取文本(faction.地盘归属) && <span className="rounded bg-green-900/25 px-2 py-0.5 text-green-400">{faction.地盘归属}</span>}
@@ -309,34 +382,11 @@ const WorldModal: React.FC<Props> = ({
                                                     )}
                                                     {faction.关系网 && typeof faction.关系网 === 'object' && Object.keys(faction.关系网).length > 0 && (
                                                         <div className="mt-3 flex flex-wrap gap-1.5 text-[10px] text-gray-400">
-                                                            {(() => {
-                                                                const relations: [string, string][] = [];
-                                                                if (Array.isArray(faction.关系网)) {
-                                                                    faction.关系网.forEach((item: any) => {
-                                                                        if (item && typeof item === 'object') {
-                                                                            if (item.势力 && item.关系) relations.push([String(item.势力), String(item.关系)]);
-                                                                            else if (item.名称 && item.关系) relations.push([String(item.名称), String(item.关系)]);
-                                                                            else {
-                                                                                const keys = Object.keys(item);
-                                                                                if (keys.length > 0) relations.push([keys[0], String(item[keys[0]])]);
-                                                                            }
-                                                                        }
-                                                                    });
-                                                                } else {
-                                                                    Object.entries(faction.关系网).forEach(([k, v]) => {
-                                                                        if (v && typeof v === 'object') {
-                                                                            const valKeys = Object.keys(v);
-                                                                            if (valKeys.length > 0) relations.push([k, String((v as any)[valKeys[0]])]);
-                                                                            else relations.push([k, '未知']);
-                                                                        } else {
-                                                                            relations.push([k, String(v)]);
-                                                                        }
-                                                                    });
-                                                                }
-                                                                return relations.slice(0, 6).map(([name, rel], i) => (
-                                                                    <span key={`${name}-${i}`} className="rounded bg-black/40 px-2 py-0.5">{name}: {rel}</span>
-                                                                ));
-                                                            })()}
+                                                            {解析势力关系条目(faction.关系网, 势力名称索引).slice(0, 6).map((item, i) => {
+                                                                return (
+                                                                    <span key={`${item.targetId}-${i}`} className={`rounded border px-2 py-0.5 ${势力关系标签样式(item.relation)}`}>{显示单名(item.targetName || item.targetId, '未知势力')}: {item.relation}</span>
+                                                                );
+                                                            })}
                                                         </div>
                                                     )}
                                                 </div>
@@ -355,7 +405,7 @@ const WorldModal: React.FC<Props> = ({
                                                 {势力互动历史.slice(0, 8).map((event, idx) => (
                                                     <div key={`faction-event-${event.ID || idx}`} className="rounded-xl border border-gray-800 bg-black/30 p-4">
                                                         <div className="flex items-center justify-between gap-3">
-                                                            <div className="text-sm font-semibold text-gray-100">{取数组(event.参与势力).join('、') || '未知势力'}</div>
+                                                            <div className="text-sm font-semibold text-gray-100">{显示关联列表(event.参与势力).join('、') || '未知势力'}</div>
                                                             <div className="rounded-full border border-gray-700 px-2 py-0.5 text-[10px] text-gray-400">{event.类型 || '互动'}</div>
                                                         </div>
                                                         <div className="mt-2 text-sm leading-6 text-gray-300">{event.事件摘要 || '暂无摘要。'}</div>
@@ -390,7 +440,7 @@ const WorldModal: React.FC<Props> = ({
                                             <div>
                                                 <div className="text-xl text-wuxia-cyan font-serif font-bold">{npc.姓名 || `NPC ${idx + 1}`}</div>
                                                 <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-                                                    <span className="bg-orange-900/20 text-orange-500/90 px-2 py-0.5 rounded">{npc.所属势力 || '无门无派'}</span>
+                                                    <span className="bg-orange-900/20 text-orange-500/90 px-2 py-0.5 rounded">{显示单名(npc.所属势力, '无门无派')}</span>
                                                     <span className="text-gray-600">|</span>
                                                     <span className="bg-green-900/20 text-green-500/90 px-2 py-0.5 rounded flex items-center gap-1"><IconMapPin size={10} />{npc.当前位置 || '未知地点'}</span>
                                                 </div>
@@ -431,7 +481,7 @@ const WorldModal: React.FC<Props> = ({
                                                 {(取数组(evt.关联人物).length > 0 || 取数组(evt.关联地点).length > 0 || 取数组(evt.关联势力).length > 0 || 取数组(evt.关联分歧线).length > 0 || 取数字数组(evt.关联分解组).length > 0) && (
                                                     <div className="mt-3 pt-3 border-t border-gray-800/50 flex flex-wrap gap-2 text-[10px] opacity-70">
                                                         {取数组(evt.关联人物).map((p, i) => <span key={`sp-${i}`} className="bg-cyan-900/30 text-cyan-500 px-2 py-0.5 rounded">@{p}</span>)}
-                                                        {取数组(evt.关联势力).map((p, i) => <span key={`sf-${i}`} className="bg-orange-900/30 text-orange-500 px-2 py-0.5 rounded">{p}</span>)}
+                                                        {显示关联列表(evt.关联势力).map((p, i) => <span key={`sf-${i}`} className="bg-orange-900/30 text-orange-500 px-2 py-0.5 rounded">{p}</span>)}
                                                         {取数组(evt.关联地点).map((l, i) => <span key={`sl-${i}`} className="bg-green-900/30 text-green-500 px-2 py-0.5 rounded">📍{l}</span>)}
                                                         {取数字数组(evt.关联分解组).map((g, i) => <span key={`sg-${i}`} className="bg-purple-900/30 text-purple-400 px-2 py-0.5 rounded">分解组{g}</span>)}
                                                         {取数组(evt.关联分歧线).map((b, i) => <span key={`sb-${i}`} className="bg-pink-900/30 text-pink-400 px-2 py-0.5 rounded">分歧:{b}</span>)}
@@ -463,7 +513,7 @@ const WorldModal: React.FC<Props> = ({
                                                     {(取数组(item.关联人物).length > 0 || 取数组(item.关联地点).length > 0 || 取数组(item.关联势力).length > 0 || 取数组(item.关联分歧线).length > 0) && (
                                                         <div className="mt-3 pt-3 border-t border-gray-800/50 flex flex-wrap gap-2 text-[10px] opacity-70">
                                                             {取数组(item.关联人物).map((p, i) => <span key={`cp-${i}`} className="bg-cyan-900/30 text-cyan-500 px-2 py-0.5 rounded">@{p}</span>)}
-                                                            {取数组(item.关联势力).map((p, i) => <span key={`cf-${i}`} className="bg-orange-900/30 text-orange-500 px-2 py-0.5 rounded">{p}</span>)}
+                                                            {显示关联列表(item.关联势力).map((p, i) => <span key={`cf-${i}`} className="bg-orange-900/30 text-orange-500 px-2 py-0.5 rounded">{p}</span>)}
                                                             {取数组(item.关联地点).map((l, i) => <span key={`cl-${i}`} className="bg-green-900/30 text-green-500 px-2 py-0.5 rounded">📍{l}</span>)}
                                                             {取数组(item.关联分歧线).map((b, i) => <span key={`cb-${i}`} className="bg-pink-900/30 text-pink-400 px-2 py-0.5 rounded">分歧:{b}</span>)}
                                                         </div>

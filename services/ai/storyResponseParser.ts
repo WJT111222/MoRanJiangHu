@@ -378,6 +378,20 @@ const 提取候选正文文本 = (text: string): string => {
     return lines.join('\n').trim();
 };
 
+// 变量命令泄漏检测：模型偶尔会把状态/记忆命令块直接接在正文末尾，例如
+//   【环境.时间】\n"1:01:01:07:00"\n【俞月荷.好感度】\n=62\n【俞月荷.记忆】\n=push 社交[0].记忆 {...}
+// 这类内容不是正文对白，必须从展示正文里剥离。正文协议只允许【人名】标签，
+// 方括号内出现点号路径（环境.时间）或数组索引（社交[0]）即可判定为变量命令泄漏。
+const 变量命令路径标签行规则 = /^【\s*[^】\n]*(?:[.．][^】\n]+|\[\s*\d+\s*\])[^】\n]*】\s*(?:[=＝].*)?$/u;
+const 变量命令动词行规则 = /^(?:[-*•]\s*|\d+[.)、]\s*)?(?:add|set|push|delete)\s+[^\s=＝]+/i;
+const 变量命令赋值行规则 = /^【\s*[^】\n]+】\s*(?:[=＝]|\bpush\b|\bset\b|\badd\b|\bdelete\b)/iu;
+
+const 是否变量命令泄漏行 = (line: string): boolean => (
+    变量命令路径标签行规则.test(line)
+    || 变量命令动词行规则.test(line)
+    || 变量命令赋值行规则.test(line)
+);
+
 const 清理正文残留协议内容 = (body: string): string => {
     let stripped = 剥离酒馆元标签区块(body || '');
     for (const tag of ['剧情规划', '变量规划', '短期记忆', '命令', '行动选项', '动态世界']) {
@@ -390,7 +404,7 @@ const 清理正文残留协议内容 = (body: string): string => {
         const isNonBodyProtocolHeader = (Object.keys(协议标题匹配规则) as 可标题恢复标签[])
             .filter((tag) => tag !== '正文')
             .some((tag) => 协议标题匹配规则[tag].test(line));
-        if (isNonBodyProtocolHeader || 酒馆状态行规则.test(line)) break;
+        if (isNonBodyProtocolHeader || 酒馆状态行规则.test(line) || 是否变量命令泄漏行(line)) break;
         lines.push(rawLine);
     }
     return 清理正文初始化泄露内容(清理正文HTML注释残片(lines.join('\n'))).trim();
