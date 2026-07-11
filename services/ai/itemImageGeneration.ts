@@ -991,6 +991,7 @@ export const 生成物品图标 = async (
             ? `single physical ${enrichedItemIsModernFirearm || enrichedItemIsTacticalVest ? 'modern survival' : 'non-modern'} inventory item, photorealistic product photo, centered product composition, neutral matte studio background, clean silhouette, realistic material${enrichedItemIsSoftGarment ? ', soft fabric garment, cloth folds, flexible drape' : ''}`
             : 'single physical object, centered composition, clean silhouette, plain asset presentation'}; ${noTextGuard}`,
         附加负面提示词: 构建物品负面提示词(enrichedItem),
+        随机种子生成: feature?.随机种子生成 !== false,
     });
     recordDiagnosticLog('info', '[物品生图链路] 图片后端已返回', {
         recordId,

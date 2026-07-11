@@ -108,7 +108,7 @@ describe('ComfyUI workflow upload validation', () => {
         });
 
         expect(result.ok).toBe(true);
-        expect(result.imageUrl).toBe('https://comfy.example/view?filename=validated.png&subfolder=&type=output');
+        expect(result.imageUrl).toBe('https://comfy.example/view?filename=validated.png&subfolder=&type=output&__moran_pid=upload-check');
         expect(submittedWorkflow?.['1']?.inputs?.text).toContain('single plain ceramic cup');
         expect(submittedWorkflow?.['2']?.inputs?.text).toContain('watermark');
         expect(submittedWorkflow?.['3']?.inputs?.width).toBe(512);

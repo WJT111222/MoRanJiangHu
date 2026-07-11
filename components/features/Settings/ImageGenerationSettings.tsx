@@ -2226,6 +2226,20 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
             <div className={卡片样式}>
                 <div className="flex items-center justify-between gap-3">
                     <div>
+                        <div className="text-base font-bold text-cyan-200">随机种子生成</div>
+                        <div className="mt-1 text-xs leading-6 text-cyan-100/70">开启后每次 ComfyUI 生图使用随机种子，避免因固定种子 0 让同一提示词反复出同一张图；若导入 PNG 画风预设并指定了种子，仍以该种子为准。</div>
+                    </div>
+                    <ToggleSwitch
+                        checked={form.功能模型占位.随机种子生成 !== false}
+                        onChange={(next) => updatePlaceholder('随机种子生成', next)}
+                        ariaLabel="切换随机种子生成"
+                    />
+                </div>
+            </div>
+
+            <div className={卡片样式}>
+                <div className="flex items-center justify-between gap-3">
+                    <div>
                         <div className="text-base font-bold text-cyan-200">独立转化器模型</div>
                     </div>
                     <ToggleSwitch

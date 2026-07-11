@@ -287,7 +287,8 @@ export const 执行场景生图工作流 = async (
                 附加负面提示词,
                 跳过基础负面提示词: Boolean((画师串预设?.负面提示词 || '').trim() || (PNG画风预设?.负面提示词 || '').trim()),
                 尺寸: params.尺寸,
-                PNG参数
+                PNG参数,
+                随机种子生成: deps.apiConfig?.功能模型占位?.随机种子生成 !== false
             }),
             {
                 signal: params.signal,

@@ -224,7 +224,7 @@ describe('ComfyUI unavailable backend detection', () => {
             ComfyUI工作流JSON: '{"1":{"class_type":"CLIPTextEncode","inputs":{"text":"__PROMPT__"}}}',
         } as any);
 
-        expect(result.图片URL).toBe('https://msjh.bacon159.pp.ua/api/image-backend/comfyui-proxy/view?filename=ok.png&subfolder=&type=output&url=https%3A%2F%2Flive-8188.cnb.run');
+        expect(result.图片URL).toBe('https://msjh.bacon159.pp.ua/api/image-backend/comfyui-proxy/view?filename=ok.png&subfolder=&type=output&__moran_pid=p1&url=https%3A%2F%2Flive-8188.cnb.run');
         expect(calls[0]).toBe('https://live-8188.cnb.run/prompt');
         expect(calls[1]).toBe('https://msjh.bacon159.pp.ua/api/image-backend/comfyui-proxy/prompt?url=https%3A%2F%2Flive-8188.cnb.run');
         expect(calls[2]).toBe('https://msjh.bacon159.pp.ua/api/image-backend/comfyui-proxy/history/p1?url=https%3A%2F%2Flive-8188.cnb.run');

@@ -664,7 +664,8 @@ export const 执行NPC生图工作流 = async (
                 附加正向提示词: 前置正向提示词,
                 附加负面提示词: 合并负向画师串,
                 跳过基础负面提示词: Boolean((画师串预设?.负面提示词 || '').trim() || (PNG画风预设?.负面提示词 || '').trim()),
-                PNG参数
+                PNG参数,
+                随机种子生成: deps.apiConfig?.功能模型占位?.随机种子生成 !== false
             }),
             {
                 signal: options?.signal,

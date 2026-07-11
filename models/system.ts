@@ -424,6 +424,8 @@ export interface 功能模型占位配置结构 {
     自动生图子类型启用立绘?: boolean;
     自动生图子类型启用半身?: boolean;
     自动生图子类型启用私密部位?: boolean;
+    随机种子生成?: boolean; // ComfyUI 每次生图使用随机 seed 而非固定 0（默认开启）；PNG 复刻参数里的显式 seed 仍优先
+
     生图配置档列表?: 生图配置档结构[];
     当前NPC生图配置档ID?: string;
     当前场景生图配置档ID?: string;

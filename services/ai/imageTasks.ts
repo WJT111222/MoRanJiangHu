@@ -2210,13 +2210,16 @@ const 补齐ComfyUI负向提示词节点 = (workflow: Record<string, unknown>, n
     return workflow;
 };
 
+const 生成随机ComfyUISeed = (): number => Math.floor(Math.random() * 2 ** 32);
+
 const 构建ComfyUI工作流 = (
     workflowText: string,
     prompt: string,
     negativePrompt: string,
     width: number,
     height: number,
-    pngParams?: PNG解析参数结构
+    pngParams?: PNG解析参数结构,
+    随机种子生成?: boolean
 ): Record<string, unknown> => {
     const hasNegativePlaceholder = /(__NEGATIVE_PROMPT__|\{\{negative_prompt\}\})/.test(workflowText || '');
     const hasConditioningZeroOut = /ConditioningZeroOut/i.test(workflowText || '');
@@ -2259,6 +2262,12 @@ const 构建ComfyUI工作流 = (
     const defaultCfg = isZImageTurboWorkflow ? 1 : (isQwenImageWorkflow ? 2.5 : 7);
     const defaultSampler = isZImageTurboWorkflow ? 'res_multistep' : 'euler';
     const defaultScheduler = isZImageTurboWorkflow ? 'sgm_uniform' : (isQwenImageWorkflow ? 'simple' : 'normal');
+    const 显式随机种子 = Number.isFinite(Number(pngParams?.随机种子))
+        ? Math.max(0, Math.floor(Number(pngParams?.随机种子)))
+        : null;
+    const seed值 = 显式随机种子 !== null
+        ? 显式随机种子
+        : (随机种子生成 !== false ? 生成随机ComfyUISeed() : 0);
     const replacements: Record<string, string | number> = {
         '__PROMPT__': promptValue,
         '{{prompt}}': promptValue,
@@ -2280,8 +2289,10 @@ const 构建ComfyUI工作流 = (
         '{{sampler}}': (pngParams?.采样器 || '').trim() || defaultSampler,
         '__SCHEDULER__': (pngParams?.噪声计划 || '').trim() || defaultScheduler,
         '{{scheduler}}': (pngParams?.噪声计划 || '').trim() || defaultScheduler,
-        '__SEED__': Number.isFinite(Number(pngParams?.随机种子)) ? Math.max(0, Math.floor(Number(pngParams?.随机种子))) : 0,
-        '{{seed}}': Number.isFinite(Number(pngParams?.随机种子)) ? Math.max(0, Math.floor(Number(pngParams?.随机种子))) : 0,
+        // 显式 seed（PNG 复刻参数）优先；否则开启随机种子生成时每次取随机值，
+        // 关闭时兜底为 0。避免同一 workflow 因固定 seed 反复产出高度相似的图。
+        '__SEED__': seed值,
+        '{{seed}}': seed值,
         '__SMEA__': pngParams?.SMEA === true ? 'true' : 'false',
         '{{smea}}': pngParams?.SMEA === true ? 'true' : 'false',
         '__SMEA_DYN__': pngParams?.SMEA动态 === true ? 'true' : 'false',
@@ -2293,6 +2304,8 @@ const 构建ComfyUI工作流 = (
     if (hasConditioningZeroOut) return injected;
     return 补齐ComfyUI负向提示词节点(injected, negativePrompt);
 };
+
+export const __测试__构建ComfyUI工作流 = 构建ComfyUI工作流;
 
 const 规范化SD采样器与调度器 = (pngParams?: PNG解析参数结构): { samplerName: string; scheduler?: string } => {
     const rawSampler = (pngParams?.采样器 || '').trim();
@@ -2368,14 +2381,16 @@ const 等待 = async (ms: number, signal?: AbortSignal): Promise<void> => {
 const 提取ComfyUI图片地址 = (
     historyPayload: any,
     baseUrlRaw: string,
-    channel: ComfyUI请求通道 = 'direct'
+    channel: ComfyUI请求通道 = 'direct',
+    promptId?: string
 ): string | null => {
-    if (!historyPayload || typeof historyPayload !== 'object') return null;
-    const root = Array.isArray(historyPayload)
-        ? historyPayload[0]
-        : Object.values(historyPayload as Record<string, unknown>)[0];
+    const root = 提取ComfyUI历史根节点(historyPayload, promptId);
     const outputs = root && typeof root === 'object' ? (root as any).outputs : null;
     if (!outputs || typeof outputs !== 'object') return null;
+    // 收集所有含图像的节点输出。ComfyUI 的 SaveImage 输出 type=output，
+    // 而 PreviewImage 等预览/参考节点输出 type=temp；用户粘贴的自定义 workflow
+    // 里若混入预览节点，直接取第一个节点会误取参考图而非采样结果。
+    const 候选图片: Array<{ filename: string; subfolder: string; type: string }> = [];
     for (const nodeOutput of Object.values(outputs as Record<string, unknown>)) {
         const images = Array.isArray((nodeOutput as any)?.images) ? (nodeOutput as any).images : [];
         const first = images[0];
@@ -2384,10 +2399,24 @@ const 提取ComfyUI图片地址 = (
         if (!filename) continue;
         const subfolder = typeof first.subfolder === 'string' ? first.subfolder.trim() : '';
         const type = typeof first.type === 'string' ? first.type.trim() : 'output';
-        const params = new URLSearchParams({ filename, subfolder, type });
-        return 构建ComfyUI端点(baseUrlRaw, `/view?${params.toString()}`, channel);
+        候选图片.push({ filename, subfolder, type });
     }
-    return null;
+    if (候选图片.length === 0) return null;
+    // 优先取 SaveImage 的 output，其次退回第一张（兼容仅有 PreviewImage 的 workflow）。
+    const 选中 = 候选图片.find((item) => item.type === 'output') || 候选图片[0];
+    const params = new URLSearchParams({
+        filename: 选中.filename,
+        subfolder: 选中.subfolder,
+        type: 选中.type
+    });
+    // [修复缓存串图] CNB 等临时工作区重启后 SaveImage 计数器归零，会复用
+    // ComfyUI_0000N_.png 这类文件名；而 /view?filename=... 的 URL 跨会话完全相同，
+    // 浏览器/CDN 会把上一会话同名文件的旧图当缓存命中，导致「提示词正确但取回无关旧图」。
+    // 用本次唯一的 promptId 作为 cache-bust 参数（ComfyUI /view 会忽略未知参数），
+    // 使每次生成的图片 URL 各不相同，规避跨会话缓存。
+    const cacheBust = typeof promptId === 'string' ? promptId.trim() : '';
+    if (cacheBust) params.set('__moran_pid', cacheBust);
+    return 构建ComfyUI端点(baseUrlRaw, `/view?${params.toString()}`, channel);
 };
 
 const 截断调试文本 = (value: unknown, limit = 1200): string => {
@@ -2411,15 +2440,21 @@ const 附加生图调试链路到错误 = (error: any, trace: 生图调试事件
 
 const COMFYUI_POLL_TIMEOUT_MS = 3 * 60 * 1000;
 
-const 提取ComfyUI历史根节点 = (historyPayload: any): any => {
+const 提取ComfyUI历史根节点 = (historyPayload: any, promptId?: string): any => {
     if (!historyPayload || typeof historyPayload !== 'object') return null;
-    return Array.isArray(historyPayload)
-        ? historyPayload[0]
-        : Object.values(historyPayload as Record<string, unknown>)[0];
+    if (Array.isArray(historyPayload)) return historyPayload[0];
+    const record = historyPayload as Record<string, unknown>;
+    // /history/{prompt_id} 正常返回 { [promptId]: {...} }；优先按 promptId 精确取，
+    // 避免代理吞掉路径、返回整段历史时误取到其它（更早的）生成结果。
+    const trimmedId = typeof promptId === 'string' ? promptId.trim() : '';
+    if (trimmedId && Object.prototype.hasOwnProperty.call(record, trimmedId)) {
+        return record[trimmedId];
+    }
+    return Object.values(record)[0];
 };
 
-const 提取ComfyUI失败信息 = (historyPayload: any): string | null => {
-    const root = 提取ComfyUI历史根节点(historyPayload);
+const 提取ComfyUI失败信息 = (historyPayload: any, promptId?: string): string | null => {
+    const root = 提取ComfyUI历史根节点(historyPayload, promptId);
     if (!root || typeof root !== 'object') return null;
     const status = (root as any).status && typeof (root as any).status === 'object' ? (root as any).status : {};
     const statusText = typeof status.status_str === 'string' ? status.status_str.trim().toLowerCase() : '';
@@ -2440,7 +2475,7 @@ const 提取ComfyUI失败信息 = (historyPayload: any): string | null => {
         const detail = detailParts.join('\n');
         return `ComfyUI 工作流执行失败${detail ? `：${detail}` : ''}`;
     }
-    if (completed && statusText === 'success' && !提取ComfyUI图片地址(historyPayload, '')) {
+    if (completed && statusText === 'success' && !提取ComfyUI图片地址(historyPayload, '', 'direct', promptId)) {
         return 'ComfyUI 工作流已结束，但没有输出图片。请检查 workflow 的保存图片节点。';
     }
     return null;
@@ -2491,14 +2526,15 @@ const 执行ComfyUI生图 = async (
     size: string,
     negativePrompt: string,
     signal?: AbortSignal,
-    pngParams?: PNG解析参数结构
+    pngParams?: PNG解析参数结构,
+    随机种子生成?: boolean
 ): Promise<图片生成结果> => {
     const debugTrace: 生图调试事件[] = [];
     const baseUrl = 获取ComfyUI基础地址(apiConfig.baseUrl);
     if (!baseUrl) throw new Error('ComfyUI 缺少 API 地址');
     try {
         const [width, height] = size.split('x').map((value) => Number(value));
-        const workflow = 构建ComfyUI工作流(apiConfig.ComfyUI工作流JSON || '', prompt, negativePrompt, width, height, pngParams);
+        const workflow = 构建ComfyUI工作流(apiConfig.ComfyUI工作流JSON || '', prompt, negativePrompt, width, height, pngParams, 随机种子生成);
         const promptPath = apiConfig.图片接口路径 || '/prompt';
         let enqueueResponse: Response;
         let requestChannel: ComfyUI请求通道 = 'direct';
@@ -2633,8 +2669,8 @@ const 执行ComfyUI生图 = async (
                         );
                     }
                     const historyPayload = 解析可能是JSON字符串(historyText);
-                    const imageUrl = 提取ComfyUI图片地址(historyPayload, baseUrl, requestChannel);
-                    const failureMessage = 提取ComfyUI失败信息(historyPayload);
+                    const imageUrl = 提取ComfyUI图片地址(historyPayload, baseUrl, requestChannel, promptId);
+                    const failureMessage = 提取ComfyUI失败信息(historyPayload, promptId);
                     if (imageUrl || failureMessage) {
                         追加生图调试事件(debugTrace, {
                             阶段: 'ComfyUI /history 完成',
@@ -2654,7 +2690,8 @@ const 执行ComfyUI生图 = async (
                             let imageResponse: Response;
                             const downloadStartedAt = Date.now();
                             try {
-                                imageResponse = await fetch(imageUrl, { signal });
+                                // no-store 避免命中同名文件（如工作区重启后复用的 ComfyUI_0000N_.png）的旧缓存。
+                                imageResponse = await fetch(imageUrl, { signal, cache: 'no-store' });
                             } catch (error: any) {
                                 追加生图调试事件(debugTrace, {
                                     阶段: '下载 ComfyUI 图片失败',
@@ -2741,10 +2778,11 @@ const 执行ComfyUI生图并自动切换 = async (
     size: string,
     negativePrompt: string,
     signal?: AbortSignal,
-    pngParams?: PNG解析参数结构
+    pngParams?: PNG解析参数结构,
+    随机种子生成?: boolean
 ): Promise<图片生成结果> => {
     try {
-        const result = await 执行ComfyUI生图(prompt, apiConfig, responseFormat, size, negativePrompt, signal, pngParams);
+        const result = await 执行ComfyUI生图(prompt, apiConfig, responseFormat, size, negativePrompt, signal, pngParams, 随机种子生成);
         return apiConfig.自动切换提示
             ? { ...result, 客户提示: apiConfig.自动切换提示 }
             : result;
@@ -2755,7 +2793,7 @@ const 执行ComfyUI生图并自动切换 = async (
         const errors: string[] = [typeof error?.message === 'string' ? error.message : String(error || '')];
         for (const candidate of candidates) {
             try {
-                const result = await 执行ComfyUI生图(prompt, candidate, responseFormat, size, negativePrompt, signal, pngParams);
+                const result = await 执行ComfyUI生图(prompt, candidate, responseFormat, size, negativePrompt, signal, pngParams, 随机种子生成);
                 return {
                     ...result,
                     客户提示: candidate.自动切换提示 || `当前 ComfyUI 后端不可用，已自动切换到在线后端：${candidate.baseUrl}`
@@ -4676,7 +4714,7 @@ export const generateImageByPrompt = async (
     prompt: string,
     apiConfig: 当前可用接口结构,
     signal?: AbortSignal,
-    options?: { 构图?: 生图构图类型; 场景类型?: 场景生成类型; 附加正向提示词?: string; 附加负面提示词?: string; 尺寸?: string; 跳过基础负面提示词?: boolean; PNG参数?: PNG解析参数结构; 启用NSFW模式?: boolean }
+    options?: { 构图?: 生图构图类型; 场景类型?: 场景生成类型; 附加正向提示词?: string; 附加负面提示词?: string; 尺寸?: string; 跳过基础负面提示词?: boolean; PNG参数?: PNG解析参数结构; 启用NSFW模式?: boolean; 随机种子生成?: boolean }
 ): Promise<图片生成结果> => {
     const endpoint = 构建图片端点(apiConfig.baseUrl, apiConfig.图片接口路径);
     if (!endpoint) throw new Error('Missing API Base URL');
@@ -4735,7 +4773,8 @@ export const generateImageByPrompt = async (
             size,
             negativePromptText,
             signal,
-            options?.PNG参数
+            options?.PNG参数,
+            options?.随机种子生成
         );
         return {
             ...result,
