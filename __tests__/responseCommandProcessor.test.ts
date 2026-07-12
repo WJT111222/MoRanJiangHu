@@ -1470,4 +1470,67 @@ describe('responseCommandProcessor NPC death fallback', () => {
         expect(result.社交[1].状态).toBe('死亡');
         expect(result.社交[1].是否在场).toBe(false);
     });
+
+    // 陈成/角色9 修复：防止无姓名空壳社交条目（会被兜底成"角色N"，与对话框真名对不上）
+    it('丢弃越界 set 社交[N].子字段命令，不再凭空生成无姓名空壳', () => {
+        const state = 构建基础状态();
+        state.社交 = [
+            { id: 'npc_liuyan', 姓名: '柳烟', 性别: '女', 身份: '客栈掌柜', 境界: '炼气三层' }
+        ] as any;
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '柳烟擦着桌子。' }
+            ],
+            tavern_commands: [
+                // 社交只有 1 项，索引 9 越界：applyStateCommand 会造出 社交[1..9] 空壳
+                { action: 'set', key: '社交[9].当前位置', value: '客栈前厅' },
+                { action: 'set', key: '社交[9].境界', value: '筑基初期' }
+            ]
+        } as any, state, deps, undefined, { applyState: false });
+
+        // 只应保留原有 1 项，不产生任何"角色N"空壳
+        expect(result.社交).toHaveLength(1);
+        expect(result.社交[0].姓名).toBe('柳烟');
+        expect(JSON.stringify(result.社交)).not.toMatch(/角色\d/);
+    });
+
+    it('丢弃缺姓名的整体 push 社交命令，不再生成无姓名空壳', () => {
+        const state = 构建基础状态();
+        state.社交 = [] as any;
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '旁白', text: '一名灰衣人站在角落。' }
+            ],
+            tavern_commands: [
+                // 整体新增社交对象但漏写姓名 → 会被兜底成"角色0"
+                { action: 'push', key: '社交', value: { 境界: '炼气五层', 身份: '灰衣人' } }
+            ]
+        } as any, state, deps, undefined, { applyState: false });
+
+        expect(result.社交).toHaveLength(0);
+        expect(JSON.stringify(result.社交)).not.toMatch(/角色\d/);
+    });
+
+    it('允许把占位名"角色N"改成对话框真名，回填进社交档案', () => {
+        const state = 构建基础状态();
+        // 模拟历史遗留的占位空壳：姓名已被兜底成"角色9"，但有实质档案
+        state.社交 = [
+            { id: 'npc_role9', 姓名: '角色9', 性别: '男', 身份: '散修', 境界: '金丹初期', 是否主要角色: true }
+        ] as any;
+
+        const result = 执行响应命令处理({
+            logs: [
+                { sender: '陈成', text: '“在下陈成，有礼了。”' }
+            ],
+            tavern_commands: [
+                { action: 'set', key: '社交[0].姓名', value: '陈成' }
+            ]
+        } as any, state, deps, undefined, { applyState: false });
+
+        const 陈成 = result.社交.find((npc: any) => npc?.姓名 === '陈成');
+        expect(陈成).toBeTruthy();
+        expect(JSON.stringify(result.社交)).not.toMatch(/角色9/);
+    });
 });

@@ -10,6 +10,9 @@ import { 默认NSFWComfyUI工作流JSON } from '../../data/defaultComfyWorkflow'
 import { 查找结构化物品 } from '../../data/structuredItemLibrary';
 import { generateImageByPrompt, persistImageAssetLocally, 全局无文字正向提示词, 全局无文字负面提示词 } from './image';
 import { recordDiagnosticLog } from '../diagnosticLog';
+import { 请求模型文本, 规范化文本补全消息链 } from './chatCompletionClient';
+import { 获取生图词组转化器接口配置, 获取主剧情接口配置 } from '../../utils/apiConfig';
+import type { 接口设置结构 } from '../../types';
 
 type 物品生图来源位置 = '背包' | '拍卖行';
 
@@ -115,6 +118,10 @@ const 过滤符箓负面提示词 = (negativePrompt: string): string => {
         .filter(part => !allowForTalisman.has(part.toLowerCase()))
         .join(', ');
 };
+
+const 获取物品正向无文字约束 = (item: any): string => (
+    物品是否符纸符箓(item) ? 物品符箓正向约束 : 物品无文字正向约束
+);
 
 export const 构建物品视觉描述 = (item: any): string => {
     const structured = 查找结构化物品(
@@ -916,6 +923,109 @@ export const 构建物品图提示词 = (
     ].filter(Boolean).join('\n');
 };
 
+// ── 弱主体检测 + AI 中译英兜底 ────────────────────────────────────────────
+// 根因修复：当名称未命中英文映射表、材质描述为空、且无外形纠偏/特殊类目命中时，
+// 规则主体退化为泛化兜底词（如 "a single 凡品 key item prop"）。此时正向里堆叠的
+// "blank unlabeled surfaces / label-free / blank unmarked object surface / plain empty panels"
+// 等无文字模板会占主导，模型缺少可锚定的具体物体，收敛成居中无标记的空白塑料板。
+// 对策：① 弱主体时用文本模型把中文视觉描述译成英文物品外观短语，补回主体语义；
+//        ② 弱主体时收敛无文字模板，避免空白约束压过主体。
+export const 物品规则主体是否弱 = (item: any): boolean => {
+    // 命中任一特殊类目或外形纠偏都自带强主体描述，不算弱主体。
+    if (物品是否活体生物(item) || 物品是否坐骑生物(item) || 物品是否折扇(item)) return false;
+    const 纠偏 = 获取物品外形纠偏类别(item);
+    if (纠偏 && 纠偏 !== '无') return false;
+    if (物品是否战术背心(item) || 物品是否香烟(item) || 物品是否布鞋(item)) return false;
+    if (物品是否绷带敷料(item) || 物品是否柔性服装(item) || 物品是否可穿戴护甲(item)) return false;
+    if (物品是否古代药物(item) || 物品是否现代药剂(item) || 物品是否草药植物(item)) return false;
+    if (物品是否符纸符箓(item) || 物品是否武器(item)) return false;
+    if (物品名称转英文描述(读取文本(item?.名称))) return false;
+    if (构建物品描述材质提示(item)) return false;
+    return true;
+};
+
+const 物品英文主体缓存 = new Map<string, string>();
+export const 清洗物品英文主体 = (raw: string): string => {
+    let text = (raw || '').replace(/\r/g, ' ').trim();
+    // 去掉可能出现的引号包裹、Markdown 代码围栏、"English:" 前缀
+    text = text.replace(/^```[a-zA-Z]*|```$/g, '').trim();
+    text = text.replace(/^(english|answer|output|prompt|result|描述|英文)\s*[:：]\s*/i, '').trim();
+    text = text.replace(/^["'“”「」]+|["'“”「」]+$/g, '').trim();
+    // 只保留首段（防止模型输出多行解释）
+    const firstBlock = text.split(/\n{2,}/)[0].trim();
+    text = firstBlock.split('\n').map((line) => line.trim()).filter(Boolean).join(', ');
+    // 含中文说明整段舍弃，避免污染英文 prompt
+    if (/[\u4e00-\u9fff]/.test(text)) return '';
+    return text.slice(0, 400);
+};
+
+const 生成物品英文视觉主体 = async (
+    item: any,
+    apiConfig: 接口设置结构 | null | undefined,
+    signal?: AbortSignal
+): Promise<string> => {
+    if (!apiConfig) return '';
+    const name = 读取文本(item?.名称);
+    const rawDesc = 读取文本(item?.视觉描述)
+        || (!是否游戏机制文案(读取文本(item?.描述)) ? 读取文本(item?.描述) : '');
+    if (!name && !rawDesc) return '';
+    const cacheKey = `${name}|${rawDesc}`.slice(0, 200);
+    const cached = 物品英文主体缓存.get(cacheKey);
+    if (typeof cached === 'string') return cached;
+
+    const textApi = 获取生图词组转化器接口配置(apiConfig as any) || 获取主剧情接口配置(apiConfig as any);
+    if (!接口配置是否可用(textApi)) return '';
+
+    const 类型 = 读取文本(item?.类型);
+    const 品质 = 读取文本(item?.品质);
+    const 视觉标签 = Array.isArray(item?.视觉标签)
+        ? item.视觉标签.map((t: unknown) => 读取文本(t)).filter(Boolean).join('，')
+        : '';
+    const systemPrompt = [
+        'You convert a Chinese game item into a concise English visual subject phrase for a product-photography image generator.',
+        'Output ONLY the English phrase describing the physical object appearance: what it is, its shape, material, color and notable physical features.',
+        'Rules: describe a single tangible physical object; keep it under 40 words; no game mechanics, no stats, no lore, no proper names.',
+        'Never include any text/label/logo/number to be drawn on the object. No Chinese characters. No quotes. No explanation. No preamble.',
+        'If the item is a container holding something (bag/sack/pouch of grain, jar of pills), describe both the container and its visible contents.'
+    ].join('\n');
+    const taskPayload = {
+        名称: name,
+        类型: 类型,
+        品质: 品质,
+        视觉描述: rawDesc,
+        视觉标签: 视觉标签
+    };
+    const messages = 规范化文本补全消息链([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Chinese item:\n${JSON.stringify(taskPayload, null, 2)}\n\nEnglish visual subject phrase:` }
+    ], { 保留System: true, 合并同角色: false });
+
+    try {
+        const raw = await 请求模型文本(textApi, messages, {
+            temperature: 0.4,
+            signal,
+            disableThinking: true,
+            stripReasoning: true
+        });
+        const cleaned = 清洗物品英文主体(raw);
+        物品英文主体缓存.set(cacheKey, cleaned);
+        recordDiagnosticLog('info', '[物品生图链路] AI 中译英兜底主体', {
+            itemName: name,
+            hasResult: Boolean(cleaned),
+            resultPreview: cleaned.slice(0, 120)
+        });
+        return cleaned;
+    } catch (error) {
+        recordDiagnosticLog('warn', '[物品生图链路] AI 中译英兜底失败', {
+            itemName: name,
+            error: error instanceof Error ? error.message : String(error)
+        });
+        物品英文主体缓存.set(cacheKey, '');
+        return '';
+    }
+};
+
+
 export const 生成物品图标 = async (
     item: 游戏物品,
     apiConfig: 接口设置结构,
@@ -984,6 +1094,17 @@ export const 生成物品图标 = async (
         } : {}),
         视觉描述: 读取文本((item as any)?.视觉描述) || 构建物品视觉描述(item),
     };
+    // 弱主体兜底：规则映射无法产出明确英文主体时（如“百斤灵谷”这类中文自由描述物品），
+    // 调用文本模型把中文视觉描述译成英文物品外观短语，补回主体语义，避免退化成空白塑料板。
+    let 物品主体已AI补强 = false;
+    if (物品规则主体是否弱(enrichedItem)) {
+        const aiSubject = await 生成物品英文视觉主体(enrichedItem, apiConfig, options?.signal);
+        if (aiSubject) {
+            (enrichedItem as any).视觉描述 = aiSubject;
+            (enrichedItem as any).视觉描述来源 = 'AI中译英兜底';
+            物品主体已AI补强 = true;
+        }
+    }
     const enrichedItemIsSoftGarment = 物品是否柔性服装(enrichedItem);
     const enrichedItemIsLivingAnimal = 物品是否活体生物(enrichedItem);
     const enrichedItemIsLivingMount = 物品是否坐骑生物(enrichedItem);
@@ -999,7 +1120,12 @@ export const 生成物品图标 = async (
     const enrichedItemIsAncientMedicine = 物品是否古代药物(enrichedItem);
     // 云端大模型（Grok/GPT）支持中文提示词且理解能力强，无需冗长英文描述
     const isChineseSupported = /grok|imagine|gpt|image/i.test(imageApi.model || '');
-    const noTextGuard = 物品无文字正向约束;
+    // 弱主体且 AI 未能补强时，收敛无文字模板：去掉“空白面板/空白表面”这类会诱导塑料板的措辞，
+    // 只保留基础的“无文字/无标签”约束，避免空白约束在缺乏主体锚点时占主导。
+    const 主体仍然薄弱 = 物品规则主体是否弱(enrichedItem) && !物品主体已AI补强;
+    const noTextGuard = 主体仍然薄弱
+        ? 全局无文字正向提示词
+        : 获取物品正向无文字约束(enrichedItem);
     // 云端大模型：直接用物品中文描述 + 画风约束
     // 本地/CNB 模型：用完整的英文描述堆砌（原有逻辑）
     const prompt = isChineseSupported

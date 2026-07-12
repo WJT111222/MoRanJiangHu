@@ -199,6 +199,57 @@ describe('storyResponseParser', () => {
         expect(body).not.toContain('push 社交[0].记忆');
     });
 
+    it('strips a malformed unclosed 变量规划 tag block with markdown path assignments', () => {
+        const parsed = parseStoryRawText([
+            '<正文>',
+            '【旁白】你没答话，只是将身子压得更紧，用自己温热的身体去焐她那近乎冻结的娇躯。',
+            '<变量规划',
+            '- 角色.内力: 89 -> 69',
+            '（运转灵力驱寒消耗）',
+            '- 角色.精力: 84 -> 69',
+            '- 社交[0].好感度: 40 -> 45',
+            '- 社交[0].记忆: push {',
+            '"内容": "在寒雾弥漫的石径避风处驱散寒气。",',
+            '"时间": "1:01:01:01:30"',
+            '}',
+            '- 环境.时间:',
+            '"1:01:01:01:00"',
+            '->',
+            '"1:01:01:01:30"',
+            '>',
+            '</正文>',
+            '<短期记忆>杨培强为俞月荷驱散寒气。</短期记忆>'
+        ].join('\n'));
+
+        expect(parsed.logs).toEqual([
+            { sender: '旁白', text: '你没答话，只是将身子压得更紧，用自己温热的身体去焐她那近乎冻结的娇躯。' }
+        ]);
+        const body = parsed.logs.map(item => item.text).join('\n');
+        expect(body).not.toContain('变量规划');
+        expect(body).not.toContain('角色.内力');
+        expect(body).not.toContain('好感度');
+        expect(body).not.toContain('push {');
+    });
+
+    it('strips markdown 正文 heading and recognizes 【你】 as protagonist speaker', () => {
+        const parsed = parseStoryRawText([
+            '### 正文',
+            '【旁白】沉甸甸的灵谷袋被你卸在青石板上，发出一声闷响。',
+            '【你】“别逞强了。你体内的这股寒气，可还能压制回去？”',
+            '【俞月荷】“……不、不成的……你别管我……”',
+            '<短期记忆>你为俞月荷驱寒。</短期记忆>'
+        ].join('\n'));
+
+        expect(parsed.logs).toEqual([
+            { sender: '旁白', text: '沉甸甸的灵谷袋被你卸在青石板上，发出一声闷响。' },
+            { sender: '你', text: '“别逞强了。你体内的这股寒气，可还能压制回去？”' },
+            { sender: '俞月荷', text: '“……不、不成的……你别管我……”' }
+        ]);
+        const body = parsed.logs.map(item => item.text).join('\n');
+        expect(body).not.toContain('### 正文');
+        expect(body).not.toContain('正文');
+    });
+
     it('rejects bare canonical game time lines during strict story parsing', () => {
         expect(() => parseStoryRawText([
             '<正文>',

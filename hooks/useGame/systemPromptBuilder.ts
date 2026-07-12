@@ -92,6 +92,7 @@ export type 系统提示词上下文片段 = {
     字数设置提示词: string;
     COT提示词: string;
     格式提示词: string;
+    文风提示词: string;
     输出协议提示词: string;
     字数要求提示词: string;
     免责声明输出提示词: string;
@@ -1526,6 +1527,12 @@ export const 构建系统提示词 = ({
             && !selectedCotPromptIds.includes(p.id)
             && p.类型 !== '难度设定')
         .map(p => ({ id: p.id, content: 应用境界区块替换(应用写作设置(p.id, 渲染提示词文本(读取主剧情内置槽位覆盖(p.id, p.内容)))) }));
+    // 单独提取“参考文风”(write_style) 内容，供酒馆预设接管模式从世界书中精确剥离；普通模式不受影响。
+    const 文风提示词内容 = otherPromptEntries
+        .filter(item => item.id === 'write_style')
+        .map(item => item.content)
+        .filter(Boolean)
+        .join('\n\n');
     const actionOptionsPromptContent = options?.禁用行动选项提示词
         ? ''
         : 按当前设置过滤提示词(渲染提示词文本(
@@ -1760,6 +1767,7 @@ export const 构建系统提示词 = ({
             字数设置提示词: writeReqContent.trim(),
             COT提示词: cotPrompt.trim(),
             格式提示词: formatPrompt.trim(),
+            文风提示词: 文风提示词内容.trim(),
             输出协议提示词: outputProtocolPrompt,
             字数要求提示词: lengthRequirementPrompt,
             免责声明输出提示词: disclaimerRequirementPrompt,

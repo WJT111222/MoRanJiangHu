@@ -435,13 +435,33 @@ export const 创建历史回合工作流 = (deps: 历史回合工作流依赖) =
             return detail;
         }
 
+        // 两阶段落地：先用本地校准立即把编辑后的回合渲染出来并滚动到位（跳过变量模型网络调用），
+        // 再后台异步执行独立变量模型校准并保位刷新，避免“保存后要等很久才显示这一回合”。
+        const 尾随消息 = 提取回合尾随消息(deps.历史记录, index);
         await 使用快照重建解析回合(snapshot, parsed, newRawText, {
             playerInput: isOpeningTurn ? '' : playerInput,
-            tailMessages: 提取回合尾随消息(deps.历史记录, index),
+            tailMessages: 尾随消息,
             inputTokens: target.inputTokens,
             responseDurationSec: target.responseDurationSec,
-            preserveSnapshot: true
+            preserveSnapshot: true,
+            skipVariableModelCalibration: true
         });
+        // 后台执行变量模型校准（不阻塞 UI）；保位刷新，避免二次落地时画面跳动。
+        void (async () => {
+            try {
+                await 使用快照重建解析回合(snapshot, parsed, newRawText, {
+                    playerInput: isOpeningTurn ? '' : playerInput,
+                    tailMessages: 尾随消息,
+                    inputTokens: target.inputTokens,
+                    responseDurationSec: target.responseDurationSec,
+                    preserveSnapshot: true,
+                    skipVariableModelCalibration: false,
+                    preserveScrollPosition: true
+                });
+            } catch (calibrationError) {
+                console.error('重解析回合的后台变量模型校准失败，保留本地校准结果', calibrationError);
+            }
+        })();
         return null;
     };
 

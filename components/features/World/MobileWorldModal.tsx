@@ -64,34 +64,37 @@ const 移动势力图颜色 = (tone: 势力关系图边['tone']): { line: string
 };
 
 const 移动势力关系图: React.FC<{ nodes: 势力关系图节点[]; edges: 势力关系图边[] }> = ({ nodes, edges }) => {
+    const [筛选色调, 设置筛选色调] = useState<势力关系图边['tone'] | null>(null);
     if (nodes.length < 2) return null;
+    const 可见边 = 筛选色调 ? edges.filter((edge) => edge.tone === 筛选色调) : edges;
+    const 切换筛选 = (tone: 势力关系图边['tone']) => 设置筛选色调((prev) => (prev === tone ? null : tone));
+    const 图例项: { tone: 势力关系图边['tone']; 文案: string }[] = [
+        { tone: 'good', 文案: '绿 好' },
+        { tone: 'neutral', 文案: '灰 中立' },
+        { tone: 'bad', 文案: '红 差' }
+    ];
     return (
         <div className="world-faction-graph rounded-3xl border border-orange-900/25 bg-black/35 p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
                 <div className="text-[11px] font-bold tracking-widest text-orange-300">势力关系图</div>
-                <div className="text-[10px] text-gray-500">{edges.length} 条</div>
+                <div className="text-[10px] text-gray-500">{筛选色调 ? `${可见边.length} / ${edges.length}` : edges.length} 条</div>
             </div>
             <div className="world-faction-graph-canvas relative aspect-square min-h-[260px] overflow-hidden rounded-2xl border border-gray-800 bg-[radial-gradient(circle_at_center,rgba(120,72,24,0.22),rgba(0,0,0,0.18)_60%,rgba(0,0,0,0.35))]">
-                <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" role="img" aria-label="势力关系连线图">
-                    {edges.map((edge, idx) => {
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" role="img" aria-label="势力关系连线图">
+                    {可见边.map((edge, idx) => {
                         const color = 移动势力图颜色(edge.tone).line;
-                        const midX = (edge.sourceX + edge.targetX) / 2;
-                        const midY = (edge.sourceY + edge.targetY) / 2;
                         return (
-                            <g key={`${edge.sourceId}-${edge.targetId}-${edge.relation}-${idx}`}>
-                                <line
-                                    x1={edge.sourceX}
-                                    y1={edge.sourceY}
-                                    x2={edge.targetX}
-                                    y2={edge.targetY}
-                                    stroke={color}
-                                    strokeWidth={edge.tone === 'neutral' ? 0.48 : 0.72}
-                                    strokeOpacity={edge.tone === 'neutral' ? 0.62 : 0.9}
-                                />
-                                <text x={midX} y={midY - 1.2} textAnchor="middle" className="world-faction-edge-label fill-gray-200 text-[3px] font-semibold">
-                                    {edge.relation}
-                                </text>
-                            </g>
+                            <line
+                                key={`${edge.sourceId}-${edge.targetId}-${edge.relation}-${idx}`}
+                                x1={edge.sourceX}
+                                y1={edge.sourceY}
+                                x2={edge.targetX}
+                                y2={edge.targetY}
+                                stroke={color}
+                                strokeWidth={edge.tone === 'neutral' ? 0.48 : 0.72}
+                                strokeOpacity={edge.tone === 'neutral' ? 0.62 : 0.9}
+                                vectorEffect="non-scaling-stroke"
+                            />
                         );
                     })}
                 </svg>
@@ -107,9 +110,20 @@ const 移动势力关系图: React.FC<{ nodes: 势力关系图节点[]; edges: �
                 ))}
             </div>
             <div className="mt-2 flex flex-wrap justify-end gap-1.5 text-[9px]">
-                <span className={`rounded-full border px-2 py-0.5 ${移动势力图颜色('good').badge}`}>绿 好</span>
-                <span className={`rounded-full border px-2 py-0.5 ${移动势力图颜色('neutral').badge}`}>灰 中立</span>
-                <span className={`rounded-full border px-2 py-0.5 ${移动势力图颜色('bad').badge}`}>红 差</span>
+                {图例项.map(({ tone, 文案 }) => {
+                    const 选中 = 筛选色调 === tone;
+                    return (
+                        <button
+                            key={tone}
+                            type="button"
+                            onClick={() => 切换筛选(tone)}
+                            className={`rounded-full border px-2 py-0.5 transition ${移动势力图颜色(tone).badge} ${选中 ? 'ring-2 ring-offset-1 ring-offset-black/40 ring-orange-300/70' : 筛选色调 ? 'opacity-45' : ''}`}
+                            aria-pressed={选中}
+                        >
+                            {文案}
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );

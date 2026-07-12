@@ -21,7 +21,7 @@ import { 是否可信正文标签发送者, 规范化正文发送者名 } from '
 import { 拆分判定日志与后续正文, 提取判定日志前缀, 是否判定日志文本 } from '../../utils/judgmentFormat';
 import { 构建运行时额外提示词 } from '../../prompts/runtime/nsfw';
 import { 按功能开关过滤提示词内容 } from '../../utils/promptFeatureToggles';
-import { 是否裸标准游戏时间行, 检测裸标准游戏时间行 } from '../../utils/bodyTextSanitizer';
+import { 是否裸标准游戏时间行, 检测裸标准游戏时间行, 是否正文段泄漏行 } from '../../utils/bodyTextSanitizer';
 
 type 正文日志结构 = Array<{ sender: string; text: string }>;
 
@@ -230,6 +230,9 @@ export const 解析正文日志文本 = (bodyText: string, options?: { declaredN
         const line = rawLine.trim();
         if (!line) continue;
         if (是否裸标准游戏时间行(line)) continue;
+        // 正文段泄漏兜底：酒馆预设/模型偶尔把变量命令、规划、选项、动态世界、命令等混进正文，
+        // 这些内容一般粘在正文尾部，遇到即停止收集，避免被当成旁白续行渲染进正文。
+        if (是否正文段泄漏行(line)) break;
         const judgmentLine = 解析判定正文行(line);
         if (judgmentLine) {
             pendingDialogueSender = '';

@@ -411,8 +411,10 @@ describe('无限流商城文案边界', () => {
         expect(skillText).toContain('精神力扫描');
         expect(skillText).not.toContain('基础剑法残卷');
         expect(skillText).not.toContain('藏经阁');
-        expect(taskText).toContain('主神');
-        expect(taskText).toContain('主神任务倒计时');
+        expect(taskText).toBe('[]');
+        expect(taskText).not.toContain('主神任务倒计时');
+        expect(taskText).not.toContain('守住第一夜');
+        expect(taskText).not.toContain('站稳第一步');
         expect(taskText).not.toContain('初入江湖');
         expect(taskText).not.toContain('门派贡献');
         expect(taskText).not.toContain('D级支线剧情');

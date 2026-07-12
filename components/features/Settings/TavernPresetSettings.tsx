@@ -7,7 +7,7 @@ import { 酒馆提示词后处理选项 } from '../../../utils/gameSettings';
 import { 规范化酒馆预设, 获取酒馆预设角色ID列表, 获取酒馆预设顺序 } from '../../../utils/tavernPreset';
 import { 创意工坊模块列表, type 创意工坊模块条目 } from '../../../data/creativeWorkshopModules';
 import { 列出创意工坊模块 } from '../../../services/creativeWorkshop';
-import { 应用酒馆预设条目改动, 构建酒馆预设选择列表, 酒馆预设条目可删除 } from '../../../utils/tavernPresetSelection';
+import { 应用酒馆预设条目改动, 构建酒馆预设选择列表, 酒馆预设条目可删除, type 酒馆预设候选条目 } from '../../../utils/tavernPresetSelection';
 
 interface Props {
     settings: 游戏设置结构;
@@ -68,11 +68,31 @@ const TavernPresetSettings: React.FC<Props> = ({ settings, onSave, apiConfig, on
     const selectedPresetId = useMemo(() => {
         const rawId = typeof form.当前酒馆预设ID === 'string' ? form.当前酒馆预设ID.trim() : '';
         if (rawId && presetList.some((item) => item.id === rawId)) return rawId;
+        // 已持久化了某个预设ID（尤其云端 workshop: 项）时，在候选列表异步加载完成前保留该ID，
+        // 避免默认选中跳回列表首项（izumi-0623）。
+        if (rawId) return rawId;
         return presetList[0]?.id || null;
     }, [form.当前酒馆预设ID, presetList]);
-    const selectedEntry = useMemo(() => (
-        presetList.find((item) => item.id === selectedPresetId) || null
-    ), [presetList, selectedPresetId]);
+    const selectedEntry = useMemo(() => {
+        const found = presetList.find((item) => item.id === selectedPresetId) || null;
+        if (found) return found;
+        // 候选列表尚未包含已持久化的预设（云端异步加载中）：用已保存的预设数据构建占位条目，
+        // 使选过的预设 reload 后立即正确显示，不回退到 izumi-0623。
+        const rawId = typeof form.当前酒馆预设ID === 'string' ? form.当前酒馆预设ID.trim() : '';
+        if (rawId && rawId === selectedPresetId && form.酒馆预设) {
+            const isWorkshop = rawId.startsWith('workshop:');
+            return {
+                id: rawId,
+                名称: form.酒馆预设名称 || '（加载中）',
+                预设: form.酒馆预设,
+                角色ID: form.酒馆预设角色ID ?? null,
+                来源: isWorkshop ? '创意工坊' : '玩家自行上传',
+                可删除: !isWorkshop,
+                加载状态: 'ready',
+            } as 酒馆预设候选条目;
+        }
+        return null;
+    }, [presetList, selectedPresetId, form.当前酒馆预设ID, form.酒馆预设, form.酒馆预设名称, form.酒馆预设角色ID]);
     const preset = selectedEntry?.预设 || null;
 
     useEffect(() => {

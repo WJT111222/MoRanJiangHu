@@ -23,7 +23,7 @@ import { 规范化任务列表自动结算 } from '../../utils/taskCompat';
 import { buildWorldMapLayersFromDraft } from '../../utils/newGameDiy';
 import { 构建默认技艺 } from '../../utils/skillDefaults';
 import { 获取题材模式配置 } from '../../utils/topicModeProfiles';
-import { 获取境界层级 } from '../../utils/realmConfig';
+import { 获取境界层级, 获取境界配置 } from '../../utils/realmConfig';
 import { 候选名命中模板黑名单 } from '../../utils/templateNameBlacklist';
 import { 获取当前境界配置 } from './stateTransforms';
 import { normalizeCanonicalGameTime } from './timeUtils';
@@ -802,123 +802,6 @@ const 去重开局任务列表 = (tasks: 任务结构[]): 任务结构[] => {
     return 规范化任务列表自动结算(exactDeduped) as 任务结构[];
 };
 
-const 创建开局主线任务 = (sect: 详细门派结构, openingConfig?: OpeningConfig): 任务结构 => {
-    const topic = openingConfig?.题材模式;
-    const organizationName = 是否无门派标识(sect?.ID) ? '' : 取文本(sect?.名称);
-    const publisher = topic === '无限流' ? '主神光球' : (organizationName || (topic === '末日丧尸' ? '求生本能' : topic === '现代都市' ? '现实处境' : topic === '仙侠' ? '问道路引' : '江湖因缘'));
-    const location = topic === '无限流' ? '主神空间' : (organizationName || (topic === '末日丧尸' ? '临时落脚点' : topic === '现代都市' ? '当前城市' : topic === '仙侠' ? '当前落脚处' : '当前落脚处'));
-    if (topic === '无限流') {
-        return {
-            标题: '主神任务倒计时',
-            描述: `${publisher}的光球在头顶闪烁，屏幕上跳出本轮任务的标题、存活时限和失败惩罚。主角必须在倒计时归零前弄清楚：任务目标到底是什么、当前环境中最致命的威胁在哪里、队友各自擅长什么、以及如果局势失控该往哪撤。`,
-            类型: '主线',
-            发布人: publisher,
-            发布地点: location,
-            任务世界: '当前任务世界',
-            推荐境界: '新人轮回者',
-            当前状态: '进行中',
-            目标列表: [{
-                描述: '从主神光球或任务腕表上读到本轮任务的标题、存活时限和失败惩罚。',
-                当前进度: 0,
-                总需进度: 1,
-                完成状态: false
-            }, {
-                描述: '确认当前任务世界中最直接的一项致命威胁（怪物、陷阱、环境或敌对轮回者）。',
-                当前进度: 0,
-                总需进度: 1,
-                完成状态: false
-            }, {
-                描述: '摸清至少一名队友的战斗特长或可用技能，以及一条可撤退的路线或安全点。',
-                当前进度: 0,
-                总需进度: 1,
-                完成状态: false
-            }],
-            奖励描述: ['主神结算奖励（按完成度判定）'],
-            剧情暗线: '主线：任务必须围绕当前任务世界的生存威胁推进。没有正文证据时不得额外生成支线、隐藏奖励或团队日常任务。'
-        };
-    }
-    if (topic === '末日丧尸') {
-        return {
-            标题: '守住第一夜',
-            描述: `${publisher}的第一晚还不稳，主角需要确认水源、药品、哨位和撤离路线，先把能活到天亮的基础秩序立起来。`,
-            类型: '主线',
-            发布人: publisher,
-            发布地点: location,
-            推荐境界: '新手求生',
-            当前状态: '进行中',
-            目标列表: [{
-                描述: '确认一处可用水源、一份基础急救物资和夜间警戒安排。',
-                当前进度: 0,
-                总需进度: 1,
-                完成状态: false
-            }],
-            奖励描述: ['组织信用 +80', '急救熟练度 +8', '可分配属性点 +1'],
-            剧情暗线: '主线：第一夜奖励必须由营地值班者、队友或主角亲自确认；若奖励涉及物品，必须由AI在变量命令中明确写入背包，本地代码不会生成物品。'
-        };
-    }
-    if (topic === '现代都市') {
-        return {
-            标题: '站稳第一步',
-            描述: `${publisher}当前有一件小但必须处理的现实事务，主角需要先完成一次可信交付，证明自己能在这座城市里站稳。`,
-            类型: '主线',
-            发布人: publisher,
-            发布地点: location,
-            推荐境界: '现实起步',
-            当前状态: '进行中',
-            目标列表: [{
-                描述: '完成一次现场确认、资料交接或关键沟通。',
-                当前进度: 0,
-                总需进度: 1,
-                完成状态: false
-            }],
-            奖励描述: ['组织信用 +60', '谈判熟练度 +6', '可分配属性点 +1'],
-            剧情暗线: '主线：完成后要由负责人、合作方或现场联系人确认成果；若奖励涉及物品，必须由AI在变量命令中明确写入背包，本地代码不会生成物品。'
-        };
-    }
-    if (topic === '仙侠') {
-        return {
-            标题: '问道初途',
-            描述: `${publisher}给出的第一条路并不宏大，主角需要先完成一次入门试炼，确认自身资质、心性与眼前道途的承接。`,
-            类型: '主线',
-            发布人: publisher,
-            发布地点: location,
-            推荐境界: '入门',
-            当前状态: '进行中',
-            目标列表: [{
-                描述: '完成一次入门试炼、灵气感应或基础差遣。',
-                当前进度: 0,
-                总需进度: 1,
-                完成状态: false
-            }],
-            奖励描述: ['门派贡献 +80', '鉴定熟练度 +8', '可分配属性点 +1'],
-            剧情暗线: '主线：完成后要由师长、执事或引路人当面确认奖励；若奖励涉及物品，必须由AI在变量命令中明确写入背包，本地代码不会生成物品。'
-        };
-    }
-    return {
-        标题: '初入江湖',
-        描述: `${publisher}交到眼前的第一件事并不惊天动地，却足以让主角开始在江湖里留下自己的脚印。`,
-        类型: '主线',
-        发布人: publisher,
-        发布地点: location,
-        推荐境界: '初入江湖',
-        当前状态: '进行中',
-        目标列表: [{
-            描述: '完成一次眼前差遣、拜访或小规模历练。',
-            当前进度: 0,
-            总需进度: 1,
-            完成状态: false
-        }],
-        奖励描述: ['门派贡献 +70', '医术熟练度 +6', '可分配属性点 +1'],
-        剧情暗线: '主线：完成后要由发布人或见证者确认成果；若奖励涉及物品，必须由AI在变量命令中明确写入背包，本地代码不会生成物品。'
-    };
-};
-
-const 确保开局主线任务 = (tasks: 任务结构[], sect: 详细门派结构, openingConfig?: OpeningConfig): 任务结构[] => {
-    const safeTasks = Array.isArray(tasks) ? tasks : [];
-    if (safeTasks.some((task) => 取文本(task?.类型) === '主线')) return safeTasks;
-    return [创建开局主线任务(sect, openingConfig), ...safeTasks];
-};
-
 const 创建默认兑换列表 = (sectName = '本门', openingConfig?: OpeningConfig): 详细门派结构['兑换列表'] => {
     const seed = 生成稳定哈希(`${sectName}|${openingConfig?.题材模式 || ''}|exchange`);
     if (是无限流题材(openingConfig)) {
@@ -1342,7 +1225,12 @@ const 创建玩家门派成员简报 = (
     const isModern = 是现代组织题材(openingConfig) || 是西幻题材(openingConfig);
     const gender = 取文本((charData as any)?.性别) === '女' ? '女' : '男';
     const age = 取数字((charData as any)?.年龄, 18);
-    const realm = 取文本((charData as any)?.境界, isInfinite ? '新人轮回者' : isApocalypse ? '幸存者' : isModern ? '普通成员' : '初境');
+    // 武侠/仙侠兜底不再用"初境"（映射表里不存在）：按题材现算首个境界名。
+    const 题材首境界 = (() => {
+        const levels = 获取境界配置(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile)?.levelNames;
+        return (Array.isArray(levels) && levels.length > 0) ? levels[0] : '初境';
+    })();
+    const realm = 取文本((charData as any)?.境界, isInfinite ? '新人轮回者' : isApocalypse ? '幸存者' : isModern ? '普通成员' : 题材首境界);
     const identity = 取文本(playerRank, isInfinite ? '新人' : isApocalypse ? '营地成员' : isModern ? '成员' : '外门弟子');
     return {
         id: `sect_member_player_${生成稳定哈希(`${sectName}|${name}|player`).toString(36)}`,
@@ -1478,14 +1366,18 @@ const 创建默认同门名录 = (sectName: string, openingConfig?: OpeningConfi
                 : isFantasy
                     ? 按种子取项(['委托登记', '营地补给', '遗迹调查', '魔物警戒', '药剂整理', '路线护送'], seed, index)
                 : 按种子取项(['外务传令', '照看新弟子', '巡守山门', '整理典籍', '采办物资', '维持门规'], seed, index);
-    const realmCfg = 获取当前境界配置();
+    // 直接按题材现算境界配置，不依赖全局 _当前境界配置：后者由 useGame 的 useEffect 异步设置，
+    // 开局同步生成同门时可能尚未就绪，会导致全部 NPC 兜底成"初境"（映射表里根本不存在的境界）。
+    const realmCfg = 获取当前境界配置() || 获取境界配置(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
     const 取境界种子项 = (种子偏移: number) => {
         const levels = realmCfg?.levelNames;
         if (levels && levels.length >= 4) {
             const indices = [0, Math.floor(levels.length * 0.15), Math.floor(levels.length * 0.3), Math.floor(levels.length * 0.05)];
             return 按种子取项(indices.map(i => levels[Math.min(i, levels.length - 1)]), seed, 种子偏移);
         }
-        return '初境';
+        // 兜底也不再用"初境"：现算题材配置的首个境界名（仙侠→炼气一层、武侠→开脉境一重等）。
+        const fallbackLevels = 获取境界配置(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile)?.levelNames;
+        return (Array.isArray(fallbackLevels) && fallbackLevels.length > 0) ? fallbackLevels[0] : '初境';
     };
     return {
         id: `sect_member_opening_${生成稳定哈希(`${sectName}|${name}|${index}`).toString(36)}`,
@@ -2595,7 +2487,7 @@ export const 创建开场基础状态 = (charData: 角色数据结构, worldConf
     if (地图草稿层级.length > 0) {
         世界.地图层级 = 地图草稿层级 as any;
     }
-    const 开局任务 = 去重开局任务列表(确保开局主线任务(门派任务, 玩家门派, openingConfig));
+    const 开局任务 = 去重开局任务列表(门派任务);
     return {
         角色,
         环境: 创建开场空白环境(开局时间),

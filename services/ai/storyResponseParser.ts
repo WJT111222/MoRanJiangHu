@@ -124,13 +124,13 @@ const 协议标签别名映射: Record<string, 协议标签> = {
 };
 
 const 协议标题匹配规则: Record<可标题恢复标签, RegExp> = {
-    剧情规划: /^(?:【\s*)?(?:剧情规划|story\s*plan(?:ning)?|narrative\s*plan)(?:\s*】)?\s*[:：]?\s*(.*)$/i,
-    变量规划: /^(?:【\s*)?(?:变量规划|var(?:iable)?\s*plan(?:ning)?)(?:\s*】)?\s*[:：]?\s*(.*)$/i,
-    正文: /^(?:【\s*)?(?:正文|body|content|text|log|logs|story)(?:\s*】)?\s*[:：]?\s*(.*)$/i,
-    短期记忆: /^(?:【\s*)?(?:短期记忆|short\s*term(?:\s*memory)?|summary|recap|memo)(?:\s*】)?\s*[:：]?\s*(.*)$/i,
-    命令: /^(?:【\s*)?(?:命令|commands?|cmd)(?:\s*】)?\s*[:：]?\s*(.*)$/i,
-    行动选项: /^(?:【\s*)?(?:行动选项|action\s*options?|options?|choices?)(?:\s*】)?\s*[:：]?\s*(.*)$/i,
-    动态世界: /^(?:【\s*)?(?:动态世界|dynamic\s*world|world\s*events?)(?:\s*】)?\s*[:：]?\s*(.*)$/i
+    剧情规划: /^(?:#{1,6}\s*)?(?:【\s*)?(?:剧情规划|story\s*plan(?:ning)?|narrative\s*plan)(?:\s*】)?\s*[:：]?\s*(.*)$/i,
+    变量规划: /^(?:#{1,6}\s*)?(?:【\s*)?(?:变量规划|var(?:iable)?\s*plan(?:ning)?)(?:\s*】)?\s*[:：]?\s*(.*)$/i,
+    正文: /^(?:#{1,6}\s*)?(?:【\s*)?(?:正文|body|content|text|log|logs|story)(?:\s*】)?\s*[:：]?\s*(.*)$/i,
+    短期记忆: /^(?:#{1,6}\s*)?(?:【\s*)?(?:短期记忆|short\s*term(?:\s*memory)?|summary|recap|memo)(?:\s*】)?\s*[:：]?\s*(.*)$/i,
+    命令: /^(?:#{1,6}\s*)?(?:【\s*)?(?:命令|commands?|cmd)(?:\s*】)?\s*[:：]?\s*(.*)$/i,
+    行动选项: /^(?:#{1,6}\s*)?(?:【\s*)?(?:行动选项|action\s*options?|options?|choices?)(?:\s*】)?\s*[:：]?\s*(.*)$/i,
+    动态世界: /^(?:#{1,6}\s*)?(?:【\s*)?(?:动态世界|dynamic\s*world|world\s*events?)(?:\s*】)?\s*[:：]?\s*(.*)$/i
 };
 
 const 归一化标签括号符号 = (text: string): string => (
@@ -385,12 +385,33 @@ const 提取候选正文文本 = (text: string): string => {
 const 变量命令路径标签行规则 = /^【\s*[^】\n]*(?:[.．][^】\n]+|\[\s*\d+\s*\])[^】\n]*】\s*(?:[=＝].*)?$/u;
 const 变量命令动词行规则 = /^(?:[-*•]\s*|\d+[.)、]\s*)?(?:add|set|push|delete)\s+[^\s=＝]+/i;
 const 变量命令赋值行规则 = /^【\s*[^】\n]+】\s*(?:[=＝]|\bpush\b|\bset\b|\badd\b|\bdelete\b)/iu;
+// markdown 列表形式的变量赋值，例如：
+//   - 角色.内力: 89 -> 69
+//   - 社交[0].好感度: 40 -> 45
+//   - 环境.时间:
+// 特征：以列表符号开头，键中带点号路径或数组索引，后跟冒号。
+const 路径赋值列表行规则 = /^[-*•]\s*[^\s:：（(]*(?:[.．][^\s:：（(]+|\[\s*\d+\s*\])[^\s:：（(]*\s*[:：]/u;
 
 const 是否变量命令泄漏行 = (line: string): boolean => (
     变量命令路径标签行规则.test(line)
     || 变量命令动词行规则.test(line)
     || 变量命令赋值行规则.test(line)
+    || 路径赋值列表行规则.test(line)
 );
+
+// 检测畸形/半开的非正文协议标签行，例如模型只输出 `<变量规划` 而漏掉闭合 `>`，
+// 或写成 `<变量规划>`、`<variable_plan`、`</短期记忆` 等。成对标签块删除正则无法命中这类残缺标签，
+// 因此需要在逐行扫描时按“正文之外的协议标签起始”截断。
+const 提取行首标签名 = (line: string): string => {
+    const match = (line || '').trim().match(/^<\s*\/?\s*([A-Za-z0-9_\u3400-\u9fff]+)/);
+    return match ? (match[1] || '') : '';
+};
+const 是否畸形非正文协议标签行 = (line: string): boolean => {
+    const tagToken = 提取行首标签名(line);
+    if (!tagToken) return false;
+    const normalized = 归一化协议标签名(tagToken);
+    return Boolean(normalized) && 协议标签集合.has(normalized) && normalized !== '正文';
+};
 
 const 清理正文残留协议内容 = (body: string): string => {
     let stripped = 剥离酒馆元标签区块(body || '');
@@ -404,7 +425,7 @@ const 清理正文残留协议内容 = (body: string): string => {
         const isNonBodyProtocolHeader = (Object.keys(协议标题匹配规则) as 可标题恢复标签[])
             .filter((tag) => tag !== '正文')
             .some((tag) => 协议标题匹配规则[tag].test(line));
-        if (isNonBodyProtocolHeader || 酒馆状态行规则.test(line) || 是否变量命令泄漏行(line)) break;
+        if (isNonBodyProtocolHeader || 酒馆状态行规则.test(line) || 是否变量命令泄漏行(line) || 是否畸形非正文协议标签行(line)) break;
         lines.push(rawLine);
     }
     return 清理正文初始化泄露内容(清理正文HTML注释残片(lines.join('\n'))).trim();

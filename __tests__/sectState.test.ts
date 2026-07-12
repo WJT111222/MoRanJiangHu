@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { 获取境界配置 } from '../utils/realmConfig';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import SectModal from '../components/features/Sect/SectModal';
@@ -229,12 +230,18 @@ describe('门派状态规范化', () => {
         expect(openingBase.玩家门派.弟子总数).toBeGreaterThan(0);
         expect(openingBase.玩家门派.重要成员.length).toBeGreaterThanOrEqual(6);
         expect(openingBase.玩家门派.任务列表).toEqual([]);
-        expect(openingBase.任务列表.some((task: any) => task.类型 === '主线')).toBe(true);
-        expect(openingBase.任务列表.some((task: any) => task.类型 === '门派' || task.类型 === '支线')).toBe(false);
+        expect(openingBase.任务列表).toEqual([]);
         expect(JSON.stringify(openingBase.玩家门派)).not.toMatch(/待AI|请由AI|开局模板/);
-        expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/待AI|请由AI|开局模板|后山栈道|旧账未清|门中历练/);
+        expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/待AI|请由AI|开局模板|后山栈道|旧账未清|门中历练|问道初途|初入江湖/);
         expect(openingBase.角色.所属门派ID).toBe(openingBase.玩家门派.ID);
         expect(openingBase.角色.门派职位).toBe('杂役弟子');
+        // 回归：开局同步生成的同门境界不能兜底成映射表里不存在的"初境"，
+        // 且应落在仙侠 levelNames（炼气/筑基/金丹…）内，而非全局境界配置未就绪时的占位。
+        const 仙侠境界名 = new Set(获取境界配置('仙侠').levelNames);
+        openingBase.玩家门派.重要成员.forEach((member) => {
+            expect(member.境界).not.toBe('初境');
+            expect(仙侠境界名.has(member.境界)).toBe(true);
+        });
     });
 
     it('无限流开局不再生成模板支线和大型轮回队', () => {
@@ -260,9 +267,8 @@ describe('门派状态规范化', () => {
         expect(openingBase.玩家门派.重要成员).toHaveLength(2);
         expect(JSON.stringify(openingBase.玩家门派.藏经阁列表)).toContain('精神力扫描');
         expect(JSON.stringify(openingBase.玩家门派.藏经阁列表)).not.toMatch(/临时同盟精神力扫描|轮回小队精神力扫描|主神小队精神力扫描/);
-        expect(openingBase.任务列表).toHaveLength(1);
-        expect(openingBase.任务列表[0]?.标题).toBe('主神任务倒计时');
-        expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/确认第一项主线任务|后山栈道|旧账未清|门中历练|支线剧情 x1|D级支线剧情/);
+        expect(openingBase.任务列表).toEqual([]);
+        expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/主神任务倒计时|确认第一项主线任务|后山栈道|旧账未清|门中历练|支线剧情 x1|D级支线剧情/);
     });
 
     it('末日丧尸开局生成的是营地和幸存者成员而不是门派模板', () => {
@@ -292,11 +298,8 @@ describe('门派状态规范化', () => {
         expect(openingBase.玩家门派.兑换列表.length).toBeGreaterThan(0);
         expect(JSON.stringify(openingBase.玩家门派.兑换列表)).toMatch(/净水片|急救包|维修工具包/);
         expect(openingBase.玩家门派.重要成员.some((member: any) => /营地|物资|巡逻|医护|维修|哨兵|搜救|同行者/.test(member.身份))).toBe(true);
-        expect(openingBase.任务列表.some((task: any) => task.类型 === '主线')).toBe(true);
-        expect(openingBase.任务列表[0].标题).toBe('守住第一夜');
-        expect(JSON.stringify(openingBase.任务列表)).toMatch(/组织信用|急救熟练度|可分配属性点/);
-        expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/净水包/);
-        expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/门派任务|同门|弟子|藏经阁|山门|辟谷丹|回气丹|凝元丹|破境丹/);
+        expect(openingBase.任务列表).toEqual([]);
+        expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/守住第一夜|组织信用|急救熟练度|可分配属性点|净水包|门派任务|同门|弟子|藏经阁|山门|辟谷丹|回气丹|凝元丹|破境丹/);
     });
 
     it('现代都市开局生成的是现实组织和成员而不是门派模板', () => {
@@ -326,7 +329,8 @@ describe('门派状态规范化', () => {
         expect(openingBase.玩家门派.兑换列表.length).toBeGreaterThan(0);
         expect(JSON.stringify(openingBase.玩家门派.兑换列表)).toMatch(/外勤工具包|便携急救包|资料调阅权限/);
         expect(openingBase.玩家门派.重要成员.some((member: any) => /负责人|同事|行政|技术|外勤|合作伙伴|社区|实习/.test(member.身份))).toBe(true);
-        expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/门派任务|同门|弟子|藏经阁|山门/);
+        expect(openingBase.任务列表).toEqual([]);
+        expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/站稳第一步|组织信用|谈判熟练度|门派任务|同门|弟子|藏经阁|山门/);
     });
 
     it('关闭开局配置时保留题材技艺但不自动生成默认武侠门派', () => {
@@ -373,7 +377,8 @@ describe('门派状态规范化', () => {
         expect(openingBase.玩家门派.名称).toMatch(/公司|项目组|事务所|社区中心|门店|合作团队/);
         expect(openingBase.玩家门派.玩家职位).toBe('成员');
         expect(JSON.stringify(openingBase.玩家门派)).not.toMatch(/归雁|山庄|剑派|武馆|辟谷丹|凝元丹|破境丹/);
-        expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/门派任务|同门|弟子|山门/);
+        expect(openingBase.任务列表).toEqual([]);
+        expect(JSON.stringify(openingBase.任务列表)).not.toMatch(/站稳第一步|组织信用|谈判熟练度|门派任务|同门|弟子|山门/);
     });
 
     it('末日组织会替换历史存档里的古风资料，但不再替换或生成兑换物品', () => {

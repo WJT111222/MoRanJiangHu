@@ -68,34 +68,37 @@ const 势力图颜色 = (tone: 势力关系图边['tone']): { line: string; badg
 const 势力关系标签样式 = (relation: string): string => 势力图颜色(归类势力关系色调(relation)).badge;
 
 const 势力关系图: React.FC<{ nodes: 势力关系图节点[]; edges: 势力关系图边[] }> = ({ nodes, edges }) => {
+    const [筛选色调, 设置筛选色调] = useState<势力关系图边['tone'] | null>(null);
     if (nodes.length < 2) return null;
+    const 可见边 = 筛选色调 ? edges.filter((edge) => edge.tone === 筛选色调) : edges;
+    const 切换筛选 = (tone: 势力关系图边['tone']) => 设置筛选色调((prev) => (prev === tone ? null : tone));
+    const 图例项: { tone: 势力关系图边['tone']; 文案: string }[] = [
+        { tone: 'good', 文案: '绿色：友好/联盟' },
+        { tone: 'neutral', 文案: '灰色：中立' },
+        { tone: 'bad', 文案: '红色：敌对' }
+    ];
     return (
         <div className="world-faction-graph mb-5 rounded-2xl border border-orange-900/25 bg-black/30 p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="text-sm font-serif font-bold tracking-[0.22em] text-orange-200">势力关系图</div>
-                <div className="text-[10px] text-gray-500">{edges.length} 条关系</div>
+                <div className="text-[10px] text-gray-500">{筛选色调 ? `${可见边.length} / ${edges.length}` : edges.length} 条关系</div>
             </div>
             <div className="world-faction-graph-canvas relative mx-auto aspect-[16/9] min-h-[260px] w-full max-w-4xl overflow-hidden rounded-xl border border-gray-800/80 bg-[radial-gradient(circle_at_center,rgba(120,72,24,0.24),rgba(0,0,0,0.18)_58%,rgba(0,0,0,0.35))]">
-                <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" role="img" aria-label="势力关系连线图">
-                    {edges.map((edge, idx) => {
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" role="img" aria-label="势力关系连线图">
+                    {可见边.map((edge, idx) => {
                         const color = 势力图颜色(edge.tone).line;
-                        const midX = (edge.sourceX + edge.targetX) / 2;
-                        const midY = (edge.sourceY + edge.targetY) / 2;
                         return (
-                            <g key={`${edge.sourceId}-${edge.targetId}-${edge.relation}-${idx}`}>
-                                <line
-                                    x1={edge.sourceX}
-                                    y1={edge.sourceY}
-                                    x2={edge.targetX}
-                                    y2={edge.targetY}
-                                    stroke={color}
-                                    strokeWidth={edge.tone === 'neutral' ? 0.42 : 0.62}
-                                    strokeOpacity={edge.tone === 'neutral' ? 0.62 : 0.88}
-                                />
-                                <text x={midX} y={midY - 1.4} textAnchor="middle" className="world-faction-edge-label fill-gray-200 text-[2.7px] font-semibold">
-                                    {edge.relation}
-                                </text>
-                            </g>
+                            <line
+                                key={`${edge.sourceId}-${edge.targetId}-${edge.relation}-${idx}`}
+                                x1={edge.sourceX}
+                                y1={edge.sourceY}
+                                x2={edge.targetX}
+                                y2={edge.targetY}
+                                stroke={color}
+                                strokeWidth={edge.tone === 'neutral' ? 0.42 : 0.62}
+                                strokeOpacity={edge.tone === 'neutral' ? 0.62 : 0.88}
+                                vectorEffect="non-scaling-stroke"
+                            />
                         );
                     })}
                 </svg>
@@ -111,9 +114,20 @@ const 势力关系图: React.FC<{ nodes: 势力关系图节点[]; edges: 势力�
                 ))}
             </div>
             <div className="mt-3 flex flex-wrap justify-end gap-2 text-[10px]">
-                <span className={`rounded-full border px-2 py-0.5 ${势力图颜色('good').badge}`}>绿色：友好/联盟</span>
-                <span className={`rounded-full border px-2 py-0.5 ${势力图颜色('neutral').badge}`}>灰色：中立</span>
-                <span className={`rounded-full border px-2 py-0.5 ${势力图颜色('bad').badge}`}>红色：敌对</span>
+                {图例项.map(({ tone, 文案 }) => {
+                    const 选中 = 筛选色调 === tone;
+                    return (
+                        <button
+                            key={tone}
+                            type="button"
+                            onClick={() => 切换筛选(tone)}
+                            className={`rounded-full border px-2 py-0.5 transition ${势力图颜色(tone).badge} ${选中 ? 'ring-2 ring-offset-1 ring-offset-black/40 ring-orange-300/70' : 筛选色调 ? 'opacity-45 hover:opacity-80' : 'hover:brightness-125'}`}
+                            aria-pressed={选中}
+                        >
+                            {文案}
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );

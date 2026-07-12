@@ -3348,7 +3348,8 @@ const 修复NPC真实姓名列表 = (list: any[], options?: { 保留非姓名库
 const 是否应丢弃NPC条目 = (rawNpc: any): boolean => {
     if (!rawNpc || typeof rawNpc !== 'object' || Array.isArray(rawNpc)) return false;
     const name = 取首个非空文本(rawNpc?.姓名, rawNpc?.名称, rawNpc?.name);
-    if (!是否噪声NPC姓名(name)) return false;
+    // "角色9" 这类占位名含数字，不被 是否噪声NPC姓名 命中，需额外用占位判断兜住，否则空壳会被当正常姓名保留。
+    if (!是否噪声NPC姓名(name) && !判断NPC姓名疑似占位(name)) return false;
     if (rawNpc?.对白登场 === true || rawNpc?.自动补全头像 === true) return true;
     const id = 取首个非空文本(rawNpc?.id, rawNpc?.ID);
     const hasStableId = Boolean(id && !/^npc_\d+$/.test(id));

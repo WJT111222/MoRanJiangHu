@@ -80,6 +80,9 @@ export const 是否可信角色发送者 = (
     const sender = 规范化正文发送者名(senderRaw);
     if (!sender || 是否特殊正文发送者(sender)) return false;
 
+    // 玩家主角标签（【你】/【我】）应识别为说话人，正文生成阶段即可渲染主角对话框。
+    if (sender === '你' || sender === '我') return true;
+
     if (options?.declaredNames?.has(sender)) return true;
 
     if (是否疑似叙事短语标签(sender)) return false;

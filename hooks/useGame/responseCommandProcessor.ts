@@ -1395,6 +1395,32 @@ const 净化社交姓名命令 = (cmd: any, currentSocial: any[]): any | null =>
     const currentName = 规范化命令姓名(currentSocial?.[index]?.姓名);
     const nextName = 规范化命令姓名(cmd?.value);
     if (!currentName || !nextName || currentName === nextName) return cmd;
+    // 占位名（如"角色9"）允许被改成真名：这正是把对话框真名回填进社交档案的通道，不能拦。
+    if (是否占位名(currentName) && !是否占位名(nextName)) return cmd;
+    return null;
+};
+
+// 第1层防御：拦截越界的 `set 社交[N].子字段`（N >= 当前列表长度）。
+// 这类命令会在 applyStateCommand 的中间路径自动创建无姓名空壳（稀疏空洞），
+// 空壳随后被 标准化单个NPC 兜底成“角色N”，与对话框里的真实 sender 对不上。
+// 合法的新建 NPC 应走 `push 社交 = {...}` 或整槽 `set 社交[N] = {...含姓名...}`，两者不受影响。
+const 提取社交子字段命令索引 = (rawKey: unknown): number | null => {
+    const normalizedKey = normalizeStateCommandKey(typeof rawKey === 'string' ? rawKey : '');
+    const match = normalizedKey.match(/^gameState\.社交\[(\d+)\]\.[^\[.]+/u);
+    if (!match) return null;
+    const index = Number(match[1]);
+    return Number.isInteger(index) && index >= 0 ? index : null;
+};
+
+const 净化越界社交索引命令 = (cmd: any, currentSocial: any[]): any | null => {
+    const action = cmd?.action || 'set';
+    if (action !== 'set' && action !== 'add' && action !== 'sub' && action !== 'push') return cmd;
+    const index = 提取社交子字段命令索引(cmd?.key);
+    if (index == null) return cmd;
+    const list = Array.isArray(currentSocial) ? currentSocial : [];
+    // 索引落在既有条目上 → 正常字段更新，放行。
+    if (index < list.length) return cmd;
+    // 越界子字段写入 → 会凭空造出无姓名空壳，丢弃该命令。
     return null;
 };
 
@@ -1410,6 +1436,26 @@ const 提取新增社交命令姓名 = (cmd: any): string => {
     return 规范化命令姓名(value?.姓名 || value?.名称);
 };
 
+const 是否新增社交对象命令 = (cmd: any, currentSocial?: any[]): boolean => {
+    const action = cmd?.action || 'set';
+    if (action !== 'push' && action !== 'add' && action !== 'set') return false;
+    const normalizedKey = normalizeStateCommandKey(typeof cmd?.key === 'string' ? cmd.key : '');
+    const isWholeSocialAppend = normalizedKey === 'gameState.社交' && (action === 'push' || action === 'add');
+    const isWholeSocialSlotSet = /^gameState\.社交\[\d+\]$/.test(normalizedKey) && action === 'set';
+    if (!isWholeSocialAppend && !isWholeSocialSlotSet) return false;
+    const value = cmd?.value;
+    if (!(Boolean(value) && typeof value === 'object' && !Array.isArray(value))) return false;
+    // 整槽 set 社交[N]：只有索引越界（N >= 当前列表长度）才是"新增空壳"；
+    // 落在既有条目上的整槽 set 属于合并更新（允许不带姓名），不算新增。
+    if (isWholeSocialSlotSet) {
+        const slotMatch = normalizedKey.match(/^gameState\.社交\[(\d+)\]$/);
+        const index = slotMatch ? Number(slotMatch[1]) : -1;
+        const len = Array.isArray(currentSocial) ? currentSocial.length : 0;
+        if (Number.isInteger(index) && index >= 0 && index < len) return false;
+    }
+    return true;
+};
+
 const 净化新增社交命令 = (
     cmd: any,
     currentSocial: any[],
@@ -1418,7 +1464,11 @@ const 净化新增社交命令 = (
     playerName?: string
 ): any | null => {
     const nextName = 提取新增社交命令姓名(cmd);
-    if (!nextName) return cmd;
+    if (!nextName) {
+        // 整体 push 社交 / 整槽 set 社交[N] 但漏写姓名 → 会造出无姓名空壳，直接丢弃；
+        // 其余命令（非新增社交对象）放行交给后续逻辑。
+        return 是否新增社交对象命令(cmd, currentSocial) ? null : cmd;
+    }
     if (是否保留栏目式社交姓名(nextName)) return null;
     const nextKey = 归一化文本键(nextName);
     if (playerName && nextKey === 归一化文本键(playerName)) return null;
@@ -1545,6 +1595,7 @@ export const 执行响应命令处理 = (
         response.tavern_commands.forEach((cmd, commandIndex) => {
             if (deathRiskCommandIndices.has(commandIndex)) return;
             const safeCmd = 净化新增社交命令(
+                净化越界社交索引命令(
                 净化社交姓名命令(
                     sanitizeInventoryCommand(
                         净化社交生理命令(
@@ -1558,7 +1609,7 @@ export const 执行响应命令处理 = (
                         responseFactText
                     ),
                     socialBuffer
-                ),
+                ), socialBuffer),
                 socialBuffer,
                 responseFactText,
                 dialogueSenderKeys,

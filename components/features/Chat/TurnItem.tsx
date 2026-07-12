@@ -714,4 +714,30 @@ const TurnItem: React.FC<Props> = ({
     );
 };
 
-export default TurnItem;
+// React.memo：编辑/重解析会用全新引用替换 history，导致窗口内所有 TurnItem 重渲染。
+// ChatList 传入的 onSaveEdit/onPolishTurn 是内联箭头（每次新建引用），但对固定 key 的回合语义稳定，
+// 因此自定义比较器忽略函数 prop 引用，仅比较真正影响渲染的值。
+const 回合渲染属性相等 = (prev: Props, next: Props): boolean => {
+    if (prev.response !== next.response) return false;
+    if (prev.turnNumber !== next.turnNumber) return false;
+    if (prev.isLatest !== next.isLatest) return false;
+    if (prev.rawJson !== next.rawJson) return false;
+    if (prev.inputTokens !== next.inputTokens) return false;
+    if (prev.responseDurationSec !== next.responseDurationSec) return false;
+    if (prev.outputTokens !== next.outputTokens) return false;
+    if (prev.fontSize !== next.fontSize) return false;
+    if (prev.lineHeight !== next.lineHeight) return false;
+    if (prev.collapseThinkingStream !== next.collapseThinkingStream) return false;
+    if (prev.visualConfig !== next.visualConfig) return false;
+    if (prev.socialList !== next.socialList) return false;
+    if (prev.playerProfile !== next.playerProfile) return false;
+    if (prev.inventoryItems !== next.inventoryItems) return false;
+    if (prev.variableGenerationPending !== next.variableGenerationPending) return false;
+    if (prev.turnAnchorRef !== next.turnAnchorRef) return false;
+    // onSaveEdit/onPolishTurn/onOpenNpcDetail/onOpenInventoryItem/onTavernAction 为语义稳定的回调，忽略引用差异。
+    return true;
+};
+
+const MemoizedTurnItem = React.memo(TurnItem, 回合渲染属性相等);
+
+export default MemoizedTurnItem;

@@ -535,3 +535,34 @@ describe('NPC old save compatibility', () => {
         expect(npc.图片档案?.香闺秘档部位档案?.屁穴?.图片URL).toBe('wuxia-asset://img_anus');
     });
 });
+
+describe('占位空壳NPC丢弃（陈成/角色9 第3层防御）', () => {
+    it('无姓名空壳被兜底成占位名后应被丢弃，不残留“角色N”档案', () => {
+        // 模拟越界 set 造出的空壳：只有零星字段、无姓名、无稳定 id。
+        const list = 规范化社交列表([
+            { 境界: '筑基初期' }
+        ], { 合并同名: false });
+        expect(list).toHaveLength(0);
+    });
+
+    it('已成型的占位名空壳（角色9 + 仅境界）不再保留', () => {
+        const list = 规范化社交列表([
+            { 姓名: '角色9', 境界: '炼气三层' }
+        ], { 合并同名: false });
+        expect(list.some((npc: any) => npc?.姓名 === '角色9')).toBe(false);
+    });
+
+    it('有稳定 id 和完整档案的真实 NPC 不受影响', () => {
+        const list = 规范化社交列表([
+            {
+                id: 'npc_chen_cheng',
+                姓名: '陈成',
+                性别: '男',
+                身份: '客栈掌柜',
+                简介: '经营客栈多年。',
+                境界: '炼气五层'
+            }
+        ], { 合并同名: false });
+        expect(list.some((npc: any) => npc?.姓名 === '陈成')).toBe(true);
+    });
+});

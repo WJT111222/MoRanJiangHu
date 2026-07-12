@@ -35,4 +35,56 @@ describe('body polish dialogue parsing', () => {
         expect(body).not.toContain('1:01:01:06:30');
         expect(body).toContain('执事堂前的青石台阶');
     });
+
+    it('strips leaked variable/plan/option blocks appended after the polished body', () => {
+        const logs = 净化角色对白行(解析正文日志文本([
+            '【旁白】你没答话，只是将身子压得更紧，用自己温热的身体去焐她那近乎冻结的娇躯。',
+            '【俞月荷】“杨培强……你体内的灵力本就稀薄……莫要为了我，白白废了苦修的根基……”',
+            '<变量规划',
+            '- 角色.内力: 89 -> 69',
+            '- 社交[0].好感度: 40 -> 45',
+            '- 社交[0].记忆: push { "内容": "驱寒", "时间": "1:01:01:01:30" }',
+            '- 环境.时间: "1:01:01:01:00" -> "1:01:01:01:30"',
+            '>',
+            '<剧情规划>',
+            '- 主线推进：耽搁两刻钟后需尽快赶往外务堂。',
+            '</剧情规划>',
+            '<options>',
+            '选项一：扶着俞月荷休息片刻。',
+            '选项二：强行抱起她赶路。',
+            '</options>'
+        ].join('\n')));
+
+        expect(logs).toEqual([
+            { sender: '旁白', text: '你没答话，只是将身子压得更紧，用自己温热的身体去焐她那近乎冻结的娇躯。' },
+            { sender: '俞月荷', text: '杨培强……你体内的灵力本就稀薄……莫要为了我，白白废了苦修的根基……' }
+        ]);
+        const body = logs.map(item => item.text).join('\n');
+        expect(body).not.toContain('变量规划');
+        expect(body).not.toContain('角色.内力');
+        expect(body).not.toContain('好感度');
+        expect(body).not.toContain('剧情规划');
+        expect(body).not.toContain('选项一');
+        expect(body).not.toContain('options');
+    });
+
+    it('strips bracketed variable command blocks appended after the polished body', () => {
+        const logs = 净化角色对白行(解析正文日志文本([
+            '【旁白】厚重的朱漆大门已然敞开，殿内隐约可见几盏长明灯的昏黄火光。',
+            '【环境.时间】',
+            '"1:01:01:07:00"',
+            '【俞月荷.好感度】',
+            '=62',
+            '【俞月荷.记忆】',
+            '=push 社交[0].记忆 { "内容": "抵达外务堂", "时间": "1:01:01:07:00" }'
+        ].join('\n')));
+
+        expect(logs).toEqual([
+            { sender: '旁白', text: '厚重的朱漆大门已然敞开，殿内隐约可见几盏长明灯的昏黄火光。' }
+        ]);
+        const body = logs.map(item => item.text).join('\n');
+        expect(body).not.toContain('环境.时间');
+        expect(body).not.toContain('好感度');
+        expect(body).not.toContain('push 社交[0].记忆');
+    });
 });

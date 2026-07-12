@@ -59,6 +59,7 @@ type 主剧情上下文片段 = {
     约定状态: string;
     COT提示词: string;
     格式提示词: string;
+    文风提示词: string;
     字数要求提示词: string;
     免责声明输出提示词: string;
     输出协议提示词: string;
