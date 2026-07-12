@@ -1,6 +1,7 @@
 import type { OpeningConfig, OpeningRuntimeSnapshot, 天赋结构, 背景结构, ModeRuntimeProfile, 世界书结构 } from '../types';
 import type { 开局预设方案结构 } from '../data/newGamePresets';
 import { 创意工坊模块列表, type 创意工坊模块条目 } from '../data/creativeWorkshopModules';
+import { 读取本地创意工坊模块 } from '../services/creativeWorkshop';
 import { 获取题材预设背景, 获取题材预设天赋 } from '../data/presets';
 import { 属性最大值, 属性最小值, 规范化可选开局配置 } from './openingConfig';
 import { 规范化模式运行时配置 } from './modeRuntimeProfile';
@@ -112,8 +113,9 @@ const 合并去重天赋 = (rawList: 天赋结构[]): 天赋结构[] => {
         const 名称 = 标准化文本(item?.名称);
         const 描述 = 标准化文本(item?.描述);
         const 效果 = 标准化文本(item?.效果);
+        const 叙事约束 = 标准化文本(item?.叙事约束);
         if (!名称 || !描述 || !效果) return;
-        map.set(名称, { 名称, 描述, 效果 });
+        map.set(名称, { 名称, 描述, 效果, 叙事约束: 叙事约束 || undefined });
     });
     return Array.from(map.values());
 };
@@ -129,9 +131,11 @@ const 获取预设题材模式 = (preset: 开局预设方案结构): OpeningConf
     return 规范化题材模式(rawMode);
 };
 
-const 按键查找创意工坊模块 = (moduleKey: string): 创意工坊模块条目 | undefined => (
-    创意工坊模块列表.find((item) => 创意工坊模块键(item) === moduleKey)
-);
+const 按键查找创意工坊模块 = (moduleKey: string): 创意工坊模块条目 | undefined => {
+    const fromBuiltin = 创意工坊模块列表.find((item) => 创意工坊模块键(item) === moduleKey);
+    if (fromBuiltin) return fromBuiltin;
+    return 读取本地创意工坊模块().find((item) => 创意工坊模块键(item) === moduleKey);
+};
 
 const 提取模块背景列表 = (module: 创意工坊模块条目): 背景结构[] => {
     const payload = module.payload as any;
@@ -395,14 +399,14 @@ export const 构建预设表单恢复结果 = (
     const 已选背景兜底列表 = 合并去重背景(options.selectedBackgroundCatalog || []);
     const 已选天赋兜底列表 = 合并去重天赋(options.selectedTalentCatalog || []);
     const 全部背景选项 = 合并去重背景([
-        ...模式包背景列表,
         ...预设题材背景列表,
+        ...模式包背景列表,
         ...options.fallbackBackgrounds,
         ...已选背景兜底列表
     ]);
     const 全部天赋选项 = 合并去重天赋([
-        ...模式包天赋列表,
         ...预设题材天赋列表,
+        ...模式包天赋列表,
         ...options.fallbackTalents,
         ...已选天赋兜底列表
     ]);

@@ -550,7 +550,7 @@ describe('获取NSFW文生图接口配置', () => {
 
 describe('NSFW prompt generation', () => {
     it('构建运行时额外提示词 returns NSFW prompt when enabled', () => {
-        const result = 构建运行时额外提示词('', { 启用NSFW模式: true });
+        const result = 构建运行时额外提示词('', { 启用NSFW模式: true }, '现代都市');
         expect(result).toContain('NSFW');
         expect(result).toContain('肉棒');
         expect(result).toContain('小穴');
@@ -562,19 +562,19 @@ describe('NSFW prompt generation', () => {
     });
 
     it('构建运行时额外提示词 returns empty when NSFW disabled', () => {
-        const result = 构建运行时额外提示词('', { 启用NSFW模式: false });
+        const result = 构建运行时额外提示词('', { 启用NSFW模式: false }, '现代都市');
         expect(result).toBe('');
     });
 
     it('构建运行时额外提示词 combines custom prompt with NSFW', () => {
-        const result = 构建运行时额外提示词('custom instruction', { 启用NSFW模式: true });
+        const result = 构建运行时额外提示词('custom instruction', { 启用NSFW模式: true }, '现代都市');
         expect(result).toContain('custom instruction');
         expect(result).toContain('NSFW');
     });
 
     it('构建运行时额外提示词 wraps player custom instructions as highest priority story rules', () => {
         const custom = '禁止生成婉清这个名字；新文风必须克制冷峻。';
-        const result = 构建运行时额外提示词(custom, { 启用NSFW模式: false });
+        const result = 构建运行时额外提示词(custom, { 启用NSFW模式: false }, '现代都市');
 
         expect(result).toContain('【玩家额外提示词（最高优先级）】');
         expect(result).toContain('主剧情、开局、文章优化、变量生成');
@@ -583,63 +583,63 @@ describe('NSFW prompt generation', () => {
     });
 
     it('构建运行时额外提示词 returns only custom prompt when NSFW disabled', () => {
-        const result = 构建运行时额外提示词('custom instruction', { 启用NSFW模式: false });
+        const result = 构建运行时额外提示词('custom instruction', { 启用NSFW模式: false }, '现代都市');
         expect(result).toContain('【玩家额外提示词（最高优先级）】');
         expect(result).toContain('custom instruction');
         expect(result).not.toContain('NSFW');
     });
 
     it('构建文生图运行时额外提示词 returns image NSFW prompt when enabled', () => {
-        const result = 构建文生图运行时额外提示词('', { 启用NSFW模式: true });
+        const result = 构建文生图运行时额外提示词('', { 启用NSFW模式: true }, '现代都市');
         expect(result).toContain('NSFW');
         expect(result).toContain('adult');
         expect(result).toContain('sensual body language');
     });
 
     it('构建文生图运行时额外提示词 returns empty when NSFW disabled', () => {
-        const result = 构建文生图运行时额外提示词('', { 启用NSFW模式: false });
+        const result = 构建文生图运行时额外提示词('', { 启用NSFW模式: false }, '现代都市');
         expect(result).toBe('');
     });
 
     it('构建文生图运行时额外提示词 combines custom prompt with image NSFW', () => {
-        const result = 构建文生图运行时额外提示词('style: dark fantasy', { 启用NSFW模式: true });
+        const result = 构建文生图运行时额外提示词('style: dark fantasy', { 启用NSFW模式: true }, '现代都市');
         expect(result).toContain('style: dark fantasy');
         expect(result).toContain('NSFW');
         expect(result).toContain('adult');
     });
 
     it('构建运行时额外提示词 handles undefined options gracefully', () => {
-        const result = 构建运行时额外提示词('test', undefined);
+        const result = 构建运行时额外提示词('test', undefined, '现代都市');
         expect(result).toContain('【玩家额外提示词（最高优先级）】');
         expect(result).toContain('test');
     });
 
     it('构建文生图运行时额外提示词 handles undefined options gracefully', () => {
-        const result = 构建文生图运行时额外提示词('test', undefined);
+        const result = 构建文生图运行时额外提示词('test', undefined, '现代都市');
         expect(result).toBe('test');
     });
 
     it('构建运行时额外提示词 trims whitespace', () => {
-        const result = 构建运行时额外提示词('  custom  ', { 启用NSFW模式: true });
+        const result = 构建运行时额外提示词('  custom  ', { 启用NSFW模式: true }, '现代都市');
         expect(result).toContain('【玩家额外提示词（最高优先级）】');
         expect(result).toContain('custom');
         expect(result).toContain('NSFW');
     });
 
     it('构建运行时额外提示词 handles empty custom prompt', () => {
-        const result = 构建运行时额外提示词('', { 启用NSFW模式: true });
+        const result = 构建运行时额外提示词('', { 启用NSFW模式: true }, '现代都市');
         expect(result).toContain(默认NSFW模式提示词);
         expect(result).toContain(默认亲密边界机制提示词);
     });
 
     it('构建运行时额外提示词 allows disabling intimacy boundary rules', () => {
-        const result = 构建运行时额外提示词('', { 启用NSFW模式: true, 启用亲密边界机制: false });
+        const result = 构建运行时额外提示词('', { 启用NSFW模式: true, 启用亲密边界机制: false }, '现代都市');
         expect(result).toBe(默认NSFW模式提示词);
         expect(result).not.toContain('ASD反轻浮机制');
     });
 
     it('构建文生图运行时额外提示词 handles empty custom prompt', () => {
-        const result = 构建文生图运行时额外提示词('', { 启用NSFW模式: true });
+        const result = 构建文生图运行时额外提示词('', { 启用NSFW模式: true }, '现代都市');
         expect(result).toBe(默认文生图NSFW模式提示词);
     });
 });

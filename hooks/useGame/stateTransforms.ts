@@ -479,21 +479,23 @@ const 标准化角色技艺 = (raw: any): Array<{ 名称: string; 等级: string
     return Array.from(byName.values());
 };
 
-const 标准化天赋列表 = (raw: any): Array<{ 名称: string; 描述: string; 效果: string }> => {
+const 标准化天赋列表 = (raw: any): Array<{ 名称: string; 描述: string; 效果: string; 叙事约束?: string }> => {
     if (!Array.isArray(raw)) return [];
-    const byKey = new Map<string, { 名称: string; 描述: string; 效果: string }>();
+    const byKey = new Map<string, { 名称: string; 描述: string; 效果: string; 叙事约束?: string }>();
     raw.forEach((item: any) => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) return;
         const 名称 = 规范化文本(item?.名称);
         const 描述 = 规范化文本(item?.描述);
         const 效果 = 规范化文本(item?.效果);
+        const 叙事约束 = 规范化文本(item?.叙事约束);
         if (!名称 && !描述 && !效果) return;
         const key = 名称 || `${描述}|${效果}`;
         const existing = byKey.get(key);
         byKey.set(key, {
             名称: 名称 || existing?.名称 || '',
             描述: 取更优文本(描述, existing?.描述 || ''),
-            效果: 取更优文本(效果, existing?.效果 || '')
+            效果: 取更优文本(效果, existing?.效果 || ''),
+            叙事约束: 叙事约束 || existing?.叙事约束 || undefined
         });
     });
     return Array.from(byKey.values());
@@ -3972,8 +3974,9 @@ const 合并占位NPC列表 = (list: any[], options?: { 合并精确同名?: boo
     return merged;
 };
 
-const 规范化社交列表 = (list: any[], options?: { 合并同名?: boolean; 保留非姓名库主要女性名?: boolean }): any[] => {
-    if (!Array.isArray(list)) return [];
+const 规范化社交列表 = (raw?: any[], options?: { 合并同名?: boolean; 保留非姓名库主要女性名?: boolean }): any[] => {
+    if (!Array.isArray(raw)) return [];
+    const list = raw;
     const filtered = list.filter((npc) => !是否应丢弃NPC条目(npc));
     const normalized = filtered.map((npc, index) => 标准化单个NPC(npc, index));
     const merged = options?.合并同名 === false

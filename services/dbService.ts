@@ -20,8 +20,9 @@ const IMAGE_ASSETS_STORE = 'image_assets';
 const VERSION = 3;
 const 自动存档最大保留数 = 5;
 const 存档导出版本 = 1;
-const 存档保护设置键 = 设置键.存档保护;
-const 图片资源迁移版本键 = 设置键.图片资源迁移版本;
+// 延迟访问 设置键 以避免循环依赖问题
+const get存档保护设置键 = () => 设置键.存档保护;
+const get图片资源迁移版本键 = () => 设置键.图片资源迁移版本;
 const 设置记录版本 = 2;
 const 远程图片本地备份ID前缀 = 'remote_backup_';
 const 图片缓存预热最大条目数 = 24;
@@ -2732,7 +2733,7 @@ export const 获取设置管理清单 = async (): Promise<设置管理项[]> => 
 };
 
 export const 迁移图片资源到独立存储 = async (): Promise<{ saves: number; settings: number }> => {
-    const migrated = await 读取设置(图片资源迁移版本键);
+    const migrated = await 读取设置(get图片资源迁移版本键());
     if (migrated === true) {
         return { saves: 0, settings: 0 };
     }
@@ -2785,17 +2786,17 @@ export const 迁移图片资源到独立存储 = async (): Promise<{ saves: numb
         migratedSettings += 1;
     }
 
-    await 保存设置(图片资源迁移版本键, true);
+    await 保存设置(get图片资源迁移版本键(), true);
     return { saves: migratedSaves, settings: migratedSettings };
 };
 
 export const 读取存档保护状态 = async (): Promise<boolean> => {
-    const value = await 读取设置(存档保护设置键);
+    const value = await 读取设置(get存档保护设置键());
     return value === true;
 };
 
 export const 设置存档保护状态 = async (enabled: boolean): Promise<void> => {
-    await 保存设置(存档保护设置键, enabled === true);
+    await 保存设置(get存档保护设置键(), enabled === true);
 };
 
 export const 删除设置 = async (key: string): Promise<void> => {
@@ -2823,7 +2824,8 @@ export const 批量删除设置 = async (keys: string[]): Promise<void> => {
     await 清理未引用图片资源();
 };
 
-const 自定义背景天赋保护键 = [
+// 延迟访问 设置键 以避免循环依赖问题
+const get自定义背景天赋保护键 = () => [
     设置键.视觉设置,
     设置键.自定义天赋,
     设置键.自定义背景,
@@ -2987,10 +2989,10 @@ export const 清空全部设置 = async (options?: { 保留APIKey?: boolean; 保
     const keepKeys = new Set<string>();
     if (options?.保留APIKey) keepKeys.add(设置键.API配置);
     if (options?.保留自定义背景天赋) {
-        自定义背景天赋保护键.forEach((key) => keepKeys.add(key));
+        get自定义背景天赋保护键().forEach((key) => keepKeys.add(key));
     }
     if (await 读取存档保护状态()) {
-        keepKeys.add(存档保护设置键);
+        keepKeys.add(get存档保护设置键());
     }
 
     const snapshots = await 读取设置保护快照(Array.from(keepKeys));
@@ -3324,10 +3326,10 @@ export const 清空全部数据 = async (options?: { 保留APIKey?: boolean; 保
     const keepKeys = new Set<string>();
     if (options?.保留APIKey) keepKeys.add(设置键.API配置);
     if (options?.保留自定义背景天赋) {
-        自定义背景天赋保护键.forEach((key) => keepKeys.add(key));
+        get自定义背景天赋保护键().forEach((key) => keepKeys.add(key));
     }
     if (存档保护开启) {
-        keepKeys.add(存档保护设置键);
+        keepKeys.add(get存档保护设置键());
     }
     const snapshots = await 读取设置保护快照(Array.from(keepKeys));
 

@@ -29,7 +29,7 @@ const 解析标准时间为天数片段 = (raw?: string): { year: number; month:
         minute: Number(match[5])
     };
 };
-import { 规范化游戏设置, 计算远处联动阈值 } from '../../utils/gameSettings';
+import { 规范化游戏设置, 计算远处联动阈值, 计算当前阈值文本 } from '../../utils/gameSettings';
 import {
     构建世界书注入文本,
     世界书本体槽位
@@ -37,6 +37,8 @@ import {
 import { 构建主剧情难度摘要提示词 } from '../../prompts/runtime/promptOwnership';
 import { 获取内置提示词槽位内容 } from '../../utils/builtinPrompts';
 import { 按功能开关过滤提示词内容, 裁剪修炼体系上下文数据 } from '../../utils/promptFeatureToggles';
+import { 构建主剧情COT内容 } from '../../prompts/core/cot';
+import { 提取叙事约束块, 是否有叙事约束 } from '../../utils/narrativeConstraint';
 import {
     构建运行时提示词池,
     剥离NoControl关联提示词,
@@ -791,19 +793,9 @@ export const 构建系统提示词 = ({
         if (!config?.启用) return '';
         const ns = payload?.叙事平静值 as 叙事状态结构 | undefined;
         const 计数 = ns?.平静计数 ?? 0;
-        const 下限 = config.最低触发阈值 ?? 12;
-        const 上限 = config.上限 ?? 32;
-        const 文本列表 = Array.isArray(config.阈值文本) ? config.阈值文本 : [];
-        if (计数 < 下限) return '';
+        if (计数 < (config.最低触发阈值 ?? 12)) return '';
         const 活跃事件 = 获取当前活跃事件名(ns?.情节事件记录 || []);
-        let text = '';
-        if (文本列表.length === 0 || 计数 >= 上限) {
-            text = 文本列表[文本列表.length - 1] || '一切如常，只是似乎有什么事要发生了。';
-        } else {
-            const 段宽 = (上限 - 下限) / 文本列表.length;
-            const 段索引 = Math.min(文本列表.length - 1, Math.floor((计数 - 下限) / 段宽));
-            text = 文本列表[段索引] || '';
-        }
+        const text = 计算当前阈值文本(计数, config);
         const parts: string[] = [];
         if (活跃事件) parts.push(`当前：${活跃事件}（仍在进行）`);
         if (text) parts.push(text);
@@ -1506,9 +1498,16 @@ export const 构建系统提示词 = ({
     const difficultyPromptSummary = 按当前设置过滤提示词(
         构建主剧情难度摘要提示词(promptPool)
     );
+    const hasNarrativeConstraint = 是否有叙事约束(statePayload?.角色?.天赋列表);
     const cotPromptEntries = enabledPrompts
         .filter(p => selectedCotPromptIds.includes(p.id))
-        .map(p => ({ id: p.id, content: 应用境界区块替换(应用写作设置(p.id, 渲染提示词文本(读取主剧情内置槽位覆盖(p.id, p.内容)))) }));
+        .map(p => {
+            let content = p.内容;
+            if (hasNarrativeConstraint && (p.id === 'core_cot' || p.id === 'core_cot_fandom')) {
+                content = 构建主剧情COT内容({ hasNarrativeConstraint: true, fandom: p.id === 'core_cot_fandom' });
+            }
+            return { id: p.id, content: 应用境界区块替换(应用写作设置(p.id, 渲染提示词文本(读取主剧情内置槽位覆盖(p.id, content)))) };
+        });
     const formatPromptEntries = enabledPrompts
         .filter(p => p.id === 'core_format')
         .map(p => ({ id: p.id, content: 应用境界区块替换(应用写作设置(p.id, 渲染提示词文本(读取主剧情内置槽位覆盖(p.id, p.内容)))) }));
@@ -1707,6 +1706,9 @@ export const 构建系统提示词 = ({
     const contextSectState = 构建门派状态文本(statePayload);
     const contextTaskState = 构建任务列表文本(statePayload);
     const contextAgreementState = 构建约定列表文本(statePayload);
+    const narrativeConstraintBlock = 提取叙事约束块(
+        statePayload?.角色?.天赋列表
+    );
     const normalizedMemoryConfig = 规范化记忆配置(memoryConfig);
     const shortMemoryInjectLimit = Math.max(1, Number(normalizedMemoryConfig.短期记忆阈值) || 30);
     const shortMemoryEntries = options?.禁用短期记忆
@@ -1723,6 +1725,7 @@ export const 构建系统提示词 = ({
 
     return {
         systemPrompt: [
+            ...(narrativeConstraintBlock ? [narrativeConstraintBlock, ''] : []),
             promptHeader,
             difficultyPrompts,
             activePerspectiveContent,
@@ -1745,6 +1748,7 @@ export const 构建系统提示词 = ({
         shortMemoryContext,
         runtimePromptStates,
         contextPieces: {
+            叙事约束提示词: narrativeConstraintBlock,
             AI角色声明: ai角色声明,
             worldPrompt: worldPrompt.trim(),
             地图建筑状态: contextMapAndBuilding,

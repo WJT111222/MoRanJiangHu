@@ -170,7 +170,8 @@ export type 云同步恢复结果 = {
     timestamp: string;
 };
 
-const 排除提示词键集合 = new Set<string>([
+// 延迟访问 设置键 以避免循环依赖问题
+const get排除提示词键集合 = () => new Set<string>([
     设置键.提示词池,
     设置键.内置提示词,
     设置键.世界书列表,
@@ -322,7 +323,7 @@ export const 获取最近云同步恢复诊断 = (): 云同步恢复结果 | nul
     }
 };
 
-const 是否提示词相关键 = (key: string): boolean => 排除提示词键集合.has(key);
+const 是否提示词相关键 = (key: string): boolean => get排除提示词键集合().has(key);
 
 const 读取文本 = (value: unknown): string => (
     typeof value === 'string' ? value.trim() : ''

@@ -61,6 +61,7 @@ describe('chatCompletionClient Claude compatible message normalization', () => {
             baseUrl: 'https://qianfan.baidubce.com/v2/coding',
             model: 'deepseek-v3.2'
         }, [{ role: 'user', content: 'ping' }], {
+            temperature: 1.0,
             signal: undefined,
             streamOptions: { stream: false },
             errorDetailLimit: 500
@@ -84,6 +85,7 @@ describe('chatCompletionClient Claude compatible message normalization', () => {
             baseUrl: 'https://qianfan.baidubce.com/v2/',
             model: 'deepseek-v3.2'
         }, [{ role: 'user', content: 'ping' }], {
+            temperature: 1.0,
             signal: undefined,
             streamOptions: { stream: false },
             errorDetailLimit: 500
@@ -107,6 +109,7 @@ describe('chatCompletionClient Claude compatible message normalization', () => {
             baseUrl: 'https://example.com/api/paas/v4',
             model: 'custom-chat-model'
         }, [{ role: 'user', content: 'ping' }], {
+            temperature: 1.0,
             signal: undefined,
             streamOptions: { stream: false },
             errorDetailLimit: 500
@@ -133,6 +136,7 @@ describe('chatCompletionClient Claude compatible message normalization', () => {
             ...baseConfig,
             model: 'gemini-3.1-pro-high-search-真流-[星星公益站-CLI渠道]'
         }, [{ role: 'user', content: 'ping' }], {
+            temperature: 1.0,
             signal: undefined,
             streamOptions: { stream: false },
             errorDetailLimit: 500

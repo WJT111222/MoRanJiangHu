@@ -28,7 +28,10 @@ export interface 门派任务 {
 export interface 门派商品 {
     id: string;
     物品名称: string; // 直接使用中文名称
+    描述?: string; // 物品描述
     类型: '武学' | '丹药' | '装备' | '材料' | string;
+    品质?: string; // 物品品质
+    重量?: number; // 物品重量
     兑换价格: number; // 贡献点
     库存: number;
     要求职位: string; // e.g. "内门弟子"

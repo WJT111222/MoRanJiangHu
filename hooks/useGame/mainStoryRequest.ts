@@ -240,6 +240,7 @@ export const 构建主剧情请求参数 = (
             });
         };
 
+        pushEntry('narrative_constraint', '叙事约束', '系统', 'system', params.builtContext.contextPieces.叙事约束提示词 || '');
         pushEntry('ai_role', 'AI角色声明', '系统', 'system', params.builtContext.contextPieces.AI角色声明);
         pushEntry('world_prompt', '世界观提示词', '系统', 'system', params.builtContext.contextPieces.worldPrompt);
         pushEntry('world_map', '地图与空间锚点', '系统', 'system', params.builtContext.contextPieces.地图建筑状态);

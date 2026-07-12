@@ -31,9 +31,12 @@ export interface 角色金钱 {
     中层货币: number;
     底层货币: number;
     baseAmount?: number;
+    // 传统武侠/现代题材
     金元宝?: number;
     银子?: number;
     铜钱?: number;
+    // 修仙题材
+    灵石?: number;
 }
 
 export interface 玩家BUFF结构 {
