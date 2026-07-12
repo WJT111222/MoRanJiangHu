@@ -49,8 +49,8 @@ describe('APK B2 provider', () => {
         } as any);
 
         expect(response.status).toBe(302);
-        expect(response.headers.get('Location')).toBe('https://github.com/ypq123456789/MoRanJiangHu/releases/download/v1.0.529/MoRanJiangHu-v1.0.529.apk');
-        expect(response.headers.get('X-Moran-Apk-Source')).toBe('github-release');
+        expect(response.headers.get('Location')).toBe('https://gh.ddlc.top/https://github.com/ypq123456789/MoRanJiangHu/releases/download/v1.0.529/MoRanJiangHu-v1.0.529.apk');
+        expect(response.headers.get('X-Moran-Apk-Source')).toBe('github-release-accelerated');
     });
 
     it('uses OneDrive for latest.apk when the manifest prefers OneDrive', async () => {
@@ -114,7 +114,7 @@ describe('APK B2 provider', () => {
         } as any);
 
         expect(response.status).toBe(302);
-        expect(response.headers.get('Location')).toBe('https://github.com/ypq123456789/MoRanJiangHu/releases/download/v1.0.529/MoRanJiangHu-v1.0.529.apk');
-        expect(response.headers.get('X-Moran-Apk-Source')).toBe('github-release');
+        expect(response.headers.get('Location')).toBe('https://gh.ddlc.top/https://github.com/ypq123456789/MoRanJiangHu/releases/download/v1.0.529/MoRanJiangHu-v1.0.529.apk');
+        expect(response.headers.get('X-Moran-Apk-Source')).toBe('github-release-accelerated');
     });
 });

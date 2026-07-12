@@ -53,7 +53,10 @@ const handleVersionedApkRequest = async (context: any, _method: 'GET' | 'HEAD'):
             return buildTextResponse('OneDrive APK not available', 502);
         }
         if (provider === 'github') {
-            const githubResponse = buildGitHubApkRedirect(versionName, fileName);
+            const accelerator = typeof env?.MORAN_GITHUB_RELEASE_ACCELERATOR === 'string'
+                ? env.MORAN_GITHUB_RELEASE_ACCELERATOR
+                : undefined;
+            const githubResponse = buildGitHubApkRedirect(versionName, fileName, undefined, accelerator);
             if (githubResponse) return githubResponse;
             return buildTextResponse('GitHub Release APK not available', 502);
         }

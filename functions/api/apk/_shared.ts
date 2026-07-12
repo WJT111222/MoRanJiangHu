@@ -416,22 +416,36 @@ export const buildOneDriveApkRedirect = async (
 const GITHUB_REPO_OWNER = 'ypq123456789';
 const GITHUB_REPO_NAME = 'MoRanJiangHu';
 
+// 国内直连 github.com release 下载极慢（实测约 15KB/s，常超时），因此默认经加速镜像代理。
+// 首选镜像可用环境变量 MORAN_GITHUB_RELEASE_ACCELERATOR 覆盖；设为空字符串则回退裸 github.com 直链。
+const DEFAULT_GITHUB_RELEASE_ACCELERATOR = 'https://gh.ddlc.top';
+
+const buildGitHubReleaseDirectUrl = (safeVersion: string, fileName: string): string => (
+    `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/download/v${safeVersion}/${fileName}`
+);
+
 /**
- * 构建 GitHub Release 直接下载 URL（零延迟，无需 API 调用）。
- * URL 格式固定：https://github.com/{owner}/{repo}/releases/download/v{tag}/{fileName}
+ * 构建 GitHub Release 下载 URL（零延迟，无需 API 调用）。
+ * 默认经国内加速镜像代理（gh.ddlc.top），可用 env.MORAN_GITHUB_RELEASE_ACCELERATOR 覆盖，
+ * 显式传入空字符串镜像则回退到裸 github.com 直链。
  * 如果版本名无效则返回 null。
  */
 export const buildGitHubApkRedirect = (
     versionName: string,
     fileName: string,
-    cacheControl = APK_VERSIONED_CACHE_CONTROL
+    cacheControl = APK_VERSIONED_CACHE_CONTROL,
+    accelerator: string | undefined = DEFAULT_GITHUB_RELEASE_ACCELERATOR
 ): Response | null => {
     const safeVersion = typeof versionName === 'string'
         ? versionName.trim().replace(/[^0-9A-Za-z._-]/g, '')
         : '';
     if (!safeVersion) return null;
 
-    const downloadUrl = `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/download/v${safeVersion}/${fileName}`;
+    const directUrl = buildGitHubReleaseDirectUrl(safeVersion, fileName);
+    const normalizedAccelerator = typeof accelerator === 'string' ? accelerator.trim().replace(/\/+$/, '') : '';
+    const downloadUrl = normalizedAccelerator && /^https:\/\/[^/]+$/i.test(normalizedAccelerator)
+        ? `${normalizedAccelerator}/${directUrl}`
+        : directUrl;
 
     return new Response(null, {
         status: 302,
@@ -440,7 +454,7 @@ export const buildGitHubApkRedirect = (
             'Content-Type': 'application/vnd.android.package-archive',
             'Cache-Control': cacheControl,
             'Content-Disposition': `attachment; filename="${fileName}"`,
-            'X-Moran-Apk-Source': 'github-release',
+            'X-Moran-Apk-Source': normalizedAccelerator ? 'github-release-accelerated' : 'github-release',
             ...APK_CORS_HEADERS
         },
     });

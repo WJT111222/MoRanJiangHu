@@ -64,6 +64,19 @@
 - `/api/apk/latest.json` showing the new version is NOT sufficient evidence of a website deploy. It is a valid check only for the APK/update-manifest channel, and only after the release-manifest publish step has run.
 - If the static-assets checks above do not pass, the website deployment is INCOMPLETE — re-run `npm run build` + `wrangler deploy` (proxy vars cleared) and re-verify, instead of reporting success.
 
+## Worker Functions Rebuild & Live-Behavior Verification Rule (CRITICAL — learned from a stale worker bundle deploy)
+
+- `wrangler deploy`'s success log only means "the upload action finished"; it does NOT mean the part you changed actually became the live response. KV manifest, static-assets bundle, and worker-functions bundle are three independent artifacts, each with its own update path and its own "not rebuilt" trap.
+- **Stale worker-functions bundle trap**: after editing anything under `functions/`, running `npm run worker:functions` / `worker:build` does not always rebuild the compiled output — `.tmp-worker-build/index.js` can keep an old timestamp (wrangler pages functions build sometimes skips a rebuild). The first `wrangler deploy` then ships the OLD code and the live behavior does not change, even though deploy "succeeded".
+- **Mandatory before deploying a `functions/` change**:
+  1. After `npm run worker:functions`, confirm `.tmp-worker-build/index.js` file timestamp is newer than your code edit.
+  2. `grep` for a symbol/identifier you just added (e.g. a new variable or function name) inside `.tmp-worker-build/index.js` to prove it is actually in the compiled bundle.
+  3. If the timestamp is stale or the identifier is missing, `rm -rf .tmp-worker-build` and rebuild, then deploy.
+- **Mandatory after every deploy — test the LIVE behavior over HTTPS, not the deploy log**:
+  - Website front-end change: verify per the Static Assets rule above (release-info.json + hashed bundle name match).
+  - Worker/API logic change: directly hit the affected endpoint (with a cache-buster or after confirming `cache-control: no-store`) and confirm the returned data / ordering / redirect target matches the NEW logic.
+  - Pass criterion: live measured behavior == expected new behavior. Any mismatch = deploy did not take effect; rebuild the artifact and redeploy. Never declare done from the deploy log alone.
+
 ## Legacy APK Update Manifest Rule (DECOMMISSIONED)
 
 - The legacy `download.bacon.de5.net` update manifest path was hosted on Cloudflare R2, which has been **fully decommissioned**. R2 is no longer available for any purpose.

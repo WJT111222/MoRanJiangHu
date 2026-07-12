@@ -64,6 +64,17 @@
 - `/api/apk/latest.json` 显示新版本不足以作为网站部署成功的证据。它只对 APK/update-manifest 通道有效，且只在 release-manifest 发布步骤运行之后才有意义。
 - 如果上述静态资源检查未通过，网站部署即为**未完成**——应重新执行 `npm run build` + `wrangler deploy`（清除代理变量）并重新验证，而不是报告成功。
 
+## Worker Functions 重编译与部署后实测规则（关键——源于一次"部署了旧代码"事故）
+
+- `wrangler deploy` 打印 `Success` / `Uploaded N files` 只代表"上传动作完成"，**不代表你的代码改动已经生效**。static assets 和 worker functions 都可能没真正上新。
+- **Worker functions 重编译陷阱**：改了 `functions/` 下的代码后，`npm run worker:functions`（`wrangler pages functions build`）有时不会真正重新编译，`.tmp-worker-build/index.js` 仍是旧时间戳、旧内容。此时部署上去的是旧代码，线上行为不变。
+  - 复现过的事故：修复 `functions/api/apk/latest.json.ts` 的 `apkUrls` 排序后，第一次部署线上顺序完全没变，排查发现 `.tmp-worker-build/index.js` 时间戳早于改动。
+  - **强制做法**：编译前先 `rm -rf .tmp-worker-build` 清理旧产物再 `npm run worker:functions`；编译后确认 `.tmp-worker-build/index.js` 时间戳是刚生成的，并 `grep` 新逻辑的标识符（如新函数名/变量名）确认真的进了产物，然后才 `wrangler deploy`。
+- **部署后必须从 HTTPS 实测线上真实行为**，而不是只看 deploy 日志：
+  - 网站前端：核对线上 `index.html` 引用的 hashed bundle 名与本地 `dist/` 一致（见静态资源部署验证规则）。
+  - Worker/functions：直接请求受影响的接口，核对返回内容/顺序/重定向落点符合预期（例如 `/api/apk/latest.json` 的 `apkUrls` 顺序、`/api/apk/latest.apk` 的 302 落点）。
+- 若实测行为与预期不符，部署即为**未完成**——清理产物、重编译、确认标识进产物、重新部署、再实测，而不是报告成功。
+
 ## 旧版 APK 更新清单规则（已停用）
 
 - 旧版 `download.bacon.de5.net` 更新清单路径托管在 Cloudflare R2 上，R2 已**完全停用**，不再用于任何用途。
