@@ -337,7 +337,7 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
                         {selectedNode ? (
                             <>
                                 <div className="text-xs tracking-widest text-gray-500 mb-1">{层级标签[selectedNode.层级]} · {selectedNode.子节点.length} 个子区域</div>
-                                <div className="text-sm font-bold text-gray-200 mb-1">{selectedNode.名称}</div>
+                                <div className="text-sm font-bold text-gray-200 mb-1">{(selectedNode as any).名称 || (selectedNode as any).鍚嶇О || ''}</div>
                                 {(selectedNode.控制势力 || selectedNode.势力影响 || (selectedNode.势力标签 && selectedNode.势力标签.length > 0)) && (
                                     <div className="mb-2 rounded border border-amber-400/20 bg-amber-400/5 px-2 py-1.5 text-sm text-amber-100/90">
                                         {selectedNode.控制势力 && <div><span className="text-amber-300">主导势力：</span>{selectedNode.控制势力}</div>}
@@ -351,8 +351,8 @@ const LocationBrowser: React.FC<Props> = ({ world, env, onRegenerateMap, compact
                                         )}
                                     </div>
                                 )}
-                                {selectedNode.描述 ? (
-                                    <div className="text-sm text-gray-400 leading-relaxed">{selectedNode.描述}</div>
+                                {((selectedNode as any).描述 || (selectedNode as any).鎻忚堪) ? (
+                                    <div className="text-sm text-gray-400 leading-relaxed">{(selectedNode as any).描述 || (selectedNode as any).鎻忚堪}</div>
                                 ) : (
                                     <div className="text-sm text-gray-600">暂无描述</div>
                                 )}

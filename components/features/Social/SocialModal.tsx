@@ -5,7 +5,7 @@ import { NPC结构 } from '../../../models/social';
 import type { 香闺秘档部位类型 } from '../../../models/imageGeneration';
 import { 构建NPC记忆展示结果 } from '../../../hooks/useGame/npcMemorySummary';
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
-import { 获取图片展示地址 } from '../../../utils/imageAssets';
+import { 获取图片展示地址, 获取图片资源文本地址 } from '../../../utils/imageAssets';
 import { 格式化月日 } from '../../../utils/characterVitals';
 import type { OpeningConfig } from '../../../types';
 import { 获取题材界面文案, 获取题材资源文案 } from '../../../utils/resourceLabels';
@@ -525,11 +525,14 @@ const SocialModal: React.FC<Props> = ({
         (item) => item?.构图 === '头像',
         npc?.图片档案?.已选头像图片ID
     ));
-    const 提取立绘图片地址 = (npc: any) => 获取图片展示地址(提取符合条件图片记录(
-        npc,
-        (item) => item?.构图 === '立绘' || item?.构图 === '半身',
-        npc?.图片档案?.已选立绘图片ID
-    ));
+    const 提取立绘图片地址 = (npc: any) => {
+        const fromArchive = 获取图片展示地址(提取符合条件图片记录(
+            npc,
+            (item) => item?.构图 === '立绘' || item?.构图 === '半身',
+            npc?.图片档案?.已选立绘图片ID
+        ));
+        return fromArchive || 获取图片资源文本地址(npc?.立绘图片URL);
+    };
     const 提取背景图片地址 = (npc: any) => 获取图片展示地址(提取符合条件图片记录(
         npc,
         (item) => item?.构图 !== '部位特写',

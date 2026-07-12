@@ -62,7 +62,7 @@ const 提取人物头像 = (person: any): string => {
     const selected = selectedAvatarId ? records.find((item) => item?.id === selectedAvatarId) : null;
     const avatar = selected || records.find((item) => item?.构图 === '头像' && item?.状态 === 'success' && 获取图片展示地址(item));
     const portrait = records.find((item) => item?.构图 === '立绘' && item?.状态 === 'success' && 获取图片展示地址(item));
-    return 获取图片展示地址(avatar) || 获取图片展示地址(portrait) || 获取图片资源文本地址(person?.头像图片URL);
+    return 获取图片展示地址(avatar) || 获取图片展示地址(portrait) || 获取图片资源文本地址(person?.头像图片URL) || 获取图片资源文本地址(person?.立绘图片URL);
 };
 
 const MobileTeamModal: React.FC<Props> = ({ character, teammates, openingConfig, onClose }) => {
