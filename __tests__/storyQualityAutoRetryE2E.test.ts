@@ -230,6 +230,8 @@ describe('主剧情质量审查自动重试端到端', () => {
 
         expect(result.cancelled).not.toBe(true);
         expect(textAIService.generateStoryResponse).toHaveBeenCalledTimes(2);
+        const systemPromptOptions = vi.mocked(deps.构建系统提示词).mock.calls[0]?.[4] as any;
+        expect(systemPromptOptions.世界书附加文本?.[0]).toContain('玩家：继续。');
         expect(retryReasons.join('\n')).toContain('极其');
         const secondRequestOptions = vi.mocked(textAIService.generateStoryResponse).mock.calls[1][7] as any;
         expect(secondRequestOptions.lengthRequirementPrompt).toContain('【自动重试正文质量修正】');
