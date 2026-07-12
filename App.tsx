@@ -1757,6 +1757,37 @@ const App: React.FC = () => {
         };
     }, [state.apiConfig]);
     const mainStoryApiLabel = `主剧情：${mainStoryApiInfo.channelName} / ${mainStoryApiInfo.modelName}`;
+    const tavernPresetStatus = React.useMemo(() => {
+        const config = state.gameConfig;
+        const enabled = config?.启用酒馆预设模式 === true;
+        const presetName = String(config?.酒馆预设名称 || '').trim();
+        const presetId = String(config?.当前酒馆预设ID || '').trim();
+        const hasPresetPayload = Boolean(config?.酒馆预设);
+
+        if (!enabled) {
+            return {
+                label: '酒馆预设：未开启',
+                title: '当前未启用创意工坊/酒馆预设注入',
+                tone: 'off' as const
+            };
+        }
+
+        if (presetName) {
+            return {
+                label: `酒馆预设：已开启（${presetName}）`,
+                title: `当前酒馆预设已注入：${presetName}${presetId ? `\n预设ID：${presetId}` : ''}`,
+                tone: 'on' as const
+            };
+        }
+
+        return {
+            label: hasPresetPayload || presetId ? '酒馆预设：已开启（预设读取中）' : '酒馆预设：已开启（未选择预设）',
+            title: hasPresetPayload || presetId
+                ? `酒馆预设模式已开启，正在读取预设名称${presetId ? `\n预设ID：${presetId}` : ''}`
+                : '酒馆预设模式已开启，但当前没有选中的预设',
+            tone: (hasPresetPayload || presetId ? 'loading' : 'warning') as const
+        };
+    }, [state.gameConfig]);
     const 尝试返回首页云端同步 = React.useCallback(async (returnHomeSave: Awaited<ReturnType<typeof actions.performAutoSave>>) => {
         const syncTask = (async () => {
             await 等待云端后台同步完成();
@@ -3211,6 +3242,20 @@ const App: React.FC = () => {
                                       title={mainStoryApiLabel}
                                   >
                                       <span className="truncate">{mainStoryApiLabel}</span>
+                                  </div>
+                                  <div
+                                      className={`max-w-[min(58vw,380px)] items-center truncate rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] shadow-[0_8px_20px_rgba(0,0,0,0.35)] backdrop-blur sm:inline-flex ${
+                                          tavernPresetStatus.tone === 'on'
+                                              ? 'border-emerald-300/45 bg-emerald-950/75 text-emerald-100'
+                                              : tavernPresetStatus.tone === 'loading'
+                                                  ? 'border-amber-300/45 bg-amber-950/75 text-amber-100'
+                                                  : tavernPresetStatus.tone === 'warning'
+                                                      ? 'border-orange-300/45 bg-orange-950/75 text-orange-100'
+                                                      : 'border-wuxia-gold/35 bg-black/65 text-wuxia-gold/80'
+                                      }`}
+                                      title={tavernPresetStatus.title}
+                                  >
+                                      <span className="truncate">{tavernPresetStatus.label}</span>
                                   </div>
                                   {chatContentHidden && (
                                       <button
