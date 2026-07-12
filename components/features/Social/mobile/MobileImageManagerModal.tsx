@@ -26,7 +26,7 @@ import ToggleSwitch from '../../../ui/ToggleSwitch';
 import DataUrlSafeImage from '../../../ui/DataUrlSafeImage';
 import { 获取命中模型词组转化器预设, 规范化接口设置 } from '../../../../utils/apiConfig';
 import { 自动场景横屏尺寸选项, 自动场景竖屏尺寸选项 } from '../../../../utils/imageSizeOptions';
-import { 获取本地图片图床迁移状态, 订阅本地图片图床迁移状态 } from '../../../../services/dbService';
+import { 获取本地图片图床迁移状态, 订阅本地图片图床迁移状态, 获取用户图库全部条目, 删除用户图库条目, 用户图库条目 } from '../../../../services/dbService';
 import ImageMigrationStatusPanel from '../ImageMigrationStatusPanel';
 import { NPC是否男性或男娘 } from '../../../../utils/npcGenderFlags';
 import { 构建角色锚点绑定选项 } from '../../../../utils/characterAnchorOptions';
@@ -40,6 +40,7 @@ type 物品历史展示记录 = 物品生图结果 & {
 };
 
 interface Props {
+    initialTab?: 页面标签类型;
     socialList: NPC结构[];
     playerCharacter?: 角色数据结构 | null;
     cultivationSystemEnabled?: boolean;
@@ -105,7 +106,7 @@ interface Props {
     onExportPresets?: () => Promise<void>;
 }
 
-type 页面标签类型 = 'manual' | 'library' | 'scene' | 'queue' | 'history' | 'presets' | 'rules' | 'migration';
+type 页面标签类型 = 'manual' | 'library' | 'scene' | 'queue' | 'history' | 'presets' | 'rules' | 'migration' | 'itemGallery';
 
 type NPC图库分组 = {
     npc: NPC结构;
@@ -373,10 +374,12 @@ const MobileImageManagerModal: React.FC<Props> = ({
     onSavePromptConverterPreset,
     onDeletePromptConverterPreset,
     onImportPresets,
-    onExportPresets
+    onExportPresets,
+    initialTab
 }) => {
     use图片资源回源预取(socialList, playerCharacter, sceneArchive, currentPersistentWallpaper, apiConfig);
-    const [activeTab, setActiveTab] = React.useState<页面标签类型>('manual');
+    const initialTabRef = React.useRef(initialTab);
+    const [activeTab, setActiveTab] = React.useState<页面标签类型>(initialTabRef.current || 'manual');
     const [busyActionKey, setBusyActionKey] = React.useState('');
     const [actionError, setActionError] = React.useState('');
     const [legacyImageMigrationStatus, setLegacyImageMigrationStatus] = React.useState(() => 获取本地图片图床迁移状态());
@@ -410,13 +413,15 @@ const MobileImageManagerModal: React.FC<Props> = ({
             case 'scene':
                 return <SceneTabContent {...propsForTabs} />;
             case 'queue':
-                return <HistoryTabContent {...propsForTabs} queueMode />;
+                return <><QueueTabContent {...propsForTabs} /><div className="mt-4"><HistoryTabContent {...propsForTabs} /></div></>;
             case 'presets':
                 return <PresetsTabContent {...propsForTabs} />;
             case 'rules':
                 return <RulesTabContent {...propsForTabs} />;
             case 'migration':
                 return <ImageMigrationStatusPanel status={legacyImageMigrationStatus} compact />;
+            case 'itemGallery':
+                return <ItemGalleryTabContent />;
             default:
                 return null;
         }
@@ -475,6 +480,7 @@ const MobileImageManagerModal: React.FC<Props> = ({
                     <button className={标签按钮样式(activeTab === 'presets')} onClick={() => setActiveTab('presets')}>资源</button>
                     <button className={标签按钮样式(activeTab === 'rules')} onClick={() => setActiveTab('rules')}>规则</button>
                     <button className={标签按钮样式(activeTab === 'migration')} onClick={() => setActiveTab('migration')}>迁移</button>
+                    <button className={标签按钮样式(activeTab === 'itemGallery')} onClick={() => setActiveTab('itemGallery')}>物图</button>
                 </div>
             </div>
 
@@ -1819,7 +1825,7 @@ const QueueTabContent: React.FC<TabProps> = ({ queue, sceneQueue, itemImageSeque
     );
 };
 
-const HistoryTabContent: React.FC<TabProps & { queueMode?: boolean }> = (props) => {
+const HistoryTabContent: React.FC<TabProps> = (props) => {
     const {
     socialList,
     sceneArchive,
@@ -1831,8 +1837,7 @@ const HistoryTabContent: React.FC<TabProps & { queueMode?: boolean }> = (props) 
     onSetPersistentWallpaper,
     onClearPersistentWallpaper,
     withBusyAction,
-    busyActionKey,
-    queueMode = false
+    busyActionKey
     } = props;
     const [imageViewer, setImageViewer] = React.useState<{ src: string; alt: string } | null>(null);
     const 打开图片查看器 = React.useCallback((src?: string, alt?: string) => {
@@ -1854,17 +1859,10 @@ const HistoryTabContent: React.FC<TabProps & { queueMode?: boolean }> = (props) 
         return [...npcItems, ...sceneItems, ...itemItems].sort((a, b) => b.时间 - a.时间);
     }, [itemImageSequence, socialList, sceneArchive]);
 
-    if (combinedHistory.length === 0 && !queueMode) return <空状态 title="历史为空" desc="所有生成记录（不论成败）都会显示在这里。" />
+    if (combinedHistory.length === 0) return <空状态 title="历史为空" desc="所有生成记录（不论成败）都会显示在这里。" />
 
     return (
         <div className="space-y-4 px-1 pb-4">
-            {queueMode && (
-                <div className={`${卡片样式} p-3 space-y-2 border-cyan-300/20 bg-cyan-950/10`}>
-                    <div className="text-sm font-serif font-bold tracking-widest text-cyan-100">实时队列状态</div>
-                    <div className="text-[10px] text-cyan-100/55">下方继续沿用生成历史框架展示完整记录。</div>
-                    <QueueTabContent {...props} />
-                </div>
-            )}
             <div className="flex gap-2 justify-end flex-wrap">
                 {onClearImageHistory && <button onClick={() => withBusyAction('clear_npc_hist_all', () => onClearImageHistory())} disabled={!!busyActionKey} className={次级按钮样式(true, true)}>清空NPC历史</button>}
                 {onClearSceneHistory && <button onClick={() => withBusyAction('clear_scene_hist_all', () => onClearSceneHistory())} disabled={!!busyActionKey} className={次级按钮样式(true, true)}>清空场景历史</button>}
@@ -3262,6 +3260,84 @@ const RulesTabContent: React.FC<TabProps> = ({
                     ))}
                     {((feature?.词组转化器提示词预设列表 || []).length === 0) && <div className="text-center text-[#a67c00]/60 font-serif tracking-widest py-4 border border-dashed border-[#d4af37]/20 rounded">暂无转化器规则模板。</div>}
                 </div>
+            </div>
+        </div>
+    );
+};
+
+const ItemGalleryTabContent: React.FC = () => {
+    const [entries, setEntries] = React.useState<用户图库条目[]>([]);
+    const [filterMode, setFilterMode] = React.useState<string>('全部');
+
+    const refresh = React.useCallback(async () => {
+        try {
+            const all = await 获取用户图库全部条目();
+            setEntries(all);
+        } catch {
+            setEntries([]);
+        }
+    }, []);
+
+    React.useEffect(() => {
+        void refresh();
+        const id = window.setInterval(() => void refresh(), 15_000);
+        return () => window.clearInterval(id);
+    }, [refresh]);
+
+    const handleDelete = async (entry: 用户图库条目) => {
+        try {
+            await 删除用户图库条目(entry.id);
+            await refresh();
+        } catch { /* ignore */ }
+    };
+
+    const galleryItemTypes = React.useMemo(() => {
+        const types = new Set(entries.map(e => e.itemType));
+        const priority = ['装备', '武器', '丹药', '秘籍', '杂物'];
+        const sorted = priority.filter(t => types.has(t));
+        const rest = [...types].filter(t => !priority.includes(t)).sort();
+        return ['全部', ...sorted, ...rest];
+    }, [entries]);
+
+    React.useEffect(() => {
+        if (filterMode !== '全部' && !galleryItemTypes.includes(filterMode)) {
+            setFilterMode('全部');
+        }
+    }, [filterMode, galleryItemTypes]);
+
+    const filtered = filterMode === '全部' ? entries : entries.filter((e) => e.itemType === filterMode);
+
+    return (
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex-shrink-0 flex flex-wrap gap-1.5 p-2 border-b border-white/10">
+                {galleryItemTypes.map((t) => (
+                    <button key={t} type="button" onClick={() => setFilterMode(t)}
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition ${filterMode === t ? 'bg-violet-500/20 text-violet-100 border border-violet-400/40' : 'bg-white/5 text-gray-400 border border-white/10'}`}
+                    >{t}</button>
+                ))}
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+                {filtered.length === 0 ? (
+                    <div className="flex h-full items-center justify-center text-xs text-gray-500">还没有存入图库的图片</div>
+                ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                        {filtered.map((entry) => (
+                            <div key={entry.id} className="relative rounded border border-white/10 bg-black/20 p-1.5">
+                                <div className="aspect-square w-full overflow-hidden rounded bg-black/30">
+                                    {entry.thumbnailDataUrl ? (
+                                        <img src={entry.thumbnailDataUrl} alt={entry.itemName} className="h-full w-full object-contain" />
+                                    ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-[9px] text-gray-600">无缩略图</div>
+                                    )}
+                                </div>
+                                <p className="mt-0.5 truncate text-[9px] font-semibold text-gray-200">{entry.itemName}</p>
+                                <button type="button" onClick={() => void handleDelete(entry)}
+                                    className="absolute right-0.5 top-0.5 rounded-full bg-red-600/80 px-1 py-0.5 text-[8px] font-bold text-white"
+                                >✕</button>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

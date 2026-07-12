@@ -16,7 +16,7 @@ import InlineSelect from '../../ui/InlineSelect';
 import { RELEASE_INFO } from '../../../data/releaseInfo';
 import { 默认ComfyUI工作流JSON, 默认NSFWComfyUI工作流JSON } from '../../../data/defaultComfyWorkflow';
 import { openExternalUrl } from '../../../services/appUpdate';
-import { 规范化接口设置, 获取文生图接口配置, 获取NSFW文生图接口配置, 接口配置是否可用, 构建OpenAI兼容模型列表候选地址, type 当前可用接口结构 } from '../../../utils/apiConfig';
+import { 规范化接口设置, 获取文生图接口配置, 获取NSFW文生图接口配置, 接口配置是否可用, type 当前可用接口结构 } from '../../../utils/apiConfig';
 import { 自动场景横屏尺寸选项, 自动场景竖屏尺寸选项 } from '../../../utils/imageSizeOptions';
 import {
     buildDiscoveredBackendLabel,
@@ -29,6 +29,7 @@ import {
     type ImageBackendConnectionStats
 } from '../../../services/ai/imageBackendRegistry';
 import { 规范化ComfyUI工作流JSON } from '../../../services/ai/comfyWorkflowTools';
+import { 探测图片Url取回代理 } from '../../../services/ai/openaiImageTest';
 import {
     下载创意工坊模块,
     发布创意工坊模块,
@@ -295,6 +296,8 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
     const [discoveryError, setDiscoveryError] = useState('');
     const [testingImageConnection, setTestingImageConnection] = useState(false);
     const [testingNsfwConnection, setTestingNsfwConnection] = useState(false);
+    const [proxyTestStatus, setProxyTestStatus] = useState<'idle' | 'loading' | 'ok' | 'fail'>('idle');
+    const [proxyTestMessage, setProxyTestMessage] = useState('');
     const [comfyWorkflowModules, setComfyWorkflowModules] = useState<创意工坊模块条目[]>([]);
     const [comfyWorkflowLoading, setComfyWorkflowLoading] = useState(false);
     const [comfyWorkflowBusy, setComfyWorkflowBusy] = useState('');
@@ -1062,6 +1065,9 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                 : (overwrite ? '' : (feature.NSFW生图模型使用模型 || '')),
             NSFW生图模型API地址: pick(feature.NSFW生图模型API地址, feature.文生图模型API地址),
             NSFW生图模型API密钥: nsfwApiKey,
+            NSFW自定义图片代理地址: overwrite
+                ? (feature.自定义图片代理地址 || '')
+                : ((feature.NSFW自定义图片代理地址 || '').trim() || (feature.自定义图片代理地址 || '')),
             当前NSFW图片后端发现ID: overwrite
                 ? feature.当前图片后端发现ID
                 : ((feature.当前NSFW图片后端发现ID || '').trim() || feature.当前图片后端发现ID),
@@ -1319,8 +1325,9 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                 const details = [];
                 if (!independent) details.push('NSFW 独立接口未启用');
                 if (nsfwConfig) {
-                    details.push(`推断后端：${nsfwConfig.图片后端类型 || '未识别'}`);
-                    details.push(`地址：${nsfwConfig.baseUrl || '未填写'}`);
+                    const cfg = nsfwConfig as any;
+                    details.push(`推断后端：${cfg.图片后端类型 || '未识别'}`);
+                    details.push(`地址：${cfg.baseUrl || '未填写'}`);
                 }
                 throw new Error(`NSFW 生图配置不可用。${details.length ? '\n' + details.join('\n') : ''}\n请确认：1) 主文生图后端不是 OpenAI/Gemini 等不支持成人向的接口；2) 或者开启 NSFW 独立接口并配置 ComfyUI/SD WebUI/NovelAI 后端。`);
             }
@@ -1427,7 +1434,13 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                     // 继续按通用模型列表探测。
                 }
             }
-            const candidateUrls = 构建OpenAI兼容模型列表候选地址(normalizedModelBase);
+            const base = normalizedModelBase.replace(/\/+$/, '');
+            const normalized = base.replace(/\/v1$/i, '');
+            const candidateUrls = Array.from(new Set([
+                `${normalized}/v1/models`,
+                `${normalized}/models`,
+                `${base}/models`
+            ]));
             for (const url of candidateUrls) {
                 const res = await fetch(url, {
                     headers: targetNeedsAuth ? { Authorization: `Bearer ${resolvedApiKey}` } : undefined
@@ -1629,6 +1642,18 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                         className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 text-white outline-none transition-all focus:border-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
                     />
                 </div>
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-sm font-bold text-rose-200">NSFW 自定义图片代理地址</label>
+                <input
+                    type="text"
+                    value={form.功能模型占位.NSFW自定义图片代理地址 || ''}
+                    onChange={(e) => updatePlaceholder('NSFW自定义图片代理地址', e.target.value)}
+                    placeholder="留空则使用默认代理（msjh.bacon159.pp.ua），或填写你自己的 CORS 代理"
+                    disabled={!form.功能模型占位.NSFW生图独立接口启用}
+                    className="w-full rounded-md border-2 border-transparent bg-black/50 p-3 text-white outline-none transition-all focus:border-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
+                />
             </div>
 
             {form.功能模型占位.NSFW生图独立接口启用 && 当前NSFW后端 === 'comfyui' && (
@@ -2175,6 +2200,54 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                     </div>
                 </div>
             )}
+
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3">
+                <div>
+                    <div className="text-sm font-bold text-fuchsia-200">经代理访问</div>
+                    <div className="text-xs text-gray-400">开启后生图请求走代理，解决 CORS 跨域问题。本地 dev 环境自动开启。</div>
+                </div>
+                <ToggleSwitch
+                    checked={Boolean(form.功能模型占位.图片需要代理)}
+                    onChange={(next) => updatePlaceholder('图片需要代理', next)}
+                    ariaLabel="切换经代理访问"
+                />
+            </div>
+            <div className="mt-2 space-y-2 rounded-xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3">
+                <div>
+                    <div className="text-sm font-bold text-fuchsia-200">自定义图片代理地址</div>
+                    <div className="text-xs text-gray-400">可选。留空则使用默认代理，或填写你自己的 CORS 代理地址。</div>
+                </div>
+                <input
+                    type="text"
+                    value={form.功能模型占位.自定义图片代理地址 || ''}
+                    onChange={(e) => updatePlaceholder('自定义图片代理地址', e.target.value)}
+                    placeholder="留空则使用默认代理（msjh.bacon159.pp.ua），或填写你自己的 CORS 代理"
+                    disabled={!form.功能模型占位.图片需要代理}
+                    className="w-full rounded-lg border border-fuchsia-500/30 bg-black/40 px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-fuchsia-400 disabled:opacity-50"
+                />
+                <div className="flex items-center gap-2 pt-1">
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            setProxyTestStatus('loading');
+                            setProxyTestMessage('');
+                            const result = await 探测图片Url取回代理();
+                            const isOk = result.startsWith('url 取回代理可达');
+                            setProxyTestStatus(isOk ? 'ok' : 'fail');
+                            setProxyTestMessage(result);
+                        }}
+                        disabled={proxyTestStatus === 'loading' || !form.功能模型占位.图片需要代理}
+                        className="text-xs rounded bg-fuchsia-700/30 px-2.5 py-1.5 text-fuchsia-200 border border-fuchsia-500/30 hover:bg-fuchsia-700/50 disabled:opacity-40 transition"
+                    >
+                        {proxyTestStatus === 'loading' ? '检测中...' : '测试代理连接'}
+                    </button>
+                    {proxyTestMessage ? (
+                        <span className={`text-[11px] ${proxyTestStatus === 'ok' ? 'text-green-400' : 'text-red-400'}`}>
+                            {proxyTestStatus === 'ok' ? '🟢 ' : '🔴 '}{proxyTestMessage}
+                        </span>
+                    ) : null}
+                </div>
+            </div>
 
         </div>
     );

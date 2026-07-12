@@ -9,7 +9,8 @@ import {
     获取物品可装备槽位,
     获取装备槽位标签
 } from '../../../utils/equipmentActions';
-import { 获取物品已选图标地址 } from '../../../utils/itemImage';
+import { 获取物品已选图标地址, 物品已在图库中, 提取图库物品名称, 查询用户图库图片 } from '../../../utils/itemImage';
+import type { 用户图库条目 } from '../../../services/dbService';
 import { 获取物品明细分组 } from '../../../utils/rulebook';
 import { 是否杂物类物品 } from '../../../utils/inventoryActions';
 import { 获取题材界面文案 } from '../../../utils/resourceLabels';
@@ -20,11 +21,13 @@ interface Props {
     openingConfig?: any;
     onClose: () => void;
     onCharacterChange?: (nextCharacter: any) => void;
-    onSellItem?: (itemId: string) => { ok: boolean; message: string } | void;
-    onDiscardItem?: (itemId: string) => { ok: boolean; message: string } | void;
-    onSellAllMisc?: () => { ok: boolean; message: string } | void;
-    onDiscardAllMisc?: () => { ok: boolean; message: string } | void;
-    onRegenerateItemImage?: (item: any, extraPrompt?: string) => Promise<void> | void;
+    onSellItem?: (itemId: string) => { ok: boolean; message: string } | undefined;
+    onDiscardItem?: (itemId: string) => { ok: boolean; message: string } | undefined;
+    onSellAllMisc?: () => { ok: boolean; message: string } | undefined;
+    onDiscardAllMisc?: () => { ok: boolean; message: string } | undefined;
+    onRegenerateItemImage?: (item: any, extraPrompt?: string) => Promise<void> | undefined;
+    onSaveItemToGallery?: (item: any) => Promise<void> | void;
+    onNavigateToGallery?: () => void;
     initialSelectedItemRef?: string;
 }
 
@@ -116,12 +119,14 @@ const MobileDetailMetricCard: React.FC<{ groupTitle: string; entry: any }> = ({ 
     </div>
 );
 
-const MobileInventoryModal: React.FC<Props> = ({ character, openingConfig, onClose, onCharacterChange, onSellItem, onDiscardItem, onSellAllMisc, onDiscardAllMisc, onRegenerateItemImage, initialSelectedItemRef = '' }) => {
+const MobileInventoryModal: React.FC<Props> = ({ character, openingConfig, onClose, onCharacterChange, onSellItem, onDiscardItem, onSellAllMisc, onDiscardAllMisc, onRegenerateItemImage, onSaveItemToGallery, onNavigateToGallery, initialSelectedItemRef = '' }) => {
     const [activeCategory, setActiveCategory] = useState<ItemCategory>('全部');
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [actionMessage, setActionMessage] = useState('');
     const [imageViewer, setImageViewer] = useState<{ src: string; alt: string } | null>(null);
     const [customPrompt, setCustomPrompt] = useState('');
+    const [galleryStatus, setGalleryStatus] = useState<'idle' | 'checking' | 'saving' | 'saved' | 'in-gallery'>('idle');
+    const [galleryOverwriteTarget, setGalleryOverwriteTarget] = useState<用户图库条目 | null>(null);
     const 界面文案 = 获取题材界面文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
 
     const items = Array.isArray(character?.物品列表) ? character.物品列表 : [];
@@ -130,7 +135,7 @@ const MobileInventoryModal: React.FC<Props> = ({ character, openingConfig, onClo
     const isOverloaded = totalWeight > maxWeight;
 
     const displayItems = useMemo(() => {
-        const filtered = items.filter((item) => {
+        const filtered = items.filter((item: any) => {
             const type = getSafeText(item?.类型);
             if (activeCategory === '全部') return true;
             if (activeCategory === '装备') return ['武器', '防具', '饰品'].includes(type);
@@ -222,7 +227,7 @@ const MobileInventoryModal: React.FC<Props> = ({ character, openingConfig, onClo
         const itemRef = getSafeText(selectedItem?.ID);
         if (!itemRef) return;
         const result = onSellItem(itemRef);
-        setActionMessage(result?.message || '已送入拍卖行寄卖');
+        setActionMessage((result && result.message) || '已送入拍卖行寄卖');
         if (!result || result.ok) setSelectedItem(null);
     };
 
@@ -231,28 +236,108 @@ const MobileInventoryModal: React.FC<Props> = ({ character, openingConfig, onClo
         const itemRef = getSafeText(selectedItem?.ID);
         if (!itemRef) return;
         const result = onDiscardItem(itemRef);
-        setActionMessage(result?.message || '已丢弃物品');
+        setActionMessage((result && result.message) || '已丢弃物品');
         if (!result || result.ok) setSelectedItem(null);
     };
 
     const handleRegenerateSelectedImage = async () => {
         if (!selectedItem || !onRegenerateItemImage) return;
         const extraPrompt = customPrompt.trim();
-        await onRegenerateItemImage(selectedItem, extraPrompt);
-        setActionMessage(extraPrompt ? '已提交自定义提示词重生图' : '已提交物品重生图');
+        try {
+            await onRegenerateItemImage(selectedItem, extraPrompt);
+            setActionMessage(extraPrompt ? '已提交自定义提示词重生图' : '已提交物品重生图');
+        } catch {
+            setActionMessage('重生图失败');
+        }
+    };
+
+    const 检查图库状态 = React.useCallback(async () => {
+        if (!selectedItem || !openingConfig?.题材模式) {
+            setGalleryStatus('idle');
+            return;
+        }
+        const itemName = 提取图库物品名称(selectedItem);
+        if (!itemName) {
+            setGalleryStatus('idle');
+            return;
+        }
+        setGalleryStatus('checking');
+        try {
+            const exists = await 物品已在图库中(
+                selectedItem,
+                openingConfig.题材模式,
+                openingConfig?.modeRuntimeProfile?.identity?.modeId || ''
+            );
+            setGalleryStatus(exists ? 'in-gallery' : 'idle');
+        } catch {
+            setGalleryStatus('idle');
+        }
+    }, [selectedItem, openingConfig?.题材模式, openingConfig?.modeRuntimeProfile?.identity?.modeId]);
+
+    React.useEffect(() => {
+        检查图库状态();
+    }, [检查图库状态]);
+
+    const handleSaveToGallery = async () => {
+        if (!selectedItem || !onSaveItemToGallery) return;
+        const hasIcon = Boolean(获取物品已选图标地址(selectedItem));
+        if (!hasIcon) return;
+
+        const itemName = 提取图库物品名称(selectedItem);
+        if (itemName && openingConfig?.题材模式) {
+            try {
+                const existing = await 查询用户图库图片(
+                    selectedItem,
+                    openingConfig.题材模式,
+                    openingConfig?.modeRuntimeProfile?.identity?.modeId || ''
+                );
+                if (existing?.assetId) {
+                    setGalleryOverwriteTarget(existing);
+                    return;
+                }
+            } catch {
+                // 查询失败时直接存入
+            }
+        }
+
+        setGalleryStatus('saving');
+        try {
+            await onSaveItemToGallery(selectedItem);
+            setGalleryStatus('saved');
+            setActionMessage('已存入用户图库');
+            setTimeout(() => setGalleryStatus('in-gallery'), 1500);
+        } catch {
+            setGalleryStatus('idle');
+            setActionMessage('存入图库失败');
+        }
+    };
+
+    const handleConfirmOverwrite = async () => {
+        if (!selectedItem || !onSaveItemToGallery) return;
+        setGalleryOverwriteTarget(null);
+        setGalleryStatus('saving');
+        try {
+            await onSaveItemToGallery(selectedItem);
+            setGalleryStatus('saved');
+            setActionMessage('已更新用户图库');
+            setTimeout(() => setGalleryStatus('in-gallery'), 1500);
+        } catch {
+            setGalleryStatus('idle');
+            setActionMessage('更新图库失败');
+        }
     };
 
     const handleSellAllMisc = () => {
         if (!onSellAllMisc) return;
         const result = onSellAllMisc();
-        setActionMessage(result?.message || '已一键寄售杂物');
+        setActionMessage((result && result.message) || '已一键寄售杂物');
         if (!result || result.ok) setSelectedItem(null);
     };
 
     const handleDiscardAllMisc = () => {
         if (!onDiscardAllMisc) return;
         const result = onDiscardAllMisc();
-        setActionMessage(result?.message || '已一键丢弃杂物');
+        setActionMessage((result && result.message) || '已一键丢弃杂物');
         if (!result || result.ok) setSelectedItem(null);
     };
 
@@ -476,7 +561,7 @@ const MobileInventoryModal: React.FC<Props> = ({ character, openingConfig, onClo
                                     placeholder="可选：输入额外提示词"
                                     className="mb-2 h-16 w-full resize-none rounded border border-gray-700 bg-black/25 px-2 py-1.5 text-xs leading-5 text-gray-100 outline-none placeholder:text-gray-500 focus:border-cyan-400/60"
                                 />
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-3 gap-2">
                                     <button
                                         type="button"
                                         onClick={handleRegenerateSelectedImage}
@@ -487,12 +572,29 @@ const MobileInventoryModal: React.FC<Props> = ({ character, openingConfig, onClo
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={handleSellSelected}
-                                        disabled={!onSellItem}
-                                        className="rounded bg-emerald-700/40 px-3 py-2 text-xs font-bold text-emerald-100 disabled:opacity-40"
+                                        onClick={handleSaveToGallery}
+                                        disabled={!onSaveItemToGallery || galleryStatus === 'checking' || galleryStatus === 'saving' || galleryStatus === 'saved'}
+                                        className="rounded bg-violet-700/40 px-3 py-2 text-xs font-bold text-violet-100 disabled:opacity-40"
                                     >
-                                        出售
-                                    </button>
+                                        {galleryStatus === 'checking' ? '检查中' : galleryStatus === 'saving' ? '存入中' : galleryStatus === 'saved' ? '已存入' : galleryStatus === 'in-gallery' ? '更新' : '存图'}
+                                        </button>
+                                        {(galleryStatus === 'saved' || galleryStatus === 'in-gallery') && onNavigateToGallery ? (
+                                            <button
+                                                type="button"
+                                                onClick={onNavigateToGallery}
+                                                className="rounded bg-violet-800/40 px-2 py-2 text-[10px] font-bold text-violet-200 underline"
+                                            >
+                                                查看图库≫
+                                            </button>
+                                        ) : null}
+                                        <button
+                                            type="button"
+                                            onClick={handleSellSelected}
+                                            disabled={!onSellItem}
+                                            className="rounded bg-emerald-700/40 px-3 py-2 text-xs font-bold text-emerald-100 disabled:opacity-40"
+                                        >
+                                            出售
+                                        </button>
                                 </div>
                             </div>
 
@@ -576,6 +678,61 @@ const MobileInventoryModal: React.FC<Props> = ({ character, openingConfig, onClo
                     </button>
                     <div className="relative max-h-full max-w-[92vw]" onClick={(event) => event.stopPropagation()}>
                         <img src={imageViewer.src} alt={imageViewer.alt} className="max-h-[82vh] max-w-[92vw] rounded-lg border border-white/25 object-contain shadow-2xl" />
+                    </div>
+                </div>
+            ), document.body)}
+            {galleryOverwriteTarget && typeof document !== 'undefined' && createPortal((
+                <div
+                    className="fixed inset-0 z-[390] flex items-center justify-center p-4 backdrop-blur-sm"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.88)' }}
+                    onClick={() => setGalleryOverwriteTarget(null)}
+                    role="dialog"
+                    aria-label="确认更新图库"
+                >
+                    <div className="w-full max-w-md rounded-2xl border border-white/15 bg-gray-900 p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+                        <h3 className="mb-3 text-base font-bold text-white">确认更新图库图片？</h3>
+                        <p className="mb-3 text-xs text-gray-300">
+                            物品：{selectedItem?.名称 || '未知'} ({openingConfig?.题材模式}·{selectedItem?.类型 || '未知'})
+                        </p>
+                        <div className="mb-3 flex items-center gap-3">
+                            <div className="flex-1 text-center">
+                                <p className="mb-1 text-[10px] text-gray-400">旧图</p>
+                                {galleryOverwriteTarget.thumbnailDataUrl ? (
+                                    <img src={galleryOverwriteTarget.thumbnailDataUrl} alt="旧图" className="mx-auto max-h-28 rounded border border-white/15 object-contain" />
+                                ) : (
+                                    <div className="mx-auto flex h-28 w-28 items-center justify-center rounded border border-white/15 bg-black/30 text-[10px] text-gray-500">无缩略图</div>
+                                )}
+                            </div>
+                            <div className="text-xl text-gray-500">→</div>
+                            <div className="flex-1 text-center">
+                                <p className="mb-1 text-[10px] text-gray-400">新图</p>
+                                {(() => {
+                                    const newSrc = 获取物品已选图标地址(selectedItem);
+                                    return newSrc ? (
+                                        <img src={newSrc} alt="新图" className="mx-auto max-h-28 rounded border border-white/15 object-contain" />
+                                    ) : (
+                                        <div className="mx-auto flex h-28 w-28 items-center justify-center rounded border border-white/15 bg-black/30 text-[10px] text-gray-500">无图片</div>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                        <p className="mb-3 text-center text-xs font-semibold text-amber-400">⚠️ 更新后旧图将被替换且无法恢复</p>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setGalleryOverwriteTarget(null)}
+                                className="flex-1 rounded border border-white/15 bg-white/5 px-3 py-2 text-xs font-bold text-gray-200"
+                            >
+                                取消
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmOverwrite}
+                                className="flex-1 rounded bg-violet-700/40 px-3 py-2 text-xs font-bold text-violet-100"
+                            >
+                                确认更新
+                            </button>
+                        </div>
                     </div>
                 </div>
             ), document.body)}

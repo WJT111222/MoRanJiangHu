@@ -1,6 +1,6 @@
 import type { 当前可用接口结构 } from '../../utils/apiConfig';
 import { RELEASE_INFO } from '../../data/releaseInfo';
-import { isNativeCapacitorEnvironment } from '../../utils/nativeRuntime';
+import { isNativeCapacitorEnvironment, requiresRemoteSyncApi } from '../../utils/nativeRuntime';
 
 type ComfyUI远程探测结果 = {
     ok?: boolean;
@@ -129,7 +129,10 @@ const 构建ComfyUI连接失败排查说明 = (baseUrl: string): string[] => {
     ];
 };
 
-const 获取运行时代理基础地址 = (): string => {
+// 获取代理基础地址优先级：用户自定义 > 当前 origin > 默认网站
+const 获取运行时代理基础地址 = (自定义代理地址?: string): string => {
+    const 用户自定义 = (自定义代理地址 || '').trim();
+    if (用户自定义) return 用户自定义.replace(/\/+$/, '');
     if (typeof window !== 'undefined' && /^https?:$/i.test(window.location.protocol) && !isNativeCapacitorEnvironment()) {
         return window.location.origin.replace(/\/+$/, '');
     }
@@ -239,15 +242,131 @@ const 构建OpenAI图片直连生成端点 = (baseUrlRaw: string, customPathRaw?
     return `${base}/v1/images/generations`;
 };
 
+const 预定义供应商目标映射: Record<string, string> = {
+    'openai-official': 'https://api.openai.com'
+};
+
+const 当前是在线环境 = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    const origin = window.location.origin;
+    return origin === 'https://msjh.bacon159.pp.ua' || origin === 'https://msjh.bacon.de5.net';
+};
+
+const 构建直连端点 = (baseUrlRaw: string, customPathRaw?: string): string => {
+    const base = 规范化OpenAI图片基础地址(baseUrlRaw);
+    const customPath = (customPathRaw || '').trim();
+    if (/^https?:\/\//i.test(customPath)) {
+        const normalizedCustomBase = 规范化OpenAI图片基础地址(customPath);
+        if (normalizedCustomBase && normalizedCustomBase !== 清理末尾斜杠(customPath)) {
+            return 构建直连端点(normalizedCustomBase);
+        }
+        return 清理末尾斜杠(customPath);
+    }
+    if (!base) return '';
+    if (customPath) {
+        const rawPath = customPath.startsWith('/') ? customPath : `/${customPath}`;
+        const normalizedPath = /\/v1$/i.test(base) && /^\/v1\//i.test(rawPath)
+            ? rawPath.replace(/^\/v1/i, '')
+            : rawPath;
+        return `${base}${normalizedPath}`;
+    }
+    if (/\/images\/generations$/i.test(base)) return base;
+    if (/\/v1$/i.test(base)) return `${base}/images/generations`;
+    return `${base}/v1/images/generations`;
+};
+
+// 同域图片代理是否可用：web 恒可用；原生仅当配置了远程同步 API 时可用
+const 可走同域图片代理 = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    if (isNativeCapacitorEnvironment()) return requiresRemoteSyncApi();
+    return /^https?:$/i.test(window.location.protocol);
+};
+
+// 是否本地开发环境（localhost / 127.0.0.1）——这类环境下第三方端点大概率回绝 CORS，必须走代理
+const 是否本地开发环境 = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    const h = window.location.hostname.toLowerCase();
+    return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '0.0.0.0';
+};
+
+// 代理决策原因（用于日志）
+type 代理决策 = {
+    走代理: boolean;
+    原因: string;
+    原始baseUrl: string;
+    供应商ID: string;
+    origin: string;
+    isNative: boolean;
+};
+
+export const 获取代理决策 = (
+    baseUrlRaw: string,
+    供应商ID: string,
+    options?: { useRuntimeProxy?: boolean; 供应商ID?: string; 图片需要代理?: boolean; 自定义图片代理地址?: string }
+): 代理决策 => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'unknown';
+    const isNative = isNativeCapacitorEnvironment();
+    const 本地开发 = 是否本地开发环境();
+    const 在线 = 当前是在线环境();
+    const 有自定义代理 = !!(options?.自定义图片代理地址 || '').trim();
+    const 用户开启代理 = options?.图片需要代理 === true;
+
+    // 1) 用户显式开启代理 + 配了自定义代理地址 → 走自定义代理
+    if (用户开启代理 && 有自定义代理) {
+        return { 走代理: true, 原因: '用户开启代理+自定义地址', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
+    }
+
+    // 2) 用户显式开启代理 + 未配自定义地址 → 走默认代理
+    if (用户开启代理) {
+        return { 走代理: true, 原因: '用户开启代理+默认代理', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
+    }
+
+    // 3) 本地开发环境 → 自动走代理（CORS 几乎必然失败）
+    if (本地开发 && options?.useRuntimeProxy && 可走同域图片代理()) {
+        return { 走代理: true, 原因: '本地开发环境自动走代理', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
+    }
+
+    // 4) 在线环境 + openai-official → 走代理（白名单）
+    if (options?.useRuntimeProxy && 在线 && 预定义供应商目标映射[供应商ID]) {
+        return { 走代理: true, 原因: '在线环境+官方白名单', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
+    }
+
+    // 5) 在线环境 + 自定义端点 → 直连（CORS 通常由网关处理）
+    // 6) 本地开发但不可走代理（如原生未配远程同步） → 直连
+    return { 走代理: false, 原因: 本地开发 ? '本地开发但代理不可用' : '在线环境直连', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
+};
+
 export const 构建OpenAI图片生成端点 = (
     baseUrlRaw: string,
     customPathRaw?: string,
-    options?: { useRuntimeProxy?: boolean }
+    options?: { useRuntimeProxy?: boolean; 供应商ID?: string; 图片需要代理?: boolean; 自定义图片代理地址?: string }
 ): string => {
-    const directEndpoint = 构建OpenAI图片直连生成端点(baseUrlRaw, customPathRaw);
-    return options?.useRuntimeProxy
-        ? 转换为运行时OpenAI图片代理端点(directEndpoint)
-        : directEndpoint;
+    const 供应商ID = options?.供应商ID || 'openai-custom';
+    const 决策 = 获取代理决策(baseUrlRaw, 供应商ID, options);
+
+    if (决策.走代理) {
+        const proxyBase = 获取运行时代理基础地址(options?.自定义图片代理地址);
+        // 在线环境白名单走 ?provider= 模式
+        if (预定义供应商目标映射[供应商ID] && !(options?.自定义图片代理地址 || '').trim()) {
+            const path = customPathRaw || '/v1/images/generations';
+            return `${proxyBase}/api/image-backend/openai-image-proxy${path}?provider=${encodeURIComponent(供应商ID)}`;
+        }
+        // 自定义代理 / 本地开发走 ?url= 模式
+        const baseAddress = 规范化OpenAI图片基础地址(baseUrlRaw).replace(/\/+$/, '');
+        const customPath = (customPathRaw || '').trim();
+        let targetPath: string;
+        if (customPath.startsWith('/')) {
+            targetPath = /\/v1$/i.test(baseAddress) && /^\/v1\//i.test(customPath)
+                ? customPath.replace(/^\/v1/i, '')
+                : customPath;
+        } else {
+            targetPath = `/${customPath || '/v1/images/generations'}`;
+        }
+        const targetUrl = `${baseAddress}${targetPath}`;
+        return `${proxyBase}/api/image-backend/openai-image-proxy?url=${encodeURIComponent(targetUrl)}`;
+    }
+
+    return 构建直连端点(baseUrlRaw, customPathRaw);
 };
 
 export const 构建ComfyUI连接失败提示 = (baseUrlRaw: string, error?: any): string => {

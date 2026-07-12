@@ -1,5 +1,6 @@
 
 import { 存档结构 } from '../types';
+import type { 题材模式类型, 游戏设置结构 } from '../models/system';
 import { 创建图片资源引用, 解析图片资源引用ID, 是否图片资源引用, 注册图片资源缓存, 批量注册图片资源缓存, 清空图片资源缓存, 注册远程图片兜底引用, 读取远程图片兜底映射, 读取远程图片兜底资源ID集合 } from '../utils/imageAssets';
 import { 当前为对象存储云端游玩模式 } from '../utils/cloudPlayStorageMode';
 import { 获取设置项定义, 设置分类定义表, 设置键, type 设置分类类型 } from '../utils/settingsSchema';
@@ -12,13 +13,45 @@ import { 读取存档游玩回合数 } from '../utils/saveTurn';
 import { recordDiagnosticLog } from './diagnosticLog';
 import { buildImageHostProxyUrl, 上传DataUrl到图床 } from './imageHostService';
 
+// 逐任务容错：单个任务失败只把对应槽位置为 undefined，整体永不 reject。
+// 返回 Array<T | undefined>，失败槽位为 undefined（调用方据此计为 skipped）。
+const 并发限制 = <T>(tasks: Array<() => Promise<T>>, limit: number): Promise<Array<T | undefined>> => {
+    const 实际限制 = Math.max(1, limit);
+    return new Promise((resolve) => {
+        const results: Array<T | undefined> = new Array(tasks.length);
+        let nextIndex = 0;
+        let running = 0;
+        let completed = 0;
+        const runNext = () => {
+            while (running < 实际限制 && nextIndex < tasks.length) {
+                const idx = nextIndex++;
+                running++;
+                tasks[idx]().then(
+                    (value) => { results[idx] = value; },
+                    (err) => { console.warn('[并发限制] 单任务失败，已跳过：', err); results[idx] = undefined; }
+                ).finally(() => {
+                    running--;
+                    completed++;
+                    if (completed === tasks.length) resolve(results);
+                    else runNext();
+                });
+            }
+            if (tasks.length === 0) resolve(results);
+        };
+        runNext();
+    });
+};
+
 const DB_NAME = 'WuxiaGameDB';
 const STORE_NAME = 'saves';
 const SAVE_SUMMARIES_STORE = 'save_summaries';
 const SETTINGS_STORE = 'settings';
 const IMAGE_ASSETS_STORE = 'image_assets';
-const VERSION = 3;
-const 自动存档最大保留数 = 5;
+const USER_IMAGE_GALLERY_STORE = 'user_image_gallery';
+const VERSION = 4;
+const 默认自动存档最大保留数 = 15;
+const 最小自动存档最大保留数 = 5;
+const 最大自动存档最大保留数 = 50;
 const 存档导出版本 = 1;
 // 延迟访问 设置键 以避免循环依赖问题
 const get存档保护设置键 = () => 设置键.存档保护;
@@ -403,6 +436,7 @@ const 上传图片资源到图床并登记 = async (
     try {
         const uploaded = await 上传DataUrl到图床(dataUrl, { fileName: `${id}.png` });
         if (uploaded?.url) {
+            if (signature) 清除图床上传失败跳过(signature);
             注册远程图片兜底引用(uploaded.url, id);
             return uploaded.url;
         }
@@ -524,15 +558,34 @@ const 写入图床上传失败跳过映射 = (records: Record<string, { id: stri
     }
 };
 
+const 图床上传连续失败计数 = new Map<string, number>();
+const 图床上传冷却连续失败阈值 = 3;
+
 const 是否跳过图床上传 = (signature: string): boolean => {
     const normalized = typeof signature === 'string' ? signature.trim() : '';
     if (!normalized) return false;
-    return Boolean(读取图床上传失败跳过映射()[normalized]);
+    return (图床上传连续失败计数.get(normalized) || 0) >= 图床上传冷却连续失败阈值;
+};
+
+const 清除图床上传失败跳过 = (signature: string): void => {
+    const normalized = typeof signature === 'string' ? signature.trim() : '';
+    if (!normalized) return;
+    图床上传连续失败计数.delete(normalized);
+    try {
+        const records = 读取图床上传失败跳过映射();
+        if (records[normalized]) {
+            delete records[normalized];
+            写入图床上传失败跳过映射(records);
+        }
+    } catch { /* 不影响主流程 */ }
 };
 
 const 标记图床上传失败跳过 = (signature: string, id: string, message: string): void => {
     const normalized = typeof signature === 'string' ? signature.trim() : '';
     if (!normalized) return;
+    const n = (图床上传连续失败计数.get(normalized) || 0) + 1;
+    图床上传连续失败计数.set(normalized, n);
+    // 保留持久化记录用于诊断展示
     写入图床上传失败跳过映射({
         ...读取图床上传失败跳过映射(),
         [normalized]: {
@@ -541,6 +594,27 @@ const 标记图床上传失败跳过 = (signature: string, id: string, message: 
             failedAt: new Date().toISOString()
         }
     });
+};
+
+export const 重试失败图床上传 = async (): Promise<void> => {
+    图床上传连续失败计数.clear();
+    try {
+        if (typeof localStorage !== 'undefined') localStorage.removeItem(图床上传失败跳过缓存键);
+    } catch { /* ignore */ }
+    const db = await 初始化数据库();
+    const all = await new Promise<Array<{ id: string; dataUrl: string }>>((resolve, reject) => {
+        const tx = db.transaction([IMAGE_ASSETS_STORE], 'readonly');
+        const req = tx.objectStore(IMAGE_ASSETS_STORE).getAll();
+        req.onsuccess = () => resolve((req.result as Array<{ id: string; dataUrl: string }>) || []);
+        req.onerror = () => reject(req.error);
+    });
+    for (const asset of all) {
+        if (是DataUrl图片(asset.dataUrl)) {
+            延迟上传队列.push({ dataUrl: asset.dataUrl, id: asset.id });
+        }
+    }
+    通知延迟上传监听器();
+    await 执行延迟上传队列();
 };
 
 const blob转DataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
@@ -576,9 +650,28 @@ const 下载远程图片为DataUrl = async (remoteUrl: string): Promise<string> 
     return dataUrl;
 };
 
+const 清理最旧图片资源记录 = async (limit: number): Promise<number> => {
+    const db = await 初始化数据库();
+    const all = await new Promise<Array<{ id: string; createdAt?: number }>>((resolve, reject) => {
+        const transaction = db.transaction([IMAGE_ASSETS_STORE], 'readonly');
+        const store = transaction.objectStore(IMAGE_ASSETS_STORE);
+        const request = store.getAll();
+        request.onsuccess = () => resolve((request.result as Array<{ id: string; createdAt?: number }>) || []);
+        request.onerror = () => reject(request.error);
+    });
+    const oldest = all
+        .slice()
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+        .slice(0, limit)
+        .map((it) => it.id)
+        .filter(Boolean);
+    if (oldest.length === 0) return 0;
+    return 删除图片资源记录(new Set(oldest));
+};
+
 const 写入图片资源记录 = async (id: string, dataUrl: string): Promise<void> => {
     const db = await 初始化数据库();
-    await new Promise<void>((resolve, reject) => {
+    const attempt = (): Promise<void> => new Promise<void>((resolve, reject) => {
         const transaction = db.transaction([IMAGE_ASSETS_STORE], 'readwrite');
         const store = transaction.objectStore(IMAGE_ASSETS_STORE);
         const request = store.put({
@@ -589,6 +682,19 @@ const 写入图片资源记录 = async (id: string, dataUrl: string): Promise<vo
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
+    try {
+        await attempt();
+    } catch (error: any) {
+        const isQuota = /QuotaExceeded|quota/i.test(error?.name || error?.message || '');
+        if (!isQuota) throw error;
+        recordDiagnosticLog('warn', '图片资源写入配额超限，尝试清理最旧资源', { id });
+        await 清理最旧图片资源记录(20);
+        try {
+            await attempt();
+        } catch (retryError: any) {
+            throw new Error(`保存图片资源失败：本地存储空间不足，已尝试清理旧图片仍无法写入（${retryError?.message || retryError}）`);
+        }
+    }
     注册图片资源缓存(id, dataUrl);
 };
 
@@ -796,6 +902,11 @@ export const 初始化数据库 = (): Promise<IDBDatabase> => {
             if (!db.objectStoreNames.contains(IMAGE_ASSETS_STORE)) {
                 db.createObjectStore(IMAGE_ASSETS_STORE, { keyPath: 'id' });
             }
+            if (!db.objectStoreNames.contains(USER_IMAGE_GALLERY_STORE)) {
+                const store = db.createObjectStore(USER_IMAGE_GALLERY_STORE, { keyPath: 'id' });
+                store.createIndex('by_item_mode_workshop', ['itemName', 'mode', 'workshopModuleId'], { unique: false });
+                store.createIndex('by_mode', 'mode', { unique: false });
+            }
         };
     });
 };
@@ -946,7 +1057,7 @@ const 外置化图片字段 = async (value: unknown, seen: WeakSet<object> = new
         if (typeof child === 'string') {
             const text = child.trim();
             if (text) {
-                if ((key === '本地路径' || key === '图片URL' || key === '背景图片' || key === '头像图片URL' || key.endsWith('图片URL') || key.endsWith('音频URL')) && /^data:(image|audio)\//i.test(text)) {
+                if (/^data:(image|audio)\//i.test(text)) {
                     next[key] = await 保存图片资源(text);
                     continue;
                 }
@@ -1691,9 +1802,32 @@ export const 清理未引用图片资源 = async (): Promise<number> => {
             读取已引用图片资源ID集合(),
             读取全部图片资源记录()
         ]);
+        // 收集图库引用的 assetId，防止被误删
+        const galleryReferencedIds = new Set<string>();
+        const db0 = await 初始化数据库();
+        if (db0.objectStoreNames.contains(USER_IMAGE_GALLERY_STORE)) {
+            await new Promise<void>((resolve, reject) => {
+                const transaction = db0.transaction([USER_IMAGE_GALLERY_STORE], 'readonly');
+                const store = transaction.objectStore(USER_IMAGE_GALLERY_STORE);
+                const request = store.openCursor();
+                request.onsuccess = () => {
+                    const cursor = request.result;
+                    if (cursor) {
+                        const galleryEntry = cursor.value as { assetId?: string; imageUrl?: string } | undefined;
+                        if (galleryEntry?.assetId) {
+                            galleryReferencedIds.add(galleryEntry.assetId);
+                        }
+                        cursor.continue();
+                    } else {
+                        resolve();
+                    }
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
         const unusedIds = assetEntries
             .map((item) => item.id)
-            .filter((id) => !referencedIds.has(id));
+            .filter((id) => !referencedIds.has(id) && !galleryReferencedIds.has(id));
         if (unusedIds.length <= 0) return 0;
 
         const db = await 初始化数据库();
@@ -1718,8 +1852,16 @@ export const 清理未引用图片资源 = async (): Promise<number> => {
     }
 };
 
-export const 维护自动存档 = async (db: IDBDatabase, maxKeep: number = 自动存档最大保留数): Promise<void> => {
-    const keepCount = Math.max(0, Math.floor(maxKeep));
+export const 规范化自动存档最大保留数 = (value?: number): number => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        const v = Math.floor(value);
+        if (v >= 最小自动存档最大保留数 && v <= 最大自动存档最大保留数) return v;
+    }
+    return 默认自动存档最大保留数;
+};
+
+export const 维护自动存档 = async (db: IDBDatabase, maxKeep?: number): Promise<void> => {
+    const keepCount = 规范化自动存档最大保留数(maxKeep);
     const toDelete = await new Promise<number[]>((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readonly');
         const store = transaction.objectStore(STORE_NAME);
@@ -1802,7 +1944,7 @@ const 读取对象仓库数量 = async (storeName: string): Promise<number> => {
     });
 };
 
-export const 保存存档 = async (存档: Omit<存档结构, 'id'>): Promise<number> => {
+export const 保存存档 = async (存档: Omit<存档结构, 'id'>, gameSettings?: 游戏设置结构): Promise<number> => {
     const db = await 初始化数据库();
     const normalized = 清洗导入存档(存档);
     if (!normalized) {
@@ -1830,7 +1972,7 @@ export const 保存存档 = async (存档: Omit<存档结构, 'id'>): Promise<nu
         if (signature) {
             await 删除重复自动存档签名(db, signature);
         }
-        await 维护自动存档(db, 自动存档最大保留数 - 1);
+        await 维护自动存档(db, gameSettings?.自动存档最大保留数);
     }
 
     return new Promise((resolve, reject) => {
@@ -1849,8 +1991,8 @@ export const 保存存档 = async (存档: Omit<存档结构, 'id'>): Promise<nu
     });
 };
 
-export const 保存存档并读取 = async (存档: Omit<存档结构, 'id'>): Promise<存档结构> => {
-    const id = await 保存存档(存档);
+export const 保存存档并读取 = async (存档: Omit<存档结构, 'id'>, gameSettings?: 游戏设置结构): Promise<存档结构> => {
+    const id = await 保存存档(存档, gameSettings);
     const saved = await 读取存档(id);
     return {
         ...(saved || 存档),
@@ -1907,7 +2049,7 @@ export const 导出存档数据 = async (): Promise<存档导出结构> => {
 
 export const 导入存档数据 = async (
     payload: unknown,
-    options?: { 覆盖现有?: boolean; 忽略存档保护?: boolean }
+    options?: { 覆盖现有?: boolean; 忽略存档保护?: boolean; gameSettings?: 游戏设置结构 }
 ): Promise<存档导入结果> => {
     const rawList = Array.isArray(payload)
         ? payload
@@ -1938,11 +2080,22 @@ export const 导入存档数据 = async (
 
     const persistedCandidates: Array<Omit<存档结构, 'id'>> = [];
     const lineageCandidates: Array<Partial<存档结构>> = [...existingSaves];
+    const withLineageItems: Array<Omit<存档结构, 'id'>> = [];
+    // 阶段1：串行补全谱系（依赖上一条结果）
     for (const item of normalizedCandidates) {
-        const withLineage = 补全存档谱系元数据(item, lineageCandidates);
-        const persisted = await 外置化图片字段(withLineage) as Omit<存档结构, 'id'>;
-        persistedCandidates.push(persisted);
-        lineageCandidates.push(persisted);
+        const withLineage = 补全存档谱系元数据(item, lineageCandidates) as Omit<存档结构, 'id'>;
+        withLineageItems.push(withLineage);
+        lineageCandidates.push(withLineage);
+    }
+    // 阶段2：并行外置化图片字段，单条失败不阻塞整体，限制并发数为5
+    const 外置化任务 = withLineageItems.map(item => () => 外置化图片字段(item) as Promise<Omit<存档结构, 'id'>>);
+    const 外置化结果 = await 并发限制(外置化任务, 5);
+    for (const item of 外置化结果) {
+        if (item !== undefined) {
+            persistedCandidates.push(item);
+        } else {
+            skipped += 1;
+        }
     }
 
     await new Promise<void>((resolve, reject) => {
@@ -1974,7 +2127,7 @@ export const 导入存档数据 = async (
         transaction.onerror = () => reject(transaction.error);
     });
 
-    await 维护自动存档(db, 自动存档最大保留数);
+    await 维护自动存档(db, options?.gameSettings?.自动存档最大保留数);
     await 校正并写回本地存档谱系(db);
 
     return {
@@ -3376,3 +3529,91 @@ export const 清空数据库 = async (保留APIKey: boolean): Promise<void> => {
 };
 
 export { 收集存档树节点ID, 删除存档树并重新保存全量存档 } from './dbService_saveTree';
+
+// ─── 用户物品图库 ─────────────────────────────────────────────────────
+
+export interface 用户图库条目 {
+    id: string;
+    itemName: string;
+    mode: 题材模式类型;
+    workshopModuleId: string;
+    assetId: string;
+    imageUrl?: string;
+    prompt: string;
+    itemType: string;
+    quality: string;
+    createdAt: number;
+    thumbnailDataUrl?: string;
+}
+
+export const 保存到用户图库 = async (entry: 用户图库条目): Promise<string> => {
+    const db = await 初始化数据库();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([USER_IMAGE_GALLERY_STORE], 'readwrite');
+        const store = tx.objectStore(USER_IMAGE_GALLERY_STORE);
+        const index = store.index('by_item_mode_workshop');
+        const query = index.get([entry.itemName, entry.mode, entry.workshopModuleId]);
+        query.onsuccess = () => {
+            const existing = query.result as 用户图库条目 | undefined;
+            const finalEntry = existing ? { ...entry, id: existing.id } : entry;
+            const putReq = store.put(finalEntry);
+            putReq.onsuccess = () => resolve(finalEntry.id);
+            putReq.onerror = () => reject(putReq.error);
+        };
+        query.onerror = () => reject(query.error);
+    });
+};
+
+export const 查询用户图库图片 = async (
+    itemName: string,
+    mode: 题材模式类型,
+    workshopModuleId: string
+): Promise<用户图库条目 | null> => {
+    const db = await 初始化数据库();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([USER_IMAGE_GALLERY_STORE], 'readonly');
+        const store = tx.objectStore(USER_IMAGE_GALLERY_STORE);
+        const index = store.index('by_item_mode_workshop');
+        const req = index.get([itemName, mode, workshopModuleId]);
+        req.onsuccess = () => resolve((req.result as 用户图库条目) || null);
+        req.onerror = () => reject(req.error);
+    });
+};
+
+export const 获取用户图库全部条目 = async (): Promise<用户图库条目[]> => {
+    const db = await 初始化数据库();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([USER_IMAGE_GALLERY_STORE], 'readonly');
+        const store = tx.objectStore(USER_IMAGE_GALLERY_STORE);
+        const req = store.getAll();
+        req.onsuccess = () => {
+            const entries = (req.result as 用户图库条目[]) || [];
+            entries.sort((a, b) => b.createdAt - a.createdAt);
+            resolve(entries);
+        };
+        req.onerror = () => reject(req.error);
+    });
+};
+
+export const 按题材模式获取用户图库 = async (mode: 题材模式类型): Promise<用户图库条目[]> => {
+    const db = await 初始化数据库();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([USER_IMAGE_GALLERY_STORE], 'readonly');
+        const store = tx.objectStore(USER_IMAGE_GALLERY_STORE);
+        const index = store.index('by_mode');
+        const req = index.getAll(mode);
+        req.onsuccess = () => resolve((req.result as 用户图库条目[]) || []);
+        req.onerror = () => reject(req.error);
+    });
+};
+
+export const 删除用户图库条目 = async (id: string): Promise<void> => {
+    const db = await 初始化数据库();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction([USER_IMAGE_GALLERY_STORE], 'readwrite');
+        const store = tx.objectStore(USER_IMAGE_GALLERY_STORE);
+        const req = store.delete(id);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+    });
+};

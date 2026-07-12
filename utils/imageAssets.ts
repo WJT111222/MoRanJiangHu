@@ -1,3 +1,5 @@
+import { buildSyncApiUrl, isNativeCapacitorEnvironment } from './nativeRuntime';
+
 type 图片资源结构 = {
     图片URL?: string;
     本地路径?: string;
@@ -310,11 +312,13 @@ export const 获取图片资源文本地址 = (value: unknown): string => {
     if (/^https?:\/\//i.test(text)) {
         const localFallback = 读取远程图片本地兜底地址(text);
         if (localFallback) return localFallback;
+        return 解析远程图片为可显示地址(text);
     }
     if (是否图片资源引用(text)) {
         const local = 读取图片资源缓存(text);
         if (local) return local;
-        return 读取图片资源远程兜底地址(text);
+        const remoteFallback = 读取图片资源远程兜底地址(text);
+        return remoteFallback ? 解析远程图片为可显示地址(remoteFallback) : remoteFallback;
     }
     return text;
 };
@@ -352,4 +356,29 @@ export const 格式化本地图片描述 = (value: unknown): string => {
     if (是否图片资源引用(text)) return '应用内图片资源';
     if (/^data:image\//i.test(text)) return '应用内本地缓存';
     return text;
+};
+
+/** 是否本机或局域网地址（不需要走代理） */
+const 是否本机或局域网地址 = (url: string): boolean => {
+    try {
+        const u = new URL(url);
+        const h = u.hostname.toLowerCase();
+        if (h === 'localhost' || h === '127.0.0.1' || /^\[?::1\]?$/.test(h) || h === '0.0.0.0') return true;
+        if (/^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h)) return true;
+        if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(h)) return true;
+        if (/^169\.254\./.test(h) || /\.local$/i.test(h)) return true;
+        return false;
+    } catch { return false; }
+};
+
+/** 解析远程图片为可显示地址（跨域时走同域代理） */
+const 解析远程图片为可显示地址 = (url: string): string => {
+    if (!/^https:\/\//i.test(url)) return url;
+    if (是否本机或局域网地址(url)) return url;
+    if (typeof window !== 'undefined' && !isNativeCapacitorEnvironment()) {
+        const base = buildSyncApiUrl('/api/image-backend/fetch-image');
+        const separator = base.includes('?') ? '&' : '?';
+        return `${base}${separator}url=${encodeURIComponent(url)}`;
+    }
+    return url;
 };

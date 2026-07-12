@@ -13,24 +13,8 @@ const readString = (value: unknown): string => (
     typeof value === 'string' ? value.trim() : ''
 );
 
-const isPrivateHostname = (hostname: string): boolean => {
-    const lower = hostname.toLowerCase();
-    if (lower === 'localhost' || lower === '0.0.0.0') return true;
-    if (/^127\./.test(lower) || /^10\./.test(lower) || /^192\.168\./.test(lower)) return true;
-    if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(lower)) return true;
-    if (/^\[?::1\]?$/.test(lower)) return true;
-    return false;
-};
-
-const isAllowedTargetBase = (value: string): boolean => {
-    try {
-        const url = new URL(value);
-        if (!/^https:$/i.test(url.protocol)) return false;
-        if (isPrivateHostname(url.hostname)) return false;
-        return true;
-    } catch {
-        return false;
-    }
+const PROVIDER_TARGET_MAPPING: Record<string, string> = {
+    'openai-official': 'https://api.openai.com'
 };
 
 const normalizePath = (pathRaw: unknown): string => {
@@ -41,7 +25,7 @@ const normalizePath = (pathRaw: unknown): string => {
     return '';
 };
 
-const buildTargetUrl = (targetBaseRaw: string, path: string, requestUrl: URL): string => {
+const buildTargetUrl = (targetBaseRaw: string, path: string): string => {
     const targetBase = new URL(targetBaseRaw.replace(/\/+$/, ''));
     const basePath = targetBase.pathname.replace(/\/+$/, '');
     const normalizedPath = (() => {
@@ -51,9 +35,6 @@ const buildTargetUrl = (targetBaseRaw: string, path: string, requestUrl: URL): s
     })();
     targetBase.pathname = `${basePath}${normalizedPath}`;
     targetBase.search = '';
-    requestUrl.searchParams.forEach((value, key) => {
-        if (key !== 'url') targetBase.searchParams.append(key, value);
-    });
     targetBase.hash = '';
     return targetBase.toString();
 };
@@ -80,11 +61,21 @@ export async function onRequest({ request, params }: any): Promise<Response> {
     }
 
     const requestUrl = new URL(request.url);
-    const targetBase = readString(requestUrl.searchParams.get('url'));
-    const path = normalizePath(params?.path);
-    if (!targetBase || !isAllowedTargetBase(targetBase) || !path) {
+    const providerID = readString(requestUrl.searchParams.get('provider'));
+    const targetBase = PROVIDER_TARGET_MAPPING[providerID];
+
+    if (!targetBase) {
         return jsonResponse({
-            error: 'OpenAI image proxy target URL is invalid or not allowed.'
+            error: 'Invalid or unsupported provider.',
+            message: '不支持的供应商ID。只有预定义供应商可以使用代理。'
+        }, 400);
+    }
+
+    const path = normalizePath(params?.path);
+    if (!path) {
+        return jsonResponse({
+            error: 'Invalid path.',
+            message: '无效的接口路径。'
         }, 400);
     }
 
@@ -98,7 +89,7 @@ export async function onRequest({ request, params }: any): Promise<Response> {
     headers.set('Content-Type', request.headers.get('content-type') || 'application/json');
     headers.set('Accept', request.headers.get('accept') || 'application/json');
 
-    const targetUrl = buildTargetUrl(targetBase, path, requestUrl);
+    const targetUrl = buildTargetUrl(targetBase, path);
     const response = await fetch(targetUrl, {
         method,
         headers,

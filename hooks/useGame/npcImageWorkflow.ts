@@ -4,6 +4,10 @@ import { 获取词组转化器预设上下文, type 当前可用接口结构 } f
 import { 生图最大自动重试次数, 执行生图模型调用带重试 } from '../../utils/imageGenerationRetry';
 import type { PNG解析参数结构, 角色锚点结构 } from '../../models/system';
 
+import { 入队NPC生图, 出队NPC生图 } from './npcImageQueue';
+
+const NPC生图运行中计数 = { current: 0 };
+
 type 图片功能配置 = {
     总开关: boolean;
     NPC开关: boolean;
@@ -380,9 +384,9 @@ export const 执行NPC生图工作流 = async (
     // 自动生图子类型勾选：auto度但对应子类型未勾选时直接跳过（手动 force 不受限）
     if (!可绕过自动开关 && taskSource === 'auto') {
         const 目标构图 = options?.构图 || '头像';
-        if (目标构图 === '头像' && imageFeature.启用头像 === false) return;
-        if (目标构图 === '立绘' && imageFeature.启用立绘 === false) return;
-        if (目标构图 === '半身' && imageFeature.启用半身 === false) return;
+        if (目标构图 === '头像' && imageFeature.用头像 === false) return;
+        if (目标构图 === '立绘' && imageFeature.用立绘 === false) return;
+        if (目标构图 === '半身' && imageFeature.用半身 === false) return;
     }
     const backendType = imageApi?.图片后端类型;
     const wantsPromptTransformer = backendType === 'novelai' || imageFeature.使用词组转化器 !== false;
@@ -418,6 +422,10 @@ export const 执行NPC生图工作流 = async (
         console.warn('NPC 生图词组转化器配置不可用，已改用角色资料直出提示词继续生成。');
     }
     if (Array.from(deps.NPC生图进行中集合).some((activeKey) => NPC生图进行中标识匹配(activeKey, npcKey, npc))) return;
+    if (NPC生图运行中计数.current >= 1) {
+        入队NPC生图({ npc, options, deps });
+        return;
+    }
 
     const npcName = typeof npc?.姓名 === 'string' ? npc.姓名.trim() : '未命名NPC';
     const npcImageBaseData = deps.提取NPC生图基础数据(npc);
@@ -563,6 +571,8 @@ export const 执行NPC生图工作流 = async (
             genderStatus: 目标性别状态,
             source: taskSource
         });
+
+    NPC生图运行中计数.current += 1;
 
     try {
         const { 原始描述, 生图词组: 原始生图词组 } = shouldUsePromptTransformer && promptApi
@@ -861,6 +871,11 @@ export const 执行NPC生图工作流 = async (
         }));
         throw error;
     } finally {
+        NPC生图运行中计数.current -= 1;
         deps.NPC生图进行中集合.delete(npcKey);
+        const 下一项 = 出队NPC生图();
+        if (下一项) {
+            void 执行NPC生图工作流(下一项.npc, 下一项.options, 下一项.deps);
+        }
     }
 };

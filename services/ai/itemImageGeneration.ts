@@ -1,8 +1,11 @@
 import type { 接口设置结构, 物品生图结果 } from '../../types';
 import type { 游戏物品 } from '../../models/item';
+import type { 题材模式类型 } from '../../models/system';
 import type { 当前可用接口结构 } from '../../utils/apiConfig';
 import { 获取文生图接口配置, 接口配置是否可用 } from '../../utils/apiConfig';
-import { 合并物品图片档案 } from '../../utils/itemImage';
+import { 合并物品图片档案, 查询用户图库图片 as 查询图库工具, 提取图库物品名称 } from '../../utils/itemImage';
+import { 删除用户图库条目, 读取图片资源 } from '../dbService';
+import { 创建图片资源引用 } from '../../utils/imageAssets';
 import { 默认NSFWComfyUI工作流JSON } from '../../data/defaultComfyWorkflow';
 import { 查找结构化物品 } from '../../data/structuredItemLibrary';
 import { generateImageByPrompt, persistImageAssetLocally, 全局无文字正向提示词, 全局无文字负面提示词 } from './image';
@@ -18,6 +21,8 @@ export interface 物品图标生成选项 {
     extraPrompt?: string;
     imageApi?: 当前可用接口结构 | null;
     signal?: AbortSignal;
+    题材模式?: 题材模式类型;
+    创意工坊模块ID?: string;
     recordId?: string;
 }
 
@@ -25,7 +30,7 @@ export interface 物品图标生成结果 {
     nextItem: 游戏物品;
     imageRecord: 物品生图结果;
     prompt: string;
-    imageApi: 当前可用接口结构;
+    imageApi: 当前可用接口结构 | null;
 }
 
 const 读取文本 = (value: unknown, fallback = '') => (
@@ -55,45 +60,30 @@ const 构建物品生图接口配置 = (imageApi: 当前可用接口结构 | nul
  * 不再混入 `描述`、`词条列表`、`来源描述`、`关联事件` 等游戏机制文字，
  * 否则 AI 会把"承载一段c级支线剧情用于兑换高级强化"这类文案画进图片。
  */
-const 游戏机制关键词 = /兑换|强化|支线剧情|奖励点|属性|技能|等级|经验|伤害|生命值|法力值|冷却|暴击|命中|闪避|抗性|穿透|吸血|回蓝|buff|debuff|增益|减益|附加|提升|降低|增加|减少|触发|释放|消耗|恢复|回复|持续|回合|概率|倍率|加成|短时间|缓解|恐怖片任务|惊惧|精神污染|精神防护/i;
+/**
+ * 判断文本是否包含明确的游戏机制数值/属性文案。
+ * 放宽过滤规则：只拦截明确的数值属性表述（如"属性+10"、"伤害+20"、"冷却-5秒"）
+ * 以及明确的功能性机制文案（如"承载支线剧情"、"用于兑换"、"强化券"），
+ * 保留描述性自然语言（如"干粮"、"打火用的"、"装着"等合理描述）。
+ */
+const 是否游戏机制文案 = (text: string): boolean => {
+    const 数值模式 = /属性[+\-]\d+|伤害[+\-]\d+|生命值[+\-]\d+|法力值[+\-]\d+|冷却[+\-]?\d+秒|暴击率[+\-]\d+%|命中率[+\-]\d+%|闪避率[+\-]\d+%|经验[+\-]\d+|等级[+\-]\d+|持续\d+回合|概率\d+%|倍率\d+\.?\d*x|充能\d+层|触发几率\d+%/i;
+    const 功能模式 = /承载.*支线剧情|用于兑换|兑换.*强化|强化券|奖励点数|技能点|解锁.*技能|提升.*等级|获得.*经验|触发.*事件/i;
+    return 数值模式.test(text) || 功能模式.test(text);
+};
 
-const 是否游戏机制文案 = (text: string): boolean => 游戏机制关键词.test(text);
+/**
+ * 清洗描述文本：移除无用前缀和用途说明，保留核心视觉描述。
+ */
+export const 清洗描述文本 = (text: string): string => {
+    const 清洗后 = text
+        .replace(/^(这是一个|这是|是一个|是|有一个|有)\s*/g, '')
+        .replace(/[，。；]?\s*(可以用于|用于|用来|适合|适用于|能够|可用于)[^，。；]+/g, '')
+        .trim();
+    return 清洗后.length > 0 ? 清洗后 : text.trim();
+};
+
 export const 物品无文字正向约束 = `${全局无文字正向提示词}, blank unmarked object surface, plain empty panels, clean material texture where markings would appear`;
-export const 物品符箓正向约束 = 'label-free talisman design, no readable characters, no legible writing, abstract unreadable cinnabar strokes are allowed, decorative non-linguistic talisman linework is allowed';
-
-const 物品是否符纸符箓 = (item: any): boolean => {
-    const text = [
-        item?.名称,
-        item?.类型,
-        item?.描述,
-        item?.视觉描述,
-        Array.isArray(item?.标签) ? item.标签.join(' ') : '',
-        Array.isArray(item?.视觉标签) ? item.视觉标签.join(' ') : ''
-    ].map((value) => 读取文本(value)).join(' ');
-    return /符纸|纸符|黄符|符箓|符材|符咒|符篆|火球符|冰锥符|雷光符|金刚符|神行符|隐身符|传音符|传送符/u.test(text);
-};
-
-const 获取物品正向无文字约束 = (item: any): string => (
-    物品是否符纸符箓(item) ? 物品符箓正向约束 : 物品无文字正向约束
-);
-
-const 过滤符箓负面提示词 = (negativePrompt: string): string => {
-    const allowForTalisman = new Set([
-        'glyphs',
-        'runes',
-        'ideograms',
-        'seal',
-        'vertical calligraphy',
-        'calligraphy',
-        'brush strokes'
-    ]);
-    return negativePrompt
-        .split(',')
-        .map(part => part.trim())
-        .filter(Boolean)
-        .filter(part => !allowForTalisman.has(part.toLowerCase()))
-        .join(', ');
-};
 
 export const 构建物品视觉描述 = (item: any): string => {
     const structured = 查找结构化物品(
@@ -113,7 +103,9 @@ export const 构建物品视觉描述 = (item: any): string => {
     }
     const 描述 = 读取文本(item?.描述);
     const parts: string[] = [];
-    if (描述 && !是否游戏机制文案(描述)) parts.push(描述);
+    if (描述 && !是否游戏机制文案(描述)) {
+        parts.push(清洗描述文本(描述));
+    }
     if (Array.isArray(item?.词条列表) && item.词条列表.length > 0) {
         const 词条文案 = item.词条列表
             .map((entry: any) => [entry?.名称, entry?.属性, entry?.数值].filter(Boolean).join(' '))
@@ -731,7 +723,6 @@ const 构建物品视觉主体描述 = (item: any): string => {
     const isAncientMedicine = !isCigarette && 物品是否古代药物(item);
     const isModernMedicine = !isCigarette && !isAncientMedicine && 物品是否现代药剂(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
-    const isTalismanPaper = 物品是否符纸符箓(item);
     const typeEn = isLivingMount ? 'living mount animal' : isLivingAnimal ? 'living animal' : isFan ? 'folded Chinese hand fan' : isModernFirearm ? 'modern firearm' : isEnergyWeapon ? 'sci-fi energy weapon' : isCrossbow ? 'crossbow' : isQuiver ? 'arrow container' : isArrowAmmo ? 'arrow ammunition' : isWeapon ? 'weapon' : isSoftGarment ? 'cloth garment' : isTacticalVest ? 'wearable tactical vest' : isWearableArmor ? 'wearable torso armor vest' : isAncientMedicine ? 'ancient medicinal powder or pills' : isModernMedicine ? 'modern medicine vial or ampoule' : isBotanicalHerb ? 'botanical medicinal herb' : 物品类型转英文(读取文本(item?.类型, '物品'));
     const qualityEn = 物品品质转英文(读取文本(item?.品质, '普通'));
     const nameEn = 物品名称转英文描述(name);
@@ -757,7 +748,7 @@ const 构建物品视觉主体描述 = (item: any): string => {
         isAncientMedicine ? 'ancient Chinese medicine presentation, herbal powder or pills, folded paper packet, cloth sachet, small ceramic medicine vial, apothecary prop, pre-modern wuxia era' : '',
         isModernMedicine ? 'strict medicine stabilizer prop: small amber glass vial, ampoule, syringe-free serum bottle or compact blank medicine case, sealed cap, transparent liquid, no label, no text, no book shape' : '',
         isBotanicalHerb ? 'strict botanical herb or flower specimen: organic petals, leaves, roots or stems, natural plant anatomy, no manufactured device, no electronics' : '',
-        isTalismanPaper ? 'strict talisman paper material: thin yellow paper slips, handmade paper fiber texture, slightly curled corners, stacked sheets or bundled paper charms, red cinnabar abstract unreadable talisman strokes, not a plastic panel, not a blank board' : '',
+        '',
         description,
         tags
     ].filter(Boolean).join('\n');
@@ -784,7 +775,6 @@ export const 构建物品负面提示词 = (item: any): string => {
     const isAncientMedicine = !isCigarette && 物品是否古代药物(item);
     const isModernMedicine = !isCigarette && !isAncientMedicine && 物品是否现代药剂(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && 物品是否草药植物(item);
-    const isTalismanPaper = 物品是否符纸符箓(item);
     const negativePrompt = [
         全局无文字负面提示词,
         isLivingMount ? 'rider, saddle covering the body, harness covering the body, cart, carriage, vehicle, boat' : isLivingAnimal ? 'person, human handler, leash held by person, cage, carrier bag, framed portrait, stuffed display, taxidermy scene' : 'person, human, face, hand, foot, feet, body part, skin, portrait, headshot, framed portrait, photo frame, picture frame',
@@ -810,7 +800,7 @@ export const 构建物品负面提示词 = (item: any): string => {
         isClothShoe ? 'feet, toes, legs, socks, person wearing shoes, shoe model, leather dress shoe, polished leather shoe, oxford shoe, loafer, business shoe, high heel, glossy leather, hard stacked heel' : '',
         isBandageDressing ? 'patient, wounded person, nurse, doctor, face, portrait, hand wrapping bandage, arm, leg, injury, blood, hospital bed, medical scene, photo frame, framed portrait' : ''
     ].filter(Boolean).join(', ');
-    return isTalismanPaper ? 过滤符箓负面提示词(negativePrompt) : negativePrompt;
+    return negativePrompt;
 };
 
 export const 构建物品图提示词 = (
@@ -838,7 +828,6 @@ export const 构建物品图提示词 = (
     const isAncientMedicine = !isCigarette && 物品是否古代药物(item);
     const isModernMedicine = !isCigarette && !isAncientMedicine && 物品是否现代药剂(item);
     const isBotanicalHerb = !isWeapon && !isAncientMedicine && !isModernMedicine && 物品是否草药植物(item);
-    const isTalismanPaper = 物品是否符纸符箓(item);
     const softGarmentGuard = isSoftGarment
         ? 'for clothing items: soft fabric garment laid flat or neatly folded, visible cloth weave, seams, wrinkles, flexible drape'
         : '';
@@ -882,7 +871,7 @@ export const 构建物品图提示词 = (
         isAncientMedicine ? 'strict ancient wuxia medicine prop only: folded paper medicine packet, small cloth sachet, ceramic medicine vial, herbal powder or pills; absolutely pre-modern, no modern technology' : '',
         isModernMedicine ? 'strict medicine stabilizer prop only: one small unlabelled amber glass vial or ampoule kit, sealed cap, transparent liquid, compact blank medical case, no book, no label, no text' : '',
         isBotanicalHerb ? 'strict botanical herb or flower only: natural plant specimen, visible petals leaves roots or stems, organic plant anatomy, not a manufactured object' : '',
-        isTalismanPaper ? 'strict talisman paper prop only: small stack of thin yellow paper sheets, visible handmade paper fiber, soft curled corners, red cinnabar abstract unreadable talisman strokes, not a plastic panel, not a blank rectangular board' : '',
+        '',
         isTacticalVest ? 'strict wearable tactical vest item: fabric upper-body vest with MOLLE webbing, shoulder straps, front buckles or zipper, pouch panels, arm holes and waist hem; product photo of clothing-shaped protective gear, no shield' : '',
         isWearableArmor && !isTacticalVest ? 'strict wearable armor item: upper-body vest or cuirass garment shape, sleeveless torso armor with arm holes, shoulder straps, chest and back panels, waist hem; product photo of clothing-shaped protective gear' : '',
         构建物品视觉主体描述(item),
@@ -896,9 +885,49 @@ export const 生成物品图标 = async (
     apiConfig: 接口设置结构,
     options?: 物品图标生成选项
 ): Promise<物品图标生成结果> => {
+    // --- 图库复用拦截 ---
+    // 注意：调用方必须传入 题材模式 和 创意工坊模块ID，否则跳过图库查询
+    if (options?.题材模式 && options?.创意工坊模块ID) {
+        try {
+            const itemName = 提取图库物品名称(item);
+            if (itemName) {
+                const workshopModuleId = String(options.创意工坊模块ID || '').trim();
+                const galleryEntry = await 查询图库工具(item, options.题材模式, workshopModuleId);
+                if (galleryEntry?.assetId || galleryEntry?.imageUrl) {
+                    recordDiagnosticLog('info', '[物品生图链路] 命中图库复用，跳过生图', {
+                        itemName,
+                        galleryId: galleryEntry.id,
+                        hasAssetId: Boolean(galleryEntry.assetId),
+                        hasImageUrl: Boolean(galleryEntry.imageUrl),
+                    });
+                    const imageRecord: 物品生图结果 = {
+                        id: galleryEntry.id,
+                        ...(galleryEntry.assetId
+                            ? { 本地路径: 创建图片资源引用(galleryEntry.assetId) }
+                            : { 图片URL: galleryEntry.imageUrl }),
+                        生图词组: galleryEntry.prompt,
+                        使用模型: 'gallery_reuse',
+                        生成时间: galleryEntry.createdAt,
+                        来源: 'gallery'
+                    } as any;
+                    return {
+                        nextItem: { ...(item as any), 图片: galleryEntry.assetId ? 创建图片资源引用(galleryEntry.assetId) : galleryEntry.imageUrl } as 游戏物品,
+                        imageRecord,
+                        prompt: galleryEntry.prompt || '',
+                        imageApi: null,
+                    };
+                }
+            }
+        } catch (galleryError: any) {
+            recordDiagnosticLog('warn', '[物品生图链路] 图库查询失败，继续走生图流程', {
+                error: galleryError?.message || String(galleryError),
+            });
+        }
+    }
+
     const imageApi = 构建物品生图接口配置(options?.imageApi || 获取文生图接口配置(apiConfig));
     if (!接口配置是否可用(imageApi)) {
-        throw new Error('请先在设置的“文生图”中配置可用接口，再生成物品图。');
+        throw new Error('请先在设置的"文生图"中配置可用接口，再生成物品图。');
     }
 
     const feature = apiConfig?.功能模型占位;
@@ -932,15 +961,32 @@ export const 生成物品图标 = async (
     const enrichedItemIsClothShoe = 物品是否布鞋(enrichedItem);
     const enrichedItemIsBandageDressing = 物品是否绷带敷料(enrichedItem);
     const enrichedItemIsAncientMedicine = 物品是否古代药物(enrichedItem);
-    const noTextGuard = 获取物品正向无文字约束(enrichedItem);
-    const prompt = 构建物品图提示词(enrichedItem, {
-        画风: style,
-        渲染风格: renderStyle,
-        来源位置: sourceLocation
-    });
+    // 云端大模型（Grok/GPT）支持中文提示词且理解能力强，无需冗长英文描述
+    const isChineseSupported = /grok|imagine|gpt|image/i.test(imageApi.model || '');
+    const noTextGuard = 物品无文字正向约束;
+    // 云端大模型：直接用物品中文描述 + 画风约束
+    // 本地/CNB 模型：用完整的英文描述堆砌（原有逻辑）
+    const prompt = isChineseSupported
+        ? (() => {
+            const 结构化描述 = structuredItem?.生图描述 || '';
+            const 原始描述 = 读取文本(enrichedItem?.描述) || '';
+            const 视觉描述 = 读取文本(enrichedItem?.视觉描述) || '';
+            const 主体描述 = 结构化描述 || 视觉描述 || 原始描述 || `${读取文本(enrichedItem?.名称)}，${读取文本(enrichedItem?.类型)}`;
+            const 画风约束: Record<string, string> = {
+                '写实': '写实风格', '卡通': '卡通风格', '水墨': '水墨画风格', '像素': '像素风格',
+                '油画': '油画风格', '素描': '素描风格', '国风': '中国风', '赛博朋克': '赛博朋克风格',
+            };
+            const 画风 = 画风约束[style] || style || '写实风格';
+            return `${主体描述}，${画风}，简约背景，物品居中展示`;
+        })()
+        : 构建物品图提示词(enrichedItem, {
+            画风: style,
+            渲染风格: renderStyle,
+            来源位置: sourceLocation
+        });
     const extraPrompt = 读取文本(options?.extraPrompt);
     const finalPrompt = extraPrompt
-        ? `${prompt}\n\nuser requested extra visual direction:\n${extraPrompt}`
+        ? (isChineseSupported ? `${prompt}，${extraPrompt}` : `${prompt}\n\nuser requested extra visual direction:\n${extraPrompt}`)
         : prompt;
     const recordId = options?.recordId || `item_img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     recordDiagnosticLog('info', '[物品生图链路] 准备调用图片后端', {
@@ -958,10 +1004,11 @@ export const 生成物品图标 = async (
         hasExtraPrompt: Boolean(extraPrompt),
         renderStyle
     });
-    const rawResult = await generateImageByPrompt(finalPrompt, imageApi, options?.signal, {
-        构图: '物品图标',
-        尺寸: size,
-        附加正向提示词: `${enrichedItemIsLivingMount
+    // 云端大模型：不塞额外提示词（模型理解能力强，物品中文描述已足够）
+    // 本地/CNB 模型：用完整的英文描述堆砌（原有逻辑）
+    const 附加正向 = isChineseSupported
+        ? ''
+        : `${enrichedItemIsLivingMount
             ? 'real living animal, alive mount, full body animal portrait, natural fur, organic anatomy, standing on real ground, no toy, no statue'
             : enrichedItemIsLivingAnimal
             ? 'real living animal, alive pet or beast, full body animal portrait, natural fur or feathers, organic anatomy, natural posture on real ground, not a plush toy, not a figurine, not a doll, photorealistic animal photo'
@@ -976,7 +1023,7 @@ export const 生成物品图标 = async (
             : enrichedItemIsTacticalVest
             ? 'single wearable tactical vest prop, MOLLE webbing, shoulder straps, front buckles, pouch panels, fabric torso gear, no shield, photorealistic product photo, neutral matte studio background'
             : enrichedItemIsWeapon
-            ? 'single physical weapon prop, defining blade, striking head, bow limbs, shaft, hilt, scabbard or handle clearly visible according to the object type, photorealistic product photo, neutral matte studio background'
+            ? 'single physical weapon prop, defining blade, striking head, bow limbs, shaft, hilt, scabbard or handle clearly visible according to the object type, no plant as main subject, photorealistic product photo, neutral matte studio background'
             : enrichedItemIsClothShoe
             ? 'single pair of empty cloth shoes or straw sandals, footwear prop, side by side, unworn product still life, photorealistic product photo, neutral matte studio background'
             : enrichedItemIsBandageDressing
@@ -989,8 +1036,14 @@ export const 生成物品图标 = async (
             ? 'single small unlabelled amber glass medicine vial or ampoule kit, sealed stabilizer serum bottle, blank cap, no label, no text, not a book, photorealistic product photo, neutral matte studio background'
             : renderStyle === '写实道具'
             ? `single physical ${enrichedItemIsModernFirearm || enrichedItemIsTacticalVest ? 'modern survival' : 'non-modern'} inventory item, photorealistic product photo, centered product composition, neutral matte studio background, clean silhouette, realistic material${enrichedItemIsSoftGarment ? ', soft fabric garment, cloth folds, flexible drape' : ''}`
-            : 'single physical object, centered composition, clean silhouette, plain asset presentation'}; ${noTextGuard}`,
-        附加负面提示词: 构建物品负面提示词(enrichedItem),
+            : 'single physical object, centered composition, clean silhouette, plain asset presentation'}; ${noTextGuard}`;
+    const 附加负面提示词 = isChineseSupported ? '' : 构建物品负面提示词(enrichedItem);
+    const rawResult = await generateImageByPrompt(finalPrompt, imageApi, options?.signal, {
+        构图: '物品图标',
+        尺寸: size,
+        附加正向提示词: 附加正向,
+        附加负面提示词: 附加负面提示词,
+        跳过基础负面提示词: isChineseSupported ? true : undefined,
         随机种子生成: feature?.随机种子生成 !== false,
     });
     recordDiagnosticLog('info', '[物品生图链路] 图片后端已返回', {

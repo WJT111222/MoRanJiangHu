@@ -34,7 +34,7 @@ type 场景生图触发工作流依赖 = {
     获取接口配置: () => any;
     规范化环境信息: (raw: any) => any;
     深拷贝: <T,>(value: T) => T;
-    环境时间转标准串: (env: any) => string;
+    环境时间转标准串: (env: any) => string | null;
     构建完整地点文本: (env: any) => string;
     修炼体系已启用: () => boolean;
     提取NPC生图基础数据: (npc: any) => any;
@@ -68,7 +68,7 @@ type 场景生图触发工作流依赖 = {
     推送右下角提示: (toast: { title: string; message: string; tone?: 'info' | 'success' | 'error' }) => void;
 };
 
-const 生成场景摘要 = (bodyText: string, envLike: any, 环境时间转标准串: (env: any) => string): string => {
+const 生成场景摘要 = (bodyText: string, envLike: any, 环境时间转标准串: (env: any) => string | null): string => {
     const body = (bodyText || '').replace(/\s+/g, ' ').trim();
     const location = [envLike?.大地点, envLike?.中地点, envLike?.小地点, envLike?.具体地点]
         .filter((item) => typeof item === 'string' && item.trim().length > 0)
@@ -135,7 +135,7 @@ export const 创建场景生图触发工作流 = (deps: 场景生图触发工作
     const 构建场景人物快照 = (bodyText: string, response?: GameResponse) => {
         const bracketTokens = 提取正文包裹片段(bodyText);
         const senderNames = (Array.isArray(response?.logs) ? response.logs : [])
-            .map((log) => (typeof log?.sender === 'string' ? log.sender.trim() : ''))
+            .map((log: any) => (typeof log?.sender === 'string' ? log.sender.trim() : ''))
             .filter((sender) => (
                 sender.length > 0
                 && sender !== '旁白'
@@ -267,7 +267,7 @@ export const 创建场景生图触发工作流 = (deps: 场景生图触发工作
         if (!latestResponse) return;
         const bodyText = (Array.isArray(latestResponse.logs) ? latestResponse.logs : [])
             .map((log) => `${log?.sender || '旁白'}：${log?.text || ''}`)
-            .filter((line) => line.trim().length > 0)
+            .filter((line: any) => line.trim().length > 0)
             .join('\n');
         if (!bodyText.trim()) return;
         const latestUserInput = (() => {

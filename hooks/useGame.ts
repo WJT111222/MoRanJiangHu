@@ -159,6 +159,7 @@ import { 最新AI消息可继续变量生成 } from '../utils/chatRecovery';
 
 const 加载图片AI服务 = () => import('../services/ai/image/runtime');
 const 加载NPC生图工作流 = () => import('./useGame/npcImageWorkflow');
+import { 清空NPC生图等待队列 } from './useGame/npcImageQueue';
 const 加载NPC香闺秘档生图工作流 = () => import('./useGame/npcSecretImageWorkflow');
 const 加载场景生图工作流 = () => import('./useGame/sceneImageWorkflow');
 
@@ -593,6 +594,7 @@ export const useGame = () => {
         已提示后台生图任务Ref.current.clear();
         已提示后台私密生图任务Ref.current.clear();
         已提示后台场景生图任务Ref.current.clear();
+        清空NPC生图等待队列();
     };
     const [右下角提示列表, set右下角提示列表] = useState<右下角提示结构[]>([]);
     const [聊天区自动滚动抑制令牌, set聊天区自动滚动抑制令牌] = useState(0);
@@ -1568,6 +1570,7 @@ export const useGame = () => {
                     }
                 }).catch(() => {});
             }
+            清空NPC生图等待队列();
         },
         设置内置提示词列表: set内置提示词列表,
         设置世界书列表: set世界书列表,
@@ -3840,7 +3843,8 @@ export const useGame = () => {
         设置开局地图更新进度: set开局地图更新进度,
         setWorldEvents,
         应用并同步记忆系统,
-        清空变量生成上下文缓存,
+         清空变量生成上下文缓存,
+        清空NPC生图等待队列,
         创建开场基础状态,
         构建前端清空开场状态,
         创建开场命令基态,
