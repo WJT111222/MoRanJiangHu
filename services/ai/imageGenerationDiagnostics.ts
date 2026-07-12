@@ -285,7 +285,7 @@ const 可走同域图片代理 = (): boolean => {
 // 是否本地开发环境（localhost / 127.0.0.1）——这类环境下第三方端点大概率回绝 CORS，必须走代理
 const 是否本地开发环境 = (): boolean => {
     if (typeof window === 'undefined') return false;
-    const h = window.location.hostname.toLowerCase();
+    const h = (window.location?.hostname || '').toLowerCase();
     return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '0.0.0.0';
 };
 
@@ -351,18 +351,8 @@ export const 构建OpenAI图片生成端点 = (
             const path = customPathRaw || '/v1/images/generations';
             return `${proxyBase}/api/image-backend/openai-image-proxy${path}?provider=${encodeURIComponent(供应商ID)}`;
         }
-        // 自定义代理 / 本地开发走 ?url= 模式
-        const baseAddress = 规范化OpenAI图片基础地址(baseUrlRaw).replace(/\/+$/, '');
-        const customPath = (customPathRaw || '').trim();
-        let targetPath: string;
-        if (customPath.startsWith('/')) {
-            targetPath = /\/v1$/i.test(baseAddress) && /^\/v1\//i.test(customPath)
-                ? customPath.replace(/^\/v1/i, '')
-                : customPath;
-        } else {
-            targetPath = `/${customPath || '/v1/images/generations'}`;
-        }
-        const targetUrl = `${baseAddress}${targetPath}`;
+        // 自定义代理 / 本地开发走 ?url= 模式：目标地址（含完整路径）整体编码到 ?url=
+        const targetUrl = 构建直连端点(baseUrlRaw, customPathRaw);
         return `${proxyBase}/api/image-backend/openai-image-proxy?url=${encodeURIComponent(targetUrl)}`;
     }
 

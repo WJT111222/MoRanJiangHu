@@ -3,11 +3,56 @@ import { onRequest } from '../functions/api/image-backend/openai-image-proxy/[[p
 import { onRequestGet } from '../functions/api/image-backend/fetch-image';
 
 describe('OpenAI image runtime proxy', () => {
-    it('does not duplicate /v1 when the target base already includes /v1', async () => {
+    it('proxies whitelisted provider image generation requests and prefixes /v1', async () => {
         const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         }));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const response = await onRequest({
+            request: new Request('https://msjh.example/api/image-backend/openai-image-proxy/images/generations?provider=openai-official', {
+                method: 'POST',
+                headers: {
+                    Authorization: 'Bearer sk-test',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model: 'gpt-image-2', prompt: 'test' })
+            }),
+            params: { path: ['images', 'generations'] }
+        });
+
+        expect(response.status).toBe(200);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock.mock.calls[0][0]).toBe('https://api.openai.com/v1/images/generations');
+    });
+
+    it('does not duplicate /v1 when the provider path already includes /v1', async () => {
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        }));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const response = await onRequest({
+            request: new Request('https://msjh.example/api/image-backend/openai-image-proxy/v1/images/generations?provider=openai-official', {
+                method: 'POST',
+                headers: {
+                    Authorization: 'Bearer sk-test',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model: 'gpt-image-2', prompt: 'test' })
+            }),
+            params: { path: ['v1', 'images', 'generations'] }
+        });
+
+        expect(response.status).toBe(200);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock.mock.calls[0][0]).toBe('https://api.openai.com/v1/images/generations');
+    });
+
+    it('rejects requests that do not use a whitelisted provider (url mode removed)', async () => {
+        const fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);
 
         const response = await onRequest({
@@ -22,41 +67,8 @@ describe('OpenAI image runtime proxy', () => {
             params: { path: ['v1', 'images', 'generations'] }
         });
 
-        expect(response.status).toBe(200);
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(fetchMock.mock.calls[0][0]).toBe('https://cdn.moe-atelier.site/v1/images/generations');
-    });
-
-    it('proxies APIMart async image task polling requests', async () => {
-        const fetchMock = vi.fn(async () => new Response(JSON.stringify({
-            code: 200,
-            data: {
-                status: 'completed',
-                result: {
-                    images: ['https://getapib.org/image/generated-ok.png']
-                }
-            }
-        }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-        }));
-        vi.stubGlobal('fetch', fetchMock);
-
-        const response = await onRequest({
-            request: new Request('https://msjh.example/api/image-backend/openai-image-proxy/v1/tasks/task_apimart_123?url=https%3A%2F%2Fapi.apimart.ai%2Fv1', {
-                method: 'GET',
-                headers: {
-                    Authorization: 'Bearer sk-test',
-                    Accept: 'application/json'
-                }
-            }),
-            params: { path: ['v1', 'tasks', 'task_apimart_123'] }
-        });
-
-        expect(response.status).toBe(200);
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(fetchMock.mock.calls[0][0]).toBe('https://api.apimart.ai/v1/tasks/task_apimart_123');
-        expect(fetchMock.mock.calls[0][1]?.method).toBe('GET');
+        expect(response.status).toBe(400);
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 });
 

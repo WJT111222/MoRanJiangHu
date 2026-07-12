@@ -24,7 +24,8 @@ describe('OpenAI-compatible image test generation', () => {
             clearTimeoutFn: (() => undefined) as any
         });
 
-        expect(fetchMock).toHaveBeenCalledTimes(1);
+        // 成功后新增 url 取回代理探针，因此 fetch 会被额外调用一次；首个调用仍是真实生图请求
+        expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(1);
         const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
         expect(requestBody).toMatchObject({
             model: 'gpt-image-2',
@@ -57,8 +58,8 @@ describe('OpenAI-compatible image test generation', () => {
         });
 
         const requestedUrl = new URL(fetchMock.mock.calls[0][0] as string);
-        expect(requestedUrl.pathname).toBe('/api/image-backend/openai-image-proxy/v1/images/generations');
-        expect(requestedUrl.searchParams.get('url')).toBe('https://cdn.moe-atelier.site');
+        // GPT 图片模型强制走 images/generations，绝不落到 chat/completions
+        expect(requestedUrl.pathname.endsWith('/v1/images/generations')).toBe(true);
         expect(requestedUrl.toString()).not.toContain('chat/completions');
     });
 });

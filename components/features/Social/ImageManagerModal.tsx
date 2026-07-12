@@ -3994,17 +3994,37 @@ const ImageManagerModal: React.FC<Props> = ({
         </div>
     );
 
-    const renderHistoryTab = () => (
+    const renderHistoryTab = (queueMode = false) => (
         <div className="flex flex-col h-full bg-[#0c0d0f]/90 border border-wuxia-gold/30 rounded shadow-[0_0_30px_rgba(212,175,55,0.05)] p-5 relative">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.03)_0%,transparent_100%)] pointer-events-none"></div>
             
             <div className="relative z-10 flex flex-col h-full">
                 <div className="flex flex-wrap items-center justify-between border-b border-wuxia-gold/10 pb-4 mb-4 shrink-0 gap-4">
                     <div>
-                        <div className="text-wuxia-gold font-serif text-xl tracking-wider text-shadow-glow">全部生成历史</div>
-                        <div className="text-[10px] text-gray-500 mt-1">Chronicles of the Past</div>
+                        <div className="text-wuxia-gold font-serif text-xl tracking-wider text-shadow-glow">{queueMode ? '生成队列' : '全部生成历史'}</div>
+                        <div className="text-[10px] text-gray-500 mt-1">{queueMode ? '以生成历史框架展示所有记录，并补充实时队列进度、重试与删除操作。' : 'Chronicles of the Past'}</div>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                        {queueMode && onClearQueue && (
+                            <>
+                                <button type="button" onClick={() => { void handleClearQueue('completed'); }} disabled={busyActionKey === 'clear_queue_completed'} className={次级按钮样式(true)}>
+                                    清空已完成 NPC 任务
+                                </button>
+                                <button type="button" onClick={() => { void handleClearQueue('all'); }} disabled={busyActionKey === 'clear_queue_all'} className={次级按钮样式(true)}>
+                                    清空全部 NPC 任务
+                                </button>
+                            </>
+                        )}
+                        {queueMode && onClearSceneQueue && (
+                            <>
+                                <button type="button" onClick={() => { void handleClearSceneQueue('completed'); }} disabled={busyActionKey === 'clear_scene_queue_completed'} className={次级按钮样式(true)}>
+                                    清空已完成场景任务
+                                </button>
+                                <button type="button" onClick={() => { void handleClearSceneQueue('all'); }} disabled={busyActionKey === 'clear_scene_queue_all'} className={次级按钮样式(true)}>
+                                    清空全部场景任务
+                                </button>
+                            </>
+                        )}
                         {onClearImageHistory && (
                             <button
                                 type="button"
@@ -4038,6 +4058,74 @@ const ImageManagerModal: React.FC<Props> = ({
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-5">
+                    {queueMode && filteredCombinedQueue.length > 0 && (
+                        <div className="rounded border border-cyan-400/20 bg-cyan-950/10 p-4">
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <div className="text-cyan-100 font-serif text-base tracking-wider">实时队列状态</div>
+                                    <div className="mt-1 text-[10px] text-cyan-100/50">只显示任务现场信息；完整图片、提示词和原始描述在下方历史卡片中查看。</div>
+                                </div>
+                                <div className="text-[11px] text-cyan-100/70">{filteredCombinedQueue.length} 条</div>
+                            </div>
+                            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                                {filteredCombinedQueue.map((entry) => {
+                                    if (entry.类型 === 'item' && entry.itemRecord) {
+                                        const item = entry.itemRecord;
+                                        const status = 从图片状态推导队列状态(item.状态);
+                                        return (
+                                            <div key={`queue_${entry.id}`} className="rounded border border-cyan-300/15 bg-black/35 px-3 py-2 text-[11px]">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="truncate font-serif text-cyan-100" title={item.物品名称}>{item.物品名称 || '物品生图'}</span>
+                                                    <span className={`shrink-0 rounded border px-1.5 py-0.5 ${队列状态样式[status]}`}>{获取图片状态文案(item)}</span>
+                                                </div>
+                                                <div className="mt-1 text-cyan-100/55">{item.错误信息 || (获取图片展示地址(item) ? '图片已返回并写入历史。' : '等待图片后端返回或本地化。')}</div>
+                                                <div className="mt-1 font-mono text-[10px] text-gray-500">{格式化时间(item.生成时间)}</div>
+                                            </div>
+                                        );
+                                    }
+                                    if (entry.类型 === 'scene' && entry.task) {
+                                        const task = entry.task as 场景生图任务记录;
+                                        return (
+                                            <div key={`queue_${entry.id}`} className="rounded border border-cyan-300/15 bg-black/35 px-3 py-2 text-[11px]">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="truncate font-serif text-cyan-100" title={task.摘要 || '场景生成任务'}>{task.摘要 || '场景生成任务'}</span>
+                                                    <span className={`shrink-0 rounded border px-1.5 py-0.5 ${队列状态样式[task.状态]}`}>{队列状态文案[task.状态]}</span>
+                                                </div>
+                                                <div className="mt-1 text-cyan-100/55">{task.进度文本 || task.错误信息 || 获取生图阶段中文(task.进度阶段 || 从任务状态推导阶段(task.状态))}</div>
+                                                <div className="mt-2 flex items-center justify-between gap-2">
+                                                    <span className="font-mono text-[10px] text-gray-500">{格式化时间(task.创建时间)}</span>
+                                                    {onDeleteSceneQueueTask && (
+                                                        <button type="button" onClick={() => { void handleDeleteSceneQueueTask(task.id); }} disabled={busyActionKey === `delete_scene_queue_${task.id}`} className={次级按钮样式(true)}>删除</button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    const task = entry.task as NPC生图任务记录;
+                                    return (
+                                        <div key={`queue_${entry.id}`} className="rounded border border-wuxia-gold/15 bg-black/35 px-3 py-2 text-[11px]">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="truncate font-serif text-wuxia-gold/90" title={task.NPC姓名}>{task.NPC姓名 || '角色生图'} · {获取NPC构图文案(task.构图, task.部位)}</span>
+                                                <span className={`shrink-0 rounded border px-1.5 py-0.5 ${队列状态样式[task.状态]}`}>{队列状态文案[task.状态]}</span>
+                                            </div>
+                                            <div className="mt-1 text-wuxia-gold/55">{task.进度文本 || task.错误信息 || 获取生图阶段中文(task.进度阶段 || 从任务状态推导阶段(task.状态))}</div>
+                                            <div className="mt-2 flex items-center justify-between gap-2">
+                                                <span className="font-mono text-[10px] text-gray-500">{格式化时间(task.创建时间)}</span>
+                                                <div className="flex gap-2">
+                                                    {task.状态 === 'failed' && task.构图 !== '部位特写' && onRetryImage && (
+                                                        <button type="button" onClick={() => { void handleRetryImage(从任务标识提取NPCID(task.NPC标识)); }} disabled={busyActionKey === `retry_${task.NPC标识}`} className={次级按钮样式()}>重试</button>
+                                                    )}
+                                                    {onDeleteQueueTask && (
+                                                        <button type="button" onClick={() => { void handleDeleteQueueTask(task.id); }} disabled={busyActionKey === `delete_queue_${task.id}`} className={次级按钮样式(true)}>删除</button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                     {combinedHistoryRecords.length > 0 ? (
                         <div className="grid grid-cols-1 gap-5 pb-4">
                             {combinedHistoryRecords.map((entry) => {
@@ -5499,7 +5587,7 @@ const ImageManagerModal: React.FC<Props> = ({
                             {activeTab === 'manual' && renderManualTab()}
                             {activeTab === 'library' && renderLibraryTab()}
                             {activeTab === 'scene' && renderSceneTab()}
-                            {activeTab === 'queue' && <>{renderQueueTab()}<div className="mt-6">{renderHistoryTab()}</div></>}
+                            {activeTab === 'queue' && renderHistoryTab(true)}
                             {activeTab === 'itemGallery' && renderItemGalleryTab()}
                             {activeTab === 'presets' && renderPresetsTab()}
                             {activeTab === 'rules' && renderRulesTab()}
