@@ -512,27 +512,11 @@ export default defineConfig(({ mode }) => {
               return 'item-library';
             }
 
-            if (
-              normalizedId.endsWith('/services/ai/imageTasks.ts') ||
-              normalizedId.endsWith('/services/ai/itemImageGeneration.ts') ||
-              normalizedId.endsWith('/services/ai/imageGenerationDiagnostics.ts') ||
-              normalizedId.endsWith('/services/ai/imageBackendRegistry.ts') ||
-              normalizedId.endsWith('/services/ai/openaiImageTest.ts') ||
-              normalizedId.endsWith('/services/ai/comfyWorkflowValidation.ts')
-            ) {
-              return 'ai-image';
-            }
-
-            if (normalizedId.includes('/prompts/runtime/')) {
-              return 'prompts-runtime';
-            }
-
-            if (
-              normalizedId.includes('/prompts/core/') ||
-              normalizedId.includes('/prompts/stats/') ||
-              normalizedId.includes('/prompts/writing/')
-            ) {
-              return 'prompts-core';
+            // prompts/* 内部存在 core<->runtime 循环依赖（如 prompts/stats <-> prompts/runtime/fandom），
+            // 拆成多个 chunk 会形成跨 chunk 循环并触发运行时 TDZ（Cannot access 'x' before initialization）。
+            // 统一归入单个 prompts chunk，把循环限制在 chunk 内部，避免线上初始化崩溃。
+            if (normalizedId.includes('/prompts/')) {
+              return 'prompts';
             }
 
             if (
@@ -541,12 +525,13 @@ export default defineConfig(({ mode }) => {
               normalizedId.endsWith('/utils/modeRuntimeProfile.ts') ||
               normalizedId.endsWith('/utils/promptFeatureToggles.ts')
             ) {
-              return 'prompts-core';
+              return 'prompts';
             }
 
             if (
               normalizedId.includes('/hooks/useGame/') ||
-              normalizedId.endsWith('/hooks/useGame.ts')
+              normalizedId.endsWith('/hooks/useGame.ts') ||
+              normalizedId.includes('/services/ai/')
             ) {
               return 'game-runtime';
             }
