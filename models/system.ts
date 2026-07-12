@@ -611,6 +611,10 @@ export interface CurrencySystem {
     baseUnitId: string;
     units: CurrencyUnit[];
     formatStyle?: 'single' | 'compound';
+    /** 多货币汇率系统扩展：多体系共存（可选） */
+    systems?: Record<string, ExpandedSystemConfig>;
+    /** 多货币汇率系统扩展：动态汇率策略（可选） */
+    exchangeRatePolicies?: ExchangeRatePolicies;
 }
 
 export interface MoneyAmount {
@@ -1329,4 +1333,84 @@ export interface 节日结构 {
     日: number;
     描述: string;
     效果: string; // 如：鬼怪出现率增加
+}
+
+// ========== 多货币汇率系统（MCX）接口定义 ==========
+
+export interface QualityTemplate {
+    baseUnit: string;
+    qualities: string[];
+    qualityUpgradeRatio?: number;
+    inMarket?: boolean;
+    excludeFromValuation?: boolean;
+}
+
+export interface TransformDefinition {
+    fromUnit: string;
+    toUnit: string;
+    ratio: number;
+    process?: string;
+}
+
+export interface TransformBatchConfig {
+    targetSystem: string;
+    targetTemplate: string;
+    autoMapQualities?: boolean;
+    qualityMapping?: Record<string, string>;
+    /** 目标品质模板（autoMapQualities 模式使用） */
+    targetQualityTemplate?: QualityTemplate;
+    /** 转化比率 */
+    ratio?: number;
+    /** 转化流程说明 */
+    process?: string;
+}
+
+/** 货币单位定义（多货币汇率系统） */
+export interface UnitDefinition {
+    displayName: string;
+    displayOrder: number;
+    inMarket?: boolean;
+    /** 是否排除估值（不可上市交易） */
+    excludeFromValuation?: boolean;
+    aliases?: string[];
+    qualityUpgradeTo?: string;
+    qualityUpgradeRatio?: number;
+}
+
+/** 展开后的体系配置（多货币汇率系统） */
+export interface ExpandedSystemConfig {
+    displayName: string;
+    displayOrder: number;
+    exchangeable?: boolean;
+    units: Record<string, UnitDefinition>;
+    qualityTemplate?: QualityTemplate;
+    transforms?: TransformDefinition[];
+    /** 批量转化配置：按品质模板自动映射到目标体系 */
+    transformsTo?: TransformBatchConfig;
+}
+
+/** 完整展开的货币系统（多货币汇率系统） */
+export interface ExpandedCurrencySystem {
+    systems: Record<string, ExpandedSystemConfig>;
+    transforms: TransformDefinition[];
+    validatedPolicies?: ExchangeRatePolicies;
+}
+
+/** 汇率策略（多货币汇率系统） */
+export interface ExchangeRatePolicy {
+    fromUnit: string;
+    toUnit: string;
+    type: 'fixed' | 'range';
+    fixedRate?: number;
+    minRate?: number;
+    maxRate?: number;
+    defaultRate?: number;
+    symmetric?: boolean;
+    expireByLayer?: Record<string, number>;
+    description?: string;
+}
+
+/** 汇率策略字典（多货币汇率系统） */
+export interface ExchangeRatePolicies {
+    [policyId: string]: ExchangeRatePolicy;
 }

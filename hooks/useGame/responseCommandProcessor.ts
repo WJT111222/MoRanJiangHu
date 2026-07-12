@@ -11,6 +11,8 @@ import {
     同人剧情规划结构,
     同人女主剧情规划结构
 } from '../../types';
+import { 检查汇率, 更新地点在场时间, 补充寰宇固定汇率, 获取节点到根路径, 构建汇率生成提示, 是否汇率过期 } from '../../utils/economyRules';
+import { 获取展开货币系统 } from '../../utils/apiConfig';
 import { applyStateCommand, normalizeStateCommandKey } from '../../utils/stateHelpers';
 import { 规范化任务列表自动结算 } from '../../utils/taskCompat';
 import { 结算已完成任务奖励 } from '../../utils/taskRewards';
@@ -19,6 +21,11 @@ import { 姓名含已知中文姓氏 } from '../../utils/chineseName';
 import { 合并保留既有NPC列表, 命令存在社交删除风险, 是否占位名 } from '../../utils/npcRetentionGuard';
 import { 提取NPC死亡风险命令索引, 状态效果是死亡判定 } from '../../utils/npcDeathGuard';
 import { 构建体内射精记录, 推进社交孕产状态, 规范化孕产时间 } from '../../utils/reproduction';
+
+/** 判断是否为具体地点变更命令（多货币汇率系统用） */
+const 是否具体地点变更命令 = (key: string): boolean => {
+    return ['环境.具体地点', '环境.位置', '环境.大地点', '环境.中地点', '环境.小地点'].includes(key);
+};
 
 /** 判断文本是否实质为空 */
 const 实质为空文本 = (value: unknown): boolean => (
@@ -1595,6 +1602,15 @@ export const 执行响应命令处理 = (
             worldBuffer = result.world;
             battleBuffer = result.battle;
             sectBuffer = result.sect;
+
+            // 多货币汇率系统：地点变更时触发汇率检查
+            if (safeCmd.action === 'set' && 是否具体地点变更命令(safeCmd.key)) {
+                const 当前节点 = worldBuffer?.地图层级?.find((n: any) => n.名称 === safeCmd.value);
+                if (当前节点) {
+                    const 运行时配置 = deps.获取运行时配置?.();
+                    检查汇率(worldBuffer?.地图层级 || [], 当前节点.ID, envBuffer?.时间 || '', 运行时配置, worldBuffer);
+                }
+            }
             tasksBuffer = Array.isArray(result.tasks) ? result.tasks : [];
             agreementsBuffer = Array.isArray(result.agreements) ? result.agreements : [];
             storyBuffer = result.story;

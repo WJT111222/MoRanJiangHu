@@ -1,6 +1,6 @@
 import * as textAIService from '../../services/ai/text';
 import type { GameResponse, OpeningConfig, TavernCommand, 世界书结构, 内置提示词条目结构, 提示词结构 } from '../../types';
-import { 获取变量计算接口配置, 接口配置是否可用, 变量校准功能已启用 } from '../../utils/apiConfig';
+import { 获取变量计算接口配置, 接口配置是否可用, 变量校准功能已启用, 获取展开货币系统 } from '../../utils/apiConfig';
 import { 规范化游戏设置 } from '../../utils/gameSettings';
 import { 获取繁体输出指令 } from '../../utils/traditionalChinese';
 import { normalizeStateCommandKey } from '../../utils/stateHelpers';
@@ -705,12 +705,15 @@ export const 执行变量模型校准工作流 = async (
         .filter(Boolean)
         .join('\n\n');
 
+    const 展开货币系统 = 获取展开货币系统(params.openingConfig?.modeRuntimeProfile);
     const 请求变量模型 = (retryHint = '') => textAIService.generateVariableCalibrationUpdate(
         {
             stateJson: 序列化变量模型状态(params.baseState, {
                 survivalNeedsEnabled: 启用饱腹口渴系统,
                 cultivationSystemEnabled: 启用修炼体系
             }),
+            expandedCurrencySystem: 展开货币系统,
+            世界: params.baseState?.世界,
             response: params.parsedResponse,
             calibrationRulesContext: calibrationRulesContextWithFandom,
             worldEvolutionEnabled: params.worldEvolutionEnabled,

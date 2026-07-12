@@ -162,6 +162,8 @@ const 是否装备类 = (type: unknown) => type === '武器' || type === '防具
 const 是否允许自动拍卖行入市类型 = (type: unknown): boolean => (
     type === '武器' || type === '防具' || type === '饰品' || type === '消耗品' || type === '材料' || type === '秘籍' || type === '法宝'
 );
+const 是否货币类型物品 = (itemType: unknown): boolean =>
+    typeof itemType === 'string' && itemType.startsWith('货币:');
 const 仙侠拍卖关键词 = /筑基|炼气|灵石|灵宝|灵力|灵液|灵兽|灵木|灵墨|灵砂|灵脉|法宝|法器|法袍|法剑|飞剑|符箓|符阵|阵盘|丹炉|玉简|储物戒|纳戒|洞府|散修|御兽|心魔|道基/u;
 const 是否仙侠拍卖物品 = (item: any): boolean => {
     const text = [
@@ -329,21 +331,23 @@ const 获取物品行情倍率 = (item: 游戏物品 | any, 行情列表: 拍卖
     };
 };
 
-export const 计算物品市场BaseAmount = (item: 游戏物品 | any, 行情列表: 拍卖行情[] = []) => {
-    const base = Math.max(1, Math.floor(读数(item?.价值, 100)));
+export const 计算物品市场BaseAmount = (item: 游戏物品 | any, 行情列表: 拍卖行情[] = []): number | null => {
+    if (item?.excludeFromValuation === true) return null;
+    const rawValue = Math.floor(读数(item?.价值, 100));
     // Warn if value seems too small for an item that should be priced in higher currency
-    // (e.g., "一百两银子" written as 100 instead of 100000 copper)
     const name = typeof item?.名称 === 'string' ? item.名称 : '';
-    if (base < 1000 && name && /金|锭|元宝|银子|灵石|上品|中品/.test(name)) {
+    if (rawValue < 1000 && name && /金|锭|元宝|银子|灵石|上品|中品/.test(name)) {
         console.warn(
-            `[拍卖行] 物品"${name}"价值=${base}疑似单位错误：`
+            `[拍卖行] 物品"${name}"价值=${rawValue}疑似单位错误：`
             + `价值应以最低货币单位填写（如武侠用铜钱，一两银子=1000铜钱），`
             + `若该物品值"一百两银子"则价值应为100000而非100`
         );
     }
     const qualityMultiplier = 1 + ((品质权重[item?.品质 as 物品品质] || 1) - 1) * 0.08;
     const market = 获取物品行情倍率(item, 行情列表);
-    return Math.max(1, Math.floor(base * qualityMultiplier * market.multiplier));
+    const base = Math.max(1, Math.floor(rawValue * qualityMultiplier * market.multiplier));
+    if (base === 0 && !是否货币类型物品(item?.类型)) return null;
+    return base;
 };
 
 export const 计算物品市场铜钱 = (item: 游戏物品 | any, 行情列表: 拍卖行情[] = []) => (
@@ -926,7 +930,9 @@ export const 上架背包物品 = (
     if (!target) return { ok: false as const, message: '找不到要上架的物品。' };
     const count = 取数量(target);
     const listingCount = Math.max(1, Math.min(count, Number.isFinite(sellCount) ? Math.trunc(sellCount) : count));
-    const unitMarketBaseAmount = Math.max(1, Math.floor(读数(price, 计算物品市场BaseAmount(target, 行情列表))));
+    const valuation = 计算物品市场BaseAmount(target, 行情列表);
+    if (valuation === null) return { ok: false as const, message: `「${target?.名称 || '无名物品'}」不可上市交易。` };
+    const unitMarketBaseAmount = Math.max(1, Math.floor(读数(price, valuation)));
     const marketBaseAmount = unitMarketBaseAmount * listingCount;
     const listingCurrencyMultiplier = Math.max(1, 获取货币倍率(currency, options));
     const listingPrice = Math.max(1, Math.ceil(marketBaseAmount / listingCurrencyMultiplier));

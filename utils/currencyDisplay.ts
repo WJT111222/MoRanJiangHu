@@ -3,6 +3,7 @@ import type { 角色金钱 } from '../models/character';
 import { 推断单位仙侠 } from './realmDisplay';
 import { 获取题材模式配置, 题材是否仙侠 } from './topicModeProfiles';
 import type { CurrencySystem, CurrencyUnit, ModeRuntimeProfile } from '../models/system';
+import { 获取展开货币系统, 是否多货币模式 } from './apiConfig';
 
 export type 货币显示模式 = 'wuxia' | 'xianxia' | 'fantasy' | 'urban' | 'modern' | 'apocalypse' | 'infinite';
 export type 货币层级键 = '上层货币' | '中层货币' | '底层货币';
@@ -491,11 +492,63 @@ export const 获取角色金钱显示列表 = (
     return 格式化角色金钱行(money, mode).split(' / ');
 };
 
+const 构建多系统货币快照 = (
+    money: Partial<角色金钱> | null | undefined,
+    profile: any
+): 角色金钱世界观显示快照 | null => {
+    if (!是否多货币模式(profile)) return null;
+    const expandedSystem = 获取展开货币系统(profile);
+    if (!expandedSystem) return null;
+
+    const 货币桶 = (money as any)?.货币桶;
+    if (!货币桶) return null;
+
+    const sortedSystems = Object.entries(expandedSystem.systems)
+        .sort(([, a], [, b]) => a.displayOrder - b.displayOrder);
+
+    let lines: string[] = [];
+    let hasAnyAmount = false;
+
+    for (const [systemId, system] of sortedSystems) {
+        const systemUnits = 货币桶[systemId];
+        if (!systemUnits) continue;
+
+        const sortedUnits = Object.entries(system.units)
+            .sort(([, a], [, b]) => a.displayOrder - b.displayOrder);
+
+        let systemParts: string[] = [];
+        for (const [unitId, unit] of sortedUnits) {
+            const amount = (systemUnits as any)?.[unitId] ?? 0;
+            if (amount > 0 && unit.inMarket) {
+                systemParts.push(`${unit.displayName}×${amount}`);
+                hasAnyAmount = true;
+            }
+        }
+
+        if (systemParts.length > 0) {
+            lines.push(`【${system.displayName}】${systemParts.join('  ')}`);
+        }
+    }
+
+    if (!hasAnyAmount) return null;
+
+    return {
+        baseAmount: 0,
+        显示: lines.join('\n'),
+        货币体系: '多货币体系',
+        基础单位: '',
+        单位列表: []
+    };
+};
+
 export const 构建角色金钱显示快照 = (
     money?: Partial<角色金钱> | null,
     openingConfig?: OpeningConfig | null,
     character?: Partial<角色数据结构> | null
 ): 角色金钱世界观显示快照 => {
+    const multiSnapshot = 构建多系统货币快照(money, openingConfig?.modeRuntimeProfile);
+    if (multiSnapshot) return multiSnapshot;
+
     const mode = 获取货币显示模式(openingConfig, character);
     const baseAmount = 获取角色金钱BaseAmount(money, openingConfig?.modeRuntimeProfile, mode);
     const explicitSystem = 获取显式世界观货币系统(openingConfig, character);
@@ -582,7 +635,7 @@ export const 确保角色金钱BaseAmount = <T extends Record<string, any> | nul
         ...source,
         ...normalized,
         baseAmount: 获取角色金钱BaseAmount(normalized, profile, mode)
-    } as NonNullable<T> & { baseAmount: number };
+    } as unknown as NonNullable<T> & { baseAmount: number };
 };
 
 export const 获取货币兼容字段路径 = (key: 货币层级键): string[] => [
