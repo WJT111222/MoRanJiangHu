@@ -333,7 +333,7 @@ function el(tag, className, text) {
 }
 function openViewer(item) {
   viewerTitle.textContent = item.name;
-  viewerImg.src = item.src;
+  viewerImg.src = imageUrlForAttempt(item.src, 0);
   viewerImg.alt = item.name;
   viewer.classList.add('open');
   viewer.setAttribute('aria-hidden', 'false');
@@ -343,7 +343,7 @@ function closeViewer() {
   viewer.setAttribute('aria-hidden', 'true');
   viewerImg.removeAttribute('src');
 }
-const maxConcurrentImageLoads = 24;
+const maxConcurrentImageLoads = 6;
 let activeImageLoads = 0;
 const imageLoadQueue = [];
 const queuedImages = new WeakSet();
@@ -361,6 +361,9 @@ const imageObserver = 'IntersectionObserver' in window
     }, { rootMargin: '360px 0px', threshold: 0.01 })
   : null;
 function imageUrlForAttempt(url, attempt) {
+  if (/^https:\/\/cdn\.nodeimage\.com\/i\/[A-Za-z0-9_-]+\.(png|jpe?g|webp|gif)$/i.test(url)) {
+    return `/api/nodeimage-cache?url=${encodeURIComponent(url)}`;
+  }
   return url;
 }
 function cardImageCandidates(item) {
@@ -386,7 +389,7 @@ function enqueueImageLoad(img, imgbox, item, attempt = 0) {
   if (!img || !imgbox || !item || img.dataset.loaded === '1') return;
   const loadedSrc = loadedCardImageSrc(item);
   if (loadedSrc) {
-    img.src = loadedSrc;
+    img.src = imageUrlForAttempt(loadedSrc, attempt);
     img.dataset.loaded = '1';
     setImageStatus(imgbox, '', '');
     return;
@@ -456,11 +459,12 @@ function pumpImageLoadQueue() {
     if (img.dataset.loaded === '1') continue;
     queuedImages.delete(img);
     activeImageLoads += 1;
-    setImageStatus(imgbox, 'loading', attempt > 0 ? `图片重试中（${attempt}/4）` : '图片加载中');
+    setImageStatus(imgbox, 'loading', attempt > 0 ? `图片排队重试中（${attempt}/6）` : '图片排队加载中');
     img.onload = () => {
       activeImageLoads = Math.max(0, activeImageLoads - 1);
       if (img.isConnected) {
         img.dataset.loaded = '1';
+        loadedImageUrls.add(cardImageSrc(item, attempt));
         loadedImageUrls.add(img.currentSrc || img.getAttribute('src') || cardImageSrc(item, attempt));
         setImageStatus(imgbox, '', '');
       }
@@ -468,16 +472,19 @@ function pumpImageLoadQueue() {
     };
     img.onerror = () => {
       activeImageLoads = Math.max(0, activeImageLoads - 1);
-      if (img.isConnected && attempt < 4) {
+      if (img.isConnected && attempt < 6) {
         img.removeAttribute('src');
-        window.setTimeout(() => enqueueImageLoad(img, imgbox, item, attempt + 1), Math.min(12000, 1200 * (2 ** attempt)));
+        const jitter = 500 + Math.floor(Math.random() * 1200);
+        window.setTimeout(() => enqueueImageLoad(img, imgbox, item, attempt + 1), Math.min(30000, 1800 * (2 ** attempt)) + jitter);
       } else if (img.isConnected) {
-        setImageStatus(imgbox, 'fail', '图片加载失败，滚动停留后可刷新重试');
+        setImageStatus(imgbox, 'loading', '图片暂忙，稍后会自动重试');
+        window.setTimeout(() => enqueueImageLoad(img, imgbox, item, 0), 30000 + Math.floor(Math.random() * 10000));
         if (!imgbox.querySelector('.badge')) imgbox.appendChild(el('span', 'badge', item.source));
       }
       pumpImageLoadQueue();
     };
-    const src = cardImageSrc(item, attempt);
+    const originalSrc = cardImageSrc(item, attempt);
+    const src = imageUrlForAttempt(originalSrc, attempt);
     if (img.getAttribute('src') !== src) {
       img.src = src;
     } else if (img.complete && img.naturalWidth > 0) {
@@ -607,6 +614,7 @@ function getPresetCard(item, key, mark) {
   cached.button.textContent = mark.problem ? '已标问题' : '标为有问题';
   if (cached.img.getAttribute('src') && cached.img.complete && cached.img.naturalWidth > 0) {
     cached.img.dataset.loaded = '1';
+    loadedImageUrls.add(cardImageSrc(item));
     loadedImageUrls.add(cached.img.currentSrc || cached.img.getAttribute('src') || cardImageSrc(item));
     setImageStatus(cached.imgbox, '', '');
   }
