@@ -361,7 +361,7 @@ const imageObserver = 'IntersectionObserver' in window
     }, { rootMargin: '360px 0px', threshold: 0.01 })
   : null;
 function imageUrlForAttempt(url, attempt) {
-  if (/^https:\/\/cdn\.nodeimage\.com\/i\/[A-Za-z0-9_-]+\.(png|jpe?g|webp|gif)$/i.test(url)) {
+  if (attempt < 2 && /^https:\/\/cdn\.nodeimage\.com\/i\/[A-Za-z0-9_-]+\.(png|jpe?g|webp|gif)$/i.test(url)) {
     return `/api/nodeimage-cache?url=${encodeURIComponent(url)}`;
   }
   return url;
@@ -459,7 +459,7 @@ function pumpImageLoadQueue() {
     if (img.dataset.loaded === '1') continue;
     queuedImages.delete(img);
     activeImageLoads += 1;
-    setImageStatus(imgbox, 'loading', attempt > 0 ? `图片排队重试中（${attempt}/6）` : '图片排队加载中');
+    setImageStatus(imgbox, 'loading', attempt > 0 ? `图片排队加载中（${attempt}/6）` : '图片排队加载中');
     img.onload = () => {
       activeImageLoads = Math.max(0, activeImageLoads - 1);
       if (img.isConnected) {
