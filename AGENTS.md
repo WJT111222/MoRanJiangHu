@@ -52,6 +52,18 @@
 - After deployment, verify the live site and manifest over HTTPS instead of assuming local build output is live.
 - After every deployment and release backup push, check GitHub Actions CI for `ypq123456789/MoRanJiangHu` explicitly, not the upstream repository. Confirm the latest `CI` run for the pushed commit succeeds; if it fails, fetch the logs, fix when possible, and report the blocker before ending.
 
+## Static Assets Deployment Verification Rule (CRITICAL — learned from a false "deploy success" report)
+
+- **Do not report a website deploy as successful based only on `/api/apk/latest.json`.** That manifest is served from Cloudflare KV and is updated by the separate release-manifest publish flow, NOT by `wrangler deploy`. It can show the new version while the website front-end is still on the old version, producing a false "everything updated" conclusion.
+- The website version number is compiled into the front-end JS bundle and served through the **static assets** path (`dist/`, including `release-info.json` and the hashed `index-*.js`). This is a completely different channel from the KV manifest.
+- **Root cause of the past incident**: `wrangler deploy` was treated as done after checking only `/api/apk/latest.json` (KV, which did update), but the static assets (`dist/`) had not actually taken effect. The site kept serving the old bundle/version, so the displayed version never changed even though the report claimed success.
+- **Mandatory static-assets verification after every website deploy** (all over HTTPS, on BOTH the primary domain `https://msjh.bacon159.pp.ua/` and the backup `https://msjh.bacon.de5.net/`):
+  1. Fetch `/release-info.json` (the static asset, not `/api/apk/latest.json`) and confirm `versionName`, `versionCode`, and `releasePublishedAt` match the release just built.
+  2. Fetch the deployed `index.html` and confirm the referenced hashed bundle name (e.g. `assets/index-XXXX.js`) exactly matches the hash produced by the local `npm run build` in `dist/`. A matching hash is the proof that the new static assets are actually live; a stale hash means the deploy did not take effect regardless of what the `wrangler deploy` log said.
+  3. Confirm the `wrangler deploy` output actually reports uploading the asset files (e.g. `Uploaded N files`) and did not silently skip the assets step.
+- `/api/apk/latest.json` showing the new version is NOT sufficient evidence of a website deploy. It is a valid check only for the APK/update-manifest channel, and only after the release-manifest publish step has run.
+- If the static-assets checks above do not pass, the website deployment is INCOMPLETE — re-run `npm run build` + `wrangler deploy` (proxy vars cleared) and re-verify, instead of reporting success.
+
 ## Legacy APK Update Manifest Rule (DECOMMISSIONED)
 
 - The legacy `download.bacon.de5.net` update manifest path was hosted on Cloudflare R2, which has been **fully decommissioned**. R2 is no longer available for any purpose.

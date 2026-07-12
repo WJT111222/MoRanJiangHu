@@ -52,6 +52,18 @@
 - 部署后必须通过 HTTPS 验证线上站点和 manifest，不能只看本地构建输出。
 - 每次部署并推送 release backup 后，都要显式检查 `ypq123456789/MoRanJiangHu` 的 GitHub Actions CI，而不是 upstream 仓库。确认最新推送 commit 的 `CI` run 成功；如果失败，要拉取日志，能修则修，不能修要在结束前报告阻塞。
 
+## 静态资源部署验证规则（关键——源于一次误报"部署成功"的教训）
+
+- **不要只凭 `/api/apk/latest.json` 就判定网站部署成功。** 这个 manifest 由 Cloudflare KV 提供，是由独立的 release-manifest 发布流程更新的，**不是** `wrangler deploy` 更新的。它可能已显示新版本，而网站前端仍停留在旧版本，从而得出"整站都更新了"的错误结论。
+- 网站版本号是编译进前端 JS bundle 的，通过**静态资源**路径（`dist/`，含 `release-info.json` 和带 hash 的 `index-*.js`）提供。这与 KV manifest 是完全不同的通道。
+- **过往事故的根因**：`wrangler deploy` 后只检查了 `/api/apk/latest.json`（KV，确实更新了）就当作完成，但静态资源（`dist/`）实际没有真正生效。站点仍在提供旧 bundle/版本，所以显示的版本号从未改变，尽管报告声称成功。
+- **每次网站部署后必须做的静态资源验证**（全部走 HTTPS，主站 `https://msjh.bacon159.pp.ua/` 和备站 `https://msjh.bacon.de5.net/` 都要验证）：
+  1. 请求 `/release-info.json`（静态资源，不是 `/api/apk/latest.json`），确认 `versionName`、`versionCode`、`releasePublishedAt` 与刚构建的 release 一致。
+  2. 请求线上 `index.html`，确认其引用的带 hash 的 bundle 名（例如 `assets/index-XXXX.js`）与本地 `npm run build` 在 `dist/` 中产出的 hash 完全一致。hash 一致才是新静态资源真正上线的证据；hash 陈旧说明部署没生效，无论 `wrangler deploy` 日志说了什么。
+  3. 确认 `wrangler deploy` 输出确实报告了上传资源文件（例如 `Uploaded N files`），没有静默跳过 assets 步骤。
+- `/api/apk/latest.json` 显示新版本不足以作为网站部署成功的证据。它只对 APK/update-manifest 通道有效，且只在 release-manifest 发布步骤运行之后才有意义。
+- 如果上述静态资源检查未通过，网站部署即为**未完成**——应重新执行 `npm run build` + `wrangler deploy`（清除代理变量）并重新验证，而不是报告成功。
+
 ## 旧版 APK 更新清单规则（已停用）
 
 - 旧版 `download.bacon.de5.net` 更新清单路径托管在 Cloudflare R2 上，R2 已**完全停用**，不再用于任何用途。

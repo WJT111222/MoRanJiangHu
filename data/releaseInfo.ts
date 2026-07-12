@@ -590,7 +590,7 @@ export const RELEASE_INFO = {
         "备用站：https://msjh.bacon.de5.net/"
     ],
     "notes": "修复附加世界书/世界书条目在关键词命中后仍不注入的问题：现在关键词匹配成功后能正确把对应世界书内容注入到 AI 上下文。\n优化世界书关键词的上下文匹配，减少该命中却没生效的情况，设定触发更可靠。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-    "releasePublishedAt": "2026-07-12T18:03:25+08:00"
+    "releasePublishedAt": "2026-07-12T18:09:27+08:00"
 } as const;
 
 export type ReleaseInfo = typeof RELEASE_INFO;

@@ -20,293 +20,293 @@ export interface 预置物品图片条目 {
  */
 export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 武器：剑 ───────────────────────────────────────────────────────
-    { 名称: '青钢剑', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%9D%92%E9%92%A2%E5%89%91.png' },
-    { 名称: '精钢长剑', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E9%95%BF%E5%89%91.png' },
-    { 名称: '玄铁重剑', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E9%87%8D%E5%89%91.png' },
-    { 名称: '碧水长剑', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%A2%A7%E6%B0%B4%E9%95%BF%E5%89%91.png' },
-    { 名称: '断水剑', 类型: '武器', 品质: '绝世', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%96%AD%E6%B0%B4%E5%89%91.png' },
-    { 名称: '锈铁剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%94%88%E9%93%81%E5%89%91.png' },
+    { 名称: '青钢剑', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/vLXGG1mSKV4IOnsxZ4v5jYYwVYrxxICG.png' },
+    { 名称: '精钢长剑', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/6LwQztE8VYNtASDKXXlAUtpPXKNw8EwV.png' },
+    { 名称: '玄铁重剑', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/2Gd3JBUdc0vGjBluzza6P7liQOdUxpqr.png' },
+    { 名称: '碧水长剑', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/xzkQxg6OVAnHpIz6qvociGs8pzAUcITi.png' },
+    { 名称: '断水剑', 类型: '武器', 品质: '绝世', 图片URL: 'https://cdn.nodeimage.com/i/6oM1Dlu5Kcj167pgIDHn0E1MPILUlBN0.png' },
+    { 名称: '锈铁剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/icCGuYe9LVdbp2YqARTa76eqENHUpjGS.png' },
 
     // ─── 武器：刀 ───────────────────────────────────────────────────────
-    { 名称: '柳叶刀', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9F%B3%E5%8F%B6%E5%88%80.png' },
-    { 名称: '鬼头大刀', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%AC%BC%E5%A4%B4%E5%A4%A7%E5%88%80.png' },
-    { 名称: '雪饮狂刀', 类型: '武器', 品质: '绝世', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%9B%AA%E9%A5%AE%E7%8B%82%E5%88%80.png' },
+    { 名称: '柳叶刀', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/AGQQr0lKh8R07fvctIT0XmUdDtezcjI5.png' },
+    { 名称: '鬼头大刀', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/GySIwj0beOKJ4l3R6CXdRcS7nmbC8HUm.png' },
+    { 名称: '雪饮狂刀', 类型: '武器', 品质: '绝世', 图片URL: 'https://cdn.nodeimage.com/i/9E42QlZUX3wBfKmKNXZ4Wb7fRcvAkFlu.png' },
 
     // ─── 武器：枪/棍 ─────────────────────────────────────────────────────
-    { 名称: '白蜡杆枪', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%99%BD%E8%9C%A1%E6%9D%86%E6%9E%AA.png' },
-    { 名称: '霸王枪', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%9C%B8%E7%8E%8B%E6%9E%AA.png' },
-    { 名称: '齐眉棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%BD%90%E7%9C%89%E6%A3%8D.png' },
+    { 名称: '白蜡杆枪', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/BTE35CiGQULThprCIUhZlJEYs2wC8qYt.png' },
+    { 名称: '霸王枪', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/8uoBAsKUekpiMSMeEnZCcgRLarBn4F6p.png' },
+    { 名称: '齐眉棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/KukBR96xIsqx1gzno1EQ1N2xsDbDiIZ1.png' },
 
     // ─── 武器：弓/暗器 ───────────────────────────────────────────────────
-    { 名称: '铁胎弓', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E8%83%8E%E5%BC%93.png' },
-    { 名称: '袖箭', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%A2%96%E7%AE%AD.png' },
-    { 名称: '毒针', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%AF%92%E9%92%88.png' },
+    { 名称: '铁胎弓', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/LeeEMHJ8MkIGRhb0BVASexIRCuRAuJ9a.png' },
+    { 名称: '袖箭', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/2WMe1LuxzeZITKpxswXoVXSzriguKLuZ.png' },
+    { 名称: '毒针', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/SnUWKXjcU6iyLOwCdFEGizw0NOXdVV1d.png' },
 
     // ─── 防具 ───────────────────────────────────────────────────────────
-    { 名称: '玄铁护甲', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E6%8A%A4%E7%94%B2.png' },
-    { 名称: '锁子甲', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%94%81%E5%AD%90%E7%94%B2.png' },
-    { 名称: '软猬甲', 类型: '防具', 品质: '绝世', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BD%AF%E7%8C%AC%E7%94%B2.png' },
-    { 名称: '布衣', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%B8%83%E8%A1%A3.png' },
-    { 名称: '青衫', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%9D%92%E8%A1%AB.png' },
-    { 名称: '粗布青衫', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%97%E5%B8%83%E9%9D%92%E8%A1%AB.png' },
-    { 名称: '青色练功服', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%9D%92%E8%89%B2%E7%BB%83%E5%8A%9F%E6%9C%8D.png' },
-    { 名称: '粗布长裤', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%97%E5%B8%83%E9%95%BF%E8%A3%A4.png' },
-    { 名称: '旧布鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%97%A7%E5%B8%83%E9%9E%8B.png' },
-    { 名称: '护腕', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%8A%A4%E8%85%95.png' },
+    { 名称: '玄铁护甲', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/zgclROHwr2GKk4We0CWhPcrr27r4FRqD.png' },
+    { 名称: '锁子甲', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/ZwtKSaLchJVYYJ4kXgSsbXZTdWafcfhz.png' },
+    { 名称: '软猬甲', 类型: '防具', 品质: '绝世', 图片URL: 'https://cdn.nodeimage.com/i/bQsZJ1I4ipD1MWF9qbYuXdJXaLucw4JY.png' },
+    { 名称: '布衣', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/iajVZ1Mn7fq7tpixwUA1IcQfBiu15vaX.png' },
+    { 名称: '青衫', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/wrSXHk0I6UV3yO3OCkXrfQ1n5X8lFnGn.png' },
+    { 名称: '粗布青衫', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/DtPGa49oMnRIHA6usSKDK7DIvoh8JXp3.png' },
+    { 名称: '青色练功服', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/YVanUR5dwof5Z8XNWYbXjuuIjyK0JxaU.png' },
+    { 名称: '粗布长裤', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/Lg4WvDZfRGncpumgtlEZhRSDN5dPrbKs.png' },
+    { 名称: '旧布鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/Zt6iH5DGpvgIWzCmp4j0YFiIQsFDqral.png' },
+    { 名称: '护腕', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/dVdXYyUFsigNYLlrXB6Rbnmc2nCulNwi.png' },
 
     // ─── 消耗品：丹药 ─────────────────────────────────────────────────────
-    { 名称: '辟谷丹', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BE%9F%E8%B0%B7%E4%B8%B9.png' },
-    { 名称: '回气丹', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%9B%9E%E6%B0%94%E4%B8%B9.png' },
-    { 名称: '凝元丹', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%87%9D%E5%85%83%E4%B8%B9.png' },
-    { 名称: '破境丹', 类型: '消耗品', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%A0%B4%E5%A2%83%E4%B8%B9.png' },
-    { 名称: '大还丹', 类型: '消耗品', 品质: '绝世', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%A4%A7%E8%BF%98%E4%B8%B9.png' },
-    { 名称: '金创药', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%87%91%E5%88%9B%E8%8D%AF.png' },
-    { 名称: '解毒散', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%A7%A3%E6%AF%92%E6%95%A3.png' },
-    { 名称: '续命丹', 类型: '消耗品', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%BB%AD%E5%91%BD%E4%B8%B9.png' },
+    { 名称: '辟谷丹', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/XWK3w4z3bbNER31DiaXX8eCmeukSVeaP.png' },
+    { 名称: '回气丹', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/iOI7QJhRMtmPFQ5RpmzTV7XPRtIYUuva.png' },
+    { 名称: '凝元丹', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/3cuViXS52UjwT6c3erEX0VtLxoYHqcXZ.png' },
+    { 名称: '破境丹', 类型: '消耗品', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/AOsamqIPYbC8unF50YkbxJFTyT5hgBrN.png' },
+    { 名称: '大还丹', 类型: '消耗品', 品质: '绝世', 图片URL: 'https://cdn.nodeimage.com/i/I1472tZCXFHs96mDvLnCUwmKGAuaYGRy.png' },
+    { 名称: '金创药', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/WAqO08RTtk2UF0LJuXYgLKqiQfZNgRRc.png' },
+    { 名称: '解毒散', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/pqcYHcHqzGmjTSWJBXQFLh4XDmy2XygN.png' },
+    { 名称: '续命丹', 类型: '消耗品', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/qi3u9qCDAFecpGqj9Z5PVhCb9oofe7JK.png' },
 
     // ─── 材料 ───────────────────────────────────────────────────────────
-    { 名称: '寒铁矿', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E7%9F%BF.png' },
-    { 名称: '千年灵芝', 类型: '材料', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%8D%83%E5%B9%B4%E7%81%B5%E8%8A%9D.png' },
-    { 名称: '蛇胆', 类型: '材料', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%9B%87%E8%83%86.png' },
-    { 名称: '玄冰石', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E5%86%B0%E7%9F%B3.png' },
-    { 名称: '百年何首乌', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%99%BE%E5%B9%B4%E4%BD%95%E9%A6%96%E4%B9%8C.png' },
-    { 名称: '铁木', 类型: '材料', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E6%9C%A8.png' },
-    { 名称: '兽皮', 类型: '材料', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%85%BD%E7%9A%AE.png' },
+    { 名称: '寒铁矿', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/mGLwH32nc9VNsboIhD7xvjvIYBXYA4lm.png' },
+    { 名称: '千年灵芝', 类型: '材料', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/MMPlyo9f0U2Jrw60KuYncuv39KeEAVqP.png' },
+    { 名称: '蛇胆', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/iVhMStFXnGRsFVgPYViEjVKWXXZAYKnb.png' },
+    { 名称: '玄冰石', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/Qn4rxwZJcKeEVmmoDSoPY6qkGfq4KAUA.png' },
+    { 名称: '百年何首乌', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/fe1IPvpY0EJfOsVNNCbK9jX66veP319X.png' },
+    { 名称: '铁木', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/D3TfuZkkVScn5UcVid9gKez4hrWgn1we.png' },
+    { 名称: '兽皮', 类型: '材料', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/bPFPdgrDmHm27O7CBGToqYDPuUAn0ZK9.png' },
 
     // ─── 秘籍 ───────────────────────────────────────────────────────────
-    { 名称: '基础剑法残卷', 类型: '秘籍', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%9F%BA%E7%A1%80%E5%89%91%E6%B3%95%E6%AE%8B%E5%8D%B7.png' },
-    { 名称: '吐纳心法', 类型: '秘籍', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%90%90%E7%BA%B3%E5%BF%83%E6%B3%95.png' },
-    { 名称: '轻身术', 类型: '秘籍', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BD%BB%E8%BA%AB%E6%9C%AF.png' },
-    { 名称: '金钟罩', 类型: '秘籍', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%87%91%E9%92%9F%E7%BD%A9.png' },
-    { 名称: '九阳真经', 类型: '秘籍', 品质: '传说', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%9D%E9%98%B3%E7%9C%9F%E7%BB%8F.png' },
+    { 名称: '基础剑法残卷', 类型: '秘籍', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/vGzsBX3hrLq0oyAwTkiW1OEelMlFYXDM.png' },
+    { 名称: '吐纳心法', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/mk6nuWDOjTTMpgC5BtGjwniDLvlSIjDu.png' },
+    { 名称: '轻身术', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/hMQ1LwlpqUKOZlv5eL4wYat7ieKyDuEi.png' },
+    { 名称: '金钟罩', 类型: '秘籍', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/cj8OCtwjGjUGs6PD2VophMw7E95fXc6r.png' },
+    { 名称: '九阳真经', 类型: '秘籍', 品质: '传说', 图片URL: 'https://cdn.nodeimage.com/i/fLQqA9lhTGG37pv02U8Kg2GdQslEdjXc.png' },
 
     // ─── 饰品 ───────────────────────────────────────────────────────────
-    { 名称: '玉佩', 类型: '饰品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%89%E4%BD%A9.png' },
-    { 名称: '银簪', 类型: '饰品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%B6%E7%B0%AA.png' },
-    { 名称: '护身符', 类型: '饰品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%8A%A4%E8%BA%AB%E7%AC%A6.png' },
-    { 名称: '夜明珠', 类型: '饰品', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%A4%9C%E6%98%8E%E7%8F%A0.png' },
+    { 名称: '玉佩', 类型: '饰品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/HJnTEVYHICxUwQH7DSkiYmSQFAJ255TD.png' },
+    { 名称: '银簪', 类型: '饰品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/KDotpMKQjS9unuMZHSRy0Lqs5XlrXULO.png' },
+    { 名称: '护身符', 类型: '饰品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/P8EG2oiUCle0LPrOI2o4TvKVPXfyYHNi.png' },
+    { 名称: '夜明珠', 类型: '饰品', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/ByZlRD1cuBgLT0EypMBV6sFc1IYc9VOl.png' },
 
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E5%89%91.png' },
-    { 名称: '铁剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E5%89%91.png' },
-    { 名称: '钢剑', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E5%89%91.png' },
-    { 名称: '钢盔甲', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E7%9B%94%E7%94%B2.png' },
+    { 名称: '木剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/OqaIas5ziOx5zXXdbxEYpJbPNmgVJtuJ.png' },
+    { 名称: '铁剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/zl7zvvnXX4HVAoGmNZiSXpYElmQ3m21Y.png' },
+    { 名称: '钢剑', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/xdNaMzdjtGikTaB0aavNoJSRz0uyBCXE.png' },
+    { 名称: '钢盔甲', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/xUgeuD7TsVLxIodngaKXVkgqgFRh2pi3.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木长剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E9%95%BF%E5%89%91.png' },
+    { 名称: '木长剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/JeahIg5AoKGywWXXefBEtKJZzYXuQN46.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木短剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E7%9F%AD%E5%89%91.png' },
+    { 名称: '木短剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/nl5RZSyBKKiZm1NPzSzmx0F0JQaoKS7Z.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E5%88%80.png' },
+    { 名称: '木刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/rRBsMB8OxuvZnrQSxwDYLR1xxBu8DGPB.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木短刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E7%9F%AD%E5%88%80.png' },
+    { 名称: '木短刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/452VGoGrwRpgEUJElvK6LwDzfo64oB1t.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木匕首', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E5%8C%95%E9%A6%96.png' },
+    { 名称: '木匕首', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/MsxZqxo5Kt5j2G9wnVXe8UYcZOPoLUzM.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木枪', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E6%9E%AA.png' },
+    { 名称: '木枪', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/R8SsUP0c4jvN9E3SejtwHZdyaeqK7Xc6.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木矛', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E7%9F%9B.png' },
+    { 名称: '木矛', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/LIFwGyrwwTXDdD7RZl5bkIcaW2QhAUFp.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E6%A3%8D.png' },
+    { 名称: '木棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/qoy7VuNgO9Jlhc2cFbHWbhyesaCNdWJ4.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木杖', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E6%9D%96.png' },
+    { 名称: '木杖', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/uHdetTUWiTjuDBlOgz4UeMykONSh6ucZ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木弓', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E5%BC%93.png' },
+    { 名称: '木弓', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/1uU1WkjzCcj7p7w0DgzNEtiaic2jANfm.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木弩', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E5%BC%A9.png' },
+    { 名称: '木弩', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/SO8Fl9wFoiH5sdPkHCkgYrs6rUhginvf.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木飞刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E9%A3%9E%E5%88%80.png' },
+    { 名称: '木飞刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/J6W1UD4h1mGjl5sTzdYibj8ojM3i98hL.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '木袖箭', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%A8%E8%A2%96%E7%AE%AD.png' },
+    { 名称: '木袖箭', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/2XUFxajKR7Y1krwNK2GPZxbxiCBNIho6.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E5%89%91.png' },
+    { 名称: '竹剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/Gbs3mQIyzbx8duFJHamM4giiO2S3zbwz.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹长剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E9%95%BF%E5%89%91.png' },
+    { 名称: '竹长剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/pG1V9dp8hU2oGDVGt2ZODmLyMoS2cyxR.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹短剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E7%9F%AD%E5%89%91.png' },
+    { 名称: '竹短剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/blFr4Kr6Eib29O7OH3UlicWBYFM3MEVO.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E5%88%80.png' },
+    { 名称: '竹刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/ET3ZnfCsyOjqicqmDvvvE7D0PiaXT37H.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹短刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E7%9F%AD%E5%88%80.png' },
+    { 名称: '竹短刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/AKxkG6ohmObq689htqKqLFklbFO0HLH2.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹匕首', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E5%8C%95%E9%A6%96.png' },
+    { 名称: '竹匕首', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/asUVw6jlfjh6VgwKMWUagYItaR4EYXJJ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹枪', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E6%9E%AA.png' },
+    { 名称: '竹枪', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/noT980kYqHwRYKczuLG8NFiRzjRoXggf.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹矛', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E7%9F%9B.png' },
+    { 名称: '竹矛', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/hZV2ZFbQvXGyyDjLXMu5PdhHJXJHY4sc.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E6%A3%8D.png' },
+    { 名称: '竹棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/FUiFAFTmChmcDjaVOXjxsQ7uLHqbRE5A.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹杖', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E6%9D%96.png' },
+    { 名称: '竹杖', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/931DiGpQOlceJnV4Z4iHYK2AVdQPMFMn.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹弓', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E5%BC%93.png' },
+    { 名称: '竹弓', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/xSMzvWuIIxmU2EpZHI8XBOuEi4i7obpG.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹弩', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E5%BC%A9.png' },
+    { 名称: '竹弩', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/0FxDkUo9zKqZ8Y9cEaMWYA2M9J5YD749.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹飞刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E9%A3%9E%E5%88%80.png' },
+    { 名称: '竹飞刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/g2KjCnztD5X0UZ1i6SH7lQgZvkoXFwMR.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '竹袖箭', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AB%B9%E8%A2%96%E7%AE%AD.png' },
+    { 名称: '竹袖箭', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/aWgesE7514PLyCdVw3xJh7yddnXXegtq.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁长剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E9%95%BF%E5%89%91.png' },
+    { 名称: '铁长剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/j2CVc1eeQIbvl0YWE5n8PnN4mhzbICKe.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁短剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E7%9F%AD%E5%89%91.png' },
+    { 名称: '铁短剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/ipBmaK82NJ49waQH7OD0O4nznyzy49Sy.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E5%88%80.png' },
+    { 名称: '铁刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/XSinoQTTjRntZ5ahOVyFyswEIRjRko10.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁短刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E7%9F%AD%E5%88%80.png' },
+    { 名称: '铁短刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/kILMjx2fO0lTjSovoBaspdVNdibmCkJg.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁匕首', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E5%8C%95%E9%A6%96.png' },
+    { 名称: '铁匕首', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/TnluSKAQloEKFeyMs18AJjNQN6NULD7D.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁枪', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E6%9E%AA.png' },
+    { 名称: '铁枪', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/FG5Y14yQgVlzG0NYkmVXXt9BHVTZUiMA.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁矛', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E7%9F%9B.png' },
+    { 名称: '铁矛', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/iJQOPll8G2fzTxvD6tR8soqSgnhxlicf.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E6%A3%8D.png' },
+    { 名称: '铁棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/Uw64F6DrPNjxfSClii4llXYAZWEbAYr5.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁杖', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E6%9D%96.png' },
+    { 名称: '铁杖', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/kVlnGKA1zFdVIbyqnQeP1zvY3XXN2Cs3.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁弓', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E5%BC%93.png' },
+    { 名称: '铁弓', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/xkFrdCrkdfxDZA7gYImpO1F2hYLLBmtF.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁弩', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E5%BC%A9.png' },
+    { 名称: '铁弩', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/tDI2x8hXLuGVeL5kEXUY0VygJjQniZk6.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁飞刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E9%A3%9E%E5%88%80.png' },
+    { 名称: '铁飞刀', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/JGGw1kf7m2Y5kaxvFgiEYbq2viDfIaXq.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁袖箭', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E8%A2%96%E7%AE%AD.png' },
+    { 名称: '铁袖箭', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/Wx1GvvpBehxNXBV6moeNB4HaoEe6K24W.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢长剑', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E9%95%BF%E5%89%91.png' },
+    { 名称: '钢长剑', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/3q6mccDXIs5HwLCbzxGxwNIgW6Xc7JGw.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢短剑', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E7%9F%AD%E5%89%91.png' },
+    { 名称: '钢短剑', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/XrBeVp8loT7rNuQOczLkOVTmNoyjzcXh.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢刀', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E5%88%80.png' },
+    { 名称: '钢刀', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/QDCUJVeCwidpyIYECrVie9KyXPUYTjgq.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢短刀', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E7%9F%AD%E5%88%80.png' },
+    { 名称: '钢短刀', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/17fNsyVzt6IbLoZYqD6FXXLFHESl35Ka.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢匕首', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E5%8C%95%E9%A6%96.png' },
+    { 名称: '钢匕首', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/bs55dYyqfGBU2ENejpB6zMeHzoIejvlH.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢枪', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E6%9E%AA.png' },
+    { 名称: '钢枪', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/R6qNfDRiy7gR3jL0Axfcg5dRdTxVlggi.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢矛', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E7%9F%9B.png' },
+    { 名称: '钢矛', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/5l1dZKpKnJqwgJV4domRQWenxAIfGNg5.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢棍', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E6%A3%8D.png' },
+    { 名称: '钢棍', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/bwK1LfzzpSQutw1poXRcKwMuSdzjsCRL.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢杖', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E6%9D%96.png' },
+    { 名称: '钢杖', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/ASPI3L9rpUbSj56IbUZ7uoKPtIp2MgVw.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢弓', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E5%BC%93.png' },
+    { 名称: '钢弓', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/uxS0GE0snSvb033FErXIvkHwMd71XMsv.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢弩', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E5%BC%A9.png' },
+    { 名称: '钢弩', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/tvVet3bKr8SJlIjBVYHWWoUA1eTrOXd9.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢飞刀', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E9%A3%9E%E5%88%80.png' },
+    { 名称: '钢飞刀', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/tErF5zXU850ugWIgpu0lwalK9bc6Kagl.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢袖箭', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E8%A2%96%E7%AE%AD.png' },
+    { 名称: '钢袖箭', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/NSUbJbjW6RML81w086h5rHAn2yOXXGq6.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢剑', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E5%89%91.png' },
+    { 名称: '精钢剑', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/1DQNX8ltfRNTnmvvgW3SOzElwO5EVWSK.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢短剑', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E7%9F%AD%E5%89%91.png' },
+    { 名称: '精钢短剑', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/60YS8AxSkIJTjOuesIsaGhmQYIt0U1OZ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢刀', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E5%88%80.png' },
+    { 名称: '精钢刀', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/Tt6fTID9M9yqlpCRgLuHrXePEBD9F88F.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢短刀', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E7%9F%AD%E5%88%80.png' },
+    { 名称: '精钢短刀', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/ynHy6isb24hC8ReqQuQ314Q91NBUdmho.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢匕首', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E5%8C%95%E9%A6%96.png' },
+    { 名称: '精钢匕首', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/KOmQP6OaiRYZzWUW87Kz4gEQ0Ioj0hoY.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢枪', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E6%9E%AA.png' },
+    { 名称: '精钢枪', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/4DxPICo1zECsoB9MHtBlqgdtCMXuHuaR.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢矛', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E7%9F%9B.png' },
+    { 名称: '精钢矛', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/zz2a1BGj5VjBoBJURcrBpWhlHq45j7MN.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢棍', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E6%A3%8D.png' },
+    { 名称: '精钢棍', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/8xKfUBzfOw6mur12UAPwlHPV2jQxWdY1.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢杖', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E6%9D%96.png' },
+    { 名称: '精钢杖', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/a4Fe8drrBl81At7OwTL1w7ZJRvd2NPxw.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢弓', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E5%BC%93.png' },
+    { 名称: '精钢弓', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/9b015EtDzUTPvsTWYG1mQfQWMC9yb1ej.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢弩', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E5%BC%A9.png' },
+    { 名称: '精钢弩', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/P82CQvGzOpw7LNJTmfN3GyL7BpKpP3TX.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢飞刀', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E9%A3%9E%E5%88%80.png' },
+    { 名称: '精钢飞刀', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/STjGBQMBFSRygOi8KQwLG0Uvy45AuTVB.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢袖箭', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E8%A2%96%E7%AE%AD.png' },
+    { 名称: '精钢袖箭', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/KHEjpki0SsrFIGrU0RKeDjt37nmlE8LE.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁剑', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E5%89%91.png' },
+    { 名称: '寒铁剑', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/5kVJCqbi2IrV35jRCY3x8TZwJpwaUf8Y.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁长剑', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E9%95%BF%E5%89%91.png' },
+    { 名称: '寒铁长剑', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/ssVNKBbHpnZZ2EjZSXsAHV5pMoCQD74G.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁短剑', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E7%9F%AD%E5%89%91.png' },
+    { 名称: '寒铁短剑', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/jq27naG8WFZHzDJHS88lXoqsE1GEXXAD.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁刀', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E5%88%80.png' },
+    { 名称: '寒铁刀', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/iADBEHq6C1LaU90zI7t8HF3LsTXPzCn6.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁短刀', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E7%9F%AD%E5%88%80.png' },
+    { 名称: '寒铁短刀', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/yVRT8Kv5s3FnWwtjlKHezQLxehYoMrW1.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁匕首', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E5%8C%95%E9%A6%96.png' },
+    { 名称: '寒铁匕首', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/MrmzMoO77dNtPJUf9MQnQghRgixULRDj.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁枪', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E6%9E%AA.png' },
+    { 名称: '寒铁枪', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/cehIvpFxo3yDUagu2I05dxCOVnpJ1Xpa.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁矛', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E7%9F%9B.png' },
+    { 名称: '寒铁矛', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/BHkmX06vloHLoxz9jAYmoEzvw7ZupTOL.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁棍', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E6%A3%8D.png' },
+    { 名称: '寒铁棍', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/SkF3FUrCVCxh4S7eEupATUZpjyDlUwkT.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁杖', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E6%9D%96.png' },
+    { 名称: '寒铁杖', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/3V4rvqZTnyArXKmsEFtKGXyqRXYxlrXs.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁弓', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E5%BC%93.png' },
+    { 名称: '寒铁弓', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/bdqWFbRgOkYzfALceiHQXWS4evIzFqQt.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁弩', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E5%BC%A9.png' },
+    { 名称: '寒铁弩', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/rfulDcSKR7MzV3cdGngd6MYAoF8akkBi.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁飞刀', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E9%A3%9E%E5%88%80.png' },
+    { 名称: '寒铁飞刀', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/NVfBkbV9pxvoCYZI2zfPn37aR9U52FlW.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁袖箭', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E8%A2%96%E7%AE%AD.png' },
+    { 名称: '寒铁袖箭', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/cTkVsP64zvjQoDzLCpZgWYR7lOqWgMJY.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁剑', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E5%89%91.png' },
+    { 名称: '玄铁剑', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/Boc4WKHnooyJLfWrU3ZzdIRBDYaY0QFp.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁长剑', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E9%95%BF%E5%89%91.png' },
+    { 名称: '玄铁长剑', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/BrE9Riif9pQH2Yr6YtE2y40j5JH2AqVY.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁短剑', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E7%9F%AD%E5%89%91.png' },
+    { 名称: '玄铁短剑', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/VAh9t1FECteJZ0ge8rfIFRhrgNjFwYYZ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁刀', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E5%88%80.png' },
+    { 名称: '玄铁刀', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/00N6bLda8zIaZXBt6LKKb2XnNJjsllmm.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁短刀', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E7%9F%AD%E5%88%80.png' },
+    { 名称: '玄铁短刀', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/eTWhHU4PlZCNkEsHwSB73r66KrJ5Frmg.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁匕首', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E5%8C%95%E9%A6%96.png' },
+    { 名称: '玄铁匕首', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/R7FLsYrjo0Tjee7EoEk8IoEMAKYXhUVf.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁枪', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E6%9E%AA.png' },
+    { 名称: '玄铁枪', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/ZiB8jo8HXO6K67QgezUUdsSiQFfnnDY7.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁矛', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E7%9F%9B.png' },
+    { 名称: '玄铁矛', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/C7frEFV8xj7ivKZBXtfTgvpLvpChAe7b.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁棍', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E6%A3%8D.png' },
+    { 名称: '玄铁棍', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/FlEjJEiVhPA7yCr3OilcUJQuXj6xR6W5.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁杖', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E6%9D%96.png' },
+    { 名称: '玄铁杖', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/IER4rGvRWm5n5stgfANI6nTXCNxCN2Xg.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁弓', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E5%BC%93.png' },
+    { 名称: '玄铁弓', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/YyFYkzrpxfM9Er78Yq3LVPYFtMJNzhV4.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁弩', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E5%BC%A9.png' },
+    { 名称: '玄铁弩', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/px9nVsQnMv2W4hkLkfZXrvkgiFc2AXnQ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁飞刀', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E9%A3%9E%E5%88%80.png' },
+    { 名称: '玄铁飞刀', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/7PnymQYU5gtdg7HZiWc4N5EOInPNO0VE.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁袖箭', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E8%A2%96%E7%AE%AD.png' },
+    { 名称: '玄铁袖箭', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/WUo8l5K7BfRskLMTicqDpu0UsGmYYRMf.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金剑', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E5%89%91.png' },
+    { 名称: '乌金剑', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/0167ADDjGZ2D7CC48svkyCJq1GfQqf4D.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金长剑', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E9%95%BF%E5%89%91.png' },
+    { 名称: '乌金长剑', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/504QodZWlrVyMhmONh3ZVYgbIWxhJVTT.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金短剑', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E7%9F%AD%E5%89%91.png' },
+    { 名称: '乌金短剑', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/iT9h2dQWBzMa1YkfHIY128WdgfaYFzyB.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金刀', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E5%88%80.png' },
+    { 名称: '乌金刀', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/U7dQ9dUl7BPxLBlUQr0SHzL9qyFV4YoI.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金短刀', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E7%9F%AD%E5%88%80.png' },
+    { 名称: '乌金短刀', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/Td5LlQyOTJaGJ6N9IU6Y2McbFW9KEzKg.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金匕首', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E5%8C%95%E9%A6%96.png' },
+    { 名称: '乌金匕首', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/PDog8OKR3mHuPjMcR4ztM7X5kCUaLo5w.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金枪', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E6%9E%AA.png' },
+    { 名称: '乌金枪', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/jLPOkT9x5pWIVE62e6X6uwWshDqtEhFj.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金矛', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E7%9F%9B.png' },
+    { 名称: '乌金矛', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/3vD5Taqhl3B1ul0FiTxL5JXUfUFgZOHn.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金棍', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E6%A3%8D.png' },
+    { 名称: '乌金棍', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/piXLFdmcD4ypqWs1d5pUbKUThOSao1Aj.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金杖', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E6%9D%96.png' },
+    { 名称: '乌金杖', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/fK6Zz4DLWQm1RcCaP76j4CY95CCJd0j5.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金弓', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E5%BC%93.png' },
+    { 名称: '乌金弓', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/EGEukoi66cAQzhrv9qp1aeoGcbu6sDcw.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金弩', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E5%BC%A9.png' },
+    { 名称: '乌金弩', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/iTlHjVAwWHbzAMy3YiUV8UgzLLdetINr.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金飞刀', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E9%A3%9E%E5%88%80.png' },
+    { 名称: '乌金飞刀', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/kpqd84RRAfyFnHLAx2DXTHkDn8nBcfRv.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金袖箭', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E8%A2%96%E7%AE%AD.png' },
+    { 名称: '乌金袖箭', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/lW5dJayfs1bBwZNpXJTsXBwiLoroP2hj.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
@@ -317,12 +317,12 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '粗布鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%97%E5%B8%83%E9%9E%8B.png' },
+    { 名称: '粗布鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/VO0kPQtVFo8QqwTXXgftyj8jgbksjdke.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '粗布长衫', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%97%E5%B8%83%E9%95%BF%E8%A1%AB.png' },
+    { 名称: '粗布长衫', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/D3CbKleMAMOKUvYKOnf1KTuyhudgKZa5.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '粗布练功服', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%97%E5%B8%83%E7%BB%83%E5%8A%9F%E6%9C%8D.png' },
+    { 名称: '粗布练功服', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/luJKuFcLz8wSBuKDNXtWtylQvt1PHKh8.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
@@ -333,51 +333,51 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '布鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%B8%83%E9%9E%8B.png' },
+    { 名称: '布鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/0SPq2D96uTEIAa66lXTHot1rhfXF7pUr.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '布长衫', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%B8%83%E9%95%BF%E8%A1%AB.png' },
+    { 名称: '布长衫', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/ZWuWC5SxqssKkVcOF1ENvxHsHc07AOlv.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '布练功服', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%B8%83%E7%BB%83%E5%8A%9F%E6%9C%8D.png' },
+    { 名称: '布练功服', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/NSePt0JCUTrmjPblNWC9UfJsX7kjuHsI.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '布长裤', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%B8%83%E9%95%BF%E8%A3%A4.png' },
+    { 名称: '布长裤', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/8fpm1SWpTPVyaL83b5Fgbc9TrXTbfDwx.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '皮护甲', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%9A%AE%E6%8A%A4%E7%94%B2.png' },
+    { 名称: '皮护甲', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/Z691irQSc8y3ETkrHNYvoyWrXlJdPGk4.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '皮软甲', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%9A%AE%E8%BD%AF%E7%94%B2.png' },
+    { 名称: '皮软甲', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/gc1eIypQwwdTYvV5D530Z9DWCHvuyi0O.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '皮护腕', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%9A%AE%E6%8A%A4%E8%85%95.png' },
+    { 名称: '皮护腕', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/SzPimL9JvaVA0j6btmLHDFMDUIevmDT8.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '皮护腿', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%9A%AE%E6%8A%A4%E8%85%BF.png' },
+    { 名称: '皮护腿', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/sI3x3wCNQfc2eZqaXx7IMcdk8GmL874b.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '皮护膝', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%9A%AE%E6%8A%A4%E8%86%9D.png' },
+    { 名称: '皮护膝', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/irL8zh2jo6hWDuoRQeCEGuL0TqlmDQ6R.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '皮靴', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%9A%AE%E9%9D%B4.png' },
+    { 名称: '皮靴', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/E2suLPIACADnvpF45X6763lhwtnRKLjR.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '皮鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%9A%AE%E9%9E%8B.png' },
+    { 名称: '皮鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/AU3xdJCCZHMKanqQbYAxSOB7UQGQ8FIn.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁盔甲', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E7%9B%94%E7%94%B2.png' },
+    { 名称: '铁盔甲', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/hZKcWIzeIWZdzb19X2Es0EIQTliSv1nN.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁护甲', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E6%8A%A4%E7%94%B2.png' },
+    { 名称: '铁护甲', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/K4fX2BV6MoUUhUZeqjwxKQfJ9siFJcwx.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁软甲', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E8%BD%AF%E7%94%B2.png' },
+    { 名称: '铁软甲', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/NCsTUTIivyD6k6FpytWeDh5lLBeM2KJ4.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁护腕', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E6%8A%A4%E8%85%95.png' },
+    { 名称: '铁护腕', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/mdndebYIyS4JoHHRXMhSTI2qPjhuD0Ay.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁护腿', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E6%8A%A4%E8%85%BF.png' },
+    { 名称: '铁护腿', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/YMnhgWY4XfXP9FHa8lq7Eyg8oKdEKbKi.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁护膝', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E6%8A%A4%E8%86%9D.png' },
+    { 名称: '铁护膝', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/f1ctmkHSfoe2EFW9eYEpPE8OUf1mfuqY.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁头盔', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E5%A4%B4%E7%9B%94.png' },
+    { 名称: '铁头盔', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/0PBxal8MGPasYdQ9XChD22Bn0hQ1YYVZ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁发冠', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E5%8F%91%E5%86%A0.png' },
+    { 名称: '铁发冠', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/E5n0YlYPSHAuqXHhzmNoj46Xa9TCso9e.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
@@ -385,19 +385,19 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢护甲', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E6%8A%A4%E7%94%B2.png' },
+    { 名称: '钢护甲', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/nMFFycrcG7jwL97fObmTDyJfl0OJin14.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢软甲', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E8%BD%AF%E7%94%B2.png' },
+    { 名称: '钢软甲', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/mcKRG6zouYjHYX1KjVuokWtjgVtyGyUg.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢护腕', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E6%8A%A4%E8%85%95.png' },
+    { 名称: '钢护腕', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/sDK8h0zakOwovI1xpumBO1c14yP5C9uK.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢护腿', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E6%8A%A4%E8%85%BF.png' },
+    { 名称: '钢护腿', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/Q8dEkeUQNOFc86lGSosA6Tsr9gpXmJ3S.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢护膝', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E6%8A%A4%E8%86%9D.png' },
+    { 名称: '钢护膝', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/2pfsm7VJTd4rusZY7RnBrrwTVzrp8InJ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢头盔', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E5%A4%B4%E7%9B%94.png' },
+    { 名称: '钢头盔', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/amhi9CFR3ybBtMgnvsgJYwk6Zz743qlg.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢发冠', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E5%8F%91%E5%86%A0.png' },
+    { 名称: '钢发冠', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/9eGJ4df5AKWVdtx7YoVGXV8OXnyhhXW7.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
@@ -405,21 +405,21 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢盔甲', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E7%9B%94%E7%94%B2.png' },
+    { 名称: '精钢盔甲', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/HpfIGmVaPOqxiQZgpeCcsLL35fkst2K3.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢护甲', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E6%8A%A4%E7%94%B2.png' },
+    { 名称: '精钢护甲', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/Fnn2JKYGQdEgzFHNM2fMca8leGHHRHIw.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢软甲', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E8%BD%AF%E7%94%B2.png' },
+    { 名称: '精钢软甲', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/OdPbzH9kl35HhV6ib5s4sKpqggQByoIi.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢护腕', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E6%8A%A4%E8%85%95.png' },
+    { 名称: '精钢护腕', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/1a8SKKwgsTXwbNPO9xuC8OrBQcOaSJJ2.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢护腿', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E6%8A%A4%E8%85%BF.png' },
+    { 名称: '精钢护腿', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/KUR8DmvXfSElyBtNPQyvtNfqoKOkZtWo.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢护膝', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E6%8A%A4%E8%86%9D.png' },
+    { 名称: '精钢护膝', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/bawhw9E5PF2As3DtzoQuZOduSkOV1PNB.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢头盔', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E5%A4%B4%E7%9B%94.png' },
+    { 名称: '精钢头盔', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/Yz6eiqDbfePKPVCjgQgVqTffiAK2hIS3.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢发冠', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E5%8F%91%E5%86%A0.png' },
+    { 名称: '精钢发冠', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/tr23YkGyivP2prJSmXgs6JLNlYH8C6WP.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
@@ -427,21 +427,21 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁盔甲', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E7%9B%94%E7%94%B2.png' },
+    { 名称: '寒铁盔甲', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/pLmev0OgGGr16bUoiPMOyhFJ3FXvzf3V.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁护甲', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E6%8A%A4%E7%94%B2.png' },
+    { 名称: '寒铁护甲', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/136NPqDGMaOevMChbuAcp20M3YE7MCjO.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁软甲', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E8%BD%AF%E7%94%B2.png' },
+    { 名称: '寒铁软甲', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/Sl8Z3RwAT6fgokPXMFDdLkWuTyUhqT3p.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁护腕', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E6%8A%A4%E8%85%95.png' },
+    { 名称: '寒铁护腕', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/icWF8R4nrCTC8pseZsXfxTkRv3tzp9h8.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁护腿', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E6%8A%A4%E8%85%BF.png' },
+    { 名称: '寒铁护腿', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/GtQGxJlkldAV9BvrDzBHPhoN7BDkCYe9.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁护膝', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E6%8A%A4%E8%86%9D.png' },
+    { 名称: '寒铁护膝', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/ytbArRPljPsxCbf3OLFIFkNYzUuYXoYL.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁头盔', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E5%A4%B4%E7%9B%94.png' },
+    { 名称: '寒铁头盔', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/sfzVFT30RW39sSAX5QDwLgBWE3ABDUmH.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁发冠', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E5%8F%91%E5%86%A0.png' },
+    { 名称: '寒铁发冠', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/nLKCN2z09hEaVC1xlYmwk2kM3NtUDlYr.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
@@ -449,19 +449,19 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁盔甲', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E7%9B%94%E7%94%B2.png' },
+    { 名称: '玄铁盔甲', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/ScjpXiMeEvIDRoiReVWzP9NXj7QStkXd.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁软甲', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E8%BD%AF%E7%94%B2.png' },
+    { 名称: '玄铁软甲', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/J7ya0ONyGNBB672YYPGqQFXfKwmOOLXu.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁护腕', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E6%8A%A4%E8%85%95.png' },
+    { 名称: '玄铁护腕', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/waJ0Ygc38MqdchKWpmt3bRfAXhXsLN7L.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁护腿', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E6%8A%A4%E8%85%BF.png' },
+    { 名称: '玄铁护腿', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/uakoRL6Qcv2lxuzJB81evYPSxQ7Wu5Ua.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁护膝', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E6%8A%A4%E8%86%9D.png' },
+    { 名称: '玄铁护膝', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/kOnuc4YnzG6izlHHTgnUoEEMKFncoCG1.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁头盔', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E5%A4%B4%E7%9B%94.png' },
+    { 名称: '玄铁头盔', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/Z40nbJtQ4TLZNxT9U5Q94wObM0Vm9MPL.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁发冠', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E5%8F%91%E5%86%A0.png' },
+    { 名称: '玄铁发冠', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/wfWuMQ4jc76U0rs9KcVqUobpyeQGsWeI.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
@@ -469,21 +469,21 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金盔甲', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E7%9B%94%E7%94%B2.png' },
+    { 名称: '乌金盔甲', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/SR5GZSyz1OoMPsN7uOXZl12yuCif0QUI.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金护甲', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E6%8A%A4%E7%94%B2.png' },
+    { 名称: '乌金护甲', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/BTcZeRHxRo2ZxRW91nAan3VqJOIoaxwQ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金软甲', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E8%BD%AF%E7%94%B2.png' },
+    { 名称: '乌金软甲', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/uP6VNUD1BYB2vuCckjXgaRQJmqAZA8rt.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金护腕', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E6%8A%A4%E8%85%95.png' },
+    { 名称: '乌金护腕', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/X54KQQZbF7eINmmRApUPIn5rJRZXyLYP.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金护腿', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E6%8A%A4%E8%85%BF.png' },
+    { 名称: '乌金护腿', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/xHy7fXN5oLsa5524JHvM7YX4LgzCVyKq.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金护膝', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E6%8A%A4%E8%86%9D.png' },
+    { 名称: '乌金护膝', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/ASSms30qiAAyv734RdkCD07PNS7lKiuF.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金头盔', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E5%A4%B4%E7%9B%94.png' },
+    { 名称: '乌金头盔', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/2N3cQoCFq4lfLHqvbtuxNs0xgIppgmMP.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金发冠', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E5%8F%91%E5%86%A0.png' },
+    { 名称: '乌金发冠', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/2TVhyCbluwNDxGjLh7lW5b4a6ixLmdyg.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
@@ -491,395 +491,395 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '草鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%8D%89%E9%9E%8B.png' },
+    { 名称: '草鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/JSVZlrbEdEWViCjkXiKLrUT0IQ2boXMM.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁靴', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E9%9D%B4.png' },
+    { 名称: '铁靴', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/oSZzjZ1GcB3OzVEgVRmI6S9GGaZsTkgg.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁鞋', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E9%9E%8B.png' },
+    { 名称: '铁鞋', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/qZZcGw1eFhfNTAEDlxFJwMi1m1YN11tU.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢靴', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E9%9D%B4.png' },
+    { 名称: '钢靴', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/JJyE0PN8R4r4xE2jBu70vEkLVtAJM302.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '钢鞋', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%92%A2%E9%9E%8B.png' },
+    { 名称: '钢鞋', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/cnRkBivcUnJdBZt3ymaU4FYx9kGWHMUH.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢靴', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E9%9D%B4.png' },
+    { 名称: '精钢靴', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/ung3tX7xe8MU2Gd3myFNYAdcVxJiSxhE.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精钢鞋', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E9%92%A2%E9%9E%8B.png' },
+    { 名称: '精钢鞋', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/HCq7quRuQidW0rLLHd8zCCSEY1ZUQpUf.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁靴', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E9%9D%B4.png' },
+    { 名称: '寒铁靴', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/hXL4kG2HbeFXMvojKhiGBAk7PdmukDVd.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '寒铁鞋', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%93%81%E9%9E%8B.png' },
+    { 名称: '寒铁鞋', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/JaaJjV5U0E2fpiXP6LqFvHl3VwSEH709.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁靴', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E9%9D%B4.png' },
+    { 名称: '玄铁靴', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/i2YznTxGqcM36mudgZKBWdcwFg4yFIem.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '玄铁鞋', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E9%9E%8B.png' },
+    { 名称: '玄铁鞋', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/laxxLdoQYxys0b9O0iZUdMzY6FVKxlAE.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金靴', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E9%9D%B4.png' },
+    { 名称: '乌金靴', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/ehaVBB5RxJPBEYXKsqFelTieywKojP1g.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '乌金鞋', 类型: '防具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B9%8C%E9%87%91%E9%9E%8B.png' },
+    { 名称: '乌金鞋', 类型: '防具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/UzsvAtILzzRH4FF9u3dMYTwBwTbAh9Gi.png' },
     // ─── 仙侠预设：丹药/材料/秘籍/符箓/法宝/装备 ─────────────────────────
-    { 名称: '引气丹', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%BC%95%E6%B0%94%E4%B8%B9.png' },
-    { 名称: '聚灵丹', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%81%9A%E7%81%B5%E4%B8%B9.png' },
-    { 名称: '筑基丹', 类型: '消耗品', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AD%91%E5%9F%BA%E4%B8%B9.png' },
-    { 名称: '结金丹', 类型: '消耗品', 品质: '绝世', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%BB%93%E9%87%91%E4%B8%B9.png' },
-    { 名称: '凝婴丹', 类型: '消耗品', 品质: '传说', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%87%9D%E5%A9%B4%E4%B8%B9.png' },
-    { 名称: '化神丹', 类型: '消耗品', 品质: '传说', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%8C%96%E7%A5%9E%E4%B8%B9.png' },
-    { 名称: '清心丹', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B8%85%E5%BF%83%E4%B8%B9.png' },
-    { 名称: '玉骨扇', 类型: '法宝', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%89%E9%AA%A8%E6%89%87.png' },
-    { 名称: '淬体丹', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B7%AC%E4%BD%93%E4%B8%B9.png' },
-    { 名称: '洗髓丹', 类型: '消耗品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B4%97%E9%AB%93%E4%B8%B9.png' },
-    { 名称: '护脉丹', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%8A%A4%E8%84%89%E4%B8%B9.png' },
-    { 名称: '回灵丹', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%9B%9E%E7%81%B5%E4%B8%B9.png' },
-    { 名称: '培元丹', 类型: '消耗品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%9F%B9%E5%85%83%E4%B8%B9.png' },
-    { 名称: '下品灵石', 类型: '材料', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B8%8B%E5%93%81%E7%81%B5%E7%9F%B3.png' },
-    { 名称: '中品灵石', 类型: '材料', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B8%AD%E5%93%81%E7%81%B5%E7%9F%B3.png' },
-    { 名称: '上品灵石', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B8%8A%E5%93%81%E7%81%B5%E7%9F%B3.png' },
-    { 名称: '极品灵石', 类型: '材料', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9E%81%E5%93%81%E7%81%B5%E7%9F%B3.png' },
-    { 名称: '灵晶', 类型: '材料', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%81%B5%E6%99%B6.png' },
-    { 名称: '赤阳石', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%B5%A4%E9%98%B3%E7%9F%B3.png' },
-    { 名称: '星辰砂', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%98%9F%E8%BE%B0%E7%A0%82.png' },
-    { 名称: '空冥石', 类型: '材料', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%A9%BA%E5%86%A5%E7%9F%B3.png' },
-    { 名称: '雷击木', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%9B%B7%E5%87%BB%E6%9C%A8.png' },
-    { 名称: '灵竹', 类型: '材料', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%81%B5%E7%AB%B9.png' },
-    { 名称: '月华草', 类型: '材料', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%88%E5%8D%8E%E8%8D%89.png' },
-    { 名称: '凝露草', 类型: '材料', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%87%9D%E9%9C%B2%E8%8D%89.png' },
-    { 名称: '血参', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%A1%80%E5%8F%82.png' },
-    { 名称: '朱果', 类型: '材料', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%B1%E6%9E%9C.png' },
-    { 名称: '妖丹', 类型: '材料', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%A6%96%E4%B8%B9.png' },
-    { 名称: '炼气诀', 类型: '秘籍', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%82%BC%E6%B0%94%E8%AF%80.png' },
-    { 名称: '筑基心得', 类型: '秘籍', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AD%91%E5%9F%BA%E5%BF%83%E5%BE%97.png' },
-    { 名称: '御剑术', 类型: '秘籍', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%BE%A1%E5%89%91%E6%9C%AF.png' },
-    { 名称: '小五行术', 类型: '秘籍', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%B0%8F%E4%BA%94%E8%A1%8C%E6%9C%AF.png' },
-    { 名称: '太乙剑诀', 类型: '秘籍', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%A4%AA%E4%B9%99%E5%89%91%E8%AF%80.png' },
-    { 名称: '炼丹初解', 类型: '秘籍', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%82%BC%E4%B8%B9%E5%88%9D%E8%A7%A3.png' },
-    { 名称: '符箓入门', 类型: '秘籍', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AC%A6%E7%AE%93%E5%85%A5%E9%97%A8.png' },
-    { 名称: '火球符', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%81%AB%E7%90%83%E7%AC%A6.png' },
-    { 名称: '冰锥符', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%86%B0%E9%94%A5%E7%AC%A6.png' },
-    { 名称: '雷光符', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%9B%B7%E5%85%89%E7%AC%A6.png' },
-    { 名称: '金刚符', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%87%91%E5%88%9A%E7%AC%A6.png' },
-    { 名称: '神行符', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%A5%9E%E8%A1%8C%E7%AC%A6.png' },
-    { 名称: '隐身符', 类型: '消耗品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%9A%90%E8%BA%AB%E7%AC%A6.png' },
-    { 名称: '传音符', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%BC%A0%E9%9F%B3%E7%AC%A6.png' },
-    { 名称: '传送符', 类型: '消耗品', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%BC%A0%E9%80%81%E7%AC%A6.png' },
-    { 名称: '青竹飞剑', 类型: '法宝', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%9D%92%E7%AB%B9%E9%A3%9E%E5%89%91.png' },
-    { 名称: '寒霜飞剑', 类型: '法宝', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%92%E9%9C%9C%E9%A3%9E%E5%89%91.png' },
-    { 名称: '紫电飞剑', 类型: '法宝', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B4%AB%E7%94%B5%E9%A3%9E%E5%89%91.png' },
-    { 名称: '青玉葫芦', 类型: '法宝', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%9D%92%E7%8E%89%E8%91%AB%E8%8A%A6.png' },
-    { 名称: '养魂铃', 类型: '法宝', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%85%BB%E9%AD%82%E9%93%83.png' },
-    { 名称: '镇魂铃', 类型: '法宝', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%95%87%E9%AD%82%E9%93%83.png' },
-    { 名称: '玄光镜', 类型: '法宝', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E5%85%89%E9%95%9C.png' },
-    { 名称: '八卦镜', 类型: '法宝', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%85%AB%E5%8D%A6%E9%95%9C.png' },
-    { 名称: '缚妖索', 类型: '法宝', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%BC%9A%E5%A6%96%E7%B4%A2.png' },
-    { 名称: '储物袋', 类型: '法宝', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%82%A8%E7%89%A9%E8%A2%8B.png' },
-    { 名称: '储物戒', 类型: '法宝', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%82%A8%E7%89%A9%E6%88%92.png' },
-    { 名称: '灵兽袋', 类型: '法宝', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%81%B5%E5%85%BD%E8%A2%8B.png' },
-    { 名称: '聚灵阵盘', 类型: '法宝', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%81%9A%E7%81%B5%E9%98%B5%E7%9B%98.png' },
-    { 名称: '护山阵盘', 类型: '法宝', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%8A%A4%E5%B1%B1%E9%98%B5%E7%9B%98.png' },
-    { 名称: '寻灵罗盘', 类型: '法宝', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%BB%E7%81%B5%E7%BD%97%E7%9B%98.png' },
-    { 名称: '紫铜丹炉', 类型: '法宝', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B4%AB%E9%93%9C%E4%B8%B9%E7%82%89.png' },
-    { 名称: '玄铁丹炉', 类型: '法宝', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E9%93%81%E4%B8%B9%E7%82%89.png' },
-    { 名称: '炼器锤', 类型: '法宝', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%82%BC%E5%99%A8%E9%94%A4.png' },
-    { 名称: '青云法袍', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%9D%92%E4%BA%91%E6%B3%95%E8%A2%8D.png' },
-    { 名称: '月白法袍', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9C%88%E7%99%BD%E6%B3%95%E8%A2%8D.png' },
-    { 名称: '玄纹法冠', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%84%E7%BA%B9%E6%B3%95%E5%86%A0.png' },
-    { 名称: '避尘靴', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%81%BF%E5%B0%98%E9%9D%B4.png' },
+    { 名称: '引气丹', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/V3clmaHRB3aZOrWsAI96xoMbK60sm1rw.png' },
+    { 名称: '聚灵丹', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/Yv7eIKnb7j3yPqGk9RnypoqoPp1hNp7G.png' },
+    { 名称: '筑基丹', 类型: '消耗品', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/1EdF1yU0VWw3Z9lEAb6fBcrK1fAgyYuu.png' },
+    { 名称: '结金丹', 类型: '消耗品', 品质: '绝世', 图片URL: 'https://cdn.nodeimage.com/i/EN8q4NwERtsxmRPYewZrkJDrRVnXmY8X.png' },
+    { 名称: '凝婴丹', 类型: '消耗品', 品质: '传说', 图片URL: 'https://cdn.nodeimage.com/i/oQnmoDYDEzNrC9HWox3sA5H18usTAvpA.png' },
+    { 名称: '化神丹', 类型: '消耗品', 品质: '传说', 图片URL: 'https://cdn.nodeimage.com/i/QXH2ZCsJ4XCdUDelZHNmXX9CKLIhDXa7.png' },
+    { 名称: '清心丹', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/fXVlypbKkmzfiqjtNe3ED3CgKFaeTPWU.png' },
+    { 名称: '玉骨扇', 类型: '法宝', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/oSLva32lRDDhZ2oT9mQeNGCMTEzYNZwX.png' },
+    { 名称: '淬体丹', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/G0G92cfgq7IQ6fxRx0tUk77tEFKNysZ9.png' },
+    { 名称: '洗髓丹', 类型: '消耗品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/JOoHJDK9uN7XweM6MpPQXDsTMD4ejKrJ.png' },
+    { 名称: '护脉丹', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/ugyStaNJ9eC7gK2U3tsoYKWOv9iPbT9U.png' },
+    { 名称: '回灵丹', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/NbQj0alAk3Fw0vvA5qNf7lER2kzK9BSj.png' },
+    { 名称: '培元丹', 类型: '消耗品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/9lDgPdqmKqytj50feTqEkPsF4tVQGD7h.png' },
+    { 名称: '下品灵石', 类型: '材料', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/dOWxOD4bpvNl2Ysyui2EjC36pFkAsVSY.png' },
+    { 名称: '中品灵石', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/XT5wa3yJN0Pov7NFu2L1QQUeRFqXWOFI.png' },
+    { 名称: '上品灵石', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/xZHvaFsWK3NjDretj7Fc9dnV7xSTxbpV.png' },
+    { 名称: '极品灵石', 类型: '材料', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/h42c3ZGPyxUe5fJ9oFvQs0EaK0PQmX7Q.png' },
+    { 名称: '灵晶', 类型: '材料', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/nlgwkl7VeRqKtNdutzcK8QrEbZT7CVyS.png' },
+    { 名称: '赤阳石', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/cehnGwFj6Wj8NkgF141otFnrb4V2D1dq.png' },
+    { 名称: '星辰砂', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/RHiWG4TNKalH7eayGawFV010HQ5CXYwh.png' },
+    { 名称: '空冥石', 类型: '材料', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/bRTCvhklBPzgAncHRBIfxBXd2BoygjE1.png' },
+    { 名称: '雷击木', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/AoxuUKo1jQn6Cg9gEmVkbaO8i4Tj3RWY.png' },
+    { 名称: '灵竹', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/7jEbAKiJIayvhArmKsUNrAudvnPjLO96.png' },
+    { 名称: '月华草', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/7Ycpg3HNx7ExJiWFV9120VSa7rcYXkJE.png' },
+    { 名称: '凝露草', 类型: '材料', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/nb46T7ZPx2S3BdmM2uXm5EukV4zAarCN.png' },
+    { 名称: '血参', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/DvDS5Qq2lEF5xu07y5kUZiS8YtR1joNw.png' },
+    { 名称: '朱果', 类型: '材料', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/DJKx7PzxjzsorT19rpjcSYbo2VCSaVZI.png' },
+    { 名称: '妖丹', 类型: '材料', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/kcxNiWobGeIwHx9HRtKANBrA5u39nCPu.png' },
+    { 名称: '炼气诀', 类型: '秘籍', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/64I9pkhCfUL7r75q89oi570cuC2CGqzY.png' },
+    { 名称: '筑基心得', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/c3o6X9KA2AURJiMigN1TsnssOl7Izbg1.png' },
+    { 名称: '御剑术', 类型: '秘籍', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/4gr2elXexUGV3GIvNCqCvlKEHuD5PJsx.png' },
+    { 名称: '小五行术', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/DDckGkHjSjCyG7WPFflbFmhayXlURn0X.png' },
+    { 名称: '太乙剑诀', 类型: '秘籍', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/8jZNeB1NCbeyqmEap5lSb7x5oziAVj7D.png' },
+    { 名称: '炼丹初解', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/T7QBbplop3Omv9vgYTIAJR2p6N0tfaGr.png' },
+    { 名称: '符箓入门', 类型: '秘籍', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/TeNlZmdQOxumZiBSqha3FYkY7Ho4cxPh.png' },
+    { 名称: '火球符', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/g7S5Lq0qF1RoBk3tBj6scFF6NYk7HaXK.png' },
+    { 名称: '冰锥符', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/nDZVkr16BHrQzoEh0VBz7eGWxD5Ny6Sr.png' },
+    { 名称: '雷光符', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/SysWeKILdTltgeFMkfXJTaiWXiX9QxGI.png' },
+    { 名称: '金刚符', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/rcTHC5kTnMelTqcMwjd6wFjpVAUp2jLn.png' },
+    { 名称: '神行符', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/T27V4en5YJteBMGwmakkQjw9r6owed0o.png' },
+    { 名称: '隐身符', 类型: '消耗品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/7yiGJNTxAQY4x4apjJO1mfBY7x2NXa3m.png' },
+    { 名称: '传音符', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/YYvPbgBJiWyr3unFNIC62FqsEgysP0vr.png' },
+    { 名称: '传送符', 类型: '消耗品', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/vECs7keKVplJ0zYD4O33kczbMsJ1h9jw.png' },
+    { 名称: '青竹飞剑', 类型: '法宝', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/6GF8B6rd3tpznd79gZgX4XktnaphBodE.png' },
+    { 名称: '寒霜飞剑', 类型: '法宝', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/rax49NohyM6rK49cq0HMXzakKpJpD3JX.png' },
+    { 名称: '紫电飞剑', 类型: '法宝', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/nKLGlJ2xbc8307oSmnQk2xtM65H4reK1.png' },
+    { 名称: '青玉葫芦', 类型: '法宝', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/S8YZQpxMG1bU2EuoIwXXmz0TxnwIakty.png' },
+    { 名称: '养魂铃', 类型: '法宝', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/LiRk3RvdKmXSQVtSDOG8vuxs0YxRQKba.png' },
+    { 名称: '镇魂铃', 类型: '法宝', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/JzqH9aRSYTVBECLdNdvMnIoyrL2RbGkF.png' },
+    { 名称: '玄光镜', 类型: '法宝', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/64hIolFNMyh42ogsD6U0gppEFAlic0Ak.png' },
+    { 名称: '八卦镜', 类型: '法宝', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/GjCufaek8g2HuPYvcYeOCR4PEnv2hQRm.png' },
+    { 名称: '缚妖索', 类型: '法宝', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/GeN7LNdOC5loiSBdprXqKtY23Zyx1hSX.png' },
+    { 名称: '储物袋', 类型: '法宝', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/cQSB7M0jvhr8hI37GAX8mTfSurBtV20w.png' },
+    { 名称: '储物戒', 类型: '法宝', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/XSz4vB3QM3DExnADKNS5pnx60dCmQX4g.png' },
+    { 名称: '灵兽袋', 类型: '法宝', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/uOBSNt8xPL3DzgQpGnXfftNLeNJZEWST.png' },
+    { 名称: '聚灵阵盘', 类型: '法宝', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/5Rgaok7xyagZfzdeXtpXm4BGOBXZBHja.png' },
+    { 名称: '护山阵盘', 类型: '法宝', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/r5Q8ABlPwcqK8ov34DSl8sahejhdETA8.png' },
+    { 名称: '寻灵罗盘', 类型: '法宝', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/RvCpaweyOsfus9Yn2toPkn3rwhSX10bB.png' },
+    { 名称: '紫铜丹炉', 类型: '法宝', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/vk4SRfZGHey59jmNk4w5Z9EawNow1jGL.png' },
+    { 名称: '玄铁丹炉', 类型: '法宝', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/eeAjvYaOcXNyPrhT4eMPesVQZ3jf6IHp.png' },
+    { 名称: '炼器锤', 类型: '法宝', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/scA5qwao2ePyFChWttYEfky18EBmupkD.png' },
+    { 名称: '青云法袍', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/UZ3at9CkwJMrZuqlTsLGXA04XUQL82Yl.png' },
+    { 名称: '月白法袍', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/Oa1TpBpJCYflw3VnktfCGPYx17ihLgPO.png' },
+    { 名称: '玄纹法冠', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/siVpjMblciOPqvj4CVEhdZ8Y0FJgSdXc.png' },
+    { 名称: '避尘靴', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/NQsQoII49GILr4Fe4LcPjamn2gQHfz1f.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '门派令牌', 类型: '任务道具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%97%A8%E6%B4%BE%E4%BB%A4%E7%89%8C.png' },
+    { 名称: '门派令牌', 类型: '任务道具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/8PiPD8To964DUiaTQ3Xi50chnFAazpCS.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铜钥匙', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%9C%E9%92%A5%E5%8C%99.png' },
+    { 名称: '铜钥匙', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/MpTNq2koqeElkFcUWFmiyc2bY8q3ASaW.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '秘境钥匙', 类型: '任务道具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%A7%98%E5%A2%83%E9%92%A5%E5%8C%99.png' },
+    { 名称: '秘境钥匙', 类型: '任务道具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/yjDhEjqxvHo2rz0WK3E86DXwuHyg8vXp.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '官府文牒', 类型: '任务道具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AE%98%E5%BA%9C%E6%96%87%E7%89%92.png' },
+    { 名称: '官府文牒', 类型: '任务道具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/UpukugSoekEhHfcwP4u5XIG0bSlgmqha.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '宗门令牌', 类型: '任务道具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AE%97%E9%97%A8%E4%BB%A4%E7%89%8C.png' },
+    { 名称: '宗门令牌', 类型: '任务道具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/h6IG5rh0y2zTFA5DoEL1pbq2434EeTcP.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '智能手机', 类型: '杂物', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%99%BA%E8%83%BD%E6%89%8B%E6%9C%BA.png' },
+    { 名称: '智能手机', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/rObLT1Pbg4LdJtfVu7bafp9h8L6P97X9.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '洞府禁牌', 类型: '任务道具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B4%9E%E5%BA%9C%E7%A6%81%E7%89%8C.png' },
+    { 名称: '洞府禁牌', 类型: '任务道具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/hA7gLFnSODNDdPGtvYhzD19t34PBtpD2.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '急救包', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%80%A5%E6%95%91%E5%8C%85.png' },
+    { 名称: '急救包', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/CxpurBWWP6q28h8dE6NH40dAs3AYYh97.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '录音笔', 类型: '杂物', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%BD%95%E9%9F%B3%E7%AC%94.png' },
+    { 名称: '录音笔', 类型: '杂物', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/RClShWAatg6IeyyrOE3wI65txV3YfMEi.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '笔记本电脑', 类型: '杂物', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%AC%94%E8%AE%B0%E6%9C%AC%E7%94%B5%E8%84%91.png' },
+    { 名称: '笔记本电脑', 类型: '杂物', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/ImRnq5vCXseekitGA3t4jb5zYBn1MY25.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '镖局凭证', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%95%96%E5%B1%80%E5%87%AD%E8%AF%81.png' },
+    { 名称: '镖局凭证', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/aBQOKplSA7GZ4YvMf8QevcODcIgkbEgJ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '密函', 类型: '任务道具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AF%86%E5%87%BD.png' },
+    { 名称: '密函', 类型: '任务道具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/nApiF1WD0sP7bk8coCbckndYywjOXr5q.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '传承玉符', 类型: '任务道具', 品质: '绝世', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%BC%A0%E6%89%BF%E7%8E%89%E7%AC%A6.png' },
+    { 名称: '传承玉符', 类型: '任务道具', 品质: '绝世', 图片URL: 'https://cdn.nodeimage.com/i/GMekCeJpVSyldtbi7toiCNKMCHiT9jxO.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '防割手套', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%98%B2%E5%89%B2%E6%89%8B%E5%A5%97.png' },
+    { 名称: '防割手套', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/cbv1K5BG9Y3bLYn2jajiP5Grh7Lp9De1.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '银行卡', 类型: '杂物', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%B6%E8%A1%8C%E5%8D%A1.png' },
+    { 名称: '银行卡', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/6e4aqRZV4rr5PSmC2LyXSonkONGFAU0i.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '古玉残佩', 类型: '饰品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%8F%A4%E7%8E%89%E6%AE%8B%E4%BD%A9.png' },
+    { 名称: '古玉残佩', 类型: '饰品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/GIbX8kPBEWKXo9fT3K5aXOgXF5mmQ8fz.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '现金信封', 类型: '杂物', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%B0%E9%87%91%E4%BF%A1%E5%B0%81.png' },
+    { 名称: '现金信封', 类型: '杂物', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/cqYfCsxQpje4rIuIqZX1AbckmsngMpsl.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '合同文件', 类型: '任务道具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%90%88%E5%90%8C%E6%96%87%E4%BB%B6.png' },
+    { 名称: '合同文件', 类型: '任务道具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/xgKyrfzM3KVdcm1sfXDfWgmfkX5eEI7o.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '证件夹', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%AF%81%E4%BB%B6%E5%A4%B9.png' },
+    { 名称: '证件夹', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/K6fqxpVuPDPy8SZj8Q3YYeWu0X5VetGI.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '数据U盘', 类型: '任务道具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%95%B0%E6%8D%AEU%E7%9B%98.png' },
+    { 名称: '数据U盘', 类型: '任务道具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/akBRNB8mPxUiAPQLBCRJzUQPv73cQUy6.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '维修工具箱', 类型: '杂物', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%BB%B4%E4%BF%AE%E5%B7%A5%E5%85%B7%E7%AE%B1.png' },
+    { 名称: '维修工具箱', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/5aaxHa5q2vVX3iX7u4azy6dhb7UQHISj.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '车钥匙', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BD%A6%E9%92%A5%E5%8C%99.png' },
+    { 名称: '车钥匙', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/gUf5AlVLuujSdXZj6KSjNrc5EkxhZ7x1.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '电子元件包', 类型: '材料', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%94%B5%E5%AD%90%E5%85%83%E4%BB%B6%E5%8C%85.png' },
+    { 名称: '电子元件包', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/NEpJv7WNyYoLHU8wvHgAS1IbAuH6F9CH.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '多功能工具钳', 类型: '杂物', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%A4%9A%E5%8A%9F%E8%83%BD%E5%B7%A5%E5%85%B7%E9%92%B3.png' },
+    { 名称: '多功能工具钳', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/vIbdvTPe7FgIXNf0Ns4EGLK1mXZ5tS9g.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '备用电池组', 类型: '材料', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%A4%87%E7%94%A8%E7%94%B5%E6%B1%A0%E7%BB%84.png' },
+    { 名称: '备用电池组', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/AjQm10lbljRVlOvcZZRhYzi7YJXnYaEJ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '防身喷雾', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%98%B2%E8%BA%AB%E5%96%B7%E9%9B%BE.png' },
+    { 名称: '防身喷雾', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/p5DH8nqXxe5x2K0QetHFab1WavyjIjM1.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '伸缩警棍', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%BC%B8%E7%BC%A9%E8%AD%A6%E6%A3%8D.png' },
+    { 名称: '伸缩警棍', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/8E7lKpnBhEcCAuGSAtYm83ZxkcntMRlS.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '轻便夹克', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BD%BB%E4%BE%BF%E5%A4%B9%E5%85%8B.png' },
+    { 名称: '轻便夹克', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/9jFYy6rgg06Fpd7ncrbUcuqSHvtXz2XF.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '运动鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BF%90%E5%8A%A8%E9%9E%8B.png' },
+    { 名称: '运动鞋', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/Bs9hYVQ0OF7fWzk9zFuOqs3bPYYskLGo.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '防护口罩', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%98%B2%E6%8A%A4%E5%8F%A3%E7%BD%A9.png' },
+    { 名称: '防护口罩', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/F5BBhX8SzpGwhvQ1P0WSk5aLneRXqMOr.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '电脑维修手册', 类型: '秘籍', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%94%B5%E8%84%91%E7%BB%B4%E4%BF%AE%E6%89%8B%E5%86%8C.png' },
+    { 名称: '电脑维修手册', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/qJhVXpFXbpY0P9g6a8nEsriPVXC4XsHh.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '急救手册', 类型: '秘籍', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%80%A5%E6%95%91%E6%89%8B%E5%86%8C.png' },
+    { 名称: '急救手册', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/DrwDQQEirrY0RZDy1Romu10Oruovekz3.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '便携检测仪', 类型: '杂物', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%BE%BF%E6%90%BA%E6%A3%80%E6%B5%8B%E4%BB%AA.png' },
+    { 名称: '便携检测仪', 类型: '杂物', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/Afhz7HF2duCj42goXgxQOkruL5gWgxEM.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '防护服', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%98%B2%E6%8A%A4%E6%9C%8D.png' },
+    { 名称: '防护服', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/vueeKNJIZXdk0mbOkUWqrDYwxhVsfy1t.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '异常样本盒', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%BC%82%E5%B8%B8%E6%A0%B7%E6%9C%AC%E7%9B%92.png' },
+    { 名称: '异常样本盒', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/DnJZiNc7vItvmbKwclJubzvqUkYZHdsl.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '灵能探测器', 类型: '杂物', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%81%B5%E8%83%BD%E6%8E%A2%E6%B5%8B%E5%99%A8.png' },
+    { 名称: '灵能探测器', 类型: '杂物', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/CFv3zQBpNL6WD2n8HX5riRdWbYcx9vtk.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '银戒指', 类型: '饰品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%B6%E6%88%92%E6%8C%87.png' },
+    { 名称: '银戒指', 类型: '饰品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/ud3Vc5Ci3Ti51xqKGEyhX7e6n7ESlUyP.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '灵气抑制贴', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%81%B5%E6%B0%94%E6%8A%91%E5%88%B6%E8%B4%B4.png' },
+    { 名称: '灵气抑制贴', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/I5WE3j4vAjfbfisSamCD1aO6J3jHEHKu.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '罐头包', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%BD%90%E5%A4%B4%E5%8C%85.png' },
+    { 名称: '罐头包', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/86vf3aBHKbdFdVnWVYmITh8o2QRshsUK.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '怀表', 类型: '饰品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%80%80%E8%A1%A8.png' },
+    { 名称: '怀表', 类型: '饰品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/Eeliy8AeFjKvsZyd2gvkaWDFj7AgBuQL.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '净水片', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%87%80%E6%B0%B4%E7%89%87.png' },
+    { 名称: '净水片', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/eumtYHOoOJMut0UpcgO1xCxRIeflnyGv.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '手摇电筒', 类型: '杂物', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%89%8B%E6%91%87%E7%94%B5%E7%AD%92.png' },
+    { 名称: '手摇电筒', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/TMH66Qsw742KCgeBmxBZBKaI39YATeUB.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '弩机组件', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%BC%A9%E6%9C%BA%E7%BB%84%E4%BB%B6.png' },
+    { 名称: '弩机组件', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/0sk5gD6YOYpWeFz1npmdlTppaSoGdIQW.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '抗生素散盒', 类型: '消耗品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%8A%97%E7%94%9F%E7%B4%A0%E6%95%A3%E7%9B%92.png' },
+    { 名称: '抗生素散盒', 类型: '消耗品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/ROsc4oILy9yDlcFC9YKXiAc9G1MDWNGI.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '饮水瓶', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%A5%AE%E6%B0%B4%E7%93%B6.png' },
+    { 名称: '饮水瓶', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/5UQvv6l7ll0OfFvcPSJidkaZeGhjup1A.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '汽油桶', 类型: '材料', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B1%BD%E6%B2%B9%E6%A1%B6.png' },
+    { 名称: '汽油桶', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/j9YuUwxco2esqYuR7XiWcwjjnTUnVXRX.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '压缩饼干', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%8E%8B%E7%BC%A9%E9%A5%BC%E5%B9%B2.png' },
+    { 名称: '压缩饼干', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/gwDuctqyf8va7V0ScDvbTvlJXkZWXorr.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '医用绷带', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%8C%BB%E7%94%A8%E7%BB%B7%E5%B8%A6.png' },
+    { 名称: '医用绷带', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/uh4RVkZ8OAwZGYmGesZp2V0yOQzmm428.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '止血带', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%AD%A2%E8%A1%80%E5%B8%A6.png' },
+    { 名称: '止血带', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/E70fwht4w8q2bKTxys9hpPrjnP2E0i4Y.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '过滤水壶', 类型: '杂物', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BF%87%E6%BB%A4%E6%B0%B4%E5%A3%B6.png' },
+    { 名称: '过滤水壶', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/DcjQGOMyv6NAsEixhGWOUkDHpaA2vDzh.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '干电池组', 类型: '材料', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%B9%B2%E7%94%B5%E6%B1%A0%E7%BB%84.png' },
+    { 名称: '干电池组', 类型: '材料', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/EkBIrZ8wW5adQ7QFHaHB9pZr3S118YvZ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '净水滤芯', 类型: '材料', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%87%80%E6%B0%B4%E6%BB%A4%E8%8A%AF.png' },
+    { 名称: '净水滤芯', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/2M9l6DQ7wJEHhOkukpJXBRhNRmsFSq7l.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '太阳能充电板', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%A4%AA%E9%98%B3%E8%83%BD%E5%85%85%E7%94%B5%E6%9D%BF.png' },
+    { 名称: '太阳能充电板', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/Hk7mVwnMHPzu3yGkg9yZ1X0vDj6B18px.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '弹药盒', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%BC%B9%E8%8D%AF%E7%9B%92.png' },
+    { 名称: '弹药盒', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/OubYz0PnUBwNJPfXlKOi0Ft1DFBVskhU.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '护目镜', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%8A%A4%E7%9B%AE%E9%95%9C.png' },
+    { 名称: '护目镜', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/ZD3xBCCUgYRAOMq2KeiJ8vtI7mnxbTw7.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '防毒面具', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%98%B2%E6%AF%92%E9%9D%A2%E5%85%B7.png' },
+    { 名称: '防毒面具', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/PTFufxrkHtin7s79A3EfRtKw1dagb2aX.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '撬棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%92%AC%E6%A3%8D.png' },
+    { 名称: '撬棍', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/oZaizw5AnqBRr5Xaokpe9h9l8enHwTrB.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '战术背心', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%88%98%E6%9C%AF%E8%83%8C%E5%BF%83.png' },
+    { 名称: '战术背心', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/OrBhbb8l0XlubwQQPyvFI3WDIqbs0CYs.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '消音弩', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B6%88%E9%9F%B3%E5%BC%A9.png' },
+    { 名称: '消音弩', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/o89UIwQnaDfzA0kBK2dEpuJiy4po0U07.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '求生手册', 类型: '秘籍', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B1%82%E7%94%9F%E6%89%8B%E5%86%8C.png' },
+    { 名称: '求生手册', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/wenmlDY7vILoDfHjxDR4ryRwwRY5B1G0.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '营地通行证', 类型: '任务道具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%90%A5%E5%9C%B0%E9%80%9A%E8%A1%8C%E8%AF%81.png' },
+    { 名称: '营地通行证', 类型: '任务道具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/8tz60m3jgGRyB6AOPivifFudCPyZ1L5o.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '无线电台', 类型: '杂物', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%97%A0%E7%BA%BF%E7%94%B5%E5%8F%B0.png' },
+    { 名称: '无线电台', 类型: '杂物', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/iUlVyKA0VrtHjwyfNJeQxoXJaVfy04Kp.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '防水火柴', 类型: '杂物', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%98%B2%E6%B0%B4%E7%81%AB%E6%9F%B4.png' },
+    { 名称: '防水火柴', 类型: '杂物', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/KWBkNF8PcK557VQzJ3prqryqvSOglR0j.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '感染检测卡', 类型: '任务道具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%84%9F%E6%9F%93%E6%A3%80%E6%B5%8B%E5%8D%A1.png' },
+    { 名称: '感染检测卡', 类型: '任务道具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/YgvyDiBU9WtplwnXlUViRgopXi5YL3fg.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '骑士长剑', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%AA%91%E5%A3%AB%E9%95%BF%E5%89%91.png' },
+    { 名称: '骑士长剑', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/MvhJ8yFAJPlQUzgrA2cN6odIjxKToWm7.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '冒险者短剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%86%92%E9%99%A9%E8%80%85%E7%9F%AD%E5%89%91.png' },
+    { 名称: '冒险者短剑', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/laUFDTj3CxP8NSwL0JaxunyniOkRxI4g.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '牧师钉头锤', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%89%A7%E5%B8%88%E9%92%89%E5%A4%B4%E9%94%A4.png' },
+    { 名称: '牧师钉头锤', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/91bIbuPVJNnpfJfb912tgExaMEq9SR4D.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '橡木法杖', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%A9%A1%E6%9C%A8%E6%B3%95%E6%9D%96.png' },
+    { 名称: '橡木法杖', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/6Ts77JIPMyTngWF7bYXQXWmcByOxSS9r.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '长矛', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%95%BF%E7%9F%9B.png' },
+    { 名称: '长矛', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/gppvI9Wzmuephi8y4RjnSsjXoy6XDIDd.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '轻弩', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BD%BB%E5%BC%A9.png' },
+    { 名称: '轻弩', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/6i1lxVpsKoz5jkVV6vpYbPDVrxfY3TM1.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '猎人匕首', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8C%8E%E4%BA%BA%E5%8C%95%E9%A6%96.png' },
+    { 名称: '猎人匕首', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/1qzQMB367rQjvaA6BXy8F5wkvOxr3x0A.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '战斧', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%88%98%E6%96%A7.png' },
+    { 名称: '战斧', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/WPCKPQeR62ZANtYGNaVY23UyK5KfgerX.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '短弓', 类型: '武器', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%9F%AD%E5%BC%93.png' },
+    { 名称: '短弓', 类型: '武器', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/FT5HySyHjfgLnNNFquggXj5OrLTAF65I.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '圆盾', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%9C%86%E7%9B%BE.png' },
+    { 名称: '圆盾', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/WvF3qJrMuUXaVy78mqIKIhkMXqoK0vB9.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '皮甲', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%9A%AE%E7%94%B2.png' },
+    { 名称: '皮甲', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/Hn0Q2rtK5NArPdTAak4NILmOcvvmZq6T.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁盔', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E7%9B%94.png' },
+    { 名称: '铁盔', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/6fcprdH2HEtzg4Ws1vasZdm4RDDazFxl.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '板甲胸甲', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9D%BF%E7%94%B2%E8%83%B8%E7%94%B2.png' },
+    { 名称: '板甲胸甲', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/2psR7JIeXWHLAyFVdrcoUdHCJEaGPpht.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '旅行干粮', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%97%85%E8%A1%8C%E5%B9%B2%E7%B2%AE.png' },
+    { 名称: '旅行干粮', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/HH6Rj7DLt5RUL8Cjf7CtEYUCF4zj4mfr.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '兜帽披风', 类型: '防具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%85%9C%E5%B8%BD%E6%8A%AB%E9%A3%8E.png' },
+    { 名称: '兜帽披风', 类型: '防具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/0QgTbW7wOY1JkwdH9w40wrKyRCAOfgEd.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '治疗药水', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B2%BB%E7%96%97%E8%8D%AF%E6%B0%B4.png' },
+    { 名称: '治疗药水', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/0drf4XXXnXGIGGIz0cEM2ULJNFIsHqje.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '清水水囊', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B8%85%E6%B0%B4%E6%B0%B4%E5%9B%8A.png' },
+    { 名称: '清水水囊', 类型: '消耗品', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/X4Dgznqajtv6Fx0iMz2X5jYNF8rcdu7n.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '法力药水', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B3%95%E5%8A%9B%E8%8D%AF%E6%B0%B4.png' },
+    { 名称: '法力药水', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/1kyzpwNcoDQvq82Sgp1Iug0e076hgQuJ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '解毒药剂', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%A7%A3%E6%AF%92%E8%8D%AF%E5%89%82.png' },
+    { 名称: '解毒药剂', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/2BZkqH142CTRkzEtU43EPpPPLuZeN9JU.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '火把', 类型: '杂物', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%81%AB%E6%8A%8A.png' },
+    { 名称: '火把', 类型: '杂物', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/6aFMTvrrMtM7Rt7QSGNp02sJXf38YDDA.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '火绒盒', 类型: '杂物', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%81%AB%E7%BB%92%E7%9B%92.png' },
+    { 名称: '火绒盒', 类型: '杂物', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/5SsjzzIZ5lyauPFttgxobIye0de4tAui.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '王国地图', 类型: '杂物', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8E%8B%E5%9B%BD%E5%9C%B0%E5%9B%BE.png' },
+    { 名称: '王国地图', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/daYe0OxCqRKwOsub02vC1umdAjWd4uVw.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '冒险者绳索', 类型: '杂物', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%86%92%E9%99%A9%E8%80%85%E7%BB%B3%E7%B4%A2.png' },
+    { 名称: '冒险者绳索', 类型: '杂物', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/6JY0M8xG68M0hGuI49Q7ZQSihMUiT49Z.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '公会徽章', 类型: '饰品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%85%AC%E4%BC%9A%E5%BE%BD%E7%AB%A0.png' },
+    { 名称: '公会徽章', 类型: '饰品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/s9CWSBeveCLWGcY1deUyIHbDFjatQ9Jw.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '指南针', 类型: '杂物', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%8C%87%E5%8D%97%E9%92%88.png' },
+    { 名称: '指南针', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/lrh6TxF2AhHlPmgr38X1UV66OaDt69qv.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '护佑圣徽', 类型: '饰品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%8A%A4%E4%BD%91%E5%9C%A3%E5%BE%BD.png' },
+    { 名称: '护佑圣徽', 类型: '饰品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/3A2CjfGG73m3gTJHKRnspdPpIRAJJHmb.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '魔晶吊坠', 类型: '饰品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%AD%94%E6%99%B6%E5%90%8A%E5%9D%A0.png' },
+    { 名称: '魔晶吊坠', 类型: '饰品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/e2Och1g2VRq6yftEhHP45oN5ru1xOylP.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铁矿石', 类型: '材料', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%81%E7%9F%BF%E7%9F%B3.png' },
+    { 名称: '铁矿石', 类型: '材料', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/qNdzvLU16VpOgwlaRXLMVOsvLCkCG61s.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '家族纹章戒指', 类型: '饰品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AE%B6%E6%97%8F%E7%BA%B9%E7%AB%A0%E6%88%92%E6%8C%87.png' },
+    { 名称: '家族纹章戒指', 类型: '饰品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/ocb58qPTfM7zayf27Y3qYwROvYdO9rXF.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '秘银矿石', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%A7%98%E9%93%B6%E7%9F%BF%E7%9F%B3.png' },
+    { 名称: '秘银矿石', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/ajlpP4AvZYuB8KyhNZB4OWg8SXpveDNn.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '魔晶', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%AD%94%E6%99%B6.png' },
+    { 名称: '魔晶', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/gwCyhee2fjbLDtYt8Fc1Q41Mtevm4PO7.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '龙鳞', 类型: '材料', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%BE%99%E9%B3%9E.png' },
+    { 名称: '龙鳞', 类型: '材料', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/W9o2dDKkZ5dzXGMBp4krptLWzO0VVuza.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '狼皮', 类型: '材料', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%8B%BC%E7%9A%AE.png' },
+    { 名称: '狼皮', 类型: '材料', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/p3FnANr4YZdnjz7kFdoLbNdjZuhNtD74.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '初级魔法书', 类型: '秘籍', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%88%9D%E7%BA%A7%E9%AD%94%E6%B3%95%E4%B9%A6.png' },
+    { 名称: '初级魔法书', 类型: '秘籍', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/U8NmJSd4ZuZ0Y4BuKXOOepIVnUAuRUW1.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '银叶草', 类型: '材料', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%B6%E5%8F%B6%E8%8D%89.png' },
+    { 名称: '银叶草', 类型: '材料', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/DgZCb41ROL5vfAE9heUQrLNLpt0n9HyH.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '火球术卷轴', 类型: '秘籍', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%81%AB%E7%90%83%E6%9C%AF%E5%8D%B7%E8%BD%B4.png' },
+    { 名称: '火球术卷轴', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/broz7eKqxrfB7ZMDPIHG5H1hTvwHg7QT.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '治疗祷文', 类型: '秘籍', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B2%BB%E7%96%97%E7%A5%B7%E6%96%87.png' },
+    { 名称: '治疗祷文', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/FpS7dX00UnGGl03xmYzlwUcTxOMpOXNC.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '委托羊皮卷', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%A7%94%E6%89%98%E7%BE%8A%E7%9A%AE%E5%8D%B7.png' },
+    { 名称: '委托羊皮卷', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/VLZpNH1bmLQfHFEF1IAPKz5ElvUq4eiU.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '炼金笔记', 类型: '秘籍', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%82%BC%E9%87%91%E7%AC%94%E8%AE%B0.png' },
+    { 名称: '炼金笔记', 类型: '秘籍', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/ssJ35Ocg72RQnIK8knfOtDogKZ2xsvtx.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '地牢钥匙', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%9C%B0%E7%89%A2%E9%92%A5%E5%8C%99.png' },
+    { 名称: '地牢钥匙', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/LG94sYQqa9ZpZgknPmCFZ9doHzzrwTFJ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '冒险者执照', 类型: '任务道具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%86%92%E9%99%A9%E8%80%85%E6%89%A7%E7%85%A7.png' },
+    { 名称: '冒险者执照', 类型: '任务道具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/86JRDHc8PdGzfiK7vIJTgjOHgykCbzGw.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '铜币袋', 类型: '杂物', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%9C%E5%B8%81%E8%A2%8B.png' },
+    { 名称: '铜币袋', 类型: '杂物', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/t9QYdRlipo3nMAvFH8BVEyvWCFN7PC2M.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '银币袋', 类型: '杂物', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%B6%E5%B8%81%E8%A2%8B.png' },
+    { 名称: '银币袋', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/jC3YrqCOn421Z0qyRZIZycWpuoexzEUJ.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '金币袋', 类型: '杂物', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%87%91%E5%B8%81%E8%A2%8B.png' },
+    { 名称: '金币袋', 类型: '杂物', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/aQlE6MAnRL8HbCyqwsHyhnY4mTvrEkWG.png' },
     // ─── 无限流预设物品（gpt-image2）──────────────────────────────
-    { 名称: '消音手枪', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B6%88%E9%9F%B3%E6%89%8B%E6%9E%AA.png' },
-    { 名称: '战术匕首', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%88%98%E6%9C%AF%E5%8C%95%E9%A6%96.png' },
-    { 名称: '折叠弩', 类型: '武器', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%8A%98%E5%8F%A0%E5%BC%A9.png' },
-    { 名称: '高周波短刃', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%AB%98%E5%91%A8%E6%B3%A2%E7%9F%AD%E5%88%83.png' },
-    { 名称: '电磁脉冲枪', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%94%B5%E7%A3%81%E8%84%89%E5%86%B2%E6%9E%AA.png' },
-    { 名称: '防弹背心', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%98%B2%E5%BC%B9%E8%83%8C%E5%BF%83.png' },
-    { 名称: '作战靴', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%BD%9C%E6%88%98%E9%9D%B4.png' },
-    { 名称: '战术护臂', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%88%98%E6%9C%AF%E6%8A%A4%E8%87%82.png' },
-    { 名称: '主神制式防护服', 类型: '防具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B8%BB%E7%A5%9E%E5%88%B6%E5%BC%8F%E9%98%B2%E6%8A%A4%E6%9C%8D.png' },
-    { 名称: '止血喷雾', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%AD%A2%E8%A1%80%E5%96%B7%E9%9B%BE.png' },
-    { 名称: '病毒抑制剂', 类型: '消耗品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%97%85%E6%AF%92%E6%8A%91%E5%88%B6%E5%89%82.png' },
-    { 名称: '肾上腺素针剂', 类型: '消耗品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%82%BE%E4%B8%8A%E8%85%BA%E7%B4%A0%E9%92%88%E5%89%82.png' },
-    { 名称: '体力恢复药剂', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%BD%93%E5%8A%9B%E6%81%A2%E5%A4%8D%E8%8D%AF%E5%89%82.png' },
-    { 名称: '精神稳定剂', 类型: '消耗品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E7%A5%9E%E7%A8%B3%E5%AE%9A%E5%89%82.png' },
-    { 名称: '变异晶核', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%8F%98%E5%BC%82%E6%99%B6%E6%A0%B8.png' },
-    { 名称: '异种细胞样本', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%BC%82%E7%A7%8D%E7%BB%86%E8%83%9E%E6%A0%B7%E6%9C%AC.png' },
-    { 名称: '记忆金属片', 类型: '材料', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%AE%B0%E5%BF%86%E9%87%91%E5%B1%9E%E7%89%87.png' },
-    { 名称: '主神能量碎片', 类型: '材料', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E4%B8%BB%E7%A5%9E%E8%83%BD%E9%87%8F%E7%A2%8E%E7%89%87.png' },
-    { 名称: '黑曜病毒培养皿', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%BB%91%E6%9B%9C%E7%97%85%E6%AF%92%E5%9F%B9%E5%85%BB%E7%9A%BF.png' },
-    { 名称: '基因锁训练手册', 类型: '秘籍', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%9F%BA%E5%9B%A0%E9%94%81%E8%AE%AD%E7%BB%83%E6%89%8B%E5%86%8C.png' },
-    { 名称: '近战格斗模块', 类型: '秘籍', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BF%91%E6%88%98%E6%A0%BC%E6%96%97%E6%A8%A1%E5%9D%97.png' },
-    { 名称: '精神力扫描教程', 类型: '秘籍', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E7%A5%9E%E5%8A%9B%E6%89%AB%E6%8F%8F%E6%95%99%E7%A8%8B.png' },
-    { 名称: '轮回者腕表', 类型: '饰品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BD%AE%E5%9B%9E%E8%80%85%E8%85%95%E8%A1%A8.png' },
-    { 名称: '枪械速成模块', 类型: '秘籍', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%9E%AA%E6%A2%B0%E9%80%9F%E6%88%90%E6%A8%A1%E5%9D%97.png' },
-    { 名称: '单兵火箭筒', 类型: '武器', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%8D%95%E5%85%B5%E7%81%AB%E7%AE%AD%E7%AD%92.png' },
+    { 名称: '消音手枪', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/qb0ZWFtugESSQoT4dbpaYTwPZYJCAkZ0.png' },
+    { 名称: '战术匕首', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/Pi16DFp0zLMahbVqHaAAey89lJYhr34N.png' },
+    { 名称: '折叠弩', 类型: '武器', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/V6C5adeukO1HmeY4R8dIurKtGwcMZvF3.png' },
+    { 名称: '高周波短刃', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/5LPPzS9oVUHPSi6CR6X613y5cpnyG7QG.png' },
+    { 名称: '电磁脉冲枪', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/gDfdPOV4mXT7zsZRg4XXeGiKeXY1JxMi.png' },
+    { 名称: '防弹背心', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/9sfYonVU5wUWaUZcSEclF1AQlzFfXDgw.png' },
+    { 名称: '作战靴', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/YIS5vz0gghecl23QuGWWSGlRFEBP8AbC.png' },
+    { 名称: '战术护臂', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/RrUy0SjinuGJxzwbqKsqH3kCt0sQ48i3.png' },
+    { 名称: '主神制式防护服', 类型: '防具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/6rJa9tcxhJfaebKVnbLXgjdDXav6fJat.png' },
+    { 名称: '止血喷雾', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/RNsqdhI3eZYK1IFqDpOllscPj5SN1Rzm.png' },
+    { 名称: '病毒抑制剂', 类型: '消耗品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/z3ABpaahTZmrYqhk30hUhYrL7YrU7l9p.png' },
+    { 名称: '肾上腺素针剂', 类型: '消耗品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/QQToX0ks9IyS9LcPSt0yKUmXxYMKoovj.png' },
+    { 名称: '体力恢复药剂', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/LKhmBYFtc39SDfg3m4FnkOAzlJv8QGYz.png' },
+    { 名称: '精神稳定剂', 类型: '消耗品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/gp1dEjp3Edj54gVMO0S1m8piuMZ4f76v.png' },
+    { 名称: '变异晶核', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/RyRlt8vS3IwJsEtCLmYVVCAX1DCmYIJj.png' },
+    { 名称: '异种细胞样本', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/bYuYYXSG1yZUoccRCUDTYkK0EQtzBh66.png' },
+    { 名称: '记忆金属片', 类型: '材料', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/SRmjjhOQNfJLY1UC30DQHhU5PikTMfRX.png' },
+    { 名称: '主神能量碎片', 类型: '材料', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/CPPqB79KzLM1RD6Q0tXW1dXCV7jf5P7Y.png' },
+    { 名称: '黑曜病毒培养皿', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/lqCu6MeXx4oaxEYd79GqEBfKWLBz7LQo.png' },
+    { 名称: '基因锁训练手册', 类型: '秘籍', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/Q8Qrh3lQv0am1YvSTsKORtehRKuj2meX.png' },
+    { 名称: '近战格斗模块', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/oQDkl0qC0zn0ir0aPyQOg7FeuF4SbuPx.png' },
+    { 名称: '精神力扫描教程', 类型: '秘籍', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/zXiSs1T7S1scVnaGU2gnF5goGmsVFhSf.png' },
+    { 名称: '轮回者腕表', 类型: '饰品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/AVdhvAUMUuhYqylL1ojHkYqBXEDH8FMX.png' },
+    { 名称: '枪械速成模块', 类型: '秘籍', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/xZsLC4IQkS3jDoFURlL5n0k8YU4FT4Re.png' },
+    { 名称: '单兵火箭筒', 类型: '武器', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/nIxQOOob2pxxfQ93xKkibr7lXYM8lORl.png' },
     // ─── 无限流常见无前缀物品（gpt-image2）──────────────────────────
-    { 名称: '手枪', 类型: '武器', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%89%8B%E6%9E%AA.png' },
-    { 名称: '防护背心', 类型: '防具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%98%B2%E6%8A%A4%E8%83%8C%E5%BF%83.png' },
-    { 名称: '护符', 类型: '饰品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%8A%A4%E7%AC%A6.png' },
+    { 名称: '手枪', 类型: '武器', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/qiRTdBvrGTztRmt4JjHZ5Ma1OmJoxn5Z.png' },
+    { 名称: '防护背心', 类型: '防具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/iZkSMv6G1kgW43zzQrEwcIZjv0wozOyE.png' },
+    { 名称: '护符', 类型: '饰品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/FUnIfxY9swOjOqHlkRQuWgxKruvqfojB.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '迷魂香囊', 类型: '任务道具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BF%B7%E9%AD%82%E9%A6%99%E5%9B%8A.png' },
+    { 名称: '迷魂香囊', 类型: '任务道具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/9KrzhPXN6DB3wcIODlU5iKvXPyq74KTT.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '合欢香丸', 类型: '消耗品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%90%88%E6%AC%A2%E9%A6%99%E4%B8%B8.png' },
+    { 名称: '合欢香丸', 类型: '消耗品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/Lpgi0S72OaIucFdBdcB2YklbDUVnhjyj.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '清心解香丸', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B8%85%E5%BF%83%E8%A7%A3%E9%A6%99%E4%B8%B8.png' },
+    { 名称: '清心解香丸', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/A2UvMVjfkTqF1LwfIgXxjfxF2MVv8dxr.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '醒神银针', 类型: '杂物', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%86%92%E7%A5%9E%E9%93%B6%E9%92%88.png' },
+    { 名称: '醒神银针', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/3V8dcvwzybuCAAPJXqWGqnuYnXK2hNo2.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '摄魂符', 类型: '任务道具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%91%84%E9%AD%82%E7%AC%A6.png' },
+    { 名称: '摄魂符', 类型: '任务道具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/KNBiOv8gvE9ocYQJfsI6wLx9X4JL2rmF.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '破妄清心符', 类型: '消耗品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%A0%B4%E5%A6%84%E6%B8%85%E5%BF%83%E7%AC%A6.png' },
+    { 名称: '破妄清心符', 类型: '消耗品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/804ielZqjgApcQm7MOxJXj90JE8H1QSd.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '定神玉佩', 类型: '饰品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%AE%9A%E7%A5%9E%E7%8E%89%E4%BD%A9.png' },
+    { 名称: '定神玉佩', 类型: '饰品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/1MmGOLOJt7drIzU9lYggiCOvYOEXIK4d.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '魅惑药剂', 类型: '任务道具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%AD%85%E6%83%91%E8%8D%AF%E5%89%82.png' },
+    { 名称: '魅惑药剂', 类型: '任务道具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/ivRXjSv1CP0K0ZtrXKdi0cRdnGGRC5pW.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '沉眠熏香', 类型: '任务道具', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B2%89%E7%9C%A0%E7%86%8F%E9%A6%99.png' },
+    { 名称: '沉眠熏香', 类型: '任务道具', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/ZuZJVi116WknlnE1cdNP7IXyVqX8EnLM.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '反魅惑护符', 类型: '饰品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%8F%8D%E9%AD%85%E6%83%91%E6%8A%A4%E7%AC%A6.png' },
+    { 名称: '反魅惑护符', 类型: '饰品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/zfIAvShQKPXuKr5eBv8NI8MYHvB5CtCI.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '违禁香氛样本', 类型: '任务道具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BF%9D%E7%A6%81%E9%A6%99%E6%B0%9B%E6%A0%B7%E6%9C%AC.png' },
+    { 名称: '违禁香氛样本', 类型: '任务道具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/5dJ4B6cg1oFcMaKYUTtLbeaVb1BvS0v7.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '催眠录音芯片', 类型: '任务道具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%82%AC%E7%9C%A0%E5%BD%95%E9%9F%B3%E8%8A%AF%E7%89%87.png' },
+    { 名称: '催眠录音芯片', 类型: '任务道具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/ZYzlpB3l1q6Ov6AFjI8eJO79KVSua3V0.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '清醒贴片', 类型: '消耗品', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%B8%85%E9%86%92%E8%B4%B4%E7%89%87.png' },
+    { 名称: '清醒贴片', 类型: '消耗品', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/hgQodBlpYlVYmkvLiEfqpHr4YYs6o1EO.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '香氛检测卡', 类型: '杂物', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%A6%99%E6%B0%9B%E6%A3%80%E6%B5%8B%E5%8D%A1.png' },
+    { 名称: '香氛检测卡', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/7slwG1AXG3S92WyB2D580fUeFv0twfc3.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '镇静烟雾罐', 类型: '任务道具', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%95%87%E9%9D%99%E7%83%9F%E9%9B%BE%E7%BD%90.png' },
+    { 名称: '镇静烟雾罐', 类型: '任务道具', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/F88XPzw46GtqCnPwd91xGqJXYDMK2kIb.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '诱导素样本', 类型: '材料', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%AF%B1%E5%AF%BC%E7%B4%A0%E6%A0%B7%E6%9C%AC.png' },
+    { 名称: '诱导素样本', 类型: '材料', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/FBudasS3zMCedrc48fM0xfK07l3J8ZCx.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '神志清明针', 类型: '消耗品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%A5%9E%E5%BF%97%E6%B8%85%E6%98%8E%E9%92%88.png' },
+    { 名称: '神志清明针', 类型: '消耗品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/cIfJODVFkdIv6xZMm43YPOfbdY4JKSJF.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '魅惑抗性贴片', 类型: '消耗品', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%AD%85%E6%83%91%E6%8A%97%E6%80%A7%E8%B4%B4%E7%89%87.png' },
+    { 名称: '魅惑抗性贴片', 类型: '消耗品', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/PPU28Cjj3D9w0QwzxXCbHBsGDO8Y56NF.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '违禁迷情香囊', 类型: '任务道具', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E8%BF%9D%E7%A6%81%E8%BF%B7%E6%83%85%E9%A6%99%E5%9B%8A.png' },
+    { 名称: '违禁迷情香囊', 类型: '任务道具', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/2fTWq8kxhOaY5GcgBlfL7axWMHtoa923.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '精神锚定护符', 类型: '饰品', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%B2%BE%E7%A5%9E%E9%94%9A%E5%AE%9A%E6%8A%A4%E7%AC%A6.png' },
+    { 名称: '精神锚定护符', 类型: '饰品', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/OQJC5ycYrgIKl6KnbsVmuC5N8252XlTX.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '六欲琉璃炉', 类型: '法宝', 品质: '绝世', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%85%AD%E6%AC%B2%E7%90%89%E7%92%83%E7%82%89.png' },
+    { 名称: '六欲琉璃炉', 类型: '法宝', 品质: '绝世', 图片URL: 'https://cdn.nodeimage.com/i/LvKc5ozm0rckQO1FjFlPyvibtqMXXncU.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '合欢迷神铃', 类型: '法宝', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%90%88%E6%AC%A2%E8%BF%B7%E7%A5%9E%E9%93%83.png' },
+    { 名称: '合欢迷神铃', 类型: '法宝', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/7GZQ241qFTo3fPEArvGm4IJK2otNrygE.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '魅心摄魂镜', 类型: '法宝', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%AD%85%E5%BF%83%E6%91%84%E9%AD%82%E9%95%9C.png' },
+    { 名称: '魅心摄魂镜', 类型: '法宝', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/Ih2U80GpTpGjHEJMDcR9c7IyXzHrXoYf.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '缚念红绫', 类型: '法宝', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%BC%9A%E5%BF%B5%E7%BA%A2%E7%BB%AB.png' },
+    { 名称: '缚念红绫', 类型: '法宝', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/BgXZgImdlleiQks98l1EnFAPWlbttFSF.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '净欲明心镜', 类型: '法宝', 品质: '上品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%87%80%E6%AC%B2%E6%98%8E%E5%BF%83%E9%95%9C.png' },
+    { 名称: '净欲明心镜', 类型: '法宝', 品质: '上品', 图片URL: 'https://cdn.nodeimage.com/i/9ORwUwvO3kENzJtJ88xMwTRcohYbhnyB.png' },
     // ─── 结构化物品库自动生成 ─────────────────────────────────────────
-    { 名称: '断欲镇魂印', 类型: '法宝', 品质: '极品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E6%96%AD%E6%AC%B2%E9%95%87%E9%AD%82%E5%8D%B0.png' },
+    { 名称: '断欲镇魂印', 类型: '法宝', 品质: '极品', 图片URL: 'https://cdn.nodeimage.com/i/abDr9dqKw9uggR0Y5tmeRL7wCCBni47S.png' },
     // ─── 现代/末日/无限流高频开局物品兜底图 ─────────────────────────────
     { 名称: '随身短刃', 类型: '武器', 品质: '良品', 图片URL: 'https://image1.bacon159.pp.ua/file/tgs_eyJ2IjoxLCJmIjoiQWdBQ0FnVUFBeUVHQUFUcVR5V1JBQUVCQ014cUpBN3JNZFF5cjkxQ3BHMzZJb3NiNnc1Z2RBQUNQUk5yRzl4aElWVzFuNnpfTVhqRk9nRUFBd0lBQTNrQUF6c0UiLCJlIjoicG5nIiwibiI6InByZXNldC16ODRmOTMtbXEyYmRzZHotMS02dTJwd2gucG5nIiwibSI6ImltYWdlL3BuZyIsInMiOjE5NTc3NzUsInQiOjE3ODA3NDgwMTE3MzEsIm1pZCI6Njc3ODh9.f5au4ltF1pBswjlijVRGlnikqcWwCDUFKELjGq-ToD0.png' },
     { 名称: '门禁卡', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://image1.bacon159.pp.ua/file/tgs_eyJ2IjoxLCJmIjoiQWdBQ0FnVUFBeUVHQUFUcVR5V1JBQUVCQ0x4cUpBMDdRUzI4X202ZFFrclFlMnFzR2wwMFNnQUNOUk5yRzl4aElWVXhXOHBMaUpaTXZBRUFBd0lBQTNrQUF6c0UiLCJlIjoicG5nIiwibiI6InByZXNldC0xcjN1eG43LW1xMmI0bDY3LTEtODljd3BnLnBuZyIsIm0iOiJpbWFnZS9wbmciLCJzIjoxMjM3MjI4LCJ0IjoxNzgwNzQ3NTc5ODkxLCJtaWQiOjY3NzcyfQ.4sxrEAIlp1EkCl8pFiPXo6Y0YPTvleRThctTJfOXiaQ.png' },
@@ -918,10 +918,10 @@ export const 预置物品图片列表: 预置物品图片条目[] = [
     { 名称: '轮回者身份铭牌', 类型: '任务道具', 品质: '良品', 图片URL: 'https://image1.bacon159.pp.ua/file/tgs_eyJ2IjoxLCJmIjoiQWdBQ0FnVUFBeUVHQUFUcVR5V1JBQUVCQ1l4cUpERHpadlprYlc3QmY5NkpBc2h5d0R5RlBBQUNqQk5yRzl4aElWVlNjaXFEbk1qZzBRRUFBd0lBQTNrQUF6c0UiLCJlIjoicG5nIiwibiI6InByZXNldC1kdm40c2wtbXEyZ2ttY3AtMS1zeDluaGcucG5nIiwibSI6ImltYWdlL3BuZyIsInMiOjE4NDQyMDgsInQiOjE3ODA3NTY3MjQxMTIsIm1pZCI6Njc5ODB9._6c1xsiusln70Y0k59O31lptrE68cAop4v6vp1cLoJ4.png' },
     { 名称: '安全屋钥匙', 类型: '任务道具', 品质: '凡品', 图片URL: 'https://image1.bacon159.pp.ua/file/tgs_eyJ2IjoxLCJmIjoiQWdBQ0FnVUFBeUVHQUFUcVR5V1JBQUVCQ1k1cUpERTh1aDhiLTlkTHVRT2pLbTdSbG5GNkpRQUNqUk5yRzl4aElWVnh0V2t1Q0N3eDF3RUFBd0lBQTNrQUF6c0UiLCJlIjoicG5nIiwibiI6InByZXNldC0xYW9vNnBuLW1xMmdtNmIxLTEtejA5ZHQ4LnBuZyIsIm0iOiJpbWFnZS9wbmciLCJzIjoxODQ4NzQ1LCJ0IjoxNzgwNzU2Nzk2NjczLCJtaWQiOjY3OTgyfQ.xqEJBYWRwHLvkjR0Vp3RQLs6Key6-TzaIJHwwBJTMAE.png' },
     // ─── 杂物/通用 ─────────────────────────────────────────────────────
-    { 名称: '火折子', 类型: '杂物', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%81%AB%E6%8A%98%E5%AD%90.png' },
-    { 名称: '绳索', 类型: '杂物', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E7%BB%B3%E7%B4%A2.png' },
-    { 名称: '地图', 类型: '杂物', 品质: '良品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E5%9C%B0%E5%9B%BE.png' },
-    { 名称: '银两', 类型: '杂物', 品质: '凡品', 图片URL: 'https://msjh.bacon159.pp.ua/api/preset-image/%E9%93%B6%E4%B8%A4.png' },
+    { 名称: '火折子', 类型: '杂物', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/887DhwnvRPARJkGBaT7pflzTx64oMjeY.png' },
+    { 名称: '绳索', 类型: '杂物', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/I34ZQHZWCLERc3mk2iYp3mMwi7WJjVdV.png' },
+    { 名称: '地图', 类型: '杂物', 品质: '良品', 图片URL: 'https://cdn.nodeimage.com/i/wCC5tVesF77nJHYJ5CU4Oz7ky3XXao7K.png' },
+    { 名称: '银两', 类型: '杂物', 品质: '凡品', 图片URL: 'https://cdn.nodeimage.com/i/EzZInS1ROrjnLxEsDiIipMijOJYktIPe.png' },
 ];
 
 /**
