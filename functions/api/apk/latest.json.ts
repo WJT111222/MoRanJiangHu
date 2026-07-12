@@ -68,14 +68,23 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
         const githubDirectApkUrl = versionedFileName ? buildGitHubReleaseDownloadUrl(versionName, versionedFileName) : '';
         const githubAcceleratedApkUrls = versionedFileName ? buildGitHubAcceleratedUrls(versionName, versionedFileName) : [];
         const preferredApkProvider = readManifestPreferredApkProvider(payload);
+        // 按 preferredApkProvider 排序候选源：B2 免费额度耗尽后会返回 download_cap_exceeded，
+        // 因此默认（github）优先把 GitHub 加速镜像排到 B2 前面，避免客户端第一枪打到死通道。
+        const githubGroup = [...githubAcceleratedApkUrls, githubApkUrl, githubDirectApkUrl];
+        const b2Group = [b2ApkUrl];
+        const oneDriveGroup = [oneDriveApkUrl, oneDriveDirectApkUrl];
+        let providerOrderedUrls: string[];
+        if (preferredApkProvider === 'onedrive' || preferredApkProvider === 'onedrive-direct') {
+            providerOrderedUrls = [...oneDriveGroup, ...githubGroup, ...b2Group];
+        } else if (preferredApkProvider === 'b2') {
+            providerOrderedUrls = [...b2Group, ...githubGroup, ...oneDriveGroup];
+        } else {
+            // 默认 github：GitHub 加速镜像优先，B2 退为兜底
+            providerOrderedUrls = [...githubGroup, ...b2Group, ...oneDriveGroup];
+        }
         const orderedApkUrls = [
             latestApkUrl,
-            b2ApkUrl,
-            ...githubAcceleratedApkUrls,
-            githubApkUrl,
-            githubDirectApkUrl,
-            oneDriveApkUrl,
-            oneDriveDirectApkUrl
+            ...providerOrderedUrls
         ].filter(Boolean);
         const nextPayload = {
             ...payload,

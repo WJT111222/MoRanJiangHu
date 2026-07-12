@@ -206,10 +206,13 @@ const providerApkUrls = {
   githubDirect: `https://github.com/ypq123456789/MoRanJiangHu/releases/download/v${currentVersionName}/${currentVersionedFileName}`
 };
 const githubAcceleratedApkUrls = githubReleaseAccelerators.map((baseUrl) => `${baseUrl}/${providerApkUrls.githubDirect}`);
-const requestedPreferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'b2');
+// 默认优先 GitHub Release：B2 免费额度（每天 1GB 下载）易被耗尽后返回 download_cap_exceeded，
+// GitHub 公开仓库 Release 免费无限流量且可走国内加速镜像，是更可靠的默认 APK 下载通道。
+// 如需强制其他通道，用环境变量 MORAN_RELEASE_PREFERRED_APK_PROVIDER 覆盖（onedrive/onedrive-direct/github/b2）。
+const requestedPreferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'github');
 const preferredApkProvider = ['onedrive', 'onedrive-direct', 'github', 'b2'].includes(requestedPreferredApkProvider)
   ? requestedPreferredApkProvider
-  : 'b2';
+  : 'github';
 const skipB2ApkUpload = process.env.MORAN_B2_SKIP_APK_UPLOAD === '1';
 const orderedProviderUrls = preferredApkProvider === 'github'
   ? [...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.b2, providerApkUrls.onedrive, providerApkUrls.onedriveDirect, providerApkUrls.githubDirect].filter(Boolean)

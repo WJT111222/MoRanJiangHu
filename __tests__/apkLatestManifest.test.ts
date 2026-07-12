@@ -82,4 +82,29 @@ describe('APK latest manifest proxy', () => {
         expect(payload.latest.apkUrls).toContain('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.528.apk?provider=github');
         expect(payload.latest.apkUrls).toContain('https://gh.ddlc.top/https://github.com/ypq123456789/MoRanJiangHu/releases/download/v1.0.528/MoRanJiangHu-v1.0.528.apk');
     });
+
+    it('orders GitHub accelerators before the B2 fallback when preferredApkProvider is github', async () => {
+        const response = await onRequestGet({
+            request: buildRequest(),
+            env: buildEnv({
+                versionName: '1.0.596',
+                versionCode: 596,
+                preferredApkProvider: 'github',
+                releaseNotes: ['修复 APK 下载渠道：B2 额度耗尽，改用 GitHub Release']
+            })
+        } as any);
+
+        expect(response.status).toBe(200);
+        const payload = await response.json();
+
+        expect(payload.latest.preferredApkProvider).toBe('github');
+        // GitHub 加速镜像必须排在已废的 B2 兜底之前，客户端第一个可下载源不能是死通道
+        expect(payload.latest.apkUrls.indexOf(payload.latest.githubAcceleratedApkUrls[0])).toBeLessThan(
+            payload.latest.apkUrls.indexOf(payload.latest.b2ApkUrl)
+        );
+        // B2 仍保留在候选列表中作为兜底，但排在 OneDrive 之前
+        expect(payload.latest.apkUrls.indexOf(payload.latest.b2ApkUrl)).toBeLessThan(
+            payload.latest.apkUrls.indexOf(payload.latest.oneDriveApkUrl)
+        );
+    });
 });
