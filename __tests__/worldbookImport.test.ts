@@ -49,6 +49,29 @@ describe('SillyTavern 世界书导入', () => {
             关键词: []
         });
     });
+
+    it('将中文标点和换行分隔的关键词规范化为独立触发词', () => {
+        const books = 解析世界书导入数据({
+            entries: {
+                0: {
+                    uid: 'keyword-entry',
+                    comment: '双关键词条目',
+                    content: '命中任意关键词后注入。',
+                    key: ['青云门，天音寺\n流云镇；藏经阁'],
+                    constant: false,
+                    order: 100,
+                    disable: false
+                }
+            }
+        });
+
+        expect(books[0].条目[0].关键词).toEqual(['青云门', '天音寺', '流云镇', '藏经阁']);
+        expect(构建世界书注入文本({
+            books,
+            scopes: ['main'],
+            extraTexts: ['玩家抵达青云门。']
+        }).selectedEntries.map((entry) => entry.id)).toEqual(['keyword-entry']);
+    });
 });
 
 describe('世界书注入选择', () => {
@@ -122,5 +145,67 @@ describe('世界书注入选择', () => {
         const result = 构建世界书注入文本({ books, scopes: ['main'], maxChars: 120 });
 
         expect(result.selectedEntries.map((entry) => entry.id)).toEqual(['always-a']);
+    });
+
+    it('显式 maxChars 会严格拒绝零预算和首条超限', () => {
+        const books: any[] = [{
+            id: 'strict-budget-book',
+            标题: '严格预算测试',
+            启用: true,
+            条目: [{
+                id: 'oversized-entry',
+                标题: '超限条目',
+                内容: 'A'.repeat(90),
+                类型: 'world_lore',
+                作用域: ['main'],
+                注入模式: 'always',
+                关键词: [],
+                优先级: 100,
+                启用: true
+            }]
+        }];
+
+        expect(构建世界书注入文本({ books, scopes: ['main'], maxChars: 0 }).selectedEntries).toEqual([]);
+        expect(构建世界书注入文本({ books, scopes: ['main'], maxChars: 20 }).selectedEntries).toEqual([]);
+    });
+
+    it('默认预算不会让始终注入条目挤掉已命中的关键词条目', () => {
+        const books: any[] = [{
+            id: 'mixed-book',
+            标题: '混合注入测试',
+            启用: true,
+            条目: [
+                {
+                    id: 'always-large',
+                    标题: '大型常驻条目',
+                    内容: 'A'.repeat(6000),
+                    类型: 'world_lore',
+                    作用域: ['main'],
+                    注入模式: 'always',
+                    关键词: [],
+                    优先级: 100,
+                    启用: true
+                },
+                {
+                    id: 'matched-entry',
+                    标题: '青云门设定',
+                    内容: '青云门是测试门派。',
+                    类型: 'world_lore',
+                    作用域: ['main'],
+                    注入模式: 'match_any',
+                    关键词: ['青云门'],
+                    优先级: 99,
+                    启用: true
+                }
+            ]
+        }];
+
+        const result = 构建世界书注入文本({
+            books,
+            scopes: ['main'],
+            extraTexts: ['玩家正在前往青云门。']
+        });
+
+        expect(result.selectedEntries.map((entry) => entry.id)).toEqual(['always-large', 'matched-entry']);
     });
 });

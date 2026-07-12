@@ -267,7 +267,8 @@ export const 执行世界演变更新工作流 = async (
             .slice(-8)
             .map(item => (item || '').trim())
             .filter(Boolean));
-        const worldScriptText = probe.time('构建世界演变历史剧本文本', () => formatHistoryToScript(deps.按回合窗口裁剪历史(deps.历史记录, 6)) || '暂无', {
+        const worldHistory = deps.按回合窗口裁剪历史(deps.历史记录, 6);
+        const worldScriptText = probe.time('构建世界演变历史剧本文本', () => formatHistoryToScript(worldHistory) || '暂无', {
             historyCount: Array.isArray(deps.历史记录) ? deps.历史记录.length : 0
         });
         const currentTurnBody = probe.time('提取当前回合正文', () => {
@@ -353,8 +354,8 @@ export const 执行世界演变更新工作流 = async (
             scopes: ['world_evolution'],
             environment: worldEnv,
             world: worldState,
-            history: deps.历史记录,
-            extraTexts: [currentTurnPlanText, ...dynamicHints, ...dueHints]
+            history: worldHistory,
+            extraTexts: [currentTurnBody, currentTurnPlanText, currentTurnCommandsText, ...dynamicHints, ...dueHints]
         };
         const worldbookExtraPrompt = await probe.timeAsync('构建世界演变世界书注入(worker)', () => 执行游戏后台重计算<string>(
             'buildWorldbookText',

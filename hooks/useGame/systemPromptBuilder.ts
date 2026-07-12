@@ -32,6 +32,7 @@ const 解析标准时间为天数片段 = (raw?: string): { year: number; month:
 import { 规范化游戏设置, 计算远处联动阈值, 计算当前阈值文本 } from '../../utils/gameSettings';
 import {
     构建世界书注入文本,
+    构建主剧情世界书作用域,
     世界书本体槽位
 } from '../../utils/worldbook';
 import { 构建主剧情难度摘要提示词 } from '../../prompts/runtime/promptOwnership';
@@ -43,6 +44,7 @@ import {
     构建运行时提示词池,
     剥离NoControl关联提示词,
     规范化比较文本,
+    酒馆预设模式可用,
 } from './promptRuntime';
 import { 构建AI角色声明提示词 } from '../../prompts/runtime/roleIdentity';
 import {
@@ -1266,7 +1268,7 @@ export const 构建系统提示词 = ({
     const 启用修炼体系 = normalizedGameConfig.启用修炼体系 !== false;
     const activeWorldbookScopes: 世界书作用域[] = Array.isArray(options?.世界书作用域) && options.世界书作用域.length > 0
         ? options.世界书作用域
-        : [normalizedGameConfig.启用酒馆预设模式 === true ? 'tavern' : 'main'];
+        : 构建主剧情世界书作用域(酒馆预设模式可用(normalizedGameConfig));
     const openingConfig = options?.openingConfig
         || statePayload?.开局配置
         || statePayload?.openingConfig;
@@ -1282,14 +1284,6 @@ export const 构建系统提示词 = ({
             ]
         });
     };
-    const worldbookInjection = 构建世界书注入文本({
-        books: Array.isArray(worldbooks) ? worldbooks : [],
-        scopes: activeWorldbookScopes,
-        environment: statePayload?.环境,
-        social: socialData,
-        world: statePayload?.世界,
-        extraTexts: options?.世界书附加文本
-    });
     const { promptPool: effectivePromptPool, selectedCotPromptIds } = 构建运行时提示词池(
         promptPool,
         normalizedGameConfig,
@@ -1422,18 +1416,37 @@ export const 构建系统提示词 = ({
     const enabledPrompts = effectivePromptPool.filter(p => p.启用);
     const worldPromptSource = enabledPrompts.find(p => p.id === 'core_world');
     const realmPromptSource = enabledPrompts.find(p => p.id === 'core_realm');
-    const worldPrompt = 按当前设置过滤提示词([
-        渲染提示词文本(worldPromptSource?.内容 || ''),
-        worldbookInjection.worldLoreText
-    ]
-        .filter(Boolean)
-        .join('\n\n'));
+    const renderedWorldPromptBase = 渲染提示词文本(worldPromptSource?.内容 || '');
+    const worldPromptBase = 按当前设置过滤提示词(renderedWorldPromptBase);
     const realmPromptRaw = 启用修炼体系
         ? 渲染提示词文本(realmPromptSource?.内容 || '')
         : '';
     const realmPrompt = !启用修炼体系 || realmPromptRaw.includes('开局后此处会被完整替换')
         ? ''
         : realmPromptRaw;
+    const worldbookNpcContext = 构建NPC上下文(socialData || [], memoryConfig, {
+        worldPrompt: worldPromptBase,
+        realmPrompt,
+        openingConfig,
+        cultivationSystemEnabled: 启用修炼体系
+    });
+    const worldbookInjection = 构建世界书注入文本({
+        books: Array.isArray(worldbooks) ? worldbooks : [],
+        scopes: activeWorldbookScopes,
+        environment: statePayload?.环境,
+        world: statePayload?.世界,
+        extraTexts: [
+            ...(Array.isArray(options?.世界书附加文本) ? options.世界书附加文本 : []),
+            worldbookNpcContext.在场数据块,
+            worldbookNpcContext.离场数据块
+        ]
+    });
+    const worldPrompt = 按当前设置过滤提示词([
+        renderedWorldPromptBase,
+        worldbookInjection.worldLoreText
+    ]
+        .filter(Boolean)
+        .join('\n\n'));
     const fandomPromptBundle = 构建同人运行时提示词包({
         openingConfig,
         worldPrompt,

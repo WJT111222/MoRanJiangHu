@@ -455,8 +455,7 @@ export const 创建规划更新工作流 = (deps: 规划更新工作流依赖) =
             environment: params.state.环境,
             social: params.state.社交,
             world: params.state.世界,
-            history: deps.历史记录,
-            extraTexts: [params.playerInput, latestBodyText, currentPlanText, ...auditFocus]
+            extraTexts: [params.playerInput, latestBodyText, recentBodiesText, currentPlanText, ...auditFocus]
         };
         const worldbookExtra = await probe.timeAsync('构建规划世界书注入(worker)', () => 执行游戏后台重计算<string>(
             'buildWorldbookText',
