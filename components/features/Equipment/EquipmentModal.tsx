@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { 角色数据结构, 装备槽位 } from '../../../types';
 import { 游戏物品 } from '../../../models/item';
 import { getRarityNameClass, getRarityStyles } from '../../ui/rarityStyles';
-import { 获取图片展示地址 } from '../../../utils/imageAssets';
+import { 获取图片展示地址, 获取图片资源文本地址 } from '../../../utils/imageAssets';
 import { 获取物品已选图标地址 } from '../../../utils/itemImage';
 import { IconSwords, IconDagger, IconShield, IconArmor, IconBackpack, IconRing, IconBelt, IconHelmet, IconBoot, IconPants, IconGlove, IconHorse, ItemTypeIcon } from '../../ui/Icons';
 import { 获取物品可装备槽位, 计算装备评分, 装备物品到角色, 卸下角色装备 } from '../../../utils/equipmentActions';
@@ -99,7 +99,7 @@ const EquipmentModal: React.FC<Props> = ({ character, openingConfig, onClose, on
         : '';
     const selectedPortrait = playerImageHistory.find((item: any) => item?.id === selectedPortraitId)
         || (character?.图片档案?.最近生图结果?.id === selectedPortraitId ? character.图片档案.最近生图结果 : null);
-    const 主角披挂像地址 = 获取图片展示地址(selectedPortrait);
+    const 主角披挂像地址 = 获取图片展示地址(selectedPortrait) || 获取图片资源文本地址(character?.立绘图片URL);
 
     const getItem = (idOrName: string): 游戏物品 | null => {
         if (!idOrName || idOrName === '无') return null;

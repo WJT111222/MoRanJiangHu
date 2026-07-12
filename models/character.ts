@@ -62,6 +62,7 @@ export interface 角色技艺 {
 export interface 角色数据结构 {
     姓名: string;
     头像图片URL?: string;
+    立绘图片URL?: string;
     图片档案?: NPC图片档案;
     最近生图结果?: NPC图片档案['最近生图结果'];
     性别: string;

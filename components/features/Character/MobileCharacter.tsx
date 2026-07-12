@@ -10,7 +10,7 @@ import {
 } from '../../../types';
 import { 构建角色身份摘要 } from './identitySummary';
 import { 规范化接口设置 } from '../../../utils/apiConfig';
-import { 获取图片展示地址 } from '../../../utils/imageAssets';
+import { 获取图片展示地址, 获取图片资源文本地址 } from '../../../utils/imageAssets';
 import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetch';
 import { 计算角色总气血 } from '../../../utils/characterVitals';
 import { 获取世界观货币卡片信息, 获取角色金钱显示列表 } from '../../../utils/currencyDisplay';
@@ -209,8 +209,8 @@ const MobileCharacter: React.FC<Props> = ({
         || history.find((item: any) => item?.构图 === '头像' && item?.状态 === 'success')
         || (recentImageRecord?.构图 === '头像' && recentImageRecord?.状态 === 'success' ? recentImageRecord : null);
     const selectedPortraitRecord = history.find((item: any) => typeof item?.id === 'string' && item.id.trim() === selectedPortraitId) || null;
-    const avatarUrl = 获取图片展示地址(selectedAvatarRecord) || character?.头像图片URL || '';
-    const portraitUrl = 获取图片展示地址(selectedPortraitRecord) || '';
+    const avatarUrl = 获取图片展示地址(selectedAvatarRecord) || 获取图片资源文本地址(character?.头像图片URL) || '';
+    const portraitUrl = 获取图片展示地址(selectedPortraitRecord) || 获取图片资源文本地址(character?.立绘图片URL) || '';
     const selectedArtistPreset = useMemo(
         () => artistPresets.find((item) => item.id === (generateOptions.画师串预设ID || '').trim()) || null,
         [artistPresets, generateOptions.画师串预设ID]

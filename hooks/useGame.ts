@@ -3258,6 +3258,7 @@ export const useGame = () => {
         updateHistoryItem,
         handleRegenerate,
         handleRetryLatestVariableGeneration,
+        handleRetryLatestStage,
         handleRecoverFromParseErrorRaw,
         handlePolishTurn
     } = 创建历史回合工作流({
@@ -4170,6 +4171,7 @@ export const useGame = () => {
             handleCancelVariableGeneration,
             handleRegenerate,
             handleRetryLatestVariableGeneration,
+            handleRetryLatestStage,
             handlePolishTurn,
             handleRecoverFromParseErrorRaw,
             saveSettings, saveVisualSettings, saveImageManagerSettings, saveGameSettings, saveMemorySettings,

@@ -44,7 +44,7 @@ import { startOnlinePresenceHeartbeat } from './services/onlinePresence';
 import { 等待云端后台同步完成, 确保本地存档已同步到云端, 确保最新本地存档已同步到云端, 读取云端游玩存储模式 } from './services/cloudPlayService';
 import './services/diagnosticLog';
 import type { 物品生图结果 } from './types';
-import type { 游戏物品 } from './models/item';
+import type { 游戏物品, 物品类型, 物品品质 } from './models/item';
 import type { 功法结构, 功法类型, 功法品质, 消耗类型, 伤害类型, 目标类型 } from './models/kungfu';
 
 const RELEASE_NOTES_SUPPRESS_DATE_KEY = 'moranjianghu.releaseNotesSuppressDate';
@@ -2091,11 +2091,15 @@ const App: React.FC = () => {
             ID: `exchange_${goodId}_${Date.now()}`,
             名称: good.物品名称 || '兑换物品',
             描述: good.描述 || '',
-            类型: good.类型 || '消耗品',
-            品质: good.品质 || '良品',
+            类型: (good.类型 || '消耗品') as 物品类型,
+            品质: (good.品质 || '良品') as 物品品质,
             重量: good.重量 || 0.5,
             堆叠数量: 1,
-            是否可堆叠: false
+            是否可堆叠: false,
+            价值: 0,
+            当前耐久: 1,
+            最大耐久: 1,
+            词条列表: [],
         };
         const currentItems = Array.isArray(state.角色?.物品列表) ? state.角色.物品列表 : [];
         const nextCharacter = { ...state.角色, 物品列表: [...currentItems, newItem] };

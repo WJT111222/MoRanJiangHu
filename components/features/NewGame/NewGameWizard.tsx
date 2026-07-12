@@ -673,6 +673,7 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
         return {
             出生日期: `${params?.出生月 ?? birthMonth}月${params?.出生日 ?? birthDay}日`,
             ...(avatarUrl ? { 头像图片URL: avatarUrl } : {}),
+            ...(portraitUrl ? { 立绘图片URL: portraitUrl } : {}),
             ...(imageArchive ? { 图片档案: imageArchive, 最近生图结果: imageArchive.最近生图结果 } : {}),
             ...(最终属性 as any),
             姓名: (params?.角色名 ?? charName).trim(),
@@ -705,7 +706,12 @@ const NewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, apiConf
     };
     const 从伙伴配置读取立绘URL = (partner: 初始伙伴配置结构): string => {
         const history = Array.isArray(partner.图片档案?.生图历史) ? partner.图片档案.生图历史 : [];
-        return String(history.find((item: any) => item?.id === partner.图片档案?.已选立绘图片ID)?.图片URL || history.find((item: any) => item?.构图 === '立绘')?.图片URL || '');
+        return String(
+            partner?.立绘图片URL ||
+            history.find((item: any) => item?.id === partner.图片档案?.已选立绘图片ID)?.图片URL ||
+            history.find((item: any) => item?.构图 === '立绘')?.图片URL ||
+            ''
+        );
     };
     const 载入伙伴配置到表单 = (partner: 初始伙伴配置结构) => {
         setPartnerEnabled(partner.enabled !== false);
