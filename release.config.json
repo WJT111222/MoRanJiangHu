@@ -589,5 +589,5 @@
     "备用站：https://msjh.bacon.de5.net/"
   ],
   "notes": "优化预设图反馈页缩略图加载：官网缩略图代理改用更快的 OpenList 直连与签名下载路径，减少冷加载超时后回退到大图的情况。\n护符、防护背心、手枪等预设缩略图已补齐并纳入代理缓存，批量浏览反馈页更稳定。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-  "releasePublishedAt": "2026-07-13T20:39:07+08:00"
+  "releasePublishedAt": "2026-07-13T20:40:52+08:00"
 }
