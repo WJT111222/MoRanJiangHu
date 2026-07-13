@@ -41,6 +41,9 @@
         var message = String(event && event.message || '');
         var stack = stringify(event && event.error || '');
         var source = [filename, message, stack].join('\n');
+        var hasNoLocation = !filename && !event.lineno && !event.colno;
+        var hasNoErrorObject = !event.error;
+        if (message === 'Script error.' && hasNoLocation && hasNoErrorObject) return true;
         if (/^(chrome|moz|safari-web)-extension:\/\//i.test(filename)) return true;
         if (/chrome-extension:\/\//i.test(source)) return true;
         if (/Failed to execute 'appendChild' on 'Node': Invalid regular expression/i.test(source)) return true;
@@ -83,13 +86,21 @@
       }
 
       window.addEventListener('error', function (event) {
+        if (isExternalInjectedError(event)) {
+          push('warn', [
+            'preboot ignored external script error',
+            event.message,
+            event.filename ? event.filename + ':' + event.lineno + ':' + event.colno : '',
+            event.error
+          ]);
+          return;
+        }
         push('error', [
           'preboot window.error',
           event.message,
           event.filename ? event.filename + ':' + event.lineno + ':' + event.colno : '',
           event.error
         ]);
-        if (isExternalInjectedError(event)) return;
         showOverlay();
       });
 
