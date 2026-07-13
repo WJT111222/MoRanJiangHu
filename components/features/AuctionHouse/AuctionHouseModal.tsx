@@ -17,7 +17,7 @@ import type { 接口设置结构, OpeningConfig } from '../../../types';
 import { 生成物品图标 } from '../../../services/ai/itemImageGeneration';
 import { 获取物品已选图标地址 } from '../../../utils/itemImage';
 import { 获取世界观货币卡片信息, 获取货币显示模式, 获取货币层级倍率, 底层总值转角色金钱 } from '../../../utils/currencyDisplay';
-import { 获取题材模式配置 } from '../../../utils/topicModeProfiles';
+import { 解析生效题材配置 } from '../../../utils/effectiveTopicProfile';
 import { 同步角色储物负重上限 } from '../../../utils/storageCarry';
 
 interface Props {
@@ -88,7 +88,10 @@ const AuctionHouseModal: React.FC<Props> = ({
     const [generatingItemId, setGeneratingItemId] = React.useState('');
     const [previewImage, setPreviewImage] = React.useState<{ url: string; title: string } | null>(null);
     const [isNarrowPanel, setIsNarrowPanel] = React.useState(isMobile);
-    const topicProfile = React.useMemo(() => 获取题材模式配置(openingConfig?.题材模式), [openingConfig?.题材模式]);
+    const topicProfile = React.useMemo(() => 解析生效题材配置(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile), [openingConfig?.题材模式, openingConfig?.modeRuntimeProfile]);
+    // 官方模式保持历史牙行口径；自定义模式包使用其市场名作为市场主体称呼
+    const 市场主体 = topicProfile.usesCustomRuntime ? topicProfile.marketName : '牙行';
+    const 收购方名称 = topicProfile.usesCustomRuntime ? topicProfile.marketName : '万宝牙行';
 
     React.useEffect(() => {
         const element = shellRef.current;
@@ -173,21 +176,21 @@ const AuctionHouseModal: React.FC<Props> = ({
     });
 
     const handleRefresh = () => {
-        const market = 生成行情列表(true, auctionState.行情列表 || [], auctionState.最近行情时间, openingConfig?.题材模式);
+        const market = 生成行情列表(true, auctionState.行情列表 || [], auctionState.最近行情时间, openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
         const next = 清理并补货({
             ...auctionState,
             行情列表: market.行情列表,
             最近行情时间: market.最近行情时间,
             最近补货时间: 0,
-        }, { 题材模式: openingConfig?.题材模式 });
+        }, { 题材模式: openingConfig?.题材模式, 模式运行时: openingConfig?.modeRuntimeProfile });
         updateAuctionState(next);
-        notify('市场已刷新', '牙行撤换旧货，并重新挂出受行情影响的新货。', 'success');
+        notify('市场已刷新', `${市场主体}撤换旧货，并重新挂出受行情影响的新货。`, 'success');
     };
 
     const handleBuy = (auction: 拍卖品记录 | null = selectedAuction) => {
         if (!auction) return;
         if (auction.卖家ID === playerId) {
-            notify('无法购买', '这是你自己寄售的货品，可以撤回或交给牙行收购。', 'info');
+            notify('无法购买', `这是你自己寄售的货品，可以撤回或交给${市场主体}收购。`, 'info');
             return;
         }
         const result = 购买拍卖品(character, auction, 货币格式化选项);
@@ -237,7 +240,7 @@ const AuctionHouseModal: React.FC<Props> = ({
         const settledAuction: 拍卖品记录 = {
             ...auction,
             状态: '已成交',
-            购买者名称: '万宝牙行',
+            购买者名称: 收购方名称,
             成交时间: Date.now(),
         };
         const nextState = appendRecord({
@@ -246,8 +249,8 @@ const AuctionHouseModal: React.FC<Props> = ({
         }, settledAuction);
         updateAuctionState(nextState);
         onCharacterChange(nextCharacter);
-        console.info('[拍卖行交易] 牙行收购', auction.物品?.名称, income, currency);
-        notify('牙行收购', `牙行以 ${格式化拍卖货币(income, currency, 货币格式化选项)} 收走了这件货。`, 'success');
+        console.info('[拍卖行交易] 市场收购', 市场主体, auction.物品?.名称, income, currency);
+        notify(`${市场主体}收购`, `${市场主体}以 ${格式化拍卖货币(income, currency, 货币格式化选项)} 收走了这件货。`, 'success');
     };
 
     const handleGenerateItemImage = async (auction: 拍卖品记录) => {
