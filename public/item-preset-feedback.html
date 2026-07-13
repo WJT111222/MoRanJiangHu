@@ -343,7 +343,9 @@ function closeViewer() {
   viewer.setAttribute('aria-hidden', 'true');
   viewerImg.removeAttribute('src');
 }
-const maxConcurrentImageLoads = 6;
+const maxConcurrentImageLoads = 1;
+const imageLoadTimeoutMs = 10000;
+const imageRetryDelayMs = 10000;
 let activeImageLoads = 0;
 const imageLoadQueue = [];
 const queuedImages = new WeakSet();
@@ -456,9 +458,35 @@ function pumpImageLoadQueue() {
     if (img.dataset.loaded === '1') continue;
     queuedImages.delete(img);
     activeImageLoads += 1;
-    setImageStatus(imgbox, 'loading', attempt > 0 ? `图片排队加载中（${attempt}/6）` : '图片排队加载中');
-    img.onload = () => {
+    const displayAttempt = Math.max(1, attempt + 1);
+    setImageStatus(imgbox, 'loading', attempt > 0 ? `图片加载中（第 ${displayAttempt} 次）` : '图片排队加载中');
+    let settled = false;
+    const timeoutId = window.setTimeout(() => {
+      handleImageFailure();
+    }, imageLoadTimeoutMs);
+    const finishImageLoad = () => {
+      if (settled) return false;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      img.onload = null;
+      img.onerror = null;
       activeImageLoads = Math.max(0, activeImageLoads - 1);
+      return true;
+    };
+    const scheduleImageRetry = () => {
+      if (!img.isConnected) return;
+      img.removeAttribute('src');
+      setImageStatus(imgbox, 'loading', '图片暂忙，10秒后自动重试');
+      window.setTimeout(() => enqueueImageLoad(img, imgbox, item, attempt + 1), imageRetryDelayMs);
+      if (!imgbox.querySelector('.badge')) imgbox.appendChild(el('span', 'badge', item.source));
+    };
+    function handleImageFailure() {
+      if (!finishImageLoad()) return;
+      scheduleImageRetry();
+      pumpImageLoadQueue();
+    }
+    img.onload = () => {
+      if (!finishImageLoad()) return;
       if (img.isConnected) {
         img.dataset.loaded = '1';
         loadedImageUrls.add(cardImageSrc(item, attempt));
@@ -467,19 +495,7 @@ function pumpImageLoadQueue() {
       }
       pumpImageLoadQueue();
     };
-    img.onerror = () => {
-      activeImageLoads = Math.max(0, activeImageLoads - 1);
-      if (img.isConnected && attempt < 6) {
-        img.removeAttribute('src');
-        const jitter = 500 + Math.floor(Math.random() * 1200);
-        window.setTimeout(() => enqueueImageLoad(img, imgbox, item, attempt + 1), Math.min(30000, 1800 * (2 ** attempt)) + jitter);
-      } else if (img.isConnected) {
-        setImageStatus(imgbox, 'loading', '图片暂忙，稍后会自动重试');
-        window.setTimeout(() => enqueueImageLoad(img, imgbox, item, 0), 30000 + Math.floor(Math.random() * 10000));
-        if (!imgbox.querySelector('.badge')) imgbox.appendChild(el('span', 'badge', item.source));
-      }
-      pumpImageLoadQueue();
-    };
+    img.onerror = () => handleImageFailure();
     const originalSrc = cardImageSrc(item, attempt);
     const src = imageUrlForAttempt(originalSrc, attempt);
     if (img.getAttribute('src') !== src) {
