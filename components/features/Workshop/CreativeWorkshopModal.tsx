@@ -1096,10 +1096,10 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         return group.versions[0];
     };
 
-    const refreshEntries = async () => {
+    const refreshEntries = async (options?: { forceRefresh?: boolean }) => {
         setLoading(true);
         try {
-            const nextEntries = (await 列出创意工坊模块()).filter((entry) => 可展示工坊类型集合.has(entry.type));
+            const nextEntries = (await 列出创意工坊模块({ forceRefresh: options?.forceRefresh === true })).filter((entry) => 可展示工坊类型集合.has(entry.type));
             setEntries(nextEntries);
             if (!可展示工坊类型集合.has(activeType)) {
                 setActiveType('topic');
@@ -1149,7 +1149,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
             await 校验发布前ComfyUI工作流(entry);
             const published = await 发布创意工坊模块({ module: entry, contributor, anonymous: anonymousContribution });
             setStatus(`已发布到社区工坊：${published.title}。`);
-            await refreshEntries();
+            await refreshEntries({ forceRefresh: true });
         } catch (error: any) {
             setStatus(`发布失败：${error?.message || '未知错误'}`);
         } finally {
@@ -1184,7 +1184,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                 ? `已发布到社区工坊：${published[0]?.title || contributionDraft.title}。`
                 : `已发布完整模式包「${contributionDraft.title.trim()}」。`);
             重置贡献草稿();
-            await refreshEntries();
+            await refreshEntries({ forceRefresh: true });
         } catch (error: any) {
             setStatus(`发布失败：${error?.message || '未知错误'}`);
         } finally {
@@ -1254,7 +1254,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                 });
             setStatus(entry.source === 'local' ? `已更新本地导入：${updated.title}。` : `已更新社区工坊：${updated.title}。`);
             setEditingEntryId('');
-            await refreshEntries();
+            await refreshEntries({ forceRefresh: true });
         } catch (error: any) {
             setStatus(`编辑失败：${error?.message || '未知错误'}`);
         } finally {
@@ -1268,7 +1268,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         try {
             await 删除创意工坊模块(entry.id);
             setStatus(`已删除社区投稿：${entry.title}。`);
-            await refreshEntries();
+            await refreshEntries({ forceRefresh: true });
         } catch (error: any) {
             setStatus(`删除失败：${error?.message || '未知错误'}`);
         } finally {
@@ -1283,7 +1283,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
             删除本地创意工坊模块(entry.id);
             setStatus(`已删除本地导入：${entry.title}。`);
             if (previewEntry?.id === entry.id) setPreviewEntry(null);
-            await refreshEntries();
+            await refreshEntries({ forceRefresh: true });
         } catch (error: any) {
             setStatus(`删除本地导入失败：${error?.message || '未知错误'}`);
         } finally {
@@ -1310,7 +1310,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
             setSourceFilter('local');
             setPreviewEntry(first);
             重置贡献草稿();
-            await refreshEntries();
+            await refreshEntries({ forceRefresh: true });
         } catch (error: any) {
             setStatus(`保存失败：${error?.message || '未知错误'}`);
         }
@@ -1832,7 +1832,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                             <span className="text-[11px] text-gray-500">{cloudUsername ? `联机账号：${cloudUsername}` : '发布社区投稿需要先登录联机账号'}</span>
                             <button type="button" onClick={() => jsonImportInputRef.current?.click()} disabled={busyId === 'import-json'} title="导入 JSON 只保存到当前浏览器/设备，用于本地预览和测试。完整 JSON 可以让 AI 生成后直接导入。" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100 hover:bg-emerald-500/15 disabled:opacity-50">{busyId === 'import-json' ? '导入中' : '导入 JSON 测试'}</button>
                             <button type="button" onClick={() => setShowContributionForm((value) => !value)} className="rounded-lg border border-wuxia-gold/25 px-3 py-2 text-xs text-wuxia-gold hover:border-wuxia-gold/45">{showContributionForm ? '收起贡献表单' : '贡献新预设'}</button>
-                            <button type="button" onClick={() => void refreshEntries()} disabled={loading} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-200 hover:border-white/25 disabled:opacity-50">{loading ? '刷新中' : '刷新社区'}</button>
+                            <button type="button" onClick={() => void refreshEntries({ forceRefresh: true })} disabled={loading} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-200 hover:border-white/25 disabled:opacity-50">{loading ? '刷新中' : '刷新社区'}</button>
                         </div>
                     </div>
 

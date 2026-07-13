@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { 删除本地创意工坊模块, 导入本地创意工坊模块, 更新本地创意工坊模块, 列出创意工坊模块, 本地创意工坊模块存储键, 读取本地创意工坊模块 } from '../services/creativeWorkshop';
+import { 删除本地创意工坊模块, 导入本地创意工坊模块, 更新本地创意工坊模块, 列出创意工坊模块, 本地创意工坊模块存储键, 云端创意工坊模块缓存键, 读取本地创意工坊模块 } from '../services/creativeWorkshop';
 
 const createLocalStorageMock = () => {
     const store = new Map<string, string>();
@@ -225,5 +225,98 @@ describe('creativeWorkshop service compatibility', () => {
         expect(cloudTavernPreset?.type).toBe('tavern_preset');
         expect(cloudTavernPreset?.source).toBe('cloud');
         expect(cloudTavernPreset?.tavernPreset).toBeTruthy();
+    });
+
+    it('成功读取社区列表后会持久缓存玩家上传内容，避免 APK 每次打开都重新加载', async () => {
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+            ok: true,
+            entries: [{
+                id: 'CWM-TAVERN_PRESET-community-cache-demo',
+                type: 'tavern_preset',
+                title: '玩家上传缓存酒馆预设',
+                subtitle: '社区投稿',
+                description: '这条来自云端社区。',
+                tags: ['社区', '酒馆预设'],
+                payload: {
+                    tavernPreset: {
+                        prompts: [{ identifier: 'main', role: 'system', content: 'community preset' }],
+                        prompt_order: [{ character_id: 100001, order: [{ identifier: 'main', enabled: true }] }]
+                    }
+                },
+                injectionPreview: ['提示词：1 条'],
+                contributor: '玩家A'
+            }]
+        }), { headers: { 'Content-Type': 'application/json' } }));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const modules = await 列出创意工坊模块({ forceRefresh: true });
+
+        expect(modules.some((entry) => entry.id === 'CWM-TAVERN_PRESET-community-cache-demo' && entry.source === 'cloud')).toBe(true);
+        const cached = JSON.parse(localStorage.getItem(云端创意工坊模块缓存键) || 'null');
+        expect(cached?.entries?.some((entry: any) => entry.id === 'CWM-TAVERN_PRESET-community-cache-demo' && entry.source === 'cloud')).toBe(true);
+    });
+
+    it('云端请求失败时会使用上次成功缓存的社区玩家内容，而不是只剩官方预设', async () => {
+        localStorage.setItem(云端创意工坊模块缓存键, JSON.stringify({
+            version: 1,
+            cachedAt: Date.now(),
+            entries: [{
+                id: 'CWM-TAVERN_PRESET-cached-community-demo',
+                type: 'tavern_preset',
+                title: '缓存里的玩家酒馆预设',
+                subtitle: '社区投稿',
+                description: '网络失败时仍应显示。',
+                tags: ['酒馆预设'],
+                payload: {
+                    tavernPreset: {
+                        prompts: [{ identifier: 'main', role: 'system', content: 'cached preset' }],
+                        prompt_order: [{ character_id: 100001, order: [{ identifier: 'main', enabled: true }] }]
+                    }
+                },
+                injectionPreview: ['提示词：1 条'],
+                source: 'cloud',
+                contributor: '玩家B'
+            }]
+        }));
+        vi.stubGlobal('fetch', vi.fn(async () => {
+            throw new Error('network down');
+        }));
+
+        const modules = await 列出创意工坊模块({ forceRefresh: true });
+        const cachedCommunity = modules.find((entry) => entry.id === 'CWM-TAVERN_PRESET-cached-community-demo');
+
+        expect(cachedCommunity?.source).toBe('cloud');
+        expect(cachedCommunity?.tavernPreset).toBeTruthy();
+    });
+
+    it('缓存仍新鲜时自动打开创意工坊不会重新请求 5MB 社区列表', async () => {
+        localStorage.setItem(云端创意工坊模块缓存键, JSON.stringify({
+            version: 1,
+            cachedAt: Date.now(),
+            entries: [{
+                id: 'CWM-TAVERN_PRESET-fresh-cache-demo',
+                type: 'tavern_preset',
+                title: '新鲜缓存玩家预设',
+                subtitle: '社区投稿',
+                description: '自动打开时直接来自缓存。',
+                tags: ['酒馆预设'],
+                payload: {
+                    tavernPreset: {
+                        prompts: [{ identifier: 'main', role: 'system', content: 'fresh cache preset' }],
+                        prompt_order: [{ character_id: 100001, order: [{ identifier: 'main', enabled: true }] }]
+                    }
+                },
+                injectionPreview: ['提示词：1 条'],
+                source: 'cloud',
+                contributor: '玩家C'
+            }]
+        }));
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true, entries: [] })));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const modules = await 列出创意工坊模块();
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(modules.some((entry) => entry.id === 'CWM-TAVERN_PRESET-fresh-cache-demo' && entry.source === 'cloud')).toBe(true);
     });
 });
