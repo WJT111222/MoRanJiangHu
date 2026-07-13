@@ -1,5 +1,4 @@
-import type { CurrencySystem, CurrencyUnit, ModeRuntimeProfile, 模式市场行情模板, 模式界面文案覆盖, 题材模式类型, 性别比例配置, 开局生成性别类型 } from '../models/system';
-import { 模式市场行情影响类型列表 } from '../models/system';
+import { 模式市场行情影响类型列表, type CurrencySystem, type CurrencyUnit, type ModeRuntimeProfile, type 模式市场行情模板, type 模式界面文案覆盖, type 题材模式类型, type 性别比例配置, type 开局生成性别类型 } from '../models/system';
 import { 获取题材模式配置, 规范化题材模式 } from '../data/workshopThemes/topicModeThemeData';
 import { 获取世界观货币层级配置 } from './currencyDisplay';
 import { 默认游戏设置, 规范化叙事平静值配置 } from './gameSettings';
@@ -776,6 +775,9 @@ export const 规范化模式运行时配置 = (raw?: any, fallbackMode?: unknown
     const currencySystem = 规范化显式货币系统(raw?.economy?.currencySystem);
     const marketEventTemplates = 规范化市场行情模板列表(raw?.economy?.marketEventTemplates);
     const uiLabels = 规范化界面文案覆盖(raw?.uiLabels);
+    const realmConfig = 规范化境界配置(raw?.ability?.realmConfig) || official.ability.realmConfig;
+    const kungfuTypes = 拆分模式配置短语(raw?.ability?.kungfuTypes);
+    const resourceTypes = 拆分模式配置短语(raw?.items?.resourceTypes);
     const 旧资源转列表 = (r: Record<string, boolean>): string[] => {
         const list: string[] = [];
         if (r.food) list.push('饱腹');
@@ -840,7 +842,9 @@ export const 规范化模式运行时配置 = (raw?: any, fallbackMode?: unknown
             attributePointRules: 文本(raw?.ability?.attributePointRules, official.ability.attributePointRules),
             skillPool: 拆分模式配置短语(raw?.ability?.skillPool).length ? 拆分模式配置短语(raw.ability.skillPool) : official.ability.skillPool,
             skillGrowthVerb: 文本(raw?.ability?.skillGrowthVerb, official.ability.skillGrowthVerb),
-            combatResolution: 文本(raw?.ability?.combatResolution, official.ability.combatResolution)
+            combatResolution: 文本(raw?.ability?.combatResolution, official.ability.combatResolution),
+            ...(realmConfig ? { realmConfig } : {}),
+            ...(kungfuTypes.length ? { kungfuTypes } : official.ability.kungfuTypes?.length ? { kungfuTypes: official.ability.kungfuTypes } : {})
         },
         items: {
             initialItemPool: 拆分模式配置短语(raw?.items?.initialItemPool).length ? 拆分模式配置短语(raw.items.initialItemPool) : official.items.initialItemPool,
@@ -860,7 +864,8 @@ export const 规范化模式运行时配置 = (raw?: any, fallbackMode?: unknown
                 ? 拆分模式配置短语(raw.items.activeResources)
                 : raw?.items?.resourceToggles
                     ? 旧资源转列表(raw.items.resourceToggles)
-                    : official.items.activeResources
+                    : official.items.activeResources,
+            ...(resourceTypes.length ? { resourceTypes } : official.items.resourceTypes?.length ? { resourceTypes: official.items.resourceTypes } : {})
         },
         map: {
             layerNames: 拆分模式配置短语(raw?.map?.layerNames).length ? 拆分模式配置短语(raw.map.layerNames) : official.map.layerNames,
@@ -908,8 +913,26 @@ export const 规范化模式运行时配置 = (raw?: any, fallbackMode?: unknown
             migrationCleanupRules: 拆分模式配置短语(raw?.validation?.migrationCleanupRules).length ? 拆分模式配置短语(raw.validation.migrationCleanupRules) : official.validation.migrationCleanupRules
         },
         叙事平静值配置: 规范化叙事平静值配置(raw?.叙事平静值配置, official.叙事平静值配置),
+        ...(typeof raw?.性别比例演变预设 === 'boolean'
+            ? { 性别比例演变预设: raw.性别比例演变预设 }
+            : typeof official.性别比例演变预设 === 'boolean'
+                ? { 性别比例演变预设: official.性别比例演变预设 }
+                : {}),
         ...(uiLabels ? { uiLabels } : {})
     };
+};
+
+const 规范化境界配置 = (raw: unknown): ModeRuntimeProfile['ability']['realmConfig'] | null => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const value = raw as any;
+    const levelNames = 拆分模式配置短语(value.levelNames).slice(0, 64);
+    const parseRules = Array.isArray(value.parseRules)
+        ? value.parseRules.slice(0, 128).map((rule: any) => ({
+            pattern: 文本(rule?.pattern).slice(0, 200),
+            level: Math.max(0, Math.floor(Number(rule?.level) || 0))
+        })).filter((rule: any) => rule.pattern)
+        : [];
+    return levelNames.length ? { levelNames, parseRules } : null;
 };
 
 const 界面文案覆盖分区键: Array<keyof 模式界面文案覆盖> = ['菜单', '标题', '组织', '资源', '档案', '能力类别', '向导', '密度选项'];

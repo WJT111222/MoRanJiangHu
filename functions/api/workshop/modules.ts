@@ -40,6 +40,9 @@ type WorkshopModuleEntry = {
     contributor: string;
     createdAt: string;
     updatedAt: string;
+    version?: number;
+    baseModuleId?: string;
+    versionNote?: string;
     sha256: string;
     r2Key: string;
     ownerUserId?: string;
@@ -155,6 +158,7 @@ const sanitizeContentBlocks = (value: unknown): WorkshopModuleEntry['contentBloc
         ? value.map((block: any) => {
             const injectionTarget = block?.injectionTarget;
             return {
+                ...block,
                 id: sanitizeText(block?.id, 60),
                 title: sanitizeText(block?.title, 80),
                 purpose: sanitizeText(block?.purpose, 200),
@@ -203,7 +207,7 @@ const authenticateWorkshopUser = async (env: any, auth: any): Promise<CloudPlayU
     const usernameKey = await sha256HexText(username.toLowerCase());
     const object = await bucket.get(`${getCloudPlayPrefix(env)}/users/${usernameKey}.json`);
     if (!object) throw new Error('请先登录联机账号后再管理创意工坊投稿。');
-    const user = await object.json<CloudPlayUser>().catch(() => null);
+    const user = await object.json().catch(() => null) as CloudPlayUser | null;
     if (!user?.passwordSalt || !user.passwordHash) throw new Error('账号数据损坏。');
     const passwordHash = await hmacHex(user.passwordSalt, `${usernameKey}\n${password}`);
     if (!timingSafeEqual(passwordHash, user.passwordHash)) throw new Error('联机账号或密码错误。');
@@ -223,21 +227,48 @@ const buildKeys = (env: any, id: string) => {
     };
 };
 
+const getIndexEntriesPrefix = (env: any): string => `${getPrefix(env)}/index/entries/`;
+const getIndexEntryKey = (env: any, id: string): string => `${getIndexEntriesPrefix(env)}${id}.json`;
+
 const readIndex = async (env: any): Promise<WorkshopModuleEntry[]> => {
     const bucket = getBucket(env);
     if (!bucket) return [];
-    const object = await bucket.get(`${getPrefix(env)}/index/latest.json`);
-    if (!object) return [];
-    const parsed = await object.json<{ entries?: WorkshopModuleEntry[] }>().catch(() => null);
-    return Array.isArray(parsed?.entries) ? parsed.entries : [];
+    const legacyObject = await bucket.get(`${getPrefix(env)}/index/latest.json`);
+    const legacyParsed = legacyObject ? await legacyObject.json().catch(() => null) as { entries?: WorkshopModuleEntry[] } | null : null;
+    const entries = new Map<string, WorkshopModuleEntry>((Array.isArray(legacyParsed?.entries) ? legacyParsed.entries : []).map((entry) => [entry.id, entry]));
+    if (typeof bucket.list !== 'function') return Array.from(entries.values());
+    let cursor: string | undefined;
+    do {
+        const listed = await bucket.list({ prefix: getIndexEntriesPrefix(env), cursor, limit: 1000 }).catch(() => null);
+        if (!listed || !Array.isArray(listed.objects)) break;
+        const keys = listed.objects.map((object: any) => object?.key).filter((key: unknown): key is string => typeof key === 'string');
+        for (let offset = 0; offset < keys.length; offset += 50) {
+            const objects = await Promise.all(keys.slice(offset, offset + 50).map((key) => bucket.get(key)));
+            for (const object of objects) {
+                const delta = object ? await object.json().catch(() => null) as { id?: string; deleted?: boolean; entry?: WorkshopModuleEntry } | null : null;
+                if (!delta?.id) continue;
+                if (delta.deleted) entries.delete(delta.id);
+                else if (delta.entry) entries.set(delta.id, delta.entry);
+            }
+        }
+        cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
+    return Array.from(entries.values()).sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt))).slice(0, 500);
 };
 
-const writeIndex = async (env: any, entries: WorkshopModuleEntry[]): Promise<void> => {
+const upsertIndexEntry = async (env: any, entry: WorkshopModuleEntry): Promise<void> => {
     const bucket = getBucket(env);
-    if (!bucket) return;
-    const payload = JSON.stringify({ schema: 'moranjianghu-creative-workshop-modules', version: 1, updatedAt: new Date().toISOString(), entries }, null, 2);
-    await bucket.put(`${getPrefix(env)}/index/latest.json`, payload, {
-        httpMetadata: { contentType: 'application/json; charset=utf-8', cacheControl: 'no-store,no-cache,max-age=0,must-revalidate' }
+    if (!bucket) throw new Error('创意工坊存储未配置');
+    await bucket.put(getIndexEntryKey(env, entry.id), JSON.stringify({ id: entry.id, entry }), {
+        httpMetadata: { contentType: 'application/json; charset=utf-8', cacheControl: 'no-store' }
+    });
+};
+
+const deleteIndexEntry = async (env: any, id: string): Promise<void> => {
+    const bucket = getBucket(env);
+    if (!bucket) throw new Error('创意工坊存储未配置');
+    await bucket.put(getIndexEntryKey(env, id), JSON.stringify({ id, deleted: true }), {
+        httpMetadata: { contentType: 'application/json; charset=utf-8', cacheControl: 'no-store' }
     });
 };
 
@@ -257,8 +288,9 @@ const normalizeModule = async (raw: any, contributorInput = '', owner?: CloudPla
         : Array.isArray((payload as any).modeWorldbooks)
             ? (payload as any).modeWorldbooks
             : undefined;
-    if (type !== 'comfy_workflow' && type !== 'tavern_preset' && !readString((payload as any).suiteId)) {
-        throw new Error('题材模板、世界规则和能力体系必须作为同一个完整模式包贡献，请在创意工坊表单中一次填写三段内容。');
+    const packagePart = readString((payload as any).packagePart);
+    if ((packagePart === 'topic' || packagePart === 'world_rules' || packagePart === 'ability') && !readString((payload as any).suiteId)) {
+        throw new Error('分段模式包必须携带 suiteId；普通标准模块请不要设置 packagePart。');
     }
     const entry: Omit<WorkshopModuleEntry, 'sha256' | 'r2Key'> = {
         id,
@@ -286,6 +318,9 @@ const normalizeModule = async (raw: any, contributorInput = '', owner?: CloudPla
         contributor: anonymous ? '匿名玩家' : (sanitizeText(contributorInput || module?.contributor, 40) || owner?.username || '匿名玩家'),
         createdAt,
         updatedAt: createdAt,
+        version: Number.isInteger(Number(module?.version)) && Number(module.version) > 0 ? Number(module.version) : 1,
+        baseModuleId: sanitizeText(module?.baseModuleId || (payload as any).suiteId, 120) || undefined,
+        versionNote: sanitizeText(module?.versionNote, 200),
         ownerUserId: owner?.userId,
         ownerUsername: owner?.username,
         anonymous
@@ -356,6 +391,9 @@ const sanitizeUpdatedModule = async (
         ownerUsername: target.ownerUsername,
         createdAt: target.createdAt,
         updatedAt: new Date().toISOString(),
+        version: target.version,
+        baseModuleId: target.baseModuleId,
+        versionNote: typeof modulePatch.versionNote === 'string' ? sanitizeText(modulePatch.versionNote, 200) : target.versionNote,
         r2Key: target.r2Key
     };
     const json = JSON.stringify(updatedWithoutSha);
@@ -402,8 +440,8 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
             if (!target) return jsonResponse({ ok: false, error: '未找到该创意工坊模块' }, 404);
             requireOwner(target, user);
             if (action === 'delete') {
-                const nextEntries = existingEntries.filter((item) => item.id !== id);
-                await writeIndex(env, nextEntries);
+                await deleteIndexEntry(env, id);
+                if (typeof bucket.delete === 'function') await bucket.delete(target.r2Key);
                 return jsonResponse({ ok: true, deleted: true });
             }
             const patch = body?.patch && typeof body.patch === 'object' ? body.patch : {};
@@ -413,15 +451,22 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
                 httpMetadata: { contentType: 'application/json; charset=utf-8', cacheControl: 'public, max-age=300' },
                 customMetadata: { sha256: updated.sha256, workshopId: updated.id }
             });
-            const nextEntries = [updated, ...existingEntries.filter((item) => item.id !== updated.id)].slice(0, 500);
-            await writeIndex(env, nextEntries);
+            await upsertIndexEntry(env, updated);
             return jsonResponse({ ok: true, entry: updated });
         }
 
         const owner = await authenticateWorkshopUser(env, body?.auth);
         const entry = await normalizeModule(body, body?.contributor, owner, body?.anonymous === true);
+        const requestedBaseId = entry.baseModuleId;
+        const ownedRequestedChain = requestedBaseId
+            ? existingEntries.filter((item) => item.baseModuleId === requestedBaseId && item.ownerUserId === owner.userId)
+            : [];
+        const ownedTitleChain = existingEntries.filter((item) => item.ownerUserId === owner.userId && item.title === entry.title);
+        const ownedChain = ownedRequestedChain.length > 0 ? ownedRequestedChain : ownedTitleChain;
+        const baseModuleId = ownedChain[0]?.baseModuleId || entry.id;
+        const version = ownedChain.length > 0 ? Math.max(...ownedChain.map((item) => Number(item.version) || 1)) + 1 : 1;
         const keys = buildKeys(env, entry.id);
-        const finalEntry = { ...entry, r2Key: keys.moduleKey };
+        const finalEntry = { ...entry, baseModuleId, version, r2Key: keys.moduleKey };
         const fingerprint = buildContentFingerprint(finalEntry);
         const officialFingerprints = Array.isArray(body?.officialFingerprints) ? body.officialFingerprints.filter((item: unknown) => typeof item === 'string') : [];
         if (officialFingerprints.includes(fingerprint)) {
@@ -434,8 +479,7 @@ export async function onRequestPost({ request, env }: any): Promise<Response> {
             httpMetadata: { contentType: 'application/json; charset=utf-8', cacheControl: 'public, max-age=300' },
             customMetadata: { sha256: finalEntry.sha256, workshopId: finalEntry.id }
         });
-        const nextEntries = [finalEntry, ...existingEntries.filter((item) => item.id !== finalEntry.id)].slice(0, 500);
-        await writeIndex(env, nextEntries);
+        await upsertIndexEntry(env, finalEntry);
         return jsonResponse({
             ok: true,
             entry: finalEntry,

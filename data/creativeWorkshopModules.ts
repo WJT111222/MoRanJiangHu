@@ -1028,6 +1028,48 @@ const 重标注内容块 = (
     }));
 };
 
+const 是普通对象 = (value: unknown): value is Record<string, any> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+const 深合并模块对象 = (base: unknown, overlay: unknown): Record<string, any> => {
+    const result: Record<string, any> = 是普通对象(base) ? JSON.parse(JSON.stringify(base)) : {};
+    if (!是普通对象(overlay)) return result;
+    for (const [key, value] of Object.entries(overlay)) {
+        if (key === '__proto__' || key === 'prototype' || key === 'constructor' || value === undefined) continue;
+        result[key] = 是普通对象(value) && 是普通对象(result[key]) ? 深合并模块对象(result[key], value) : JSON.parse(JSON.stringify(value));
+    }
+    return result;
+};
+
+const 合并模块世界书 = (...sources: unknown[]): 世界书结构[] => {
+    const result: 世界书结构[] = [];
+    for (const source of sources) {
+        if (!Array.isArray(source)) continue;
+        for (const rawBook of source) {
+            if (!是普通对象(rawBook) || typeof rawBook.id !== 'string') continue;
+            const book = JSON.parse(JSON.stringify(rawBook)) as 世界书结构;
+            const index = result.findIndex((item) => item.id === book.id);
+            if (index < 0) {
+                result.push(book);
+                continue;
+            }
+            const entries = [...(result[index].条目 || [])];
+            for (const item of book.条目 || []) {
+                const entryIndex = entries.findIndex((existing) => existing.id === item.id);
+                if (entryIndex < 0) entries.push(item);
+                else entries[entryIndex] = { ...entries[entryIndex], ...item };
+            }
+            result[index] = { ...result[index], ...book, 条目: entries };
+        }
+    }
+    return result;
+};
+
+const 读取分段运行时配置 = (entry?: 创意工坊模块条目): Record<string, any> => entry
+    ? 深合并模块对象(是普通对象((entry.payload as any)?.modeRuntimeProfile) ? (entry.payload as any).modeRuntimeProfile : {}, 是普通对象(entry.modeRuntimeProfile) ? entry.modeRuntimeProfile : {})
+    : {};
+
+export const 是否完整模式包Payload = (payload: unknown): boolean => 是普通对象(payload)
+    && (payload.packagePart === 'mode_package' || payload.schema === 'moranjianghu-creative-workshop-mode-package');
+
 const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创意工坊模块条目, ability?: 创意工坊模块条目): 创意工坊模块条目 => {
     const mode = topic.preset?.openingConfig?.题材模式 || (topic.payload as any)?.mode || (topic.payload as any)?.value;
     const profile = 题材模式配置表[mode as keyof typeof 题材模式配置表];
@@ -1040,11 +1082,12 @@ const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创
     const manualRealmPrompt = ability ? 取模块文本(ability, 'manualRealmPrompt') : '';
     const backgrounds = Array.isArray((topic.payload as any)?.backgrounds) ? (topic.payload as any).backgrounds : 获取题材预设背景(mode);
     const talents = Array.isArray((topic.payload as any)?.talents) ? (topic.payload as any).talents : 获取题材预设天赋(mode);
-    const rawRuntimeProfile = (topic as any).modeRuntimeProfile || (topic.payload as any)?.modeRuntimeProfile || (worldRules?.payload as any)?.modeRuntimeProfile || (ability?.payload as any)?.modeRuntimeProfile;
+    const mergedPayload = 深合并模块对象(深合并模块对象(topic.payload, worldRules?.payload), ability?.payload);
+    const rawRuntimeProfile = 深合并模块对象(深合并模块对象(读取分段运行时配置(topic), 读取分段运行时配置(worldRules)), 读取分段运行时配置(ability));
     const modeRuntimeProfile = 规范化模式运行时配置({
-        ...(rawRuntimeProfile && typeof rawRuntimeProfile === 'object' ? rawRuntimeProfile : {}),
+        ...rawRuntimeProfile,
         identity: {
-            ...(rawRuntimeProfile && typeof rawRuntimeProfile === 'object' ? rawRuntimeProfile.identity : {}),
+            ...rawRuntimeProfile.identity,
             modeId: suiteId || (profile?.value || topic.id),
             displayName: suiteTitle || title,
             baseMode: mode,
@@ -1056,7 +1099,7 @@ const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创
         ...(worldRules ? 重标注内容块(worldRules, '世界规则', 'worldExtraRequirement') : []),
         ...(ability ? 重标注内容块(ability, '能力体系', 'manualRealmPrompt') : [])
     ];
-    const modeWorldbooks = 构建模式专属世界书({
+    const generatedModeWorldbooks = 构建模式专属世界书({
         id: suiteId || `mode-${profile?.value || topic.id}`,
         title: `${title}世界书`,
         description: `${title}的模式专属世界书。切换/启用该模式包时，这组世界书决定题材口径、世界规则和能力体系。`,
@@ -1074,6 +1117,12 @@ const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创
             )
         ]
     });
+    const modeWorldbooks = 合并模块世界书(
+        (topic.payload as any)?.modeWorldbooks, topic.modeWorldbooks,
+        (worldRules?.payload as any)?.modeWorldbooks, worldRules?.modeWorldbooks,
+        (ability?.payload as any)?.modeWorldbooks, ability?.modeWorldbooks,
+        generatedModeWorldbooks
+    );
     const preset = topic.preset ? {
         ...topic.preset,
         worldConfig: {
@@ -1102,7 +1151,7 @@ const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创
         description: topic.description.replace('题材模板', '模式包'),
         tags: Array.from(new Set([...topic.tags, ...(worldRules?.tags || []), ...(ability?.tags || []), '模式包'])).slice(0, 12),
         payload: {
-            ...topic.payload,
+            ...mergedPayload,
             schema: 'moranjianghu-creative-workshop-mode-package',
             version: 3,
             suiteId: suiteId || undefined,
@@ -1130,7 +1179,12 @@ const 构建整合模式包 = (topic: 创意工坊模块条目, worldRules?: 创
             content: contentBlocks.map((block) => [`【${block.title}】`, block.content.trim()].filter(Boolean).join('\n')).join('\n\n'),
             contentBlocks,
             usagePrompt: '作为完整模式包注入新建存档：模式专属世界书会统一接管题材口径、世界规则和能力体系；旧版手动提示词字段仅作兼容。',
-            safetyNotes: topic.safetyNotes || []
+            safetyNotes: topic.safetyNotes || [],
+            sourceModuleParts: {
+                topic: { payload: topic.payload, modeRuntimeProfile: topic.modeRuntimeProfile, modeWorldbooks: topic.modeWorldbooks, contentBlocks: topic.contentBlocks },
+                ...(worldRules ? { world_rules: { payload: worldRules.payload, modeRuntimeProfile: worldRules.modeRuntimeProfile, modeWorldbooks: worldRules.modeWorldbooks, contentBlocks: worldRules.contentBlocks } } : {}),
+                ...(ability ? { ability: { payload: ability.payload, modeRuntimeProfile: ability.modeRuntimeProfile, modeWorldbooks: ability.modeWorldbooks, contentBlocks: ability.contentBlocks } } : {})
+            }
         },
         modeWorldbooks,
         modeRuntimeProfile,
@@ -1155,17 +1209,23 @@ export const 整合创意工坊模式包 = (entries: 创意工坊模块条目[])
         entry.type === 'comfy_workflow'
         || entry.type === 'tavern_preset'
         || entry.type === 'opening'
-        || (entry.type === 'topic' && entry.payload?.packagePart === 'mode_package')
+        || (entry.type === 'topic' && 是否完整模式包Payload(entry.payload))
     ));
     const standardEntries = entries.filter((entry) => (
         (entry.type === 'topic' || entry.type === 'world_rules' || entry.type === 'ability')
-        && !(entry.type === 'topic' && entry.payload?.packagePart === 'mode_package')
+        && !(entry.type === 'topic' && 是否完整模式包Payload(entry.payload))
     ));
     const keyOf = (entry: 创意工坊模块条目): string => {
         const suiteId = typeof entry.payload?.suiteId === 'string' ? entry.payload.suiteId : '';
-        if (suiteId) return `suite:${suiteId}`;
         const mode = entry.preset?.openingConfig?.题材模式 || (entry.payload as any)?.mode || (entry.payload as any)?.value || '';
-        return `${entry.source || 'builtin'}:${entry.contributor || ''}:${mode || entry.id}`;
+        const packagePart = entry.payload?.packagePart;
+        const isSuitePart = packagePart === 'topic' || packagePart === 'world_rules' || packagePart === 'ability';
+        if (suiteId && isSuitePart) return `suite:${suiteId}`;
+        if (entry.source === 'builtin') return `builtin:${entry.contributor || ''}:${mode || entry.id}`;
+        if (isSuitePart) {
+            return `legacy-suite:${entry.source || 'unknown'}:${entry.contributor || ''}:${mode || entry.id}`;
+        }
+        return `entry:${entry.source || 'unknown'}:${entry.id}`;
     };
     const groups = new Map<string, Partial<Record<'topic' | 'world_rules' | 'ability', 创意工坊模块条目>>>();
     standardEntries.forEach((entry) => {
@@ -1176,10 +1236,10 @@ export const 整合创意工坊模式包 = (entries: 创意工坊模块条目[])
         }
         groups.set(key, group);
     });
-    const packages = Array.from(groups.values()).map((group) => {
+    const packages = Array.from(groups.entries()).map(([groupKey, group]) => {
         const topic = group.topic || group.world_rules || group.ability;
         if (!topic) return null;
-        return 构建整合模式包(topic, group.world_rules, group.ability);
+        return groupKey.startsWith('entry:') ? topic : 构建整合模式包(topic, group.world_rules, group.ability);
     }).filter(Boolean) as 创意工坊模块条目[];
     return [...packages, ...passthrough];
 };
