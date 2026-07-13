@@ -346,7 +346,9 @@ function closeViewer() {
 const maxConcurrentImageLoads = 1;
 const imageLoadTimeoutMs = 10000;
 const imageRetryDelayMs = 10000;
+const imageLoadPaceMs = 1200;
 let activeImageLoads = 0;
+let imageLoadPumpTimer = 0;
 const imageLoadQueue = [];
 const queuedImages = new WeakSet();
 const loadedImageUrls = new Set();
@@ -451,7 +453,13 @@ function loadPresetImageOnce(url) {
   pendingImageLoads.set(url, promise);
   return promise;
 }
+function scheduleImageLoadPump(delay = imageLoadPaceMs) {
+  window.clearTimeout(imageLoadPumpTimer);
+  imageLoadPumpTimer = window.setTimeout(pumpImageLoadQueue, delay);
+}
 function pumpImageLoadQueue() {
+  window.clearTimeout(imageLoadPumpTimer);
+  imageLoadPumpTimer = 0;
   while (activeImageLoads < maxConcurrentImageLoads && imageLoadQueue.length) {
     const task = imageLoadQueue.shift();
     const { img, imgbox, item, attempt } = task;
@@ -483,7 +491,7 @@ function pumpImageLoadQueue() {
     function handleImageFailure() {
       if (!finishImageLoad()) return;
       scheduleImageRetry();
-      pumpImageLoadQueue();
+      scheduleImageLoadPump();
     }
     img.onload = () => {
       if (!finishImageLoad()) return;
@@ -493,7 +501,7 @@ function pumpImageLoadQueue() {
         loadedImageUrls.add(img.currentSrc || img.getAttribute('src') || cardImageSrc(item, attempt));
         setImageStatus(imgbox, '', '');
       }
-      pumpImageLoadQueue();
+      scheduleImageLoadPump();
     };
     img.onerror = () => handleImageFailure();
     const originalSrc = cardImageSrc(item, attempt);
