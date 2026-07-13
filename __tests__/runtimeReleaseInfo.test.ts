@@ -69,4 +69,21 @@ describe('runtimeReleaseInfo', () => {
         expect(info.versionName).toBe('1.0.504');
         expect(info.releasePublishedAt).toBe('2026-06-21T21:21:28+08:00');
     });
+
+    it('keeps bundled APK metadata when the public release-info is older than the installed package', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+            versionCode: 503,
+            versionName: '1.0.503',
+            releasePublishedAt: '2026-06-21T20:10:00+08:00',
+            releaseNotes: ['旧线上发布说明']
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+
+        const { fetchRuntimeReleaseInfo } = await import('../services/runtimeReleaseInfo');
+        const info = await fetchRuntimeReleaseInfo();
+
+        expect(info.versionName).toBe('1.0.504');
+        expect(info.versionCode).toBe(504);
+        expect(info.releasePublishedAt).toBe('2026-06-21T21:21:28+08:00');
+        expect(info.releaseNotes).toEqual(['内置发布说明']);
+    });
 });

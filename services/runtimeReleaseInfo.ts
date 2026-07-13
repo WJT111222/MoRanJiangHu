@@ -49,6 +49,15 @@ const mergeReleaseInfo = (remote: Partial<RuntimeReleaseInfo>): RuntimeReleaseIn
         : RELEASE_INFO.releaseHistory
 });
 
+const isRemoteReleaseOlderThanBundled = (remote: Partial<RuntimeReleaseInfo>): boolean => {
+    const bundledCode = Number(RELEASE_INFO.versionCode || 0);
+    const remoteCode = Number(remote.versionCode || 0);
+    if (Number.isFinite(remoteCode) && Number.isFinite(bundledCode) && remoteCode > 0 && bundledCode > 0) {
+        return remoteCode < bundledCode;
+    }
+    return false;
+};
+
 export const fetchRuntimeReleaseInfo = async (options?: { force?: boolean }): Promise<RuntimeReleaseInfo> => {
     const now = Date.now();
     if (!options?.force && cachedRuntimeReleaseInfo && now - cachedAt < RELEASE_INFO_CACHE_MS) {
@@ -72,7 +81,9 @@ export const fetchRuntimeReleaseInfo = async (options?: { force?: boolean }): Pr
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const payload = await response.json();
             const next = payload && typeof payload === 'object'
-                ? mergeReleaseInfo(payload as Partial<RuntimeReleaseInfo>)
+                ? isRemoteReleaseOlderThanBundled(payload as Partial<RuntimeReleaseInfo>)
+                    ? (RELEASE_INFO as RuntimeReleaseInfo)
+                    : mergeReleaseInfo(payload as Partial<RuntimeReleaseInfo>)
                 : (RELEASE_INFO as RuntimeReleaseInfo);
             cachedRuntimeReleaseInfo = next;
             cachedAt = Date.now();
