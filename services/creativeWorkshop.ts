@@ -119,6 +119,40 @@ const 规范化下载地址 = (value: unknown, id: string): string => {
 };
 
 const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = WORKSHOP_REQUEST_TIMEOUT_MS): Promise<Response> => {
+    if (isNativeCapacitorEnvironment()) {
+        const { CapacitorHttp } = await import('@capacitor/core');
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        const method = String(init.method || 'GET').toUpperCase();
+        const headers = init.headers && !Array.isArray(init.headers) && !(init.headers instanceof Headers)
+            ? Object.fromEntries(Object.entries(init.headers as Record<string, string>).map(([key, value]) => [key, String(value)]))
+            : Object.fromEntries(new Headers(init.headers || {}).entries());
+        const requestPromise = CapacitorHttp.request({
+            url,
+            method,
+            headers,
+            data: init.body,
+            connectTimeout: timeoutMs,
+            readTimeout: timeoutMs
+        });
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            globalThis.setTimeout(() => reject(new DOMException('Aborted', 'AbortError')), timeoutMs);
+        });
+        const response = await Promise.race([requestPromise, timeoutPromise]);
+        const responseHeaders = new Headers();
+        if (response.headers && typeof response.headers === 'object') {
+            Object.entries(response.headers).forEach(([key, value]) => {
+                if (typeof value === 'string') responseHeaders.append(key, value);
+            });
+        }
+        const body = typeof response.data === 'string'
+            ? response.data
+            : JSON.stringify(response.data ?? {});
+        return new Response(body, {
+            status: response.status,
+            headers: responseHeaders
+        });
+    }
+
     const controller = new AbortController();
     const timer = globalThis.setTimeout(() => controller.abort(), timeoutMs);
     try {

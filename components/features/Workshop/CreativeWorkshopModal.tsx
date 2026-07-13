@@ -1111,6 +1111,15 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         }
     };
 
+    const 处理下载JSON = (entry: 创意工坊模块条目) => {
+        try {
+            下载JSON(entry);
+            setStatus(`已下载 JSON：${entry.id}.json`);
+        } catch (error: any) {
+            setStatus(`下载 JSON 失败：${error?.message || '未知错误'}`);
+        }
+    };
+
     useEffect(() => {
         if (!open) return;
         setPreviewEntry(null);
@@ -2377,7 +2386,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                     )}
                                     <div className="mt-4 grid gap-2 sm:grid-cols-3">
                                         <button type="button" onClick={() => setPreviewEntry(entry)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">{entry.type === 'tavern_preset' ? '预览预设' : '预览注入'}</button>
-                                        <button type="button" onClick={() => 下载JSON(entry)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">下载 JSON</button>
+                                        <button type="button" onClick={() => 处理下载JSON(entry)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">下载 JSON</button>
                                         <button type="button" onClick={() => void 复制文本(构建模块摘要(entry)).then((ok) => setStatus(ok ? `已复制「${entry.title}」注入摘要。` : '复制失败，请改用下载 JSON。'))} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">复制摘要</button>
                                         {canPublishEntry && (
                                             <button type="button" onClick={() => void 发布模块(entry)} disabled={Boolean(busyId)} title={cloudUsername ? '把这个本地测试模块发布到社区工坊' : '点击后先登录联机账号'} className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200 hover:bg-sky-500/15 disabled:opacity-50">发布到社区</button>
