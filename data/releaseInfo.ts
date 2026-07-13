@@ -7,6 +7,7 @@ export const RELEASE_INFO = {
         "物品图反馈页缩略图已切回官网缓存源，批量浏览预设图片时不再因为 NodeImage 同时加载过多而报错。",
         "预设大图仍使用 NodeImage 图床，点开查看原图时保持更快加载；玩家回合内少量缩略图也继续使用 NodeImage。",
         "修复仙侠/武侠预设中误混入现代手枪的问题，现代火器会归入对应现代题材分类。",
+        "APK 下载渠道废弃 B2，后续只使用 OneDrive 与 GitHub 加速下载源。",
         "官网：https://msjh.bacon159.pp.ua/",
         "备用站：https://msjh.bacon.de5.net/"
     ],
@@ -588,11 +589,12 @@ export const RELEASE_INFO = {
         "物品图反馈页缩略图已切回官网缓存源，批量浏览预设图片时不再因为 NodeImage 同时加载过多而报错。",
         "预设大图仍使用 NodeImage 图床，点开查看原图时保持更快加载；玩家回合内少量缩略图也继续使用 NodeImage。",
         "修复仙侠/武侠预设中误混入现代手枪的问题，现代火器会归入对应现代题材分类。",
+        "APK 下载渠道废弃 B2，后续只使用 OneDrive 与 GitHub 加速下载源。",
         "官网：https://msjh.bacon159.pp.ua/",
         "备用站：https://msjh.bacon.de5.net/"
     ],
-    "notes": "物品图反馈页缩略图已切回官网缓存源，批量浏览预设图片时不再因为 NodeImage 同时加载过多而报错。\n预设大图仍使用 NodeImage 图床，点开查看原图时保持更快加载；玩家回合内少量缩略图也继续使用 NodeImage。\n修复仙侠/武侠预设中误混入现代手枪的问题，现代火器会归入对应现代题材分类。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-    "releasePublishedAt": "2026-07-13T13:16:23+08:00"
+    "notes": "物品图反馈页缩略图已切回官网缓存源，批量浏览预设图片时不再因为 NodeImage 同时加载过多而报错。\n预设大图仍使用 NodeImage 图床，点开查看原图时保持更快加载；玩家回合内少量缩略图也继续使用 NodeImage。\n修复仙侠/武侠预设中误混入现代手枪的问题，现代火器会归入对应现代题材分类。\nAPK 下载渠道废弃 B2，后续只使用 OneDrive 与 GitHub 加速下载源。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
+    "releasePublishedAt": "2026-07-13T13:58:42+08:00"
 } as const;
 
 export type ReleaseInfo = typeof RELEASE_INFO;

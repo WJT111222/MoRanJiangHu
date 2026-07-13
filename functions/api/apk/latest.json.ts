@@ -57,9 +57,6 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
             : `${baseUrl}/api/apk/latest.apk`;
         const stableManifestUrl = `${baseUrl}/api/apk/latest.json`;
         const latestApkUrl = `${baseUrl}/api/apk/latest.apk`;
-        const b2ApkUrl = versionedFileName
-            ? `${baseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=b2`
-            : `${baseUrl}/api/apk/latest.apk?provider=b2`;
         const oneDriveApkUrl = `${baseUrl}/api/apk/latest.apk?provider=onedrive`;
         const oneDriveDirectApkUrl = `${baseUrl}/api/apk/latest.apk?provider=onedrive-direct`;
         const githubApkUrl = versionedFileName
@@ -68,19 +65,15 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
         const githubDirectApkUrl = versionedFileName ? buildGitHubReleaseDownloadUrl(versionName, versionedFileName) : '';
         const githubAcceleratedApkUrls = versionedFileName ? buildGitHubAcceleratedUrls(versionName, versionedFileName) : [];
         const preferredApkProvider = readManifestPreferredApkProvider(payload);
-        // 按 preferredApkProvider 排序候选源：B2 免费额度耗尽后会返回 download_cap_exceeded，
-        // 因此默认（github）优先把 GitHub 加速镜像排到 B2 前面，避免客户端第一枪打到死通道。
+        // 按 preferredApkProvider 排序候选源：B2 渠道已废弃，只保留 GitHub 加速和 OneDrive。
         const githubGroup = [...githubAcceleratedApkUrls, githubApkUrl, githubDirectApkUrl];
-        const b2Group = [b2ApkUrl];
         const oneDriveGroup = [oneDriveApkUrl, oneDriveDirectApkUrl];
         let providerOrderedUrls: string[];
         if (preferredApkProvider === 'onedrive' || preferredApkProvider === 'onedrive-direct') {
-            providerOrderedUrls = [...oneDriveGroup, ...githubGroup, ...b2Group];
-        } else if (preferredApkProvider === 'b2') {
-            providerOrderedUrls = [...b2Group, ...githubGroup, ...oneDriveGroup];
+            providerOrderedUrls = [...oneDriveGroup, ...githubGroup];
         } else {
-            // 默认 github：GitHub 加速镜像优先，B2 退为兜底
-            providerOrderedUrls = [...githubGroup, ...b2Group, ...oneDriveGroup];
+            // 默认 github：GitHub 加速镜像优先，OneDrive 兜底。
+            providerOrderedUrls = [...githubGroup, ...oneDriveGroup];
         }
         const orderedApkUrls = [
             latestApkUrl,
@@ -98,7 +91,7 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
                 apkUrls: Array.from(new Set(orderedApkUrls)),
                 r2ApkUrl: '',
                 hi168ApkUrl: '',
-                b2ApkUrl,
+                b2ApkUrl: '',
                 githubApkUrl,
                 githubDirectApkUrl,
                 githubAcceleratedApkUrls,

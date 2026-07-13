@@ -1,17 +1,14 @@
 import {
     APK_CORS_HEADERS,
-    buildB2ApkRedirect,
     buildGitHubApkRedirect,
     buildVersionedApkFileName,
     buildOneDriveApkRedirect,
     buildTextResponse,
     isOneDriveDirectProvider,
     isOneDriveProvider,
-    normalizeObjectKey,
     readManifestPayload,
     readManifestPreferredApkProvider,
     readManifestVersionName,
-    readReleaseObjectPrefix
 } from '../_shared';
 
 export function onRequestOptions(): Response {
@@ -42,6 +39,9 @@ const handleVersionedApkRequest = async (context: any, _method: 'GET' | 'HEAD'):
 
         const requestedProvider = new URL(request.url).searchParams.get('provider');
         const provider = requestedProvider || readManifestPreferredApkProvider(manifest?.payload);
+        if (provider === 'b2') {
+            return buildTextResponse('B2 APK provider is decommissioned', 410);
+        }
         if (isOneDriveProvider(provider)) {
             const oneDriveResponse = await buildOneDriveApkRedirect(
                 env,
@@ -60,9 +60,9 @@ const handleVersionedApkRequest = async (context: any, _method: 'GET' | 'HEAD'):
             if (githubResponse) return githubResponse;
             return buildTextResponse('GitHub Release APK not available', 502);
         }
-
-        const key = normalizeObjectKey(`${readReleaseObjectPrefix(env)}/${fileName}`);
-        return await buildB2ApkRedirect(env, key, fileName);
+        const githubResponse = buildGitHubApkRedirect(versionName, fileName);
+        if (githubResponse) return githubResponse;
+        return buildTextResponse('GitHub Release APK not available', 502);
     } catch (error: any) {
         return buildTextResponse(error?.message || 'Versioned APK download failed', 502);
     }

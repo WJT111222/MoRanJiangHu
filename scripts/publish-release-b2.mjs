@@ -40,7 +40,9 @@ const b2ApplicationKeyId = readEnv('MORAN_B2_APPLICATION_KEY_ID');
 const b2ApplicationKey = readEnv('MORAN_B2_APPLICATION_KEY');
 const b2BucketId = readEnv('MORAN_B2_BUCKET_ID');
 
-if (!token) {
+const skipB2ApkUpload = process.env.MORAN_B2_SKIP_APK_UPLOAD !== '0';
+
+if (!skipB2ApkUpload && !token) {
   throw new Error('Missing MORAN_B2_DISTRIBUTION_TOKEN.');
 }
 if (!fs.existsSync(apkPath)) {
@@ -199,28 +201,23 @@ const b2ManifestKey = normalizeKey(`${prefix}/latest.json`);
 const hi168VersionedKey = (versionName) => normalizeKey(`${s3Prefix}/${versionedFileName(versionName)}`);
 
 const providerApkUrls = {
-  b2: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(currentVersionedFileName)}?provider=b2` : b2ObjectUrl(b2VersionedKey(currentVersionName)),
   onedrive: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/latest.apk?provider=onedrive` : '',
   onedriveDirect: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/latest.apk?provider=onedrive-direct` : '',
   github: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(currentVersionedFileName)}?provider=github` : '',
   githubDirect: `https://github.com/ypq123456789/MoRanJiangHu/releases/download/v${currentVersionName}/${currentVersionedFileName}`
 };
 const githubAcceleratedApkUrls = githubReleaseAccelerators.map((baseUrl) => `${baseUrl}/${providerApkUrls.githubDirect}`);
-// 默认优先 GitHub Release：B2 免费额度（每天 1GB 下载）易被耗尽后返回 download_cap_exceeded，
-// GitHub 公开仓库 Release 免费无限流量且可走国内加速镜像，是更可靠的默认 APK 下载通道。
-// 如需强制其他通道，用环境变量 MORAN_RELEASE_PREFERRED_APK_PROVIDER 覆盖（onedrive/onedrive-direct/github/b2）。
+// 默认优先 GitHub Release：GitHub 公开仓库 Release 免费无限流量且可走国内加速镜像。
+// 如需强制其他通道，用环境变量 MORAN_RELEASE_PREFERRED_APK_PROVIDER 覆盖（onedrive/onedrive-direct/github）。
 const requestedPreferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'github');
-const preferredApkProvider = ['onedrive', 'onedrive-direct', 'github', 'b2'].includes(requestedPreferredApkProvider)
+const preferredApkProvider = ['onedrive', 'onedrive-direct', 'github'].includes(requestedPreferredApkProvider)
   ? requestedPreferredApkProvider
   : 'github';
-const skipB2ApkUpload = process.env.MORAN_B2_SKIP_APK_UPLOAD === '1';
 const orderedProviderUrls = preferredApkProvider === 'github'
-  ? [...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.b2, providerApkUrls.onedrive, providerApkUrls.onedriveDirect, providerApkUrls.githubDirect].filter(Boolean)
-  : preferredApkProvider === 'b2'
-    ? [providerApkUrls.b2, ...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.onedrive, providerApkUrls.onedriveDirect, providerApkUrls.githubDirect].filter(Boolean)
-    : preferredApkProvider === 'onedrive-direct'
-      ? [providerApkUrls.onedriveDirect, providerApkUrls.onedrive, providerApkUrls.b2, ...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.githubDirect].filter(Boolean)
-      : [providerApkUrls.onedrive, providerApkUrls.onedriveDirect, providerApkUrls.b2, ...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.githubDirect].filter(Boolean);
+  ? [...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.onedrive, providerApkUrls.onedriveDirect, providerApkUrls.githubDirect].filter(Boolean)
+  : preferredApkProvider === 'onedrive-direct'
+    ? [providerApkUrls.onedriveDirect, providerApkUrls.onedrive, ...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.githubDirect].filter(Boolean)
+    : [providerApkUrls.onedrive, providerApkUrls.onedriveDirect, ...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.githubDirect].filter(Boolean);
 
 const manifest = {
   latest: {
@@ -238,7 +235,7 @@ const manifest = {
     preferredApkProvider,
     r2ApkUrl: '',
     hi168ApkUrl: '',
-    b2ApkUrl: providerApkUrls.b2,
+    b2ApkUrl: '',
     oneDriveApkUrl: providerApkUrls.onedrive,
     oneDriveDirectApkUrl: providerApkUrls.onedriveDirect,
     githubApkUrl: providerApkUrls.github,
@@ -246,12 +243,12 @@ const manifest = {
     githubAcceleratedApkUrls,
     r2DirectApkUrl: '',
     hi168DirectApkUrl: '',
-    b2DirectApkUrl: b2ObjectUrl(b2VersionedKey(currentVersionName)),
+    b2DirectApkUrl: '',
     apkUrls: [
       `${websiteBaseUrl}/api/apk/latest.apk`,
       ...orderedProviderUrls
     ].filter(Boolean),
-    manifestUrl: b2ObjectUrl(b2ManifestKey),
+    manifestUrl: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/latest.json` : '',
     publishedAt: releaseInfo.releasePublishedAt || new Date().toISOString(),
     changes: Array.isArray(releaseInfo.releaseNotes) ? releaseInfo.releaseNotes : []
   },
@@ -384,8 +381,8 @@ const deleteB2Object = async (key) => {
 const uploadedVersions = [];
 for (const item of versionsToPublish) {
   const key = b2VersionedKey(item.versionName);
-  if (skipB2ApkUpload) {
-    console.log(`[B2] skipped APK upload for ${key} because MORAN_B2_SKIP_APK_UPLOAD=1`);
+if (skipB2ApkUpload) {
+  console.log(`[B2] skipped APK upload for ${key} because B2 release distribution is decommissioned`);
   } else if (item.versionName === currentVersionName) {
     await uploadBytes({
       key,
@@ -413,7 +410,7 @@ for (const item of versionsToPublish) {
 }
 
 if (skipB2ApkUpload) {
-  console.log(`[B2] skipped latest APK upload for ${b2LatestApkKey} because MORAN_B2_SKIP_APK_UPLOAD=1`);
+  console.log(`[B2] skipped latest APK upload for ${b2LatestApkKey} because B2 release distribution is decommissioned`);
 } else {
   await uploadBytes({
     key: b2LatestApkKey,
@@ -423,7 +420,7 @@ if (skipB2ApkUpload) {
   });
 }
 if (skipB2ApkUpload) {
-  console.log(`[B2] skipped manifest upload for ${b2ManifestKey} because MORAN_B2_SKIP_APK_UPLOAD=1`);
+  console.log(`[B2] skipped manifest upload for ${b2ManifestKey} because B2 release distribution is decommissioned`);
 } else {
   await uploadBytes({
     key: b2ManifestKey,
@@ -463,7 +460,7 @@ const keepKeys = new Set(uploadedVersions.map((item) => item.key));
 const versionedKeyPattern = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/MoRanJiangHu-v[^/]+\\.apk$`);
 let deletedCount = 0;
 if (skipB2ApkUpload) {
-  console.log('[B2 cleanup] skipped because MORAN_B2_SKIP_APK_UPLOAD=1');
+  console.log('[B2 cleanup] skipped because B2 release distribution is decommissioned');
 } else if (process.env.MORAN_B2_SKIP_CLEANUP === '1') {
   console.log('[B2 cleanup] skipped because MORAN_B2_SKIP_CLEANUP=1');
 } else {
@@ -480,11 +477,12 @@ if (skipB2ApkUpload) {
   }
 }
 
-console.log(`B2 publish complete:
-- latest APK URL: ${b2ObjectUrl(b2LatestApkKey)}
-- latest manifest URL: ${b2ObjectUrl(b2ManifestKey)}
+console.log(`Release manifest publish complete:
+- latest APK URL: ${websiteBaseUrl}/api/apk/latest.apk
+- latest manifest URL: ${websiteBaseUrl}/api/apk/latest.json
 - preferredApkProvider=${preferredApkProvider}
 - apkSha256=${apkSha256}
 - apkSize=${apkSize}
+- b2Distribution=decommissioned
 - keptVersionedApks=${uploadedVersions.map((item) => item.versionName).join(', ')}
 - staleVersionedApksDeleted=${deletedCount}`);

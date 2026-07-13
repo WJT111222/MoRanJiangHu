@@ -16,6 +16,7 @@
     "release:bump": "node scripts/bump-release.mjs",
     "release:r2": "node scripts/publish-release-r2.mjs",
     "release:b2": "node scripts/publish-release-b2.mjs",
+    "release:manifest": "node scripts/publish-release-b2.mjs",
     "release:s3": "node scripts/publish-release-s3.mjs",
     "release:github": "node scripts/publish-release-github.mjs",
     "release:benchmark-apk": "node scripts/benchmark-apk-providers.mjs",

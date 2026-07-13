@@ -1,18 +1,15 @@
 import {
     APK_CORS_HEADERS,
     APK_LATEST_CACHE_CONTROL,
-    buildB2ApkRedirect,
     buildGitHubApkRedirect,
     buildOneDriveApkRedirect,
     buildVersionedApkFileName,
     buildTextResponse,
     isOneDriveDirectProvider,
     isOneDriveProvider,
-    normalizeObjectKey,
     readManifestPayload,
     readManifestPreferredApkProvider,
     readManifestVersionName,
-    readReleaseObjectPrefix
 } from './_shared';
 
 const handleLatestApkRequest = async ({ request, env }: any): Promise<Response> => {
@@ -21,10 +18,11 @@ const handleLatestApkRequest = async ({ request, env }: any): Promise<Response> 
         const versionName = readManifestVersionName(manifest?.payload);
         const versionedFileName = buildVersionedApkFileName(versionName);
         const fileName = versionedFileName || 'MoRanJiangHu-latest.apk';
-        const prefix = readReleaseObjectPrefix(env);
-        const key = normalizeObjectKey(`${prefix}/${versionedFileName || 'latest.apk'}`);
         const requestedProvider = new URL(request.url).searchParams.get('provider');
         const provider = requestedProvider || readManifestPreferredApkProvider(manifest?.payload);
+        if (provider === 'b2') {
+            return buildTextResponse('B2 APK provider is decommissioned', 410);
+        }
         if (isOneDriveProvider(provider)) {
             const oneDriveResponse = await buildOneDriveApkRedirect(
                 env,
@@ -43,7 +41,9 @@ const handleLatestApkRequest = async ({ request, env }: any): Promise<Response> 
             if (githubResponse) return githubResponse;
             return buildTextResponse('GitHub Release APK not available', 502);
         }
-        return await buildB2ApkRedirect(env, key, fileName, APK_LATEST_CACHE_CONTROL);
+        const githubResponse = buildGitHubApkRedirect(versionName, fileName, APK_LATEST_CACHE_CONTROL);
+        if (githubResponse) return githubResponse;
+        return buildTextResponse('GitHub Release APK not available', 502);
     } catch (error: any) {
         return buildTextResponse(error?.message || 'APK redirect failed', 502);
     }

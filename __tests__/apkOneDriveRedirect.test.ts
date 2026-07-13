@@ -136,15 +136,13 @@ describe('APK OneDrive redirect', () => {
         expect(response.headers.get('X-Moran-Apk-Source')).toBe('onedrive-direct-proxy');
     });
 
-    it('uses B2 as the default APK provider when the manifest has no preferred provider', async () => {
+    it('uses GitHub as the default APK provider when the manifest has no preferred provider', async () => {
         const fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);
 
         const response = await onRequestGet({
             request: new Request('https://msjh.bacon159.pp.ua/api/apk/latest.apk'),
             env: {
-                MORAN_B2_DISTRIBUTION_BASE_URL: 'https://f004.backblazeb2.com/file/bacon111',
-                MORAN_B2_DISTRIBUTION_RELEASE_PREFIX: 'moranjianghu',
                 RELEASE_MANIFEST: {
                     get: async () => ({
                         latest: {
@@ -159,8 +157,8 @@ describe('APK OneDrive redirect', () => {
         } as any);
 
         expect(response.status).toBe(302);
-        expect(response.headers.get('Location')).toBe('https://f004.backblazeb2.com/file/bacon111/moranjianghu/MoRanJiangHu-v1.0.560.apk');
-        expect(response.headers.get('X-Moran-Apk-Source')).toBe('b2-redirect');
+        expect(response.headers.get('Location')).toBe('https://gh.ddlc.top/https://github.com/ypq123456789/MoRanJiangHu/releases/download/v1.0.560/MoRanJiangHu-v1.0.560.apk');
+        expect(response.headers.get('X-Moran-Apk-Source')).toBe('github-release-accelerated');
         expect(fetchMock).not.toHaveBeenCalled();
     });
 });

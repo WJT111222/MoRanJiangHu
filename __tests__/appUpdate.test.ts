@@ -94,8 +94,7 @@ describe('appUpdate native APK download', () => {
         expect(downloadAndInstallMock.mock.calls[1][0].url).toBe('https://msjh.bacon159.pp.ua/api/apk/latest.apk');
     });
 
-    it('chooses the fastest available APK source among B2, GitHub accelerators, OneDrive and OneDrive direct', async () => {
-        const b2Url = 'https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.289.apk?provider=b2';
+    it('chooses the fastest available APK source among GitHub accelerators, OneDrive and OneDrive direct', async () => {
         const githubAcceleratedUrl = 'https://gh.ddlc.top/https://github.com/ypq123456789/MoRanJiangHu/releases/download/v1.0.289/MoRanJiangHu-v1.0.289.apk';
         const oneDriveUrl = 'https://msjh.bacon159.pp.ua/api/apk/latest.apk?provider=onedrive';
         const oneDriveDirectUrl = 'https://msjh.bacon159.pp.ua/api/apk/latest.apk?provider=onedrive-direct';
@@ -104,10 +103,6 @@ describe('appUpdate native APK download', () => {
         vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
             const url = String(input);
             if (init?.method === 'HEAD') {
-                if (url === b2Url) {
-                    await delay(1);
-                    return new Response(null, { status: 404 });
-                }
                 if (url === githubAcceleratedUrl) {
                     await delay(160);
                     return new Response(null, { status: 200 });
@@ -128,7 +123,7 @@ describe('appUpdate native APK download', () => {
                     versionName: '1.0.289',
                     apkSha256: 'new-sha',
                     apkSize: 123456,
-                    apkUrls: [b2Url, githubAcceleratedUrl, oneDriveUrl, oneDriveDirectUrl],
+                    apkUrls: [githubAcceleratedUrl, oneDriveUrl, oneDriveDirectUrl],
                     changes: ['测试更新']
                 }
             }), { status: 200, headers: { 'Content-Type': 'application/json' } });

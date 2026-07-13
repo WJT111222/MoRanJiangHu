@@ -15,7 +15,7 @@ const buildEnv = (payload: unknown) => ({
 });
 
 describe('APK latest manifest proxy', () => {
-    it('normalizes a flat KV manifest and adds B2, GitHub and OneDrive APK URLs', async () => {
+    it('normalizes a flat KV manifest and adds GitHub and OneDrive APK URLs without B2', async () => {
         const response = await onRequestGet({
             request: buildRequest(),
             env: buildEnv({
@@ -31,7 +31,7 @@ describe('APK latest manifest proxy', () => {
         expect(payload.versionName).toBe('1.0.528');
         expect(payload.latest.versionName).toBe('1.0.528');
         expect(payload.latest.versionCode).toBe(528);
-        expect(payload.latest.b2ApkUrl).toBe('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.528.apk?provider=b2');
+        expect(payload.latest.b2ApkUrl).toBe('');
         expect(payload.latest.githubApkUrl).toBe('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.528.apk?provider=github');
         expect(payload.latest.githubAcceleratedApkUrls).toEqual([
             'https://gh.ddlc.top/https://github.com/ypq123456789/MoRanJiangHu/releases/download/v1.0.528/MoRanJiangHu-v1.0.528.apk',
@@ -41,12 +41,10 @@ describe('APK latest manifest proxy', () => {
         ]);
         expect(payload.latest.oneDriveApkUrl).toBe('https://msjh.bacon159.pp.ua/api/apk/latest.apk?provider=onedrive');
         expect(payload.latest.oneDriveDirectApkUrl).toBe('https://msjh.bacon159.pp.ua/api/apk/latest.apk?provider=onedrive-direct');
-        expect(payload.latest.preferredApkProvider).toBe('b2');
+        expect(payload.latest.preferredApkProvider).toBe('github');
         expect(payload.latest.r2ApkUrl).toBe('');
         expect(payload.latest.hi168ApkUrl).toBe('');
-        expect(payload.latest.apkUrls.indexOf(payload.latest.b2ApkUrl)).toBeLessThan(
-            payload.latest.apkUrls.indexOf(payload.latest.oneDriveApkUrl)
-        );
+        expect(payload.latest.apkUrls).not.toContain('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.528.apk?provider=b2');
         expect(payload.latest.apkUrls.indexOf(payload.latest.githubAcceleratedApkUrls[0])).toBeLessThan(
             payload.latest.apkUrls.indexOf(payload.latest.oneDriveApkUrl)
         );
@@ -83,7 +81,7 @@ describe('APK latest manifest proxy', () => {
         expect(payload.latest.apkUrls).toContain('https://gh.ddlc.top/https://github.com/ypq123456789/MoRanJiangHu/releases/download/v1.0.528/MoRanJiangHu-v1.0.528.apk');
     });
 
-    it('orders GitHub accelerators before the B2 fallback when preferredApkProvider is github', async () => {
+    it('orders GitHub accelerators before OneDrive when preferredApkProvider is github', async () => {
         const response = await onRequestGet({
             request: buildRequest(),
             env: buildEnv({
@@ -98,13 +96,11 @@ describe('APK latest manifest proxy', () => {
         const payload = await response.json();
 
         expect(payload.latest.preferredApkProvider).toBe('github');
-        // GitHub 加速镜像必须排在已废的 B2 兜底之前，客户端第一个可下载源不能是死通道
+        // GitHub 加速镜像必须排在 OneDrive 之前，客户端第一个可下载源不能是已废 B2。
         expect(payload.latest.apkUrls.indexOf(payload.latest.githubAcceleratedApkUrls[0])).toBeLessThan(
-            payload.latest.apkUrls.indexOf(payload.latest.b2ApkUrl)
-        );
-        // B2 仍保留在候选列表中作为兜底，但排在 OneDrive 之前
-        expect(payload.latest.apkUrls.indexOf(payload.latest.b2ApkUrl)).toBeLessThan(
             payload.latest.apkUrls.indexOf(payload.latest.oneDriveApkUrl)
         );
+        expect(payload.latest.b2ApkUrl).toBe('');
+        expect(payload.latest.apkUrls.some((url: string) => url.includes('provider=b2'))).toBe(false);
     });
 });
