@@ -13,6 +13,7 @@ import CreativeWorkshopModal from '../features/Workshop/CreativeWorkshopModal';
 const WORKSHOP_PENDING_LOGIN_KEY = 'creative_workshop_pending_login';
 const WORKSHOP_QUERY_PARAM = 'open';
 const WORKSHOP_QUERY_VALUE = 'workshop';
+const WORKSHOP_SUPPRESS_RELEASE_NOTES_PARAM = 'skipReleaseNotes';
 
 const buildRemoteWorkshopUrl = (websiteUrl?: string): string => {
     const base = (typeof websiteUrl === 'string' && websiteUrl.trim())
@@ -20,6 +21,7 @@ const buildRemoteWorkshopUrl = (websiteUrl?: string): string => {
         : 'https://msjh.bacon159.pp.ua';
     const url = new URL(base);
     url.searchParams.set(WORKSHOP_QUERY_PARAM, WORKSHOP_QUERY_VALUE);
+    url.searchParams.set(WORKSHOP_SUPPRESS_RELEASE_NOTES_PARAM, '1');
     return url.toString();
 };
 
@@ -629,20 +631,19 @@ const LandingPage: React.FC<Props> = ({
     const [workshopOpen, setWorkshopOpen] = React.useState(false);
     const [backgroundIndex, setBackgroundIndex] = React.useState(0);
 
-    const openRemoteWorkshopInNativeWebView = React.useCallback(async () => {
+    const openRemoteWorkshopInNativeWebView = React.useCallback(() => {
         const remoteWorkshopUrl = buildRemoteWorkshopUrl(releaseInfo.websiteUrl);
         try {
-            const { Browser } = await import('@capacitor/browser');
-            await Browser.open({ url: remoteWorkshopUrl, presentationStyle: 'fullscreen' });
+            window.location.assign(remoteWorkshopUrl);
         } catch (error) {
-            console.warn('打开线上创意工坊 WebView 失败，回退到内置创意工坊:', error);
+            console.warn('跳转线上创意工坊失败，回退到内置创意工坊:', error);
             setWorkshopOpen(true);
         }
     }, [releaseInfo.websiteUrl]);
 
     const handleOpenWorkshop = React.useCallback(async () => {
         if (isNativeApp) {
-            await openRemoteWorkshopInNativeWebView();
+            openRemoteWorkshopInNativeWebView();
             return;
         }
         setWorkshopOpen(true);

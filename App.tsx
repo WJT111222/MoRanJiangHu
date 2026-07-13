@@ -48,6 +48,9 @@ import type { 游戏物品, 物品类型, 物品品质 } from './models/item';
 import type { 功法结构, 功法类型, 功法品质, 消耗类型, 伤害类型, 目标类型 } from './models/kungfu';
 
 const RELEASE_NOTES_SUPPRESS_DATE_KEY = 'moranjianghu.releaseNotesSuppressDate';
+const WORKSHOP_OPEN_QUERY_PARAM = 'open';
+const WORKSHOP_OPEN_QUERY_VALUE = 'workshop';
+const RELEASE_NOTES_SKIP_QUERY_PARAM = 'skipReleaseNotes';
 const DESKTOP_DETAIL_WIDTHS_STORAGE_KEY = 'moranjianghu.desktopRightDetailWidths.v3';
 const DESKTOP_DETAIL_MIN_WIDTH = 520;
 const DESKTOP_DETAIL_MAX_WIDTH = 1160;
@@ -933,6 +936,13 @@ const App: React.FC = () => {
         if (typeof window === 'undefined') return;
         if (APK仅手动更新已启用(state.gameConfig)) {
             setSuppressReleaseNotesForToday(false);
+            return;
+        }
+        const query = new URLSearchParams(window.location.search);
+        if (
+            query.get(WORKSHOP_OPEN_QUERY_PARAM) === WORKSHOP_OPEN_QUERY_VALUE ||
+            query.get(RELEASE_NOTES_SKIP_QUERY_PARAM) === '1'
+        ) {
             return;
         }
         if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
