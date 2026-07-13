@@ -34,7 +34,7 @@ const 可展示工坊类型: 创意工坊模块类型[] = ['topic', 'tavern_pres
 const 可展示工坊类型集合 = new Set<创意工坊模块类型>(可展示工坊类型);
 const 可展示工坊分区 = 创意工坊模块分区.filter((section) => 可展示工坊类型集合.has(section.id));
 const 默认生成性别占位 = `${开局生成性别选项.map((item) => item.value).join('、')}；留空默认全选`;
-type 运行时配置字段类型 = 'text' | 'textarea' | 'list' | 'record' | 'bool' | 'boolGroup' | 'baseMode' | 'currencyMode' | 'timeFormatMode' | 'realmConfig' | 'currencySystemModeSelector' | 'economyGroupTitle' | 'currencySystemEditor' | 'currencySystemJson';
+type 运行时配置字段类型 = 'text' | 'textarea' | 'list' | 'record' | 'bool' | 'boolGroup' | 'baseMode' | 'currencyMode' | 'timeFormatMode' | 'realmConfig' | 'currencySystemModeSelector' | 'economyGroupTitle' | 'currencySystemEditor' | 'currencySystemJson' | 'json';
 type 运行时配置字段 = { label: string; path: string[]; type?: 运行时配置字段类型; placeholder?: string; boolGroup?: { label: string; key: string }[] };
 type 运行时配置分区 = { title: string; fields: 运行时配置字段[] };
 
@@ -72,6 +72,7 @@ const 运行时配置分区列表: 运行时配置分区[] = [
             { label: '底层记账单位', path: ['economy', 'accountingUnit'] },
             { label: '旧兼容换算说明', path: ['economy', 'exchangeRules'], type: 'textarea' },
             { label: '市场名称', path: ['economy', 'marketName'] },
+            { label: '市场行情模板 JSON（可选）', path: ['economy', 'marketEventTemplates'], type: 'json', placeholder: '[{"标题":"节礼采买","描述":"年节将近，衣料首饰行情看涨。","影响类型":"杂物","价格倍率":1.2,"热点标签":"节礼采买"}]' },
             { label: '市场动词', path: ['economy', 'marketVerb'] },
             { label: '允许物品类型', path: ['economy', 'allowedItemTypes'], type: 'list' },
             { label: '禁用关键词', path: ['economy', 'bannedKeywords'], type: 'list' }
@@ -198,6 +199,12 @@ const 运行时配置分区列表: 运行时配置分区[] = [
             { label: '锁定生成性别', path: ['opening', 'lockGeneratedGenders'], type: 'bool' },
             { label: '默认装备模板', path: ['opening', 'defaultEquipment'], type: 'record', placeholder: '每行一个，格式：槽位=物品名，例如：武器=青锋剑' },
             { label: '默认金钱模板', path: ['opening', 'defaultCurrency'], type: 'record', placeholder: '每行一个，格式：货币名=初始量，例如：底层货币=1000' }
+        ]
+    },
+    {
+        title: '界面文案覆盖',
+        fields: [
+            { label: 'UI 文案覆盖 JSON（可选）', path: ['uiLabels'], type: 'json', placeholder: '{"菜单":{"inventory":"随身箱笼"},"标题":{"背包":"随身箱笼"},"组织":{"能力库":"家塾书房"},"资源":{"能量":"心气"},"档案":{"档案题头":"府中人物档案"},"能力类别":{"招式":"才艺章法"},"向导":{"worldSizeLabel":"红楼版图"}}' }
         ]
     },
     {
@@ -337,7 +344,7 @@ const 格式化性别比例值 = (value: unknown): string | null => {
 const 格式化运行时字段值 = (profile: ModeRuntimeProfile, field: 运行时配置字段): string => {
     const value = 读取运行时路径值(profile, field.path);
     if (typeof value === 'undefined' || value === null) return '';
-    if (field.type === 'currencySystemJson') return JSON.stringify(value, null, 2);
+    if (field.type === 'currencySystemJson' || field.type === 'json') return JSON.stringify(value, null, 2);
     if (field.type === 'record') {
         if (typeof value === 'object' && !Array.isArray(value)) {
             return Object.entries(value).map(([k, v]) => `${k}=${v}`).join('\n');
@@ -364,6 +371,58 @@ const 写入运行时路径值 = (profile: ModeRuntimeProfile, path: string[], v
     });
     target[path[path.length - 1]] = value;
     return next as ModeRuntimeProfile;
+};
+
+const Json运行时字段编辑器: React.FC<{
+    label: string;
+    placeholder?: string;
+    value: unknown;
+    onApply: (parsed: any) => void;
+}> = ({ label, placeholder, value, onApply }) => {
+    const serialize = (input: unknown): string => (input === undefined || input === null ? '' : JSON.stringify(input, null, 2));
+    const [text, setText] = React.useState(() => serialize(value));
+    const [error, setError] = React.useState('');
+    const [focused, setFocused] = React.useState(false);
+    const externalText = serialize(value);
+    // 外部草稿变化（切换模式、重置、导入回填）时同步编辑框；聚焦编辑期间不打断输入
+    React.useEffect(() => {
+        if (!focused) {
+            setText(externalText);
+            setError('');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [externalText, focused]);
+    const handleBlur = () => {
+        setFocused(false);
+        const trimmed = text.trim();
+        if (!trimmed) {
+            setError('');
+            onApply(undefined);
+            return;
+        }
+        try {
+            const parsed = JSON.parse(trimmed);
+            setError('');
+            onApply(parsed);
+        } catch {
+            setError('JSON 无法解析，字段未写入；请修正后再离开输入框。');
+        }
+    };
+    return (
+        <label className="block text-xs text-gray-300 sm:col-span-2">
+            {label}
+            <textarea
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                onFocus={() => setFocused(true)}
+                onBlur={handleBlur}
+                placeholder={placeholder}
+                className={`mt-1 min-h-28 w-full resize-y rounded-lg border ${error ? 'border-red-400/60' : 'border-white/10'} bg-black/30 px-3 py-2 font-mono text-sm leading-5 text-gray-100 outline-none placeholder:text-gray-500 focus:border-wuxia-gold/45`}
+            />
+            <div className="mt-1 text-[11px] leading-5 text-gray-400">留空并移开焦点会清除该字段；合法 JSON 会在移开焦点时写入模式包运行时配置。</div>
+            {error && <div className="mt-1 text-[11px] leading-5 text-red-300">{error}</div>}
+        </label>
+    );
 };
 
 const 格式化只读列表 = (value: unknown): string => {
@@ -1401,7 +1460,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         ) {
             return null;
         }
-        if (fieldType === 'currencySystemJson') {
+        if (fieldType === 'currencySystemJson' || fieldType === 'json') {
             const displayValue = rawValue ? JSON.stringify(rawValue, null, 2) : '';
             return (
                 <label key={key} className="block text-xs text-gray-300 sm:col-span-2">
@@ -2233,6 +2292,17 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                                                                 <div className="mt-1 text-[11px] leading-5 text-red-300">{currencySystemJsonError}</div>
                                                                             )}
                                                                         </label>
+                                                                    );
+                                                                }
+                                                                if (fieldType === 'json') {
+                                                                    return (
+                                                                        <Json运行时字段编辑器
+                                                                            key={`${key}-json`}
+                                                                            label={field.label}
+                                                                            placeholder={field.placeholder}
+                                                                            value={读取运行时路径值(contributionDraft.modeRuntimeProfile, field.path)}
+                                                                            onApply={(parsed) => 更新运行时配置字段(field, parsed)}
+                                                                        />
                                                                     );
                                                                 }
                                                                 const value = 格式化运行时字段值(contributionDraft.modeRuntimeProfile, field);

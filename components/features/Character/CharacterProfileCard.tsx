@@ -3,7 +3,7 @@ import { OpeningConfig, 角色数据结构, 视觉设置结构 } from '../../../
 import { 构建区域文字样式 } from '../../../utils/visualSettings';
 import { 格式化月日, 计算角色总气血 } from '../../../utils/characterVitals';
 import { 读取可分配属性点, type 可分配六维属性键 } from '../../../utils/characterAttributePoints';
-import { 获取题材资源文案 } from '../../../utils/resourceLabels';
+import { 获取题材档案文案, 获取题材资源文案 } from '../../../utils/resourceLabels';
 interface Props {
     character: 角色数据结构;
     visualConfig?: 视觉设置结构;
@@ -11,71 +11,9 @@ interface Props {
     onAllocateAttributePoint?: (key: 可分配六维属性键) => void;
 }
 
-const 获取档案题材文案 = (openingConfig?: OpeningConfig) => {
-    const mode = openingConfig?.题材模式;
-    if (mode === '无限流') {
-        return {
-            档案题头: '主神空间档案',
-            编号: '档案编号',
-            信息: '轮回者信息',
-            背景: '入队背景',
-            生辰: '登记日',
-            性格: '性格侧写',
-            外貌: '外观记录',
-            出身: '背景备注',
-            天赋: '能力倾向',
-            六维: '基础六维',
-            部位: '身体状态'
-        };
-    }
-    if (mode === '末日丧尸') {
-        return {
-            档案题头: '幸存者档案',
-            编号: '档案编号',
-            信息: '幸存者信息',
-            背景: '灾前背景',
-            生辰: '出生日期',
-            性格: '性格侧写',
-            外貌: '外观记录',
-            出身: '背景备注',
-            天赋: '生存倾向',
-            六维: '基础六维',
-            部位: '身体状态'
-        };
-    }
-    if (mode === '现代都市' || mode === '灵气复苏' || mode === '都市修仙') {
-        return {
-            档案题头: '角色档案',
-            编号: '档案编号',
-            信息: '人物信息',
-            背景: '身份背景',
-            生辰: '出生日期',
-            性格: '性格侧写',
-            外貌: '外观记录',
-            出身: '背景备注',
-            天赋: '天赋记录',
-            六维: '基础六维',
-            部位: '身体状态'
-        };
-    }
-    return {
-        档案题头: mode === '仙侠' ? '修行身份文牒' : mode === '西方奇幻' ? '冒险者档案' : '江湖身份文牒',
-        编号: '身份编号',
-        信息: '人物信息',
-        背景: '背景',
-        生辰: '生辰',
-        性格: '性格',
-        外貌: mode === '西方奇幻' ? '外观记录' : '外貌描摹',
-        出身: mode === '西方奇幻' ? '背景备注' : '出身批注',
-        天赋: mode === '西方奇幻' ? '天赋记录' : '天赋卷宗',
-        六维: '基础六维',
-        部位: mode === '西方奇幻' ? '身体状态' : '部位状态'
-    };
-};
-
 const CharacterProfileCard: React.FC<Props> = ({ character, visualConfig, openingConfig, onAllocateAttributePoint }) => {
     const 天赋列表 = Array.isArray(character.天赋列表) ? character.天赋列表 : [];
-    const 文案 = 获取档案题材文案(openingConfig);
+    const 文案 = 获取题材档案文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
     const 资源文案 = 获取题材资源文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
     const areaStyle = 构建区域文字样式(visualConfig, '角色档案');
     const profileFontStyle = {
