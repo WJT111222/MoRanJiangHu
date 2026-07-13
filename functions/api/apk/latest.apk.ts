@@ -2,6 +2,7 @@ import {
     APK_CORS_HEADERS,
     APK_LATEST_CACHE_CONTROL,
     buildGitHubApkRedirect,
+    buildGitHubRawApkRedirect,
     buildOneDriveApkRedirect,
     buildVersionedApkFileName,
     buildTextResponse,
@@ -41,9 +42,17 @@ const handleLatestApkRequest = async ({ request, env }: any): Promise<Response> 
             if (githubResponse) return githubResponse;
             return buildTextResponse('GitHub Release APK not available', 502);
         }
-        const githubResponse = buildGitHubApkRedirect(versionName, fileName, APK_LATEST_CACHE_CONTROL);
-        if (githubResponse) return githubResponse;
-        return buildTextResponse('GitHub Release APK not available', 502);
+        if (provider === 'github-raw') {
+            const accelerator = typeof env?.MORAN_GITHUB_RAW_ACCELERATOR === 'string'
+                ? env.MORAN_GITHUB_RAW_ACCELERATOR
+                : undefined;
+            const githubRawResponse = buildGitHubRawApkRedirect(fileName, APK_LATEST_CACHE_CONTROL, accelerator);
+            if (githubRawResponse) return githubRawResponse;
+            return buildTextResponse('GitHub Raw APK not available', 502);
+        }
+        const githubRawResponse = buildGitHubRawApkRedirect(fileName, APK_LATEST_CACHE_CONTROL);
+        if (githubRawResponse) return githubRawResponse;
+        return buildTextResponse('GitHub Raw APK not available', 502);
     } catch (error: any) {
         return buildTextResponse(error?.message || 'APK redirect failed', 502);
     }

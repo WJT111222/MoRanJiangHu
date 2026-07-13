@@ -15,9 +15,15 @@ const DEFAULT_GITHUB_RELEASE_ACCELERATORS = [
     'https://gh-proxy.ygxz.in',
     'https://ghfast.top'
 ];
+const DEFAULT_GITHUB_RAW_ACCELERATOR = 'https://cloudflare-proxy-6rw.pages.dev';
+const GITHUB_RAW_APK_BRANCH = 'apk-dist';
 
 const buildGitHubReleaseDownloadUrl = (versionName: string, fileName: string): string => (
     `https://github.com/ypq123456789/MoRanJiangHu/releases/download/v${versionName}/${fileName}`
+);
+
+const buildGitHubRawDownloadUrl = (fileName: string): string => (
+    `https://raw.githubusercontent.com/ypq123456789/MoRanJiangHu/${GITHUB_RAW_APK_BRANCH}/releases/${fileName}`
 );
 
 const buildGitHubAcceleratedUrls = (versionName: string, fileName: string): string[] => {
@@ -62,18 +68,26 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
         const githubApkUrl = versionedFileName
             ? `${baseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=github`
             : `${baseUrl}/api/apk/latest.apk?provider=github`;
+        const githubRawApkUrl = versionedFileName
+            ? `${baseUrl}/api/apk/version/${encodeURIComponent(versionedFileName)}?provider=github-raw`
+            : `${baseUrl}/api/apk/latest.apk?provider=github-raw`;
         const githubDirectApkUrl = versionedFileName ? buildGitHubReleaseDownloadUrl(versionName, versionedFileName) : '';
         const githubAcceleratedApkUrls = versionedFileName ? buildGitHubAcceleratedUrls(versionName, versionedFileName) : [];
+        const githubRawDirectApkUrl = versionedFileName ? buildGitHubRawDownloadUrl(versionedFileName) : '';
+        const githubRawAcceleratedApkUrl = githubRawDirectApkUrl ? `${DEFAULT_GITHUB_RAW_ACCELERATOR}/${githubRawDirectApkUrl}` : '';
         const preferredApkProvider = readManifestPreferredApkProvider(payload);
         // 按 preferredApkProvider 排序候选源：B2 渠道已废弃，只保留 GitHub 加速和 OneDrive。
         const githubGroup = [...githubAcceleratedApkUrls, githubApkUrl, githubDirectApkUrl];
+        const githubRawGroup = [githubRawAcceleratedApkUrl, githubRawApkUrl, githubRawDirectApkUrl];
         const oneDriveGroup = [oneDriveApkUrl, oneDriveDirectApkUrl];
         let providerOrderedUrls: string[];
         if (preferredApkProvider === 'onedrive' || preferredApkProvider === 'onedrive-direct') {
-            providerOrderedUrls = [...oneDriveGroup, ...githubGroup];
+            providerOrderedUrls = [...oneDriveGroup, ...githubRawGroup, ...githubGroup];
+        } else if (preferredApkProvider === 'github') {
+            providerOrderedUrls = [...githubGroup, ...githubRawGroup, ...oneDriveGroup];
         } else {
-            // 默认 github：GitHub 加速镜像优先，OneDrive 兜底。
-            providerOrderedUrls = [...githubGroup, ...oneDriveGroup];
+            // 默认 github-raw：Cloudflare Raw 代理优先，GitHub Release 加速与 OneDrive 兜底。
+            providerOrderedUrls = [...githubRawGroup, ...githubGroup, ...oneDriveGroup];
         }
         const orderedApkUrls = [
             latestApkUrl,
@@ -95,6 +109,9 @@ export async function onRequestGet({ request, env }: any): Promise<Response> {
                 githubApkUrl,
                 githubDirectApkUrl,
                 githubAcceleratedApkUrls,
+                githubRawApkUrl,
+                githubRawDirectApkUrl,
+                githubRawAcceleratedApkUrl,
                 oneDriveApkUrl,
                 oneDriveDirectApkUrl,
                 latestApkUrl,

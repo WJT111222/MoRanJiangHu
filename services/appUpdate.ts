@@ -357,6 +357,7 @@ const installUpdateInNativeApp = async (manifest: UpdateManifest) => {
     // 从 URL 提取渠道名称
     const getChannelLabel = (url: string): string => {
         const lower = url.toLowerCase();
+        if (lower.includes('provider=github-raw') || lower.includes('cloudflare-proxy-6rw.pages.dev/https://raw.githubusercontent.com') || lower.includes('raw.githubusercontent.com/ypq123456789/moranjianghu/apk-dist')) return 'GitHub Raw加速';
         if (lower.includes('provider=github') || lower.includes('objects.githubusercontent.com') || lower.includes('github.com/ypq123456789/moranjianghu/releases')) return 'GitHub';
         if (lower.includes('provider=b2') || lower.includes('backblazeb2.com') || lower.includes('obs.bacon159.pp.ua')) return 'B2';
         if (lower.includes('provider=onedrive-direct') || lower.includes('provider=onedrive-origin') || lower.includes('159.138.7.126:5244')) return 'OneDrive直连';

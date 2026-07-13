@@ -1,6 +1,7 @@
 import {
     APK_CORS_HEADERS,
     buildGitHubApkRedirect,
+    buildGitHubRawApkRedirect,
     buildVersionedApkFileName,
     buildOneDriveApkRedirect,
     buildTextResponse,
@@ -60,9 +61,17 @@ const handleVersionedApkRequest = async (context: any, _method: 'GET' | 'HEAD'):
             if (githubResponse) return githubResponse;
             return buildTextResponse('GitHub Release APK not available', 502);
         }
-        const githubResponse = buildGitHubApkRedirect(versionName, fileName);
-        if (githubResponse) return githubResponse;
-        return buildTextResponse('GitHub Release APK not available', 502);
+        if (provider === 'github-raw') {
+            const accelerator = typeof env?.MORAN_GITHUB_RAW_ACCELERATOR === 'string'
+                ? env.MORAN_GITHUB_RAW_ACCELERATOR
+                : undefined;
+            const githubRawResponse = buildGitHubRawApkRedirect(fileName, undefined, accelerator);
+            if (githubRawResponse) return githubRawResponse;
+            return buildTextResponse('GitHub Raw APK not available', 502);
+        }
+        const githubRawResponse = buildGitHubRawApkRedirect(fileName);
+        if (githubRawResponse) return githubRawResponse;
+        return buildTextResponse('GitHub Raw APK not available', 502);
     } catch (error: any) {
         return buildTextResponse(error?.message || 'Versioned APK download failed', 502);
     }

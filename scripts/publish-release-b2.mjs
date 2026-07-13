@@ -174,6 +174,8 @@ const githubReleaseAccelerators = readEnv('GITHUB_RELEASE_ACCELERATORS', 'https:
   .split(',')
   .map((item) => item.trim().replace(/\/+$/, ''))
   .filter((item) => /^https:\/\/[^/]+$/i.test(item));
+const githubRawAccelerator = readEnv('GITHUB_RAW_ACCELERATOR', 'https://cloudflare-proxy-6rw.pages.dev').replace(/\/+$/, '');
+const githubRawBranch = readEnv('GITHUB_RAW_APK_BRANCH', 'apk-dist');
 
 const releaseRecords = [
   { versionName: currentVersionName, versionCode: releaseInfo.versionCode },
@@ -204,20 +206,27 @@ const providerApkUrls = {
   onedrive: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/latest.apk?provider=onedrive` : '',
   onedriveDirect: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/latest.apk?provider=onedrive-direct` : '',
   github: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(currentVersionedFileName)}?provider=github` : '',
-  githubDirect: `https://github.com/ypq123456789/MoRanJiangHu/releases/download/v${currentVersionName}/${currentVersionedFileName}`
+  githubDirect: `https://github.com/ypq123456789/MoRanJiangHu/releases/download/v${currentVersionName}/${currentVersionedFileName}`,
+  githubRaw: websiteBaseUrl ? `${websiteBaseUrl}/api/apk/version/${encodeURIComponent(currentVersionedFileName)}?provider=github-raw` : '',
+  githubRawDirect: `https://raw.githubusercontent.com/${owner}/${repo}/${githubRawBranch}/releases/${currentVersionedFileName}`
 };
 const githubAcceleratedApkUrls = githubReleaseAccelerators.map((baseUrl) => `${baseUrl}/${providerApkUrls.githubDirect}`);
-// 默认优先 GitHub Release：GitHub 公开仓库 Release 免费无限流量且可走国内加速镜像。
-// 如需强制其他通道，用环境变量 MORAN_RELEASE_PREFERRED_APK_PROVIDER 覆盖（onedrive/onedrive-direct/github）。
-const requestedPreferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'github');
-const preferredApkProvider = ['onedrive', 'onedrive-direct', 'github'].includes(requestedPreferredApkProvider)
+const githubRawAcceleratedApkUrl = githubRawAccelerator && /^https:\/\/[^/]+$/i.test(githubRawAccelerator)
+  ? `${githubRawAccelerator}/${providerApkUrls.githubRawDirect}`
+  : '';
+// 默认优先 GitHub Raw：APK 存放在 apk-dist 分支，通过 Cloudflare Raw 代理下载。
+// 如需强制其他通道，用环境变量 MORAN_RELEASE_PREFERRED_APK_PROVIDER 覆盖（github-raw/onedrive/onedrive-direct/github）。
+const requestedPreferredApkProvider = readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'github-raw');
+const preferredApkProvider = ['github-raw', 'onedrive', 'onedrive-direct', 'github'].includes(requestedPreferredApkProvider)
   ? requestedPreferredApkProvider
-  : 'github';
+  : 'github-raw';
 const orderedProviderUrls = preferredApkProvider === 'github'
-  ? [...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.onedrive, providerApkUrls.onedriveDirect, providerApkUrls.githubDirect].filter(Boolean)
+  ? [...githubAcceleratedApkUrls, providerApkUrls.github, githubRawAcceleratedApkUrl, providerApkUrls.githubRaw, providerApkUrls.onedrive, providerApkUrls.onedriveDirect, providerApkUrls.githubDirect].filter(Boolean)
   : preferredApkProvider === 'onedrive-direct'
-    ? [providerApkUrls.onedriveDirect, providerApkUrls.onedrive, ...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.githubDirect].filter(Boolean)
-    : [providerApkUrls.onedrive, providerApkUrls.onedriveDirect, ...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.githubDirect].filter(Boolean);
+    ? [providerApkUrls.onedriveDirect, providerApkUrls.onedrive, githubRawAcceleratedApkUrl, providerApkUrls.githubRaw, ...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.githubDirect].filter(Boolean)
+    : preferredApkProvider === 'onedrive'
+      ? [providerApkUrls.onedrive, providerApkUrls.onedriveDirect, githubRawAcceleratedApkUrl, providerApkUrls.githubRaw, ...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.githubDirect].filter(Boolean)
+      : [githubRawAcceleratedApkUrl, providerApkUrls.githubRaw, providerApkUrls.githubRawDirect, ...githubAcceleratedApkUrls, providerApkUrls.github, providerApkUrls.onedrive, providerApkUrls.onedriveDirect, providerApkUrls.githubDirect].filter(Boolean);
 
 const manifest = {
   latest: {
@@ -241,6 +250,9 @@ const manifest = {
     githubApkUrl: providerApkUrls.github,
     githubDirectApkUrl: providerApkUrls.githubDirect,
     githubAcceleratedApkUrls,
+    githubRawApkUrl: providerApkUrls.githubRaw,
+    githubRawDirectApkUrl: providerApkUrls.githubRawDirect,
+    githubRawAcceleratedApkUrl,
     r2DirectApkUrl: '',
     hi168DirectApkUrl: '',
     b2DirectApkUrl: '',

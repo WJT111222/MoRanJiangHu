@@ -47,6 +47,27 @@ describe('APK B2 provider', () => {
         expect(response.headers.get('X-Moran-Apk-Source')).toBe('github-release-accelerated');
     });
 
+    it('uses GitHub Raw proxy for latest.apk when the manifest prefers GitHub Raw', async () => {
+        const response = await onLatestApkRequestGet({
+            request: new Request('https://msjh.bacon159.pp.ua/api/apk/latest.apk'),
+            env: {
+                RELEASE_MANIFEST: {
+                    get: async () => ({
+                        latest: {
+                            versionCode: 604,
+                            versionName: '1.0.604',
+                            preferredApkProvider: 'github-raw'
+                        }
+                    })
+                }
+            }
+        } as any);
+
+        expect(response.status).toBe(302);
+        expect(response.headers.get('Location')).toBe('https://cloudflare-proxy-6rw.pages.dev/https://raw.githubusercontent.com/ypq123456789/MoRanJiangHu/apk-dist/releases/MoRanJiangHu-v1.0.604.apk');
+        expect(response.headers.get('X-Moran-Apk-Source')).toBe('github-raw-accelerated');
+    });
+
     it('uses OneDrive for latest.apk when the manifest prefers OneDrive', async () => {
         const originalFetch = globalThis.fetch;
         globalThis.fetch = (async (input: RequestInfo | URL) => {
@@ -110,5 +131,27 @@ describe('APK B2 provider', () => {
         expect(response.status).toBe(302);
         expect(response.headers.get('Location')).toBe('https://gh.ddlc.top/https://github.com/ypq123456789/MoRanJiangHu/releases/download/v1.0.529/MoRanJiangHu-v1.0.529.apk');
         expect(response.headers.get('X-Moran-Apk-Source')).toBe('github-release-accelerated');
+    });
+
+    it('uses GitHub Raw proxy for the versioned APK when requested explicitly', async () => {
+        const response = await onRequestGet({
+            request: new Request('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.604.apk?provider=github-raw'),
+            params: { file: 'MoRanJiangHu-v1.0.604.apk' },
+            env: {
+                RELEASE_MANIFEST: {
+                    get: async () => ({
+                        latest: {
+                            versionCode: 604,
+                            versionName: '1.0.604',
+                            preferredApkProvider: 'github'
+                        }
+                    })
+                }
+            }
+        } as any);
+
+        expect(response.status).toBe(302);
+        expect(response.headers.get('Location')).toBe('https://cloudflare-proxy-6rw.pages.dev/https://raw.githubusercontent.com/ypq123456789/MoRanJiangHu/apk-dist/releases/MoRanJiangHu-v1.0.604.apk');
+        expect(response.headers.get('X-Moran-Apk-Source')).toBe('github-raw-accelerated');
     });
 });

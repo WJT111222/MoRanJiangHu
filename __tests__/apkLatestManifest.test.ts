@@ -41,7 +41,10 @@ describe('APK latest manifest proxy', () => {
         ]);
         expect(payload.latest.oneDriveApkUrl).toBe('https://msjh.bacon159.pp.ua/api/apk/latest.apk?provider=onedrive');
         expect(payload.latest.oneDriveDirectApkUrl).toBe('https://msjh.bacon159.pp.ua/api/apk/latest.apk?provider=onedrive-direct');
-        expect(payload.latest.preferredApkProvider).toBe('github');
+        expect(payload.latest.preferredApkProvider).toBe('github-raw');
+        expect(payload.latest.githubRawApkUrl).toBe('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.528.apk?provider=github-raw');
+        expect(payload.latest.githubRawDirectApkUrl).toBe('https://raw.githubusercontent.com/ypq123456789/MoRanJiangHu/apk-dist/releases/MoRanJiangHu-v1.0.528.apk');
+        expect(payload.latest.githubRawAcceleratedApkUrl).toBe('https://cloudflare-proxy-6rw.pages.dev/https://raw.githubusercontent.com/ypq123456789/MoRanJiangHu/apk-dist/releases/MoRanJiangHu-v1.0.528.apk');
         expect(payload.latest.r2ApkUrl).toBe('');
         expect(payload.latest.hi168ApkUrl).toBe('');
         expect(payload.latest.apkUrls).not.toContain('https://msjh.bacon159.pp.ua/api/apk/version/MoRanJiangHu-v1.0.528.apk?provider=b2');
@@ -98,9 +101,34 @@ describe('APK latest manifest proxy', () => {
         expect(payload.latest.preferredApkProvider).toBe('github');
         // GitHub 加速镜像必须排在 OneDrive 之前，客户端第一个可下载源不能是已废 B2。
         expect(payload.latest.apkUrls.indexOf(payload.latest.githubAcceleratedApkUrls[0])).toBeLessThan(
+            payload.latest.apkUrls.indexOf(payload.latest.githubRawAcceleratedApkUrl)
+        );
+        expect(payload.latest.apkUrls.indexOf(payload.latest.githubRawAcceleratedApkUrl)).toBeLessThan(
             payload.latest.apkUrls.indexOf(payload.latest.oneDriveApkUrl)
         );
         expect(payload.latest.b2ApkUrl).toBe('');
+        expect(payload.latest.apkUrls.some((url: string) => url.includes('provider=b2'))).toBe(false);
+    });
+
+    it('orders GitHub Raw proxy first when preferredApkProvider is github-raw', async () => {
+        const response = await onRequestGet({
+            request: buildRequest(),
+            env: buildEnv({
+                versionName: '1.0.604',
+                versionCode: 604,
+                preferredApkProvider: 'github-raw',
+                releaseNotes: ['改用 Raw 代理 APK 下载渠道']
+            })
+        } as any);
+
+        expect(response.status).toBe(200);
+        const payload = await response.json();
+
+        expect(payload.latest.preferredApkProvider).toBe('github-raw');
+        expect(payload.latest.apkUrls[1]).toBe('https://cloudflare-proxy-6rw.pages.dev/https://raw.githubusercontent.com/ypq123456789/MoRanJiangHu/apk-dist/releases/MoRanJiangHu-v1.0.604.apk');
+        expect(payload.latest.apkUrls.indexOf(payload.latest.githubRawAcceleratedApkUrl)).toBeLessThan(
+            payload.latest.apkUrls.indexOf(payload.latest.githubAcceleratedApkUrls[0])
+        );
         expect(payload.latest.apkUrls.some((url: string) => url.includes('provider=b2'))).toBe(false);
     });
 });

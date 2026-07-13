@@ -9,7 +9,9 @@ describe('release publish manifest script', () => {
         const source = readFileSync(scriptPath, 'utf8');
 
         expect(source).not.toContain("readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'hi168')");
-        expect(source).toContain("readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'github')");
+        expect(source).toContain("readEnv('MORAN_RELEASE_PREFERRED_APK_PROVIDER', 'github-raw')");
+        expect(source).toContain('githubRawAcceleratedApkUrl');
+        expect(source).toContain('githubRawDirectApkUrl: providerApkUrls.githubRawDirect');
         expect(source).toContain('providerApkUrls.onedrive');
         expect(source).toContain('providerApkUrls.onedriveDirect');
         expect(source).not.toContain('providerApkUrls.b2');

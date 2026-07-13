@@ -13,7 +13,7 @@ export const readEnvString = (env: any, name: string, fallback = ''): string => 
     typeof env?.[name] === 'string' && env[name].trim() ? env[name].trim() : fallback
 );
 
-export type ApkProvider = 'r2' | 'hi168' | 'b2' | 'github' | 'onedrive' | 'onedrive-direct' | 'onedrive-origin';
+export type ApkProvider = 'r2' | 'hi168' | 'b2' | 'github' | 'github-raw' | 'onedrive' | 'onedrive-direct' | 'onedrive-origin';
 
 export const readReleaseBaseUrl = (request: Request, env: any): string => {
     const configured = readEnvString(env, 'MORAN_RELEASE_BASE_URL');
@@ -141,9 +141,9 @@ export const buildVersionedApkFileName = (versionName: unknown): string => {
 
 export const readManifestPreferredApkProvider = (payload: any): ApkProvider => {
     const provider = payload?.latest?.preferredApkProvider || payload?.preferredApkProvider;
-    return provider === 'github' || provider === 'onedrive' || provider === 'onedrive-direct' || provider === 'onedrive-origin'
+    return provider === 'github' || provider === 'github-raw' || provider === 'onedrive' || provider === 'onedrive-direct' || provider === 'onedrive-origin'
         ? provider
-        : 'github';
+        : 'github-raw';
 };
 
 export const isOneDriveDirectProvider = (provider: unknown): boolean => (
@@ -156,7 +156,7 @@ export const isOneDriveProvider = (provider: unknown): boolean => (
 
 export const pickApkProvider = (_request: Request, _manifestPayload: any): ApkProvider => {
     // hi168 S3, R2, and B2 are retired for release distribution.
-    return 'github';
+    return 'github-raw';
 };
 
 export const buildVersionedApkHeaders = (
@@ -415,6 +415,8 @@ export const buildOneDriveApkRedirect = async (
 
 const GITHUB_REPO_OWNER = 'ypq123456789';
 const GITHUB_REPO_NAME = 'MoRanJiangHu';
+const GITHUB_RAW_APK_BRANCH = 'apk-dist';
+const DEFAULT_GITHUB_RAW_ACCELERATOR = 'https://cloudflare-proxy-6rw.pages.dev';
 
 // 国内直连 github.com release 下载极慢（实测约 15KB/s，常超时），因此默认经加速镜像代理。
 // 首选镜像可用环境变量 MORAN_GITHUB_RELEASE_ACCELERATOR 覆盖；设为空字符串则回退裸 github.com 直链。
@@ -455,6 +457,35 @@ export const buildGitHubApkRedirect = (
             'Cache-Control': cacheControl,
             'Content-Disposition': `attachment; filename="${fileName}"`,
             'X-Moran-Apk-Source': normalizedAccelerator ? 'github-release-accelerated' : 'github-release',
+            ...APK_CORS_HEADERS
+        },
+    });
+};
+
+const buildGitHubRawDirectUrl = (fileName: string): string => (
+    `https://raw.githubusercontent.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/${GITHUB_RAW_APK_BRANCH}/releases/${fileName}`
+);
+
+export const buildGitHubRawApkRedirect = (
+    fileName: string,
+    cacheControl = APK_VERSIONED_CACHE_CONTROL,
+    accelerator: string | undefined = DEFAULT_GITHUB_RAW_ACCELERATOR
+): Response | null => {
+    if (!/^MoRanJiangHu-v[0-9A-Za-z._-]+\.apk$/.test(fileName)) return null;
+    const directUrl = buildGitHubRawDirectUrl(fileName);
+    const normalizedAccelerator = typeof accelerator === 'string' ? accelerator.trim().replace(/\/+$/, '') : '';
+    const downloadUrl = normalizedAccelerator && /^https:\/\/[^/]+$/i.test(normalizedAccelerator)
+        ? `${normalizedAccelerator}/${directUrl}`
+        : directUrl;
+
+    return new Response(null, {
+        status: 302,
+        headers: {
+            Location: downloadUrl,
+            'Content-Type': 'application/vnd.android.package-archive',
+            'Cache-Control': cacheControl,
+            'Content-Disposition': `attachment; filename="${fileName}"`,
+            'X-Moran-Apk-Source': normalizedAccelerator ? 'github-raw-accelerated' : 'github-raw',
             ...APK_CORS_HEADERS
         },
     });
