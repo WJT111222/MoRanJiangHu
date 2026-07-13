@@ -1,4 +1,4 @@
-import type { CurrencySystem, CurrencyUnit, ModeRuntimeProfile, 题材模式类型, 性别比例配置, 开局生成性别类型 } from '../models/system';
+import type { CurrencySystem, CurrencyUnit, ModeRuntimeProfile, 模式市场行情模板, 模式界面文案覆盖, 题材模式类型, 性别比例配置, 开局生成性别类型 } from '../models/system';
 import { 获取题材模式配置, 规范化题材模式 } from '../data/workshopThemes/topicModeThemeData';
 import { 获取世界观货币层级配置 } from './currencyDisplay';
 import { 默认游戏设置, 规范化叙事平静值配置 } from './gameSettings';
@@ -773,6 +773,8 @@ export const 规范化模式运行时配置 = (raw?: any, fallbackMode?: unknown
     const official = 构建官方模式运行时配置基础(baseMode);
     const resource = raw?.items?.resourceToggles || {};
     const currencySystem = 规范化显式货币系统(raw?.economy?.currencySystem);
+    const marketEventTemplates = 规范化市场行情模板列表(raw?.economy?.marketEventTemplates);
+    const uiLabels = 规范化界面文案覆盖(raw?.uiLabels);
     const 旧资源转列表 = (r: Record<string, boolean>): string[] => {
         const list: string[] = [];
         if (r.food) list.push('饱腹');
@@ -809,7 +811,8 @@ export const 规范化模式运行时配置 = (raw?: any, fallbackMode?: unknown
             marketName: 文本(raw?.economy?.marketName, official.economy.marketName),
             marketVerb: 文本(raw?.economy?.marketVerb, official.economy.marketVerb),
             allowedItemTypes: 拆分模式配置短语(raw?.economy?.allowedItemTypes).length ? 拆分模式配置短语(raw.economy.allowedItemTypes) : official.economy.allowedItemTypes,
-            bannedKeywords: 拆分模式配置短语(raw?.economy?.bannedKeywords).length ? 拆分模式配置短语(raw.economy.bannedKeywords) : official.economy.bannedKeywords
+            bannedKeywords: 拆分模式配置短语(raw?.economy?.bannedKeywords).length ? 拆分模式配置短语(raw.economy.bannedKeywords) : official.economy.bannedKeywords,
+            ...(marketEventTemplates.length ? { marketEventTemplates } : {})
         },
         time: {
             displayFormat: ['traditional', 'numeric', 'western', 'modern', 'apocalypse', 'infinite'].includes(raw?.time?.displayFormat)
@@ -903,8 +906,58 @@ export const 规范化模式运行时配置 = (raw?: any, fallbackMode?: unknown
             conflictChecks: 拆分模式配置短语(raw?.validation?.conflictChecks).length ? 拆分模式配置短语(raw.validation.conflictChecks) : official.validation.conflictChecks,
             migrationCleanupRules: 拆分模式配置短语(raw?.validation?.migrationCleanupRules).length ? 拆分模式配置短语(raw.validation.migrationCleanupRules) : official.validation.migrationCleanupRules
         },
-        叙事平静值配置: 规范化叙事平静值配置(raw?.叙事平静值配置, official.叙事平静值配置)
+        叙事平静值配置: 规范化叙事平静值配置(raw?.叙事平静值配置, official.叙事平静值配置),
+        ...(uiLabels ? { uiLabels } : {})
     };
+};
+
+const 界面文案覆盖分区键: Array<keyof 模式界面文案覆盖> = ['菜单', '标题', '组织', '资源', '档案', '能力类别', '向导', '密度选项'];
+
+const 界面文案覆盖分区最大条目数 = 64;
+const 界面文案覆盖最大文本长度 = 120;
+
+const 规范化界面文案覆盖 = (raw: unknown): 模式界面文案覆盖 | null => {
+    if (!raw || typeof raw !== 'object') return null;
+    const result: 模式界面文案覆盖 = {};
+    let hasAny = false;
+    for (const section of 界面文案覆盖分区键) {
+        const value = (raw as Record<string, unknown>)[section];
+        if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+        const entries: Record<string, string> = {};
+        for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+            if (Object.keys(entries).length >= 界面文案覆盖分区最大条目数) break;
+            const label = 文本(item).slice(0, 界面文案覆盖最大文本长度);
+            const trimmedKey = key.trim().slice(0, 界面文案覆盖最大文本长度);
+            if (trimmedKey && label) entries[trimmedKey] = label;
+        }
+        if (Object.keys(entries).length > 0) {
+            result[section] = entries;
+            hasAny = true;
+        }
+    }
+    return hasAny ? result : null;
+};
+
+const 市场行情模板最大数量 = 24;
+const 市场行情模板允许影响类型 = new Set(['全部', '武器', '防具', '饰品', '消耗品', '材料', '秘籍', '杂物', '法宝']);
+
+const 规范化市场行情模板列表 = (raw: unknown): 模式市场行情模板[] => {
+    if (!Array.isArray(raw)) return [];
+    return raw.slice(0, 市场行情模板最大数量).map((item: any) => {
+        const 标题 = 文本(item?.标题).slice(0, 40);
+        const 描述 = 文本(item?.描述).slice(0, 200);
+        const 影响类型原始 = 文本(item?.影响类型);
+        const 影响类型 = 市场行情模板允许影响类型.has(影响类型原始) ? 影响类型原始 : '全部';
+        const 倍率 = Number(item?.价格倍率);
+        if (!标题 || !描述) return null;
+        return {
+            标题,
+            描述,
+            影响类型,
+            价格倍率: Number.isFinite(倍率) && 倍率 > 0 ? Math.min(5, Math.max(0.2, 倍率)) : 1,
+            ...(文本(item?.热点标签) ? { 热点标签: 文本(item?.热点标签).slice(0, 24) } : {})
+        };
+    }).filter(Boolean) as 模式市场行情模板[];
 };
 
 const 构建官方模式运行时配置基础 = (mode?: unknown): ModeRuntimeProfile => {

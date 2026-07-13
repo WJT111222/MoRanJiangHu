@@ -625,6 +625,30 @@ export interface MoneyAmount {
     baseAmount: number;
 }
 
+export interface 模式市场行情模板 {
+    标题: string;
+    描述: string;
+    影响类型: string;
+    价格倍率: number;
+    热点标签?: string;
+}
+
+/**
+ * 模式包 UI 文案覆盖（全部可选）。
+ * 键名与各消费侧的官方文案结构对齐；非法键在合并时被剔离，未覆盖的键回落到派生值或 baseMode 官方文案。
+ */
+export interface 模式界面文案覆盖 {
+    菜单?: Record<string, string>;
+    标题?: Record<string, string>;
+    组织?: Record<string, string>;
+    资源?: Record<string, string>;
+    档案?: Record<string, string>;
+    能力类别?: Record<string, string>;
+    向导?: Record<string, string>;
+    /** 键为官方密度选项 value（如 稀疏/适中/林立），值为覆盖后的选项显示文案 */
+    密度选项?: Record<string, string>;
+}
+
 export interface ModeRuntimeProfile {
     identity: {
         modeId: string;
@@ -653,6 +677,7 @@ export interface ModeRuntimeProfile {
         marketVerb: string;
         allowedItemTypes: string[];
         bannedKeywords: string[];
+        marketEventTemplates?: 模式市场行情模板[];
     };
     time: {
         displayFormat: 'traditional' | 'numeric' | 'western' | 'modern' | 'apocalypse' | 'infinite';
@@ -748,6 +773,7 @@ export interface ModeRuntimeProfile {
         migrationCleanupRules: string[];
     };
     性别比例演变预设?: boolean; // 题材模式建议值，游戏设置中未显式设置时使用
+    uiLabels?: 模式界面文案覆盖;
 }
 
 export interface OpeningConfig {
