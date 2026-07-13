@@ -70,4 +70,49 @@ describe('preset image proxy', () => {
         expect(response.headers.get('Content-Length')).toBe('123');
         expect(await response.text()).toBe('');
     });
+
+    it('uses the direct OpenList base and /d signed path for thumbnail downloads', async () => {
+        const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+            const url = String(input);
+            if (url === 'http://159.138.7.126:5244/api/fs/list') {
+                return new Response(JSON.stringify({
+                    code: 200,
+                    data: {
+                        content: [
+                            { name: '护符.webp', is_dir: false, sign: 'thumb-sign' }
+                        ]
+                    }
+                }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            }
+            if (url === 'http://159.138.7.126:5244/d/Onedrive/MoRanJiangHu/preset-items/thumbs/%E6%8A%A4%E7%AC%A6.webp?sign=thumb-sign') {
+                return new Response(new Uint8Array([1, 2, 3]), {
+                    status: 200,
+                    headers: { 'Content-Type': 'image/webp', 'Content-Length': '3' }
+                });
+            }
+            return new Response('unexpected ' + url, { status: 500 });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const response = await onRequestGet({
+            request: new Request('https://msjh.bacon159.pp.ua/api/preset-image/thumbs/%E6%8A%A4%E7%AC%A6.webp'),
+            env: {
+                ...env,
+                MORAN_OPENLIST_AUTH_TOKEN: 'test-token',
+                MORAN_OPENLIST_API_BASE_URL: 'http://159.138.7.126:5244',
+                MORAN_OPENLIST_DIRECT_BASE_URL: 'http://159.138.7.126:5244',
+                MORAN_OPENLIST_BASE_URL: 'https://openlist.bacon.de5.net'
+            },
+            params: { path: 'thumbs/护符.webp' }
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get('Content-Type')).toBe('image/webp');
+        expect(response.headers.get('X-Moran-Preset-Image-Source')).toBe('onedrive');
+        expect(fetchMock).toHaveBeenCalledWith('http://159.138.7.126:5244/api/fs/list', expect.any(Object));
+        expect(fetchMock).toHaveBeenCalledWith(
+            'http://159.138.7.126:5244/d/Onedrive/MoRanJiangHu/preset-items/thumbs/%E6%8A%A4%E7%AC%A6.webp?sign=thumb-sign',
+            expect.any(Object)
+        );
+    });
 });

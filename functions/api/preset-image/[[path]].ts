@@ -10,6 +10,47 @@ const LISTING_CACHE_CONTROL = 'public, max-age=3600';
 const S3_KEY_PATTERN = /^s3_[0-9]+_[0-9a-z]+\.(png|jpe?g|webp|gif|bmp)$/i;
 const ANY_IMAGE_PATTERN = /^[\p{L}\p{N} _\-().]+\.png$/u;
 const ANY_THUMB_PATTERN = /^thumbs\/[\p{L}\p{N} _\-().]+\.(webp|png|jpg)$/u;
+const OPENLIST_REQUEST_TIMEOUT_MS = 15000;
+
+const trimBaseUrl = (value: unknown, fallback = ''): string => (
+    String(value || fallback).trim().replace(/\/+$/, '')
+);
+
+const uniqueStrings = (values: string[]): string[] => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const value of values) {
+        const trimmed = value.trim().replace(/\/+$/, '');
+        if (!trimmed || seen.has(trimmed)) continue;
+        seen.add(trimmed);
+        result.push(trimmed);
+    }
+    return result;
+};
+
+const readOpenListPublicBaseUrl = (env: any): string => (
+    trimBaseUrl(env.MORAN_OPENLIST_PUBLIC_BASE_URL, trimBaseUrl(env.MORAN_OPENLIST_BASE_URL, 'https://openlist.bacon.de5.net'))
+);
+
+const readOpenListApiBases = (env: any): string[] => uniqueStrings([
+    trimBaseUrl(env.MORAN_OPENLIST_API_BASE_URL),
+    trimBaseUrl(env.MORAN_OPENLIST_BASE_URL),
+    readOpenListPublicBaseUrl(env)
+]);
+
+const readOpenListDownloadBases = (env: any): string[] => uniqueStrings([
+    trimBaseUrl(env.MORAN_OPENLIST_DIRECT_BASE_URL),
+    trimBaseUrl(env.MORAN_OPENLIST_API_BASE_URL),
+    trimBaseUrl(env.MORAN_OPENLIST_BASE_URL),
+    readOpenListPublicBaseUrl(env)
+]);
+
+const fetchWithTimeout = (url: string, init: RequestInit = {}): Promise<Response> => (
+    fetch(url, {
+        ...init,
+        signal: init.signal || AbortSignal.timeout(OPENLIST_REQUEST_TIMEOUT_MS)
+    })
+);
 
 const readPresetImagePath = (request: Request, params: any): string => {
     const rawParam = Array.isArray(params?.path)
@@ -43,17 +84,17 @@ interface OneDriveSignMap {
 const fetchOneDriveSignMap = async (
     env: any,
     subPath: string,
-    cache: Cache | null
+    cache: Cache | null,
+    refresh = false
 ): Promise<OneDriveSignMap> => {
-    const baseUrl = env.MORAN_OPENLIST_BASE_URL || 'https://openlist.bacon.de5.net';
     const authToken = env.MORAN_OPENLIST_AUTH_TOKEN;
     if (!authToken) throw new Error('OPENLIST_AUTH_TOKEN not configured');
 
     const mapCacheKey = new Request(
-        `${baseUrl}/__cache__/sign-map/${encodeURIComponent(subPath)}`,
+        `${readOpenListPublicBaseUrl(env)}/__cache__/sign-map/${encodeURIComponent(subPath)}`,
         { method: 'GET' }
     );
-    if (cache) {
+    if (cache && !refresh) {
         const cached = await cache.match(mapCacheKey);
         if (cached) {
             return cached.json() as Promise<OneDriveSignMap>;
@@ -69,20 +110,31 @@ const fetchOneDriveSignMap = async (
         password: '',
         page: 1,
         per_page: 1000,
-        refresh: false
+        refresh
     });
 
-    const listResp = await fetch(`${baseUrl}/api/fs/list`, {
-        method: 'POST',
-        headers: {
-            'Authorization': authToken,
-            'Content-Type': 'application/json'
-        },
-        body: listBody
-    });
-    if (!listResp.ok) throw new Error(`OpenList list failed: ${listResp.status}`);
-    const listJson = await listResp.json() as any;
-    if (listJson.code !== 200) throw new Error(listJson.message || 'OpenList error');
+    let listJson: any = null;
+    const errors: string[] = [];
+    for (const baseUrl of readOpenListApiBases(env)) {
+        try {
+            const listResp = await fetchWithTimeout(`${baseUrl}/api/fs/list`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': authToken,
+                    'Content-Type': 'application/json'
+                },
+                body: listBody
+            });
+            if (!listResp.ok) throw new Error(`HTTP ${listResp.status}`);
+            const payload = await listResp.json() as any;
+            if (payload.code !== 200) throw new Error(payload.message || 'OpenList error');
+            listJson = payload;
+            break;
+        } catch (error: any) {
+            errors.push(`${baseUrl}: ${error?.message || error}`);
+        }
+    }
+    if (!listJson) throw new Error(`OpenList list failed: ${errors.join('；')}`);
 
     const mapping: OneDriveSignMap = {};
     for (const item of (listJson.data?.content || [])) {
@@ -116,7 +168,6 @@ const proxyFromOneDrive = async (
     cache: Cache | null,
     request: Request
 ): Promise<Response> => {
-    const baseUrl = env.MORAN_OPENLIST_BASE_URL || 'https://openlist.bacon.de5.net';
     const authToken = env.MORAN_OPENLIST_AUTH_TOKEN;
     if (!authToken) throw new Error('OPENLIST_AUTH_TOKEN not configured');
 
@@ -124,22 +175,37 @@ const proxyFromOneDrive = async (
     const fileName = isThumb ? decodedPath.replace(/^thumbs\//, '') : decodedPath;
     const subPath = isThumb ? 'thumbs' : 'main';
 
-    const signMap = await fetchOneDriveSignMap(env, subPath, cache);
-    const sign = signMap[fileName];
+    let signMap = await fetchOneDriveSignMap(env, subPath, cache);
+    let sign = signMap[fileName];
+    if (!sign) {
+        signMap = await fetchOneDriveSignMap(env, subPath, cache, true);
+        sign = signMap[fileName];
+    }
     if (!sign) throw new Error(`File not found on OneDrive: ${fileName}`);
 
     const oneDrivePath = isThumb
         ? `/Onedrive/MoRanJiangHu/preset-items/thumbs/${encodeURIComponent(fileName)}`
         : `/Onedrive/MoRanJiangHu/preset-items/${encodeURIComponent(fileName)}`;
 
-    const downloadUrl = `${baseUrl}/p${oneDrivePath}?sign=${encodeURIComponent(sign)}`;
-    const upstream = await fetch(downloadUrl, {
-        method: 'GET',
-        headers: {
-            Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+    let upstream: Response | null = null;
+    const errors: string[] = [];
+    for (const baseUrl of readOpenListDownloadBases(env)) {
+        try {
+            const downloadUrl = `${baseUrl}/d${oneDrivePath}?sign=${encodeURIComponent(sign)}`;
+            const response = await fetchWithTimeout(downloadUrl, {
+                method: 'GET',
+                headers: {
+                    Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+                }
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            upstream = response;
+            break;
+        } catch (error: any) {
+            errors.push(`${baseUrl}: ${error?.message || error}`);
         }
-    });
-    if (!upstream.ok) throw new Error(`OneDrive download failed: ${upstream.status}`);
+    }
+    if (!upstream) throw new Error(`OneDrive download failed: ${errors.join('；')}`);
 
     const headers = new Headers();
     const contentType = upstream.headers.get('Content-Type') || '';
