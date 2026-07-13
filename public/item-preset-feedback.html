@@ -361,9 +361,6 @@ const imageObserver = 'IntersectionObserver' in window
     }, { rootMargin: '360px 0px', threshold: 0.01 })
   : null;
 function imageUrlForAttempt(url, attempt) {
-  if (attempt < 2 && /^https:\/\/cdn\.nodeimage\.com\/i\/[A-Za-z0-9_-]+\.(png|jpe?g|webp|gif)$/i.test(url)) {
-    return `/api/nodeimage-cache?url=${encodeURIComponent(url)}`;
-  }
   return url;
 }
 function cardImageCandidates(item) {

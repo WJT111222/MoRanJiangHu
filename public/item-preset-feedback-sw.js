@@ -1,4 +1,4 @@
-const CACHE_VERSION = '2026-06-07-v4';
+const CACHE_VERSION = '2026-07-13-v5';
 const CACHE_NAME = `msjh-item-preset-feedback-${CACHE_VERSION}`;
 const META_CACHE_NAME = `msjh-item-preset-feedback-meta-${CACHE_VERSION}`;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -11,6 +11,12 @@ function isPresetFeedbackDataRequest(request) {
 
 function isPresetFeedbackAsset(request) {
   if (isPresetFeedbackDataRequest(request)) return true;
+  if (request.method === 'GET') {
+    const url = new URL(request.url);
+    if (url.origin === 'https://cdn.nodeimage.com' && /^\/i\/[A-Za-z0-9_-]+\.(png|jpe?g|webp|gif)$/i.test(url.pathname)) {
+      return true;
+    }
+  }
   return false;
 }
 
