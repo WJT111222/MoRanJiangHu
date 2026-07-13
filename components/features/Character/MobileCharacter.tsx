@@ -15,7 +15,8 @@ import { use图片资源回源预取 } from '../../../hooks/useImageAssetPrefetc
 import { 计算角色总气血 } from '../../../utils/characterVitals';
 import { 获取世界观货币卡片信息, 获取角色金钱显示列表 } from '../../../utils/currencyDisplay';
 import { 读取可分配属性点, type 可分配六维属性键 } from '../../../utils/characterAttributePoints';
-import { 获取题材资源文案 } from '../../../utils/resourceLabels';
+import { 获取题材档案文案, 获取题材资源文案 } from '../../../utils/resourceLabels';
+import { 是否自定义模式运行时配置 } from '../../../utils/effectiveTopicProfile';
 import { NPC是否扶她, NPC是否男娘 } from '../../../utils/npcGenderFlags';
 
 interface Props {
@@ -155,6 +156,9 @@ const MobileCharacter: React.FC<Props> = ({
     };
     const 总气血 = useMemo(() => 计算角色总气血(character), [character]);
     const 资源文案 = 获取题材资源文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
+    const 档案文案 = 获取题材档案文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
+    const 使用自定义档案文案 = 是否自定义模式运行时配置(openingConfig?.modeRuntimeProfile, openingConfig?.题材模式);
+    const 档案标签 = (value: string | undefined, fallback: string): string => (使用自定义档案文案 && value ? value : fallback);
     const [activeView, setActiveView] = useState<MobileCharacterView>('profile');
     const [busyAction, setBusyAction] = useState('');
     const [generateOptions, setGenerateOptions] = useState<主角生图选项>({
@@ -353,7 +357,7 @@ const MobileCharacter: React.FC<Props> = ({
                                 )}
                             </div>
                             <div className="min-w-0">
-                                <div className="text-[10px] tracking-[0.35em] text-wuxia-gold/60">角色档案</div>
+                                <div className="text-[10px] tracking-[0.35em] text-wuxia-gold/60">{档案标签(档案文案.档案题头, '角色档案')}</div>
                                 <h3 className="mt-1 truncate text-xl font-bold tracking-[0.18em] text-wuxia-gold">{character.姓名}</h3>
                                 <p className="mt-1 text-[11px] text-gray-400">
                                     {启用修炼体系 ? `${character.称号 || '无称号'} · ${character.境界}` : (character.称号 || '无称号')}
@@ -408,7 +412,7 @@ const MobileCharacter: React.FC<Props> = ({
                                         )}
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <div className="text-[10px] tracking-[0.32em] text-wuxia-gold/65">侠客印记</div>
+                                        <div className="text-[10px] tracking-[0.32em] text-wuxia-gold/65">{档案标签(档案文案.编号, '侠客印记')}</div>
                                         <div className="mt-2 text-lg font-semibold text-wuxia-gold">{character.姓名}</div>
                                         <div className="mt-1 text-[12px] text-gray-300">
                                             {启用修炼体系 ? `${character.称号 || '无称号'} · ${character.境界}` : (character.称号 || '无称号')}
@@ -422,7 +426,7 @@ const MobileCharacter: React.FC<Props> = ({
                             </div>
 
                             <div className="rounded-2xl border border-wuxia-gold/15 bg-black/25 p-4">
-                                <div className="mb-3 text-[10px] tracking-[0.32em] text-wuxia-gold/65">身份文牒</div>
+                                <div className="mb-3 text-[10px] tracking-[0.32em] text-wuxia-gold/65">{档案标签(档案文案.信息, '身份文牒')}</div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <MobileStatCard label="背景" value={character.出身背景?.名称 || '无'} accent />
                                     <MobileStatCard label="身份" value={身份信息} />
@@ -443,7 +447,7 @@ const MobileCharacter: React.FC<Props> = ({
                             )}
 
                             <div className="rounded-2xl border border-gray-800 bg-black/25 p-4">
-                                <div className="mb-3 text-[10px] tracking-[0.32em] text-wuxia-gold/65">外貌描摹</div>
+                                <div className="mb-3 text-[10px] tracking-[0.32em] text-wuxia-gold/65">{档案标签(档案文案.外貌, '外貌描摹')}</div>
                                 <p className="text-[13px] leading-7 text-gray-300">{character.外貌 || '暂无外貌记录。'}</p>
                             </div>
 
@@ -464,7 +468,7 @@ const MobileCharacter: React.FC<Props> = ({
 
                             <div className="rounded-2xl border border-wuxia-red/20 bg-[linear-gradient(180deg,rgba(120,20,20,0.12),rgba(0,0,0,0.12))] p-4">
                                 <div className="mb-3 flex items-center justify-between">
-                                    <div className="text-[10px] tracking-[0.32em] text-wuxia-red/80">天赋卷宗</div>
+                                    <div className="text-[10px] tracking-[0.32em] text-wuxia-red/80">{档案标签(档案文案.天赋, '天赋卷宗')}</div>
                                     <div className="text-[10px] text-gray-500">共 {天赋列表.length} 项</div>
                                 </div>
                                 <div className="space-y-3">
@@ -492,7 +496,7 @@ const MobileCharacter: React.FC<Props> = ({
                             </div>
 
                             <div className="rounded-2xl border border-gray-800 bg-black/25 p-4">
-                                <div className="mb-3 text-[10px] tracking-[0.32em] text-wuxia-gold/65">基础六维</div>
+                                <div className="mb-3 text-[10px] tracking-[0.32em] text-wuxia-gold/65">{档案标签(档案文案.六维, '基础六维')}</div>
                                 <div className="grid grid-cols-3 gap-2.5">
                                     {attributes.map((attr) => (
                                         <div key={attr.key} className="rounded-xl border border-gray-800 bg-white/[0.03] px-2 py-3 text-center">

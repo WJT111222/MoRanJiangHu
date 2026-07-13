@@ -1,7 +1,7 @@
 import type { 游戏设置结构, OpeningConfig } from '../../types';
 import { 按功能开关过滤提示词内容, 构建修炼体系附加块 } from '../../utils/promptFeatureToggles';
 import { 是否仙侠开局模式 } from './openingConfig';
-import { 获取题材模式配置 } from '../../utils/topicModeProfiles';
+import { 解析生效题材配置 } from '../../utils/effectiveTopicProfile';
 
 export const 世界观生成系统提示词 = `
 你是 WuXia 项目的世界观生成器。任务是只生成“世界观设定文本（world_prompt）”。
@@ -131,8 +131,8 @@ export const 获取世界观生成系统提示词 = (
     config?: Partial<游戏设置结构> | null,
     openingConfig?: OpeningConfig | null
 ): string => {
-    const 题材配置 = 获取题材模式配置(openingConfig?.题材模式);
-    const 题材替换规则 = 题材配置.group === 'wuxia'
+    const 题材配置 = 解析生效题材配置(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
+    const 题材替换规则 = 题材配置.group === 'wuxia' && !题材配置.usesCustomRuntime
         ? ''
         : [
             `【${题材配置.label}题材替换规则】`,
@@ -197,7 +197,7 @@ export const 构建世界观生成用户提示词 = (
     config?: Partial<游戏设置结构> | null,
     openingConfig?: OpeningConfig | null
 ): string => {
-    const 题材配置 = 获取题材模式配置(openingConfig?.题材模式);
+    const 题材配置 = 解析生效题材配置(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
     return 按功能开关过滤提示词内容(`
 【世界生成上下文】
 ${worldContext}

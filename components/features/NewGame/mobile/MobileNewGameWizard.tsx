@@ -43,11 +43,11 @@ import {
     获取创意工坊角色默认值,
     获取创意工坊难度选项,
     获取创意工坊世界规模选项,
-    获取题材模式配置,
     清理官方题材手动提示词残留,
     题材模式顺序
 } from '../../../../utils/workshopEngine';
 import { 构建官方模式运行时配置, 规范化模式运行时配置 } from '../../../../utils/modeRuntimeProfile';
+import { 解析生效题材配置 } from '../../../../utils/effectiveTopicProfile';
 import { 构建默认技艺 } from '../../../../utils/skillDefaults';
 import { 默认境界母板提示词 } from '../../../../prompts/runtime/fandom';
 import { 设置键 } from '../../../../utils/settingsSchema';
@@ -754,14 +754,14 @@ const MobileNewGameWizard: React.FC<Props> = ({ onComplete, onCancel, loading, a
     const partnerRemainingPoints = totalStatBudget - partnerUsedPoints;
     const stepProgress = ((step + 1) / STEPS.length) * 100;
     const currentStepLabel = STEPS[step] || '创建';
-    const 当前题材配置 = useMemo(() => 获取题材模式配置(openingConfig.题材模式), [openingConfig.题材模式]);
+    const 当前题材配置 = useMemo(() => 解析生效题材配置(openingConfig.题材模式, openingConfig.modeRuntimeProfile), [openingConfig.题材模式, openingConfig.modeRuntimeProfile]);
     const 当前难度设定 = useMemo(() => 获取题材化难度设定(worldConfig.difficulty, openingConfig.题材模式), [worldConfig.difficulty, openingConfig.题材模式]);
     const 当前开局配置文案 = useMemo(
         () => 获取题材开局配置文案(openingConfig.题材模式, openingConfig.modeRuntimeProfile),
         [openingConfig.题材模式, openingConfig.modeRuntimeProfile]
     );
-    const 当前关系侧重选项 = useMemo(() => 获取题材关系侧重选项(openingConfig.题材模式), [openingConfig.题材模式]);
-    const 当前开局切入偏好选项 = useMemo(() => 获取题材开局切入偏好选项(openingConfig.题材模式), [openingConfig.题材模式]);
+    const 当前关系侧重选项 = useMemo(() => 获取题材关系侧重选项(openingConfig.题材模式, openingConfig.modeRuntimeProfile), [openingConfig.题材模式, openingConfig.modeRuntimeProfile]);
+    const 当前开局切入偏好选项 = useMemo(() => 获取题材开局切入偏好选项(openingConfig.题材模式, openingConfig.modeRuntimeProfile), [openingConfig.题材模式, openingConfig.modeRuntimeProfile]);
     const 当前伙伴关系占位 = 当前题材配置.group === 'apocalypse'
         ? '与主角关系，例如同路幸存者、搜救搭档、营地队友'
         : 当前题材配置.group === 'modern'

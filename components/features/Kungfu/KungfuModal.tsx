@@ -3,16 +3,18 @@ import { 功法结构 } from '../../../models/kungfu';
 import { getRarityNameClass, getRarityStyles } from '../../ui/rarityStyles';
 import { IconLock, IconScroll, IconSparkles, IconYinYang } from '../../ui/Icons';
 import { 获取题材界面文案 } from '../../../utils/resourceLabels';
-import type { 题材模式类型 } from '../../../models/system';
+import { 格式化能力类别 } from '../../../utils/abilityCategoryLabels';
+import type { ModeRuntimeProfile, 题材模式类型 } from '../../../models/system';
 
 interface Props {
     skills: 功法结构[];
     onClose: () => void;
     topicMode?: string;
+    runtimeProfile?: ModeRuntimeProfile | null;
 }
 
-const 获取功法文案 = (topicMode?: string) => {
-    const labels = 获取题材界面文案(topicMode as 题材模式类型 | undefined).标题;
+const 获取功法文案 = (topicMode?: string, runtimeProfile?: ModeRuntimeProfile | null) => {
+    const labels = 获取题材界面文案(topicMode as 题材模式类型 | undefined, runtimeProfile).标题;
     return {
         title: labels.能力,
         subtitle: labels.能力副题,
@@ -51,41 +53,8 @@ const 获取功法文案 = (topicMode?: string) => {
     };
 };
 
-const 格式化武学类别 = (type: unknown, topicMode?: string): string => {
-    const text = typeof type === 'string' ? type.trim() : '';
-    if (!text) return '未分类';
-    if (topicMode === '无限流') {
-        const labels: Record<string, string> = { 招式: '主动能力', 内功: '精神训练', 外功: '体能强化', 轻功: '机动能力', 被动: '被动能力', 功法: '综合强化', 心法: '心理锚定', 身法: '机动能力', 术法: '超能力', 神通: '血统能力' };
-        return labels[text] || text;
-    }
-    if (topicMode === '西方奇幻') {
-        const labels: Record<string, string> = { 招式: '战技', 内功: '魔力训练', 外功: '防护训练', 轻功: '机动专长', 被动: '被动专长', 功法: '综合能力', 心法: '冥想法', 身法: '机动专长', 术法: '法术', 神通: '传奇能力' };
-        return labels[text] || text;
-    }
-    if (topicMode === '仙侠') {
-        const labels: Record<string, string> = { 招式: '术式', 内功: '心法', 外功: '炼体法', 轻功: '遁法', 被动: '道基被动', 功法: '法门', 心法: '心法', 身法: '遁法', 术法: '术法', 神通: '神通' };
-        return labels[text] || text;
-    }
-    if (topicMode === '末日丧尸') {
-        const labels: Record<string, string> = { 招式: '战斗技巧', 内功: '体能训练', 外功: '防护训练', 轻功: '移动技巧', 被动: '生存经验', 功法: '综合训练', 心法: '心理调节', 身法: '移动技巧' };
-        return labels[text] || text;
-    }
-    if (topicMode === '现代都市' || topicMode === '灵气复苏' || topicMode === '都市修仙') {
-        const labels: Record<string, string> = { 招式: '行动能力', 内功: '专注训练', 外功: '体能训练', 轻功: '机动能力', 被动: '被动能力', 功法: '综合能力', 心法: '心理训练', 身法: '机动能力', 术法: '特殊能力', 神通: '高阶能力' };
-        return labels[text] || text;
-    }
-    const labels: Record<string, string> = {
-        招式: '武技',
-        内功: '内功心法',
-        外功: '外功',
-        轻功: '身法轻功',
-        被动: '杂学被动',
-    };
-    return labels[text] || text;
-};
-
-const KungfuModal: React.FC<Props> = ({ skills, onClose, topicMode }) => {
-    const 文案 = 获取功法文案(topicMode);
+const KungfuModal: React.FC<Props> = ({ skills, onClose, topicMode, runtimeProfile }) => {
+    const 文案 = 获取功法文案(topicMode, runtimeProfile);
     const safeSkills = Array.isArray(skills) ? skills : [];
     const [selectedId, setSelectedId] = useState<string | null>(
         safeSkills.length > 0 ? safeSkills[0].ID : null
@@ -265,7 +234,7 @@ const KungfuModal: React.FC<Props> = ({ skills, onClose, topicMode }) => {
                                                 品质 · {currentSkill.品质}
                                             </span>
                                             <span className="text-[10px] px-3 py-1.5 bg-gray-900 text-gray-400 rounded-sm border border-gray-700 font-serif tracking-widest shadow-inner">
-                                                {文案.category} · {格式化武学类别(currentSkill.类型, topicMode)}
+                                                {文案.category} · {格式化能力类别(currentSkill.类型, topicMode as 题材模式类型 | undefined, runtimeProfile)}
                                             </span>
                                             <div className="flex-1 border-b border-dashed border-wuxia-gold/20 mx-4"></div>
                                             <div className="text-xs text-wuxia-gold/60 font-serif italic border border-wuxia-gold/10 px-3 py-1 rounded bg-black/40">

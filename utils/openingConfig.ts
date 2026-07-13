@@ -14,6 +14,7 @@ import type {
 } from '../types';
 import { 获取题材模式配置, 获取题材模式选项, 规范化题材模式 } from './topicModeProfiles';
 import { 构建官方模式运行时配置, 规范化模式运行时配置 } from './modeRuntimeProfile';
+import { 是否自定义模式运行时配置 } from './effectiveTopicProfile';
 import {
     创建主题默认属性分配,
     创建主题默认初始伙伴配置,
@@ -373,13 +374,22 @@ export const 获取题材开局配置文案 = (mode?: 题材模式类型, runtim
     }, runtimeProfile);
 };
 
-export const 获取题材关系侧重选项 = (mode?: 题材模式类型): Array<{ value: 关系侧重类型; label: string }> => {
-    const copy = 获取题材开局配置文案(mode);
+/**
+ * 仅当 runtime 来自自定义模式包时才参与选项换源；
+ * 官方模式自动生成的 runtime 不进入，保证官方模式选项文案与历史版本逐字节一致。
+ */
+export const 仅自定义运行时 = (mode?: 题材模式类型, runtimeProfile?: unknown): unknown => {
+    if (!runtimeProfile || typeof runtimeProfile !== 'object') return undefined;
+    return 是否自定义模式运行时配置(runtimeProfile as any, mode) ? runtimeProfile : undefined;
+};
+
+export const 获取题材关系侧重选项 = (mode?: 题材模式类型, runtimeProfile?: unknown): Array<{ value: 关系侧重类型; label: string }> => {
+    const copy = 获取题材开局配置文案(mode, 仅自定义运行时(mode, runtimeProfile));
     return 关系侧重选项.map((item) => ({ ...item, label: copy.relationLabels[item.value] || item.label }));
 };
 
-export const 获取题材开局切入偏好选项 = (mode?: 题材模式类型): Array<{ value: 开局切入偏好类型; label: string; hint: string }> => {
-    const copy = 获取题材开局配置文案(mode);
+export const 获取题材开局切入偏好选项 = (mode?: 题材模式类型, runtimeProfile?: unknown): Array<{ value: 开局切入偏好类型; label: string; hint: string }> => {
+    const copy = 获取题材开局配置文案(mode, 仅自定义运行时(mode, runtimeProfile));
     return 开局切入偏好选项.map((item) => ({ ...item, ...(copy.cutInLabels[item.value] || {}) }));
 };
 

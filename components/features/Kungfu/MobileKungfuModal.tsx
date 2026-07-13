@@ -2,16 +2,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { 功法结构 } from '../../../models/kungfu';
 import { getRarityNameClass, getRarityStyles } from '../../ui/rarityStyles';
 import { 获取题材界面文案 } from '../../../utils/resourceLabels';
-import type { 题材模式类型 } from '../../../models/system';
+import { 格式化能力类别 } from '../../../utils/abilityCategoryLabels';
+import { 是否自定义模式运行时配置 } from '../../../utils/effectiveTopicProfile';
+import type { ModeRuntimeProfile, 题材模式类型 } from '../../../models/system';
 
 interface Props {
     skills: 功法结构[];
     onClose: () => void;
     topicMode?: string;
+    runtimeProfile?: ModeRuntimeProfile | null;
 }
 
-const 获取移动功法文案 = (topicMode?: string) => {
-    const labels = 获取题材界面文案(topicMode as 题材模式类型 | undefined).标题;
+const 获取移动功法文案 = (topicMode?: string, runtimeProfile?: ModeRuntimeProfile | null) => {
+    const labels = 获取题材界面文案(topicMode as 题材模式类型 | undefined, runtimeProfile).标题;
     return {
         title: labels.能力,
         learned: `已掌握${labels.能力}`,
@@ -34,8 +37,13 @@ const 获取移动功法文案 = (topicMode?: string) => {
     };
 };
 
-const MobileKungfuModal: React.FC<Props> = ({ skills, onClose, topicMode }) => {
-    const 文案 = 获取移动功法文案(topicMode);
+const MobileKungfuModal: React.FC<Props> = ({ skills, onClose, topicMode, runtimeProfile }) => {
+    const 文案 = 获取移动功法文案(topicMode, runtimeProfile);
+    const 使用自定义类别 = 是否自定义模式运行时配置(runtimeProfile, topicMode as 题材模式类型 | undefined);
+    // 官方模式保持移动端历史展示（直接渲染原始类别），仅自定义模式包走统一类别换源
+    const 显示类别 = (value?: string) => (
+        使用自定义类别 ? 格式化能力类别(value, topicMode as 题材模式类型 | undefined, runtimeProfile) : value
+    );
     const safeSkills = Array.isArray(skills) ? skills : [];
     const [selectedId, setSelectedId] = useState<string | null>(safeSkills.length > 0 ? safeSkills[0].ID : null);
 
@@ -83,7 +91,7 @@ const MobileKungfuModal: React.FC<Props> = ({ skills, onClose, topicMode }) => {
                                     >
                                         <div className={`text-sm font-serif ${getRarityNameClass(s.品质)} ${selected ? 'font-bold' : ''}`}>{s.名称}</div>
                                         <div className="text-[10px] text-gray-500 flex items-center gap-1.5">
-                                            <span>{s.类型} · 第{s.当前重数}{文案.unit}</span>
+                                            <span>{显示类别(s.类型)} · 第{s.当前重数}{文案.unit}</span>
                                             <span className={`${getRarityStyles(s.品质).text} ${getRarityStyles(s.品质).glow}`}>{s.品质}</span>
                                         </div>
                                     </button>
@@ -103,7 +111,7 @@ const MobileKungfuModal: React.FC<Props> = ({ skills, onClose, topicMode }) => {
                                     </div>
                                     <div className="text-right text-[10px] text-gray-400">
                                         <div className={`inline-block px-1.5 py-0.5 rounded border ${getRarityStyles(current.品质).badge}`}>{current.品质}</div>
-                                        <div className="mt-1">{current.类型}</div>
+                                        <div className="mt-1">{显示类别(current.类型)}</div>
                                     </div>
                                 </div>
                                 <p className="text-xs text-gray-300 mt-3 leading-relaxed">{current.描述}</p>

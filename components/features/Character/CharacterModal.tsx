@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+    OpeningConfig,
     角色数据结构,
     视觉设置结构,
     接口设置结构,
@@ -29,6 +30,7 @@ interface Props {
     character: 角色数据结构;
     onClose: () => void;
     visualConfig?: 视觉设置结构;
+    openingConfig?: OpeningConfig;
     apiConfig?: 接口设置结构;
     playerAnchor?: 角色锚点结构 | null;
     nsfwEnabled?: boolean;
@@ -116,6 +118,7 @@ const CharacterModal: React.FC<Props> = ({
     character,
     onClose,
     visualConfig,
+    openingConfig,
     apiConfig,
     playerAnchor,
     nsfwEnabled = false,
@@ -364,6 +367,7 @@ const CharacterModal: React.FC<Props> = ({
                             <CharacterProfileCard
                                 character={character}
                                 visualConfig={visualConfig}
+                                openingConfig={openingConfig}
                                 onAllocateAttributePoint={onAllocateAttributePoint}
                             />
                         </div>

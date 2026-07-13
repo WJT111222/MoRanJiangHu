@@ -519,7 +519,7 @@ const App: React.FC = () => {
     const [showCloudPlay, setShowCloudPlay] = React.useState(false);
     const [auctionHouseState, setAuctionHouseState] = React.useState<拍卖行状态>(() => {
         try {
-            return 读取拍卖行状态(undefined, { 题材模式: state.开局配置?.题材模式 });
+            return 读取拍卖行状态(undefined, { 题材模式: state.开局配置?.题材模式, 模式运行时: state.开局配置?.modeRuntimeProfile });
         } catch (error) {
             recordDiagnosticLog('warn', ['拍卖行初始化失败，已使用空状态兜底', error]);
             return 清理并补货({
@@ -528,7 +528,7 @@ const App: React.FC = () => {
                 最近补货时间: 0,
                 行情列表: [],
                 最近行情时间: 0
-            }, { 允许系统补货: false, 题材模式: state.开局配置?.题材模式 });
+            }, { 允许系统补货: false, 题材模式: state.开局配置?.题材模式, 模式运行时: state.开局配置?.modeRuntimeProfile });
         }
     });
     const auctionCurrencyOptions = React.useMemo(() => ({
@@ -699,10 +699,10 @@ const App: React.FC = () => {
         return unsubscribe;
     }, [actions]);
     React.useEffect(() => {
-        const next = 清理并补货(读取拍卖行状态(auctionHouseScope, { 题材模式: state.开局配置?.题材模式 }), { 题材模式: state.开局配置?.题材模式 });
+        const next = 清理并补货(读取拍卖行状态(auctionHouseScope, { 题材模式: state.开局配置?.题材模式, 模式运行时: state.开局配置?.modeRuntimeProfile }), { 题材模式: state.开局配置?.题材模式, 模式运行时: state.开局配置?.modeRuntimeProfile });
         setAuctionHouseState(next);
         保存拍卖行状态(next, auctionHouseScope);
-    }, [auctionHouseScope, state.开局配置?.题材模式]);
+    }, [auctionHouseScope, state.开局配置?.题材模式, state.开局配置?.modeRuntimeProfile]);
     React.useEffect(() => {
         const handleAuctionLoaded = (event: Event) => {
             const detail = (event as CustomEvent<{ scope?: string; state?: 拍卖行状态 }>).detail;
@@ -1346,11 +1346,11 @@ const App: React.FC = () => {
         factionAuctionHandledRef.current = signatureHash;
         // 投放到拍卖行
         setAuctionHouseState((prev) => {
-            const next = 从势力互动投放拍卖品(prev, pendingItems, { scope: auctionHouseScope, 题材模式: state.开局配置?.题材模式 });
+            const next = 从势力互动投放拍卖品(prev, pendingItems, { scope: auctionHouseScope, 题材模式: state.开局配置?.题材模式, 模式运行时: state.开局配置?.modeRuntimeProfile });
             return next;
         });
         console.info('[拍卖行桥接] 已从势力互动投放', pendingItems.length, '件物品');
-    }, [state.世界?.拍卖行待投放物品, auctionHouseScope, state.开局配置?.题材模式]);
+    }, [state.世界?.拍卖行待投放物品, auctionHouseScope, state.开局配置?.题材模式, state.开局配置?.modeRuntimeProfile]);
 
     const auctionRollHandledRef = React.useRef<string>('');
     React.useEffect(() => {
@@ -1366,13 +1366,14 @@ const App: React.FC = () => {
                 允许系统补货: true,
                 最大系统补货数量: activeCount < 4 ? 2 : 1,
                 目标在售数量: 12,
-                题材模式: state.开局配置?.题材模式
+                题材模式: state.开局配置?.题材模式,
+                模式运行时: state.开局配置?.modeRuntimeProfile
             });
             if (next === prev || next.拍卖品列表 === prev.拍卖品列表) return prev;
             保存拍卖行状态(next, auctionHouseScope);
             return next;
         });
-    }, [auctionHouseScope, latestAssistantMessage, state.view, state.开局配置?.题材模式]);
+    }, [auctionHouseScope, latestAssistantMessage, state.view, state.开局配置?.题材模式, state.开局配置?.modeRuntimeProfile]);
 
     React.useEffect(() => {
         const feature = state.apiConfig?.功能模型占位;
@@ -4189,6 +4190,7 @@ const App: React.FC = () => {
                                     character={state.角色}
                                     onClose={() => setShowCharacter(false)}
                                     visualConfig={effectiveVisualConfig}
+                                    openingConfig={state.开局配置}
                                     apiConfig={state.apiConfig}
                                     playerAnchor={主角锚点}
                                     nsfwEnabled={safeGameConfig?.启用NSFW模式 === true}
@@ -4322,12 +4324,14 @@ const App: React.FC = () => {
                                 <MobileKungfuModal
                                     skills={safeCharacter?.功法列表 || []}
                                     topicMode={state.开局配置?.题材模式}
+                                    runtimeProfile={state.开局配置?.modeRuntimeProfile}
                                     onClose={() => setters.setShowKungfu(false)}
                                 />
                             ) : (
                                 <KungfuModal
                                     skills={safeCharacter?.功法列表 || []}
                                     topicMode={state.开局配置?.题材模式}
+                                    runtimeProfile={state.开局配置?.modeRuntimeProfile}
                                     onClose={() => setters.setShowKungfu(false)}
                                 />
                             )}

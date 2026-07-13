@@ -1,10 +1,11 @@
 {
-  "versionCode": 609,
-  "versionName": "1.0.609",
+  "versionCode": 610,
+  "versionName": "1.0.610",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "修复手机 APK 打开创意工坊时进入带工具栏内置浏览器的问题：现在会在应用主界面内直接进入线上创意工坊页面。",
-    "修复创意工坊入口被更新日志弹窗遮挡的问题：从 APK 打开创意工坊时会直接显示创意工坊内容。",
+    "修复部分设备启动时因匿名跨域 Script error. 误显示“应用启动失败”的问题，第三方脚本噪声不再挡住进入游戏。",
+    "模式包运行时配置贯通到新建向导、角色/功法界面、生成提示词和拍卖行：自定义模式包的组织称谓、资源文案、市场名称、行情模板和题材口径会更一致。",
+    "强化官方题材零回归保护：官方模式和官方 runtime 不会被自定义 uiLabels 误覆盖。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
@@ -583,11 +584,12 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "修复手机 APK 打开创意工坊时进入带工具栏内置浏览器的问题：现在会在应用主界面内直接进入线上创意工坊页面。",
-    "修复创意工坊入口被更新日志弹窗遮挡的问题：从 APK 打开创意工坊时会直接显示创意工坊内容。",
+    "修复部分设备启动时因匿名跨域 Script error. 误显示“应用启动失败”的问题，第三方脚本噪声不再挡住进入游戏。",
+    "模式包运行时配置贯通到新建向导、角色/功法界面、生成提示词和拍卖行：自定义模式包的组织称谓、资源文案、市场名称、行情模板和题材口径会更一致。",
+    "强化官方题材零回归保护：官方模式和官方 runtime 不会被自定义 uiLabels 误覆盖。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
-  "notes": "修复手机 APK 打开创意工坊时进入带工具栏内置浏览器的问题：现在会在应用主界面内直接进入线上创意工坊页面。\n修复创意工坊入口被更新日志弹窗遮挡的问题：从 APK 打开创意工坊时会直接显示创意工坊内容。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-  "releasePublishedAt": "2026-07-14T00:49:48+08:00"
+  "notes": "修复部分设备启动时因匿名跨域 Script error. 误显示“应用启动失败”的问题，第三方脚本噪声不再挡住进入游戏。\n模式包运行时配置贯通到新建向导、角色/功法界面、生成提示词和拍卖行：自定义模式包的组织称谓、资源文案、市场名称、行情模板和题材口径会更一致。\n强化官方题材零回归保护：官方模式和官方 runtime 不会被自定义 uiLabels 误覆盖。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
+  "releasePublishedAt": "2026-07-14T01:48:03+08:00"
 }

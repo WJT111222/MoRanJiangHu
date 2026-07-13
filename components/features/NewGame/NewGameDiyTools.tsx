@@ -10,6 +10,7 @@ import {
     normalizeWorldMapDraft,
 } from '../../../utils/newGameDiy';
 import DiyMapEditor from './DiyMapEditor';
+import { 是否自定义模式运行时配置, 解析生效题材配置 } from '../../../utils/effectiveTopicProfile';
 
 type Props = {
     worldConfig: WorldGenConfig;
@@ -60,18 +61,24 @@ export const containsDisallowedRealmTermsForDiy = (
 
 export const buildWorldContextForDiy = (worldConfig: WorldGenConfig, openingConfig?: OpeningConfig): string => {
     const topicMode = 获取DIY题材模式(worldConfig, openingConfig);
+    const runtimeProfile = openingConfig?.modeRuntimeProfile || worldConfig.modeRuntimeProfile;
+    const effective = 解析生效题材配置(openingConfig?.题材模式, runtimeProfile);
+    const usesCustomRuntime = Boolean(runtimeProfile && 是否自定义模式运行时配置(runtimeProfile, openingConfig?.题材模式));
     const realmInstruction = needsCustomRealmGuardForDiy(worldConfig, openingConfig)
         ? '当前检测到斗气/斗破类关键词：不要回退成元婴、化神、渡劫等默认修仙命名，境界与世界观应贴合斗气、斗技、异火、血脉、炼药师等作品风格。'
-        : topicMode === '仙侠'
-            ? '仙侠题材应优先使用练气、筑基、金丹、元婴、化神、渡劫等修真口径；不得改写成斗气、斗者、斗师、斗王等斗气体系。'
-            : '请优先根据玩家填写的作品、题材、世界名称和关键词生成专属世界观，不要套用与当前题材无关的默认境界体系。';
+        : usesCustomRuntime
+            ? `当前存档使用「${effective.label}」模式包：世界观、组织、经济与能力体系必须贴合该模式包口径，不要套用基底题材的默认门派/境界模板。`
+            : topicMode === '仙侠'
+                ? '仙侠题材应优先使用练气、筑基、金丹、元婴、化神、渡劫等修真口径；不得改写成斗气、斗者、斗师、斗王等斗气体系。'
+                : '请优先根据玩家填写的作品、题材、世界名称和关键词生成专属世界观，不要套用与当前题材无关的默认境界体系。';
     return [
-        `当前题材：${topicMode}`,
+        `当前题材：${usesCustomRuntime ? effective.label : topicMode}`,
         `世界名称：${worldConfig.worldName || '未命名世界'}`,
-        `世界版图：${worldConfig.worldSize}`,
-        `宗门密度：${worldConfig.sectDensity}`,
-        `王朝局势：${worldConfig.dynastySetting || '待生成'}`,
-        `天骄/战力设定：${worldConfig.tianjiaoSetting || '待生成'}`,
+        `${effective.worldSizeLabel}：${worldConfig.worldSize}`,
+        `${effective.densityPromptLabel}：${worldConfig.sectDensity}`,
+        `${effective.dynastyLabel}：${worldConfig.dynastySetting || '待生成'}`,
+        `${effective.tianjiaoLabel}：${worldConfig.tianjiaoSetting || '待生成'}`,
+        usesCustomRuntime ? `模式包能力口径：${runtimeProfile?.ability?.primaryAxis || ''}` : '',
         worldConfig.worldExtraRequirement ? `玩家额外要求：${worldConfig.worldExtraRequirement}` : '',
         realmInstruction
     ].filter(Boolean).join('\n');
@@ -79,11 +86,16 @@ export const buildWorldContextForDiy = (worldConfig: WorldGenConfig, openingConf
 
 export const buildRealmExtraPromptForDiy = (worldConfig: WorldGenConfig, openingConfig?: OpeningConfig): string => {
     const topicMode = 获取DIY题材模式(worldConfig, openingConfig);
+    const runtimeProfile = openingConfig?.modeRuntimeProfile || worldConfig.modeRuntimeProfile;
+    const usesCustomRuntime = Boolean(runtimeProfile && 是否自定义模式运行时配置(runtimeProfile, openingConfig?.题材模式));
+    const 模式包境界名 = (runtimeProfile?.ability?.realmConfig?.levelNames || []).filter(Boolean);
     const realmInstruction = needsCustomRealmGuardForDiy(worldConfig, openingConfig)
         ? '请生成符合斗气/斗破类作品代入感的境界体系，使用斗气、斗技、异火、血脉、炼药师等语义扩展，不得回退成元婴、化神这类默认修仙命名。'
-        : topicMode === '仙侠'
-            ? '仙侠题材应优先使用修真境界，如练气、筑基、金丹、元婴、化神、炼虚、合体、渡劫；不得生成斗者、斗师、斗王、斗皇、斗宗、斗尊等斗气体系。'
-            : '请生成符合本作品/题材代入感的境界体系，优先使用玩家提供的题材关键词，不要回退成无关作品模板。';
+        : usesCustomRuntime
+            ? `当前存档使用自定义模式包：成长主轴为「${runtimeProfile?.ability?.primaryAxis || '模式包设定'}」${模式包境界名.length > 0 ? `，既有阶段命名为：${模式包境界名.join('、')}` : ''}；境界体系必须承接该口径，不要回退成基底题材的默认境界命名。`
+            : topicMode === '仙侠'
+                ? '仙侠题材应优先使用修真境界，如练气、筑基、金丹、元婴、化神、炼虚、合体、渡劫；不得生成斗者、斗师、斗王、斗皇、斗宗、斗尊等斗气体系。'
+                : '请生成符合本作品/题材代入感的境界体系，优先使用玩家提供的题材关键词，不要回退成无关作品模板。';
     return [
         `当前题材：${topicMode}`,
         `世界名称：${worldConfig.worldName || '未命名世界'}`,
