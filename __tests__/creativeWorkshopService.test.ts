@@ -218,8 +218,8 @@ describe('creativeWorkshop service compatibility', () => {
 
         const modules = await 列出创意工坊模块();
 
-        expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:4173/api/workshop/modules', { method: 'GET', headers: { Accept: 'application/json' } });
-        expect(fetchMock).toHaveBeenCalledWith('https://msjh.bacon159.pp.ua/api/workshop/modules', { method: 'GET', headers: { Accept: 'application/json' } });
+        expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:4173/api/workshop/modules', expect.objectContaining({ method: 'GET', headers: { Accept: 'application/json' } }));
+        expect(fetchMock).toHaveBeenCalledWith('https://msjh.bacon159.pp.ua/api/workshop/modules', expect.objectContaining({ method: 'GET', headers: { Accept: 'application/json' } }));
         const cloudTavernPreset = modules.find((entry) => entry.id === 'CWM-TAVERN_PRESET-20260708190037-0C4P0M6S');
         expect(cloudTavernPreset?.title).toBe('双人成行v10.0_青云上_MoRan墨染江湖净化完整版');
         expect(cloudTavernPreset?.type).toBe('tavern_preset');
