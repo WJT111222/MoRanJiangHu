@@ -590,7 +590,7 @@ export const RELEASE_INFO = {
         "备用站：https://msjh.bacon.de5.net/"
     ],
     "notes": "修复物品图反馈页缩略图无法加载的问题：NodeImage 图片不再强制走会被拒绝的 Cloudflare Worker 代理。\n物品图反馈页改用浏览器直连 NodeImage，并通过页面缓存与内部并发限流减少重复加载和限流报错。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-    "releasePublishedAt": "2026-07-13T08:06:42+08:00"
+    "releasePublishedAt": "2026-07-13T08:09:08+08:00"
 } as const;
 
 export type ReleaseInfo = typeof RELEASE_INFO;
