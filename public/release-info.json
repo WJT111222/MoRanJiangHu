@@ -1,10 +1,10 @@
 {
-  "versionCode": 605,
-  "versionName": "1.0.605",
+  "versionCode": 606,
+  "versionName": "1.0.606",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "修复手机 APK 中创意工坊列表可能一直停在刷新中的问题：网络请求卡住时会自动超时并显示内置/本地预设，不再阻塞新建角色。",
-    "APK 下载新增 GitHub Raw 加速渠道：更新包会发布到专用 raw 分发分支，并优先通过 Cloudflare Raw 代理下载，同时显示当前下载渠道。",
+    "修复手机 APK 中创意工坊列表可能一直刷新不出来的问题：APK 端改用原生网络请求拉取社区内容，避免 WebView fetch 被接管后卡住。",
+    "创意工坊下载 JSON 后会显示成功提示，下载很快时玩家也能确认文件已经开始保存。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
@@ -589,5 +589,5 @@
     "备用站：https://msjh.bacon.de5.net/"
   ],
   "notes": "优化预设图反馈页缩略图加载：官网缩略图代理改用更快的 OpenList 直连与签名下载路径，减少冷加载超时后回退到大图的情况。\n护符、防护背心、手枪等预设缩略图已补齐并纳入代理缓存，批量浏览反馈页更稳定。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-  "releasePublishedAt": "2026-07-13T20:40:52+08:00"
+  "releasePublishedAt": "2026-07-13T21:12:16+08:00"
 }
