@@ -1,10 +1,11 @@
 {
-  "versionCode": 602,
-  "versionName": "1.0.602",
+  "versionCode": 603,
+  "versionName": "1.0.603",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "继续优化物品图反馈页缩略图加载：NodeImage 图片现在不仅单张加载，还会在每张之间固定节流，进一步避免短时间请求过多触发限流。",
-    "单张图片如果 10 秒未加载完成，会等待 10 秒后自动重试，不再让客户看到整片报错。",
+    "物品图反馈页缩略图已切回官网缓存源，批量浏览预设图片时不再因为 NodeImage 同时加载过多而报错。",
+    "预设大图仍使用 NodeImage 图床，点开查看原图时保持更快加载；玩家回合内少量缩略图也继续使用 NodeImage。",
+    "修复仙侠/武侠预设中误混入现代手枪的问题，现代火器会归入对应现代题材分类。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
@@ -583,11 +584,12 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "继续优化物品图反馈页缩略图加载：NodeImage 图片现在不仅单张加载，还会在每张之间固定节流，进一步避免短时间请求过多触发限流。",
-    "单张图片如果 10 秒未加载完成，会等待 10 秒后自动重试，不再让客户看到整片报错。",
+    "物品图反馈页缩略图已切回官网缓存源，批量浏览预设图片时不再因为 NodeImage 同时加载过多而报错。",
+    "预设大图仍使用 NodeImage 图床，点开查看原图时保持更快加载；玩家回合内少量缩略图也继续使用 NodeImage。",
+    "修复仙侠/武侠预设中误混入现代手枪的问题，现代火器会归入对应现代题材分类。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
-  "notes": "继续优化物品图反馈页缩略图加载：NodeImage 图片现在不仅单张加载，还会在每张之间固定节流，进一步避免短时间请求过多触发限流。\n单张图片如果 10 秒未加载完成，会等待 10 秒后自动重试，不再让客户看到整片报错。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-  "releasePublishedAt": "2026-07-13T13:01:10+08:00"
+  "notes": "物品图反馈页缩略图已切回官网缓存源，批量浏览预设图片时不再因为 NodeImage 同时加载过多而报错。\n预设大图仍使用 NodeImage 图床，点开查看原图时保持更快加载；玩家回合内少量缩略图也继续使用 NodeImage。\n修复仙侠/武侠预设中误混入现代手枪的问题，现代火器会归入对应现代题材分类。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
+  "releasePublishedAt": "2026-07-13T13:16:23+08:00"
 }

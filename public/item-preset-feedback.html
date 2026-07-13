@@ -343,10 +343,10 @@ function closeViewer() {
   viewer.setAttribute('aria-hidden', 'true');
   viewerImg.removeAttribute('src');
 }
-const maxConcurrentImageLoads = 1;
+const maxConcurrentImageLoads = 12;
 const imageLoadTimeoutMs = 10000;
-const imageRetryDelayMs = 10000;
-const imageLoadPaceMs = 1200;
+const imageRetryDelayMs = 3000;
+const imageLoadPaceMs = 0;
 let activeImageLoads = 0;
 let imageLoadPumpTimer = 0;
 const imageLoadQueue = [];

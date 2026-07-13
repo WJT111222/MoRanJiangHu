@@ -43,7 +43,10 @@ const xianxiaExtraNames = new Set(['玉骨扇']);
 const apocalypseModernFallbackNames = new Set(['智能手机', '急救包', '维修工具箱', '多功能工具钳', '备用电池组', '防护口罩', '运动鞋']);
 const infiniteFlowFallbackNames = new Set(['智能手机', '急救包', '防护服', '护身符', '基础剑法残卷', '下品灵石', '净水片']);
 
-const modernPattern = /(手机|录音笔|笔记本电脑|急救包|防割手套|银行卡|现金|合同|证件|U盘|车钥匙|维修|工具箱|工具钳|电子元件|备用电池|防身喷雾|警棍|夹克|防护口罩|运动鞋|检测仪|防护服|样本箱|探测器|抑制贴|银戒指|怀表)/;
+const feedbackThumbBase = 'https://msjh.bacon159.pp.ua/api/preset-image/thumbs';
+const feedbackThumbUrlForName = (name) => `${feedbackThumbBase}/${encodeURIComponent(name)}.webp`;
+
+const modernPattern = /(手机|录音笔|笔记本电脑|急救包|防割手套|银行卡|现金|合同|证件|U盘|车钥匙|维修|工具箱|工具钳|电子元件|备用电池|防身喷雾|警棍|夹克|防护口罩|运动鞋|检测仪|防护服|样本箱|探测器|抑制贴|银戒指|怀表|手枪|步枪|左轮|霰弹枪|狙击枪|冲锋枪|自动枪|火器|手雷)/;
 const apocalypsePattern = /(罐头|净水|手电筒|弩机|抗生素|饮水瓶|汽油|压缩饼干|绷带|止血带|过滤|干电池|滤芯|太阳能|弹药|护目镜|防毒面具|撬棍|战术背心|消音弩|求生|营地|无线电|防水火柴|感染)/;
 const xianxiaPattern = /(引气丹|聚灵丹|筑基丹|结金丹|凝婴丹|化神丹|淬体丹|洗髓丹|护脉丹|回灵丹|培元丹|灵石|灵晶|赤阳石|星辰砂|空冥石|雷击木|灵竹|月华草|凝露草|血参|朱果|妖丹|炼气诀|筑基心得|御剑术|小五行术|太乙剑诀|炼丹|符箓|火球符|冰锥符|雷光符|金刚符|神行符|隐身符|传音符|传送符|飞剑|葫芦|养魂铃|镇魂铃|玄光镜|八卦镜|缚妖索|储物袋|储物戒|灵兽袋|阵盘|罗盘|丹炉|炼器锤|法袍|法冠|法靴|宗门|秘境|传承玉符|洞府)/;
 
@@ -95,7 +98,7 @@ for (const match of source.matchAll(itemPattern)) {
     type,
     quality,
     src,
-    thumbSrc: src,
+    thumbSrc: feedbackThumbUrlForName(name),
     source: /^https?:\/\//i.test(src) ? '远程图' : '本地',
   };
   for (const category of categoriesForItem(item)) {
