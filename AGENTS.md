@@ -81,7 +81,7 @@
 
 - The legacy `download.bacon.de5.net` update manifest path was hosted on Cloudflare R2, which has been **fully decommissioned**. R2 is no longer available for any purpose.
 - Old installed APKs that read `https://download.bacon.de5.net/moranjianghu/latest.json` can no longer receive updates. Users must manually download the latest APK from the primary website.
-- All APK distribution now goes through **OneDrive only** via OpenList proxy.
+- APK distribution no longer uses B2. Current APK distribution uses **OneDrive via OpenList** plus **GitHub Release / GitHub accelerator URLs** only.
 
 ## No Auto-Deploy Rule
 
@@ -858,34 +858,28 @@ Upload size verification (2026-06-28):
   - After MiMo edits, Codex must inspect the diff, check for unrelated churn or secret leakage, run the required tests/builds, and directly repair any remaining problems before reporting completion.
   - Deployment or release work can be delegated only after the user explicitly asks to deploy/publish/go live, and Codex must still enforce the project's release, backup, verification, and no-auto-deploy rules.
 
-## APK Distribution Architecture (as of 2026-06-29, updated 2026-06-29)
+## APK Distribution Architecture (as of 2026-07-13, B2 decommissioned)
 
 ### Overview
 
-The APK distribution system uses a two-tier architecture:
+The APK distribution system uses a KV manifest plus non-B2 binary hosts:
 
 1. **Cloudflare KV** — Stores the release manifest (`release-manifest/latest.json`) as the single source of truth for version metadata (versionName, versionCode, releaseNotes, etc.).
-2. **B2 (f004.backblazeb2.com)** — Primary APK binary host. The bucket `bacon111` is **allPrivate**; downloads require an authorization token obtained via `b2_authorize_account` + `b2_get_download_authorization`. The Worker acquires these tokens (with global-scope caching) and 302-redirects the user to an authorized B2 URL (`?Authorization=xxx`). This preserves full B2 CDN speed (~11 MB/s domestic) while keeping the bucket private.
-3. **OneDrive via OpenList proxy** — Backup APK binary host. Downloads are proxied through `openlist.bacon.de5.net/p/` with signed URLs. APK files are stored at `/Onedrive/MoRanJiangHu/releases/latest.apk`.
+2. **GitHub Release + GitHub accelerator URLs** — Primary fast APK download channel. The manifest should prefer `github`.
+3. **OneDrive via OpenList proxy** — APK binary host and fallback channel. Downloads are proxied through `openlist.bacon.de5.net/p/` with signed URLs. APK files are stored at `/Onedrive/MoRanJiangHu/releases/latest.apk` and `/Onedrive/MoRanJiangHu/releases/MoRanJiangHu-v<version>.apk`.
 
-**Decommissioned channels**: hi168 S3 (2026-06-28), Cloudflare R2 (fully decommissioned, including legacy manifest path).
+**Decommissioned channels**: hi168 S3 (2026-06-28), Cloudflare R2 (fully decommissioned, including legacy manifest path), and Backblaze B2 APK distribution (2026-07-13). Do not upload APKs to B2, do not add B2 URLs to `apkUrls`, and do not make B2 the default provider.
 
 ### APK Download Flow
 
-- `GET /api/apk/latest.json` — Reads manifest from KV, dynamically constructs `apkUrls` array with: default URL, stable versioned URL, B2 URL, and OneDrive URL (`?provider=onedrive`).
-- `GET /api/apk/latest.apk` — Default download: Worker obtains B2 download authorization token, then 302-redirects to authorized B2 URL. Falls back to OneDrive if `?provider=onedrive`.
-- `GET /api/apk/version/{file}` — Versioned download: same B2 authorized redirect logic.
+- `GET /api/apk/latest.json` — Reads manifest from KV and dynamically constructs `apkUrls` using the stable URL, GitHub accelerator URLs, GitHub Release URL, and OneDrive URLs only. B2 must not appear.
+- `GET /api/apk/latest.apk` — Default download uses GitHub Release/GitHub accelerator unless `?provider=onedrive` or `?provider=onedrive-direct` is requested.
+- `GET /api/apk/version/{file}` — Versioned download uses GitHub Release/GitHub accelerator by default; OneDrive can be requested through provider query parameters.
+- `?provider=b2` is intentionally decommissioned and should return 410 instead of redirecting.
 
-### B2 Authorized Download (Private Bucket)
+### B2 Status (Decommissioned)
 
-The B2 bucket was changed from public to `allPrivate` on 2026-06-29. Direct friendly URLs now return 401.
-
-**Authorization flow** (in `functions/api/apk/_shared.ts`):
-1. `authorizeB2Account()` — Calls `b2_authorize_account` with `MORAN_B2_APPLICATION_KEY_ID` + `MORAN_B2_APPLICATION_KEY`. Result cached globally for 23 hours.
-2. `getB2DownloadAuthorization(prefix)` — Calls `b2_get_download_authorization` with `MORAN_B2_BUCKET_ID`. Result cached globally until 1 minute before expiry (up to 1 hour).
-3. `buildB2ApkRedirect()` — Appends `?Authorization={token}` to the B2 friendly URL and returns a 302 redirect.
-
-When B2 credentials are missing, falls back to the old public-bucket 302 redirect (backward compatible).
+B2 APK distribution was decommissioned on 2026-07-13. Some legacy helper code and environment variable names may still exist for backward compatibility or future cleanup, but release code must not rely on B2. The manifest publish step should use `npm run release:manifest`, which writes the KV manifest while skipping B2 uploads by default.
 
 ### Cloudflare Secrets (Current)
 
@@ -895,9 +889,7 @@ When B2 credentials are missing, falls back to the old public-bucket 302 redirec
 - `IMAGE_HOST_TOKEN` — Image host authentication
 - `MORAN_OPENLIST_AUTH_TOKEN` — OpenList/AList API token for OneDrive proxy
 - `ONLINE_ADMIN_PASSWORD` — Online admin panel access
-- `MORAN_B2_APPLICATION_KEY_ID` — Backblaze B2 application key ID for authorized APK download
-- `MORAN_B2_APPLICATION_KEY` — Backblaze B2 application key for authorized APK download
-- `MORAN_B2_BUCKET_ID` — Backblaze B2 bucket ID (`d272e1a35f86fc9296e0061d` for `bacon111`)
+- B2 secrets may still exist in Cloudflare for legacy cleanup, but they are no longer part of the active APK distribution path.
 
 ### OneDrive Data Layout
 
@@ -921,7 +913,7 @@ When B2 credentials are missing, falls back to the old public-bucket 302 redirec
 
 ### Sharing This Architecture With Other AI Agents
 
-When onboarding another AI assistant (Cursor, Claude, etc.) to work on this project's file distribution or release pipeline, share the "APK Distribution Architecture (as of 2026-06-29, updated 2026-06-29)" section from this file. It covers the full architecture: KV manifest, B2 authorized download (private bucket), OneDrive channels, download flow, secrets, and OneDrive data layout.
+When onboarding another AI assistant (Cursor, Claude, etc.) to work on this project's file distribution or release pipeline, share the "APK Distribution Architecture (as of 2026-07-13, B2 decommissioned)" section from this file. It covers the current architecture: KV manifest, GitHub/GitHub accelerator downloads, OneDrive channels, download flow, and OneDrive data layout.
 
 ## Cloud Studio ComfyUI Backend Migration Notes
 
