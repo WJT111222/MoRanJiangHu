@@ -11,6 +11,17 @@ import { 接口设置结构, ThemePreset } from '../../types';
 import CreativeWorkshopModal from '../features/Workshop/CreativeWorkshopModal';
 
 const WORKSHOP_PENDING_LOGIN_KEY = 'creative_workshop_pending_login';
+const WORKSHOP_QUERY_PARAM = 'open';
+const WORKSHOP_QUERY_VALUE = 'workshop';
+
+const buildRemoteWorkshopUrl = (websiteUrl?: string): string => {
+    const base = (typeof websiteUrl === 'string' && websiteUrl.trim())
+        ? websiteUrl.trim()
+        : 'https://msjh.bacon159.pp.ua';
+    const url = new URL(base);
+    url.searchParams.set(WORKSHOP_QUERY_PARAM, WORKSHOP_QUERY_VALUE);
+    return url.toString();
+};
 
 const hasFullscreenElement = () => {
     const doc = document as Document & {
@@ -618,6 +629,25 @@ const LandingPage: React.FC<Props> = ({
     const [workshopOpen, setWorkshopOpen] = React.useState(false);
     const [backgroundIndex, setBackgroundIndex] = React.useState(0);
 
+    const openRemoteWorkshopInNativeWebView = React.useCallback(async () => {
+        const remoteWorkshopUrl = buildRemoteWorkshopUrl(releaseInfo.websiteUrl);
+        try {
+            const { Browser } = await import('@capacitor/browser');
+            await Browser.open({ url: remoteWorkshopUrl, presentationStyle: 'fullscreen' });
+        } catch (error) {
+            console.warn('打开线上创意工坊 WebView 失败，回退到内置创意工坊:', error);
+            setWorkshopOpen(true);
+        }
+    }, [releaseInfo.websiteUrl]);
+
+    const handleOpenWorkshop = React.useCallback(async () => {
+        if (isNativeApp) {
+            await openRemoteWorkshopInNativeWebView();
+            return;
+        }
+        setWorkshopOpen(true);
+    }, [isNativeApp, openRemoteWorkshopInNativeWebView]);
+
     React.useEffect(() => {
         const timer = window.setInterval(() => {
             setBackgroundIndex((current) => (current + 1) % HOME_BACKGROUND_ASSETS.length);
@@ -626,14 +656,24 @@ const LandingPage: React.FC<Props> = ({
     }, []);
 
     React.useEffect(() => {
+        if (isNativeApp || typeof window === 'undefined') return;
+        const url = new URL(window.location.href);
+        if (url.searchParams.get(WORKSHOP_QUERY_PARAM) !== WORKSHOP_QUERY_VALUE) return;
+
+        setWorkshopOpen(true);
+        url.searchParams.delete(WORKSHOP_QUERY_PARAM);
+        window.history.replaceState(window.history.state, document.title, url.toString());
+    }, [isNativeApp]);
+
+    React.useEffect(() => {
         const timer = window.setInterval(() => {
             if (localStorage.getItem(WORKSHOP_PENDING_LOGIN_KEY) !== 'true') return;
             if (!读取云端游玩会话()) return;
             localStorage.removeItem(WORKSHOP_PENDING_LOGIN_KEY);
-            setWorkshopOpen(true);
+            void handleOpenWorkshop();
         }, 800);
         return () => window.clearInterval(timer);
-    }, []);
+    }, [handleOpenWorkshop]);
 
     const handleRequireWorkshopLogin = React.useCallback(() => {
         localStorage.setItem(WORKSHOP_PENDING_LOGIN_KEY, 'true');
@@ -819,7 +859,7 @@ const LandingPage: React.FC<Props> = ({
                             云端游玩
                         </GameButton>
 
-                        <GameButton onClick={() => setWorkshopOpen(true)} variant="secondary" className="border-opacity-50 py-4 text-lg opacity-95 shadow-lg hover:opacity-100">
+                        <GameButton onClick={() => { void handleOpenWorkshop(); }} variant="secondary" className="border-opacity-50 py-4 text-lg opacity-95 shadow-lg hover:opacity-100">
                             创意工坊
                         </GameButton>
 

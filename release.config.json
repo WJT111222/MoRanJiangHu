@@ -1,10 +1,10 @@
 {
-  "versionCode": 607,
-  "versionName": "1.0.607",
+  "versionCode": 608,
+  "versionName": "1.0.608",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "修复手机 APK 创意工坊只显示官方预设的问题：玩家上传的模式包、酒馆预设和 ComfyUI 工作流会正常显示。",
-    "优化创意工坊社区列表缓存：首次成功加载后会缓存到本机，后续打开不再每次重新拉取完整社区列表；网络慢或临时失败时会显示上次成功加载的社区内容。",
+    "优化手机 APK 创意工坊入口：点击“创意工坊”将直接打开线上创意工坊页面，避免 APK 包内列表加载异常导致只显示官方内容或一直刷新。",
+    "网页端创意工坊使用方式不变；APK 端会优先使用线上最新创意工坊内容。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
@@ -583,11 +583,12 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "修复手机 APK 创意工坊只显示官方预设的问题：玩家上传的模式包、酒馆预设和 ComfyUI 工作流会正常显示。",
-    "优化创意工坊社区列表缓存：首次成功加载后会缓存到本机，后续打开不再每次重新拉取完整社区列表；网络慢或临时失败时会显示上次成功加载的社区内容。",
+    "优化手机 APK 创意工坊入口：点击“创意工坊”将直接打开线上创意工坊页面，避免 APK 包内列表加载异常导致只显示官方内容或一直刷新。",
+    "网页端创意工坊使用方式不变；APK 端会优先使用线上最新创意工坊内容。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
-  "notes": "修复手机 APK 创意工坊只显示官方预设的问题：玩家上传的模式包、酒馆预设和 ComfyUI 工作流会正常显示。\\n优化创意工坊社区列表缓存：首次成功加载后会缓存到本机，后续打开不再每次重新拉取完整社区列表；网络慢或临时失败时会显示上次成功加载的社区内容。\\n官网：https://msjh.bacon159.pp.ua/\\n备用站：https://msjh.bacon.de5.net/",
-  "releasePublishedAt": "2026-07-13T22:03:32+08:00"
+  "notes": "优化手机 APK 创意工坊入口：点击“创意工坊”将直接打开线上创意工坊页面，避免 APK 包内列表加载异常导致只显示官方内容或一直刷新。\n网页端创意工坊使用方式不变；APK 端会优先使用线上最新创意工坊内容。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
+  "releasePublishedAt": "2026-07-14T00:06:08+08:00"
 }
+
