@@ -1,10 +1,10 @@
 {
-  "versionCode": 600,
-  "versionName": "1.0.600",
+  "versionCode": 601,
+  "versionName": "1.0.601",
   "releaseChannel": "stable",
   "releaseNotes": [
-    "修复物品图反馈页缩略图无法加载的问题：NodeImage 图片不再强制走会被拒绝的 Cloudflare Worker 代理。",
-    "物品图反馈页改用浏览器直连 NodeImage，并通过页面缓存与内部并发限流减少重复加载和限流报错。",
+    "修复物品图反馈页继续滚动后缩略图批量报错的问题：NodeImage 缩略图改为一张一张加载，避免短时间请求过多触发限流。",
+    "单张图片如果 10 秒未加载完成，会等待 10 秒后自动重试，不再让客户看到整片报错。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
@@ -583,11 +583,11 @@
   "multiDeviceSyncGuideUrl": "https://msjh.bacon159.pp.ua/tutorials.html#sync",
   "tutorialsUrl": "https://msjh.bacon159.pp.ua/tutorials.html",
   "changes": [
-    "修复物品图反馈页缩略图无法加载的问题：NodeImage 图片不再强制走会被拒绝的 Cloudflare Worker 代理。",
-    "物品图反馈页改用浏览器直连 NodeImage，并通过页面缓存与内部并发限流减少重复加载和限流报错。",
+    "修复物品图反馈页继续滚动后缩略图批量报错的问题：NodeImage 缩略图改为一张一张加载，避免短时间请求过多触发限流。",
+    "单张图片如果 10 秒未加载完成，会等待 10 秒后自动重试，不再让客户看到整片报错。",
     "官网：https://msjh.bacon159.pp.ua/",
     "备用站：https://msjh.bacon.de5.net/"
   ],
-  "notes": "修复物品图反馈页缩略图无法加载的问题：NodeImage 图片不再强制走会被拒绝的 Cloudflare Worker 代理。\n物品图反馈页改用浏览器直连 NodeImage，并通过页面缓存与内部并发限流减少重复加载和限流报错。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-  "releasePublishedAt": "2026-07-13T08:09:08+08:00"
+  "notes": "修复物品图反馈页继续滚动后缩略图批量报错的问题：NodeImage 缩略图改为一张一张加载，避免短时间请求过多触发限流。\n单张图片如果 10 秒未加载完成，会等待 10 秒后自动重试，不再让客户看到整片报错。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
+  "releasePublishedAt": "2026-07-13T12:42:14+08:00"
 }
