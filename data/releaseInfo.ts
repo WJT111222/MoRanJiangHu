@@ -592,7 +592,7 @@ export const RELEASE_INFO = {
         "备用站：https://msjh.bacon.de5.net/"
     ],
     "notes": "修复手机 APK 点击创意工坊后闪一下又回到首页的问题，创意工坊现在直接在应用内稳定打开。\nAPK 创意工坊可正常显示官方预设与玩家社区贡献，不再依赖跳转官网页面才能浏览。\n保留创意工坊社区内容缓存与原生网络加载，重复进入时响应更稳定。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-    "releasePublishedAt": "2026-07-14T20:53:18+08:00"
+    "releasePublishedAt": "2026-07-14T21:04:55+08:00"
 } as const;
 
 export type ReleaseInfo = typeof RELEASE_INFO;
