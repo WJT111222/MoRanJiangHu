@@ -625,10 +625,13 @@ export interface MoneyAmount {
     baseAmount: number;
 }
 
+export const 模式市场行情影响类型列表 = ['全部', '装备', '武器', '防具', '饰品', '任务道具', '消耗品', '材料', '秘籍', '法宝', '杂物', '杂项'] as const;
+export type 模式市场行情影响类型 = typeof 模式市场行情影响类型列表[number];
+
 export interface 模式市场行情模板 {
     标题: string;
     描述: string;
-    影响类型: string;
+    影响类型: 模式市场行情影响类型;
     价格倍率: number;
     热点标签?: string;
 }
