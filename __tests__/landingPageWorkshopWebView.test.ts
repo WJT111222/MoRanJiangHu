@@ -18,6 +18,7 @@ describe('APK 创意工坊入口', () => {
         expect(source).toContain('url.searchParams.set(WORKSHOP_QUERY_PARAM, WORKSHOP_QUERY_VALUE)');
         expect(source).toContain("url.searchParams.set(WORKSHOP_SUPPRESS_RELEASE_NOTES_PARAM, '1')");
         expect(source).toContain('url.searchParams.get(WORKSHOP_QUERY_PARAM) !== WORKSHOP_QUERY_VALUE');
+        expect(source).not.toContain("if (isNativeApp || typeof window === 'undefined') return;");
         expect(source).toContain('void handleOpenWorkshop();');
         expect(source).not.toContain('<GameButton onClick={() => setWorkshopOpen(true)} variant="secondary"');
     });

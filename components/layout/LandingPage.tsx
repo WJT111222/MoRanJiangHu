@@ -657,14 +657,14 @@ const LandingPage: React.FC<Props> = ({
     }, []);
 
     React.useEffect(() => {
-        if (isNativeApp || typeof window === 'undefined') return;
+        if (typeof window === 'undefined') return;
         const url = new URL(window.location.href);
         if (url.searchParams.get(WORKSHOP_QUERY_PARAM) !== WORKSHOP_QUERY_VALUE) return;
 
         setWorkshopOpen(true);
         url.searchParams.delete(WORKSHOP_QUERY_PARAM);
         window.history.replaceState(window.history.state, document.title, url.toString());
-    }, [isNativeApp]);
+    }, []);
 
     React.useEffect(() => {
         const timer = window.setInterval(() => {
