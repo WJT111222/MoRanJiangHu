@@ -14,7 +14,10 @@ const readString = (value: unknown): string => (
 );
 
 const PROVIDER_TARGET_MAPPING: Record<string, string> = {
-    'openai-official': 'https://api.openai.com'
+    openai: 'https://api.openai.com',
+    'openai-official': 'https://api.openai.com',
+    xai_official: 'https://api.x.ai',
+    'xai-official': 'https://api.x.ai'
 };
 
 const normalizePath = (pathRaw: unknown): string => {

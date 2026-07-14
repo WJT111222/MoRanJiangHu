@@ -30,10 +30,11 @@ export const 格式化能力类别 = (
 ): string => {
     const text = typeof type === 'string' ? type.trim() : '';
     if (!text) return '未分类';
-    if (runtimeProfile && 是否自定义模式运行时配置(runtimeProfile, mode)) {
+    const custom = Boolean(runtimeProfile && 是否自定义模式运行时配置(runtimeProfile, mode));
+    if (custom && runtimeProfile) {
         const 覆盖 = 读取界面文案覆盖分区(runtimeProfile, '能力类别');
         if (覆盖[text]) return 覆盖[text];
     }
-    const labels = 按题材获取类别映射(mode);
+    const labels = 按题材获取类别映射(custom ? runtimeProfile?.identity?.baseMode : mode);
     return labels[text] || text;
 };

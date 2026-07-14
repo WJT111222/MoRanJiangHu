@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     buildSyncApiUrl,
     getSyncApiBaseUrl,
+    isCapacitorPluginAvailable,
     isMissingNativeSyncApiBaseUrl,
     isNativeCapacitorEnvironment
 } from '../utils/nativeRuntime';
@@ -640,7 +641,7 @@ export function useGitHubOAuth() {
     }, [buildWebGitHubClientId, isNativeApp]);
 
     useEffect(() => {
-        if (!isNativeApp) return;
+        if (!isNativeApp || !isCapacitorPluginAvailable('App')) return;
 
         let released = false;
         let removeListener: (() => void) | undefined;

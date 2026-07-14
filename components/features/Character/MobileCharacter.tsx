@@ -16,7 +16,6 @@ import { 计算角色总气血 } from '../../../utils/characterVitals';
 import { 获取世界观货币卡片信息, 获取角色金钱显示列表 } from '../../../utils/currencyDisplay';
 import { 读取可分配属性点, type 可分配六维属性键 } from '../../../utils/characterAttributePoints';
 import { 获取题材档案文案, 获取题材资源文案 } from '../../../utils/resourceLabels';
-import { 是否自定义模式运行时配置 } from '../../../utils/effectiveTopicProfile';
 import { NPC是否扶她, NPC是否男娘 } from '../../../utils/npcGenderFlags';
 
 interface Props {
@@ -157,8 +156,7 @@ const MobileCharacter: React.FC<Props> = ({
     const 总气血 = useMemo(() => 计算角色总气血(character), [character]);
     const 资源文案 = 获取题材资源文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
     const 档案文案 = 获取题材档案文案(openingConfig?.题材模式, openingConfig?.modeRuntimeProfile);
-    const 使用自定义档案文案 = 是否自定义模式运行时配置(openingConfig?.modeRuntimeProfile, openingConfig?.题材模式);
-    const 档案标签 = (value: string | undefined, fallback: string): string => (使用自定义档案文案 && value ? value : fallback);
+    const 档案标签 = (value: string | undefined, fallback: string): string => value || fallback;
     const [activeView, setActiveView] = useState<MobileCharacterView>('profile');
     const [busyAction, setBusyAction] = useState('');
     const [generateOptions, setGenerateOptions] = useState<主角生图选项>({

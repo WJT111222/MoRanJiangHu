@@ -87,8 +87,11 @@ export const 解析生效题材配置 = (
     mode?: 题材模式类型 | null,
     runtimeProfile?: ModeRuntimeProfile | null
 ): 生效题材配置 => {
-    const official = 获取题材模式配置(mode || runtimeProfile?.identity?.baseMode);
     const custom = 是否自定义模式运行时配置(runtimeProfile, mode);
+    const baseMode = custom && runtimeProfile?.identity?.baseMode
+        ? runtimeProfile.identity.baseMode
+        : mode || runtimeProfile?.identity?.baseMode;
+    const official = 获取题材模式配置(baseMode);
     if (!custom || !runtimeProfile) {
         return { ...official, marketName: official.auctionName, usesCustomRuntime: false };
     }
@@ -101,15 +104,24 @@ export const 解析生效题材配置 = (
     const 密度选项覆盖 = 读取界面文案覆盖分区(runtimeProfile, '密度选项');
     const 组织名 = 非空文本(runtimeProfile.organization?.organizationName) || '组织';
     const 成员名 = 非空文本(runtimeProfile.organization?.memberName) || '成员';
+    const 组织口径片段 = [
+        非空文本(runtimeProfile.organization?.organizationName),
+        非空文本(runtimeProfile.organization?.memberName),
+        非空文本(runtimeProfile.organization?.contributionName)
+    ].filter(Boolean).join(' / ');
+    const 能力口径片段 = [
+        非空文本(runtimeProfile.ability?.primaryAxis),
+        非空文本(runtimeProfile.ability?.combatResolution)
+    ].filter(Boolean).join('；');
 
     const runtimePromptLines = [
         `本存档使用「${runtimeLabel}」自定义模式包，请严格使用模式包自身的世界观与用词口径。`,
         `交易口径：${非空文本(runtimeProfile.economy?.primaryCurrency) || official.currencyPrompt}`,
         `统一换算口径：${非空文本(runtimeProfile.economy?.exchangeRules) || official.currencyExchangePrompt}`,
         `地图/势力口径：${非空文本(runtimeProfile.map?.mapPrompt) || official.mapPrompt}`,
-        `组织口径：${非空文本(runtimeProfile.organization?.organizationName)} / ${非空文本(runtimeProfile.organization?.memberName)} / ${非空文本(runtimeProfile.organization?.contributionName)}`,
-        `能力口径：${非空文本(runtimeProfile.ability?.primaryAxis)}；${非空文本(runtimeProfile.ability?.combatResolution)}`
-    ].filter((line) => !/[：/]\s*$/.test(line) && !line.endsWith('；'));
+        组织口径片段 ? `组织口径：${组织口径片段}` : '',
+        能力口径片段 ? `能力口径：${能力口径片段}` : ''
+    ].filter(Boolean);
 
     const 向导标签 = <K extends keyof 题材模式配置>(key: K & string, fallback: string): string => (
         向导覆盖[key] || fallback

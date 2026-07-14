@@ -14,8 +14,14 @@ vi.mock('../data/releaseInfo', () => ({
     }
 }));
 
+const nativeRuntimeMock = vi.hoisted(() => ({
+    native: true,
+    appPluginAvailable: true
+}));
+
 vi.mock('../utils/nativeRuntime', () => ({
-    isNativeCapacitorEnvironment: () => true
+    isNativeCapacitorEnvironment: () => nativeRuntimeMock.native,
+    isCapacitorPluginAvailable: (name: string) => name === 'App' ? nativeRuntimeMock.appPluginAvailable : false
 }));
 
 vi.mock('@capacitor/app', () => ({
@@ -52,6 +58,8 @@ describe('appUpdate native APK download', () => {
     beforeEach(() => {
         vi.resetModules();
         vi.clearAllMocks();
+        nativeRuntimeMock.native = true;
+        nativeRuntimeMock.appPluginAvailable = true;
         vi.stubGlobal('localStorage', createLocalStorageMock());
         vi.stubGlobal('window', {
             location: { href: 'capacitor://localhost' },
@@ -136,5 +144,30 @@ describe('appUpdate native APK download', () => {
         expect(result.opened).toBe(true);
         expect(downloadAndInstallMock).toHaveBeenCalledTimes(1);
         expect(downloadAndInstallMock.mock.calls[0][0].url).toBe(oneDriveDirectUrl);
+    });
+
+    it('falls back to bundled release info when the App plugin is unavailable in native webview mode', async () => {
+        nativeRuntimeMock.appPluginAvailable = false;
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+            latest: {
+                versionCode: 290,
+                versionName: '1.0.289',
+                apkSha256: 'new-sha',
+                apkSize: 123456,
+                latestApkUrl: 'https://msjh.bacon159.pp.ua/api/apk/latest.apk',
+                changes: ['测试更新']
+            }
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+        downloadAndInstallMock.mockResolvedValueOnce({ filePath: '/tmp/latest.apk', versionName: '1.0.289' });
+
+        const { getCurrentAppRelease, checkForAppUpdate } = await import('../services/appUpdate');
+
+        await expect(getCurrentAppRelease()).resolves.toEqual({
+            versionCode: 290,
+            versionName: '1.0.289'
+        });
+
+        const result = await checkForAppUpdate();
+        expect(result.opened).toBe(true);
     });
 });

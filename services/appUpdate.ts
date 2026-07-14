@@ -1,6 +1,6 @@
 import { App as CapacitorApp } from '@capacitor/app';
 import { RELEASE_INFO } from '../data/releaseInfo';
-import { isNativeCapacitorEnvironment } from '../utils/nativeRuntime';
+import { isCapacitorPluginAvailable, isNativeCapacitorEnvironment } from '../utils/nativeRuntime';
 import { NativeApkUpdater, type NativeApkUpdateProgress } from './nativeApkUpdater';
 
 const UPDATE_PROMPT_STORAGE_KEY = 'moranjianghu.lastPromptedUpdateRelease';
@@ -163,7 +163,7 @@ const resolveBrowserApkDownloadUrl = (rawUrl: string): string => {
 };
 
 export const getCurrentAppRelease = async (): Promise<{ versionCode: number; versionName: string }> => {
-    if (!isNativeCapacitorEnvironment()) {
+    if (!isNativeCapacitorEnvironment() || !isCapacitorPluginAvailable('App')) {
         return {
             versionCode: RELEASE_INFO.versionCode,
             versionName: RELEASE_INFO.versionName

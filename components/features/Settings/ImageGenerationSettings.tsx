@@ -1294,7 +1294,9 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                 model: normalizedModel,
                 path: /^(gpt-image|chatgpt-image)/i.test(normalizedModel) ? '/v1/images/generations' : 读取文生图接口路径(feature, backend),
                 responseFormat: feature.文生图响应格式,
-                label: 'OpenAI 兼容文生图接口'
+                label: 'OpenAI 兼容文生图接口',
+                图片需要代理: feature.图片需要代理,
+                自定义图片代理地址: feature.自定义图片代理地址
             });
             setMainConnectionMessage(result.message);
             setMainConnectionPreviewUrl(result.previewUrl || '');
@@ -1362,7 +1364,9 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
                 model: nsfwConfig.model || 'gpt-image-2',
                 path: /^(gpt-image|chatgpt-image)/i.test(nsfwConfig.model || 'gpt-image-2') ? '/v1/images/generations' : (nsfwConfig.图片接口路径 || '/v1/images/generations'),
                 responseFormat: nsfwConfig.图片响应格式 || 'url',
-                label: 'NSFW OpenAI 兼容接口'
+                label: 'NSFW OpenAI 兼容接口',
+                图片需要代理: feature.图片需要代理,
+                自定义图片代理地址: feature.自定义图片代理地址
             });
             setNsfwConnectionMessage(result.message);
             setNsfwConnectionPreviewUrl(result.previewUrl || '');

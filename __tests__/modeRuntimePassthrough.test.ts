@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { ModeRuntimeProfile } from '../models/system';
 import { 获取题材模式配置, 题材模式顺序 } from '../utils/topicModeProfiles';
@@ -6,47 +8,54 @@ import { 是否自定义模式运行时配置, 解析生效题材配置 } from '
 import { 获取题材界面文案, 获取题材资源文案, 获取题材档案文案 } from '../utils/resourceLabels';
 import { 格式化能力类别 } from '../utils/abilityCategoryLabels';
 import { 获取题材关系侧重选项, 获取题材开局配置文案 } from '../utils/openingConfig';
-import { 获取题材行情模板 } from '../services/auctionHouse';
+import { 创建事件拍卖品, 获取题材行情模板, 生成行情列表 } from '../services/auctionHouse';
 import { 构建题材模式提示词 } from '../prompts/runtime/openingConfig';
+import { buildRealmExtraPromptForDiy, buildWorldContextForDiy } from '../components/features/NewGame/NewGameDiyTools';
 
-const 构建红楼运行时配置 = (extra?: Record<string, unknown>): ModeRuntimeProfile => 规范化模式运行时配置({
-    identity: {
-        modeId: '红楼梦同人',
-        displayName: '红楼梦同人模式包',
-        baseMode: '武侠',
-        isFandomIp: true
-    },
-    economy: {
-        marketName: '当铺牙行',
-        marketVerb: '典当或转卖',
-        primaryCurrency: '日常交易使用制钱、碎银、银两与金锭。',
-        exchangeRules: '底层货币=制钱，中层货币=银两，上层货币=金锭。',
-        bannedKeywords: ['灵石', '破境丹', '飞剑法宝']
-    },
-    organization: {
-        organizationName: '门第',
-        memberName: '府中人',
-        contributionName: '体面',
-        organizationAliases: ['门第', '世家', '府邸', '商号'],
-        rankNames: ['门外', '依附', '入府', '近前', '掌事', '当家']
-    },
-    ability: {
-        primaryAxis: '族望、门第声望、家宅权柄与才情文名',
-        skillPool: ['才情', '应酬', '观人', '手腕', '理事', '谋局'],
-        combatResolution: '多数冲突先按身份、礼法、证据与人物意志结算。'
-    },
-    items: {
-        initialItemPool: ['月钱袋', '名帖', '钥匙串'],
-        rewardItemPool: ['银钱月例', '衣料首饰', '名帖荐书']
-    },
-    map: {
-        mapPrompt: '地图按天下—省府—州县—府邸—院落—房舍六层组织。'
-    },
-    npc: {
-        defaultIdentityPool: ['老爷', '太太', '奶奶', '姑娘', '丫鬟', '管家']
-    },
-    ...extra
-}, '武侠');
+const 构建红楼运行时配置 = (extra?: Record<string, any>): ModeRuntimeProfile => {
+    const base = {
+        identity: {
+            modeId: '红楼梦同人',
+            displayName: '红楼梦同人模式包',
+            baseMode: '武侠',
+            isFandomIp: true
+        },
+        economy: {
+            marketName: '当铺牙行',
+            marketVerb: '典当或转卖',
+            primaryCurrency: '日常交易使用制钱、碎银、银两与金锭。',
+            exchangeRules: '底层货币=制钱，中层货币=银两，上层货币=金锭。',
+            bannedKeywords: ['灵石', '破境丹', '飞剑法宝']
+        },
+        organization: {
+            organizationName: '门第',
+            memberName: '府中人',
+            contributionName: '体面',
+            organizationAliases: ['门第', '世家', '府邸', '商号'],
+            rankNames: ['门外', '依附', '入府', '近前', '掌事', '当家']
+        },
+        ability: {
+            primaryAxis: '族望、门第声望、家宅权柄与才情文名',
+            skillPool: ['才情', '应酬', '观人', '手腕', '理事', '谋局'],
+            combatResolution: '多数冲突先按身份、礼法、证据与人物意志结算。'
+        },
+        items: {
+            initialItemPool: ['月钱袋', '名帖', '钥匙串'],
+            rewardItemPool: ['银钱月例', '衣料首饰', '名帖荐书']
+        },
+        map: {
+            mapPrompt: '地图按天下—省府—州县—府邸—院落—房舍六层组织。'
+        },
+        npc: {
+            defaultIdentityPool: ['老爷', '太太', '奶奶', '姑娘', '丫鬟', '管家']
+        }
+    };
+    const merged: Record<string, any> = { ...base, ...extra };
+    for (const key of ['identity', 'economy', 'organization', 'ability', 'items', 'map', 'npc'] as const) {
+        if (extra?.[key]) merged[key] = { ...base[key], ...extra[key] };
+    }
+    return 规范化模式运行时配置(merged, '武侠');
+};
 
 describe('官方模式零回归', () => {
     it('无 runtime 时生效配置与官方配置逐字段一致', () => {
@@ -131,6 +140,22 @@ describe('自定义 runtime 派生换源', () => {
         const 师门项 = 关系选项.find((item) => item.value === '师门');
         expect(师门项?.label).toBe('门第');
     });
+
+    it('外部题材尚未同步时以自定义 runtime 的 baseMode 作为官方回退', () => {
+        const xianxiaRuntime = 规范化模式运行时配置({
+            identity: { modeId: 'custom-xianxia', displayName: '自定义仙途', baseMode: '仙侠' },
+            economy: { marketName: '云海坊市' }
+        }, '仙侠');
+
+        const effective = 解析生效题材配置('武侠', xianxiaRuntime);
+        expect(effective.label).toBe('自定义仙途');
+        expect(effective.group).toBe(获取题材模式配置('仙侠').group);
+        expect(effective.currencyPrompt).toBe(获取题材模式配置('仙侠').currencyPrompt);
+        expect(格式化能力类别('招式', '武侠', xianxiaRuntime)).toBe('术式');
+        expect(获取题材资源文案('武侠', xianxiaRuntime).能量).toBe(获取题材资源文案('仙侠').能量);
+        expect(获取题材档案文案('武侠', xianxiaRuntime).档案题头).toBe(获取题材档案文案('仙侠').档案题头);
+        expect(获取题材开局配置文案('武侠', xianxiaRuntime).intro).toBe(获取题材开局配置文案('仙侠').intro);
+    });
 });
 
 describe('uiLabels 深覆盖', () => {
@@ -195,7 +220,6 @@ describe('拍卖行情贯通', () => {
     it('自定义包填写 marketEventTemplates 时优先使用', () => {
         const runtime = 构建红楼运行时配置({
             economy: {
-                marketName: '当铺牙行',
                 marketEventTemplates: [
                     { 标题: '节礼采买', 描述: '年节将近，衣料首饰与吃食礼盒行情看涨。', 影响类型: '杂物', 价格倍率: 1.2, 热点标签: '节礼采买' }
                 ]
@@ -205,6 +229,43 @@ describe('拍卖行情贯通', () => {
         expect(templates.length).toBe(1);
         expect(templates[0].标题).toBe('节礼采买');
         expect(templates[0].价格倍率).toBeCloseTo(1.2);
+        expect(runtime.economy.marketVerb).toBe('典当或转卖');
+        expect(runtime.economy.primaryCurrency).toContain('制钱');
+    });
+
+    it('重新生成行情时过滤命中 bannedKeywords 的模板', () => {
+        const runtime = 构建红楼运行时配置({
+            economy: {
+                bannedKeywords: ['灵石'],
+                marketEventTemplates: [
+                    { 标题: '灵石涨价', 描述: '灵石突然紧俏。', 影响类型: '全部', 价格倍率: 1.2, 热点标签: '灵石' },
+                    { 标题: '衣料采买', 描述: '府中衣料需求上涨。', 影响类型: '杂物', 价格倍率: 1.1, 热点标签: '衣料' }
+                ]
+            }
+        });
+
+        const generated = 生成行情列表(true, [], 0, '武侠', runtime).行情列表;
+        expect(generated.map((item) => item.标题)).toEqual(['衣料采买']);
+    });
+});
+
+describe('功法类别展示贯通', () => {
+    it('桌面功法筛选、列表和详情都使用运行时类别文案，同时保留原始类型作为筛选 key', () => {
+        const source = fs.readFileSync(path.join(process.cwd(), 'components/features/Kungfu/KungfuModal.tsx'), 'utf8');
+        expect(source).toContain('{格式化能力类别(cat, topicMode as 题材模式类型 | undefined, runtimeProfile)}');
+        expect(source).toContain('{格式化能力类别(skill.类型, topicMode as 题材模式类型 | undefined, runtimeProfile)}');
+        expect(source).toContain('{格式化能力类别(skill.类型, topicMode as 题材模式类型 | undefined, runtimeProfile)[0] || \'武\'}');
+        expect(source).toContain('onClick={() => setActiveFilter(cat)}');
+        expect(source).toContain('safeSkills.filter(s => s.类型 === activeFilter)');
+    });
+});
+
+describe('创意工坊运行时 JSON 形状校验', () => {
+    it('境界配置只接受 JSON 对象', () => {
+        const source = fs.readFileSync(path.join(process.cwd(), 'components/features/Workshop/CreativeWorkshopModal.tsx'), 'utf8');
+        const realmEditorStart = source.indexOf("if (fieldType === 'realmConfig')");
+        const realmEditorSource = source.slice(realmEditorStart, realmEditorStart + 1200);
+        expect(realmEditorSource).toContain('expectedShape="object"');
     });
 });
 
@@ -220,6 +281,32 @@ describe('prompt 泄漏修复', () => {
     it('无 runtime 时官方提示词保持原样', () => {
         const prompt = 构建题材模式提示词({ 题材模式: '武侠' } as any);
         expect(prompt).toContain('武侠');
+    });
+
+    it('运行时 prompt 行保留部分填写的组织与能力口径', () => {
+        const runtime = 构建红楼运行时配置();
+        runtime.organization.contributionName = '';
+        runtime.ability.combatResolution = '';
+        const effective = 解析生效题材配置('武侠', runtime);
+        expect(effective.promptLines).toContain('组织口径：门第 / 府中人');
+        expect(effective.promptLines).toContain('能力口径：族望、门第声望、家宅权柄与才情文名');
+    });
+
+    it('DIY 世界与境界提示词都使用自定义模式展示名', () => {
+        const runtime = 构建红楼运行时配置();
+        runtime.ability.primaryAxis = '';
+        const worldConfig = {
+            worldName: '神京红楼',
+            worldSize: '中型',
+            sectDensity: '适中',
+            dynastySetting: '本朝',
+            tianjiaoSetting: '声名手腕',
+            modeRuntimeProfile: runtime
+        } as any;
+        const openingConfig = { 题材模式: '武侠', modeRuntimeProfile: runtime } as any;
+        expect(buildWorldContextForDiy(worldConfig, openingConfig)).toContain('当前题材：红楼梦同人模式包');
+        expect(buildWorldContextForDiy(worldConfig, openingConfig)).toContain('模式包能力口径：模式包设定');
+        expect(buildRealmExtraPromptForDiy(worldConfig, openingConfig)).toContain('当前题材：红楼梦同人模式包');
     });
 });
 
@@ -286,6 +373,30 @@ describe('审计加固回归', () => {
         const templates = runtime.economy.marketEventTemplates || [];
         expect(templates.length).toBeLessThanOrEqual(24);
         expect(templates[0]?.影响类型).toBe('全部');
+    });
+
+    it('行情模板规范化保留拍卖行支持的影响类型', () => {
+        const runtime = 规范化模式运行时配置({
+            identity: { modeId: 'market-pack', displayName: '市场包', baseMode: '武侠' },
+            economy: {
+                marketEventTemplates: [
+                    { 标题: '装备紧俏', 描述: '护具和兵刃行情上扬。', 影响类型: '装备', 价格倍率: 1.2 },
+                    { 标题: '任务道具流通', 描述: '委托相关物件需求上升。', 影响类型: '任务道具', 价格倍率: 1.1 },
+                    { 标题: '杂项清仓', 描述: '零碎物件折价流通。', 影响类型: '杂项', 价格倍率: 0.9 }
+                ]
+            }
+        }, '武侠');
+        expect(runtime.economy.marketEventTemplates?.map((item) => item.影响类型)).toEqual(['装备', '任务道具', '杂项']);
+    });
+
+    it('事件拍卖品未显式标记时不默认变成限时热点', () => {
+        const auction = 创建事件拍卖品({
+            事件名称: '府中清点',
+            主线类型: '市面',
+            物品: { 名称: '旧账册', 类型: '杂物', 品质: '凡品', 价值: 100 } as any,
+            题材模式: '武侠'
+        });
+        expect(auction.是否限时热点).toBe(false);
     });
 
     it('自定义包 promptBoundary 与开局提示词不再泄漏官方组织词', () => {

@@ -128,7 +128,7 @@ const KungfuModal: React.FC<Props> = ({ skills, onClose, topicMode, runtimeProfi
                                     onClick={() => setActiveFilter(cat)}
                                     className={`px-4 py-1.5 text-xs rounded transition-all font-serif tracking-widest ${activeFilter === cat ? 'bg-wuxia-gold/20 text-wuxia-gold shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
                                 >
-                                    {cat}
+                                    {格式化能力类别(cat, topicMode as 题材模式类型 | undefined, runtimeProfile)}
                                 </button>
                             ))}
                         </div>
@@ -176,7 +176,7 @@ const KungfuModal: React.FC<Props> = ({ skills, onClose, topicMode, runtimeProfi
                                                     <span className={`text-[10px] px-1.5 py-0.5 border rounded-sm font-serif tracking-widest shadow-inner bg-black/60 ${qStyles.text} ${qStyles.border}`}>
                                                         {skill.品质}
                                                     </span>
-                                                    <span className="text-[10px] text-gray-500 font-serif tracking-widest">{skill.类型}</span>
+                                                    <span className="text-[10px] text-gray-500 font-serif tracking-widest">{格式化能力类别(skill.类型, topicMode as 题材模式类型 | undefined, runtimeProfile)}</span>
                                                 </div>
                                             </div>
                                             <div className="shrink-0 flex flex-col items-end">
@@ -199,7 +199,7 @@ const KungfuModal: React.FC<Props> = ({ skills, onClose, topicMode, runtimeProfi
                                         
                                         {/* 装饰修饰 */}
                                         <div className="absolute right-0 bottom-0 text-7xl font-serif text-wuxia-gold opacity-[0.03] transform translate-y-4 translate-x-4 select-none pointer-events-none group-hover:opacity-[0.05] transition-opacity">
-                                            {skill.类型[0] || '武'}
+                                            {格式化能力类别(skill.类型, topicMode as 题材模式类型 | undefined, runtimeProfile)[0] || '武'}
                                         </div>
                                     </button>
                                 );

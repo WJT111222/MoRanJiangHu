@@ -378,7 +378,8 @@ const Json运行时字段编辑器: React.FC<{
     placeholder?: string;
     value: unknown;
     onApply: (parsed: any) => void;
-}> = ({ label, placeholder, value, onApply }) => {
+    expectedShape?: 'array' | 'object';
+}> = ({ label, placeholder, value, onApply, expectedShape }) => {
     const serialize = (input: unknown): string => (input === undefined || input === null ? '' : JSON.stringify(input, null, 2));
     const [text, setText] = React.useState(() => serialize(value));
     const [error, setError] = React.useState('');
@@ -402,6 +403,14 @@ const Json运行时字段编辑器: React.FC<{
         }
         try {
             const parsed = JSON.parse(trimmed);
+            if (expectedShape === 'array' && !Array.isArray(parsed)) {
+                setError('该字段需要 JSON 数组，当前输入不是数组，字段未写入。');
+                return;
+            }
+            if (expectedShape === 'object' && (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))) {
+                setError('该字段需要 JSON 对象，当前输入不是对象，字段未写入。');
+                return;
+            }
             setError('');
             onApply(parsed);
         } catch {
@@ -409,7 +418,7 @@ const Json运行时字段编辑器: React.FC<{
         }
     };
     return (
-        <label className="block text-xs text-gray-300 sm:col-span-2">
+        <label className="block text-xs text-gray-300 [html[data-theme='day']_&]:text-gray-800 sm:col-span-2">
             {label}
             <textarea
                 value={text}
@@ -417,12 +426,19 @@ const Json运行时字段编辑器: React.FC<{
                 onFocus={() => setFocused(true)}
                 onBlur={handleBlur}
                 placeholder={placeholder}
-                className={`mt-1 min-h-28 w-full resize-y rounded-lg border ${error ? 'border-red-400/60' : 'border-white/10'} bg-black/30 px-3 py-2 font-mono text-sm leading-5 text-gray-100 outline-none placeholder:text-gray-500 focus:border-wuxia-gold/45`}
+                className={`mt-1 min-h-28 w-full resize-y rounded-lg border ${error ? 'border-red-400/60 [html[data-theme=\'day\']_&]:border-red-600' : 'border-white/10 [html[data-theme=\'day\']_&]:border-amber-900/30'} bg-black/30 px-3 py-2 font-mono text-sm leading-5 text-gray-100 outline-none placeholder:text-gray-500 focus:border-wuxia-gold/45 [html[data-theme='day']_&]:bg-white/85 [html[data-theme='day']_&]:text-gray-900 [html[data-theme='day']_&]:placeholder:text-gray-600`}
             />
-            <div className="mt-1 text-[11px] leading-5 text-gray-400">留空并移开焦点会清除该字段；合法 JSON 会在移开焦点时写入模式包运行时配置。</div>
-            {error && <div className="mt-1 text-[11px] leading-5 text-red-300">{error}</div>}
+            <div className="mt-1 text-[11px] leading-5 text-gray-400 [html[data-theme='day']_&]:text-gray-700">留空并移开焦点会清除该字段；合法 JSON 会在移开焦点时写入模式包运行时配置。</div>
+            {error && <div className="mt-1 text-[11px] leading-5 text-red-300 [html[data-theme='day']_&]:text-red-700">{error}</div>}
         </label>
     );
+};
+
+const 获取Json运行时字段形状 = (field: 运行时配置字段): 'array' | 'object' | undefined => {
+    const path = field.path.join('.');
+    if (path === 'economy.marketEventTemplates') return 'array';
+    if (path === 'uiLabels') return 'object';
+    return undefined;
 };
 
 const 格式化只读列表 = (value: unknown): string => {
@@ -2245,26 +2261,15 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                                                     );
                                                                 }
                                                                 if (fieldType === 'realmConfig') {
-                                                                    const realmValue = (() => {
-                                                                        const v = 读取运行时路径值(contributionDraft.modeRuntimeProfile, field.path);
-                                                                        if (!v || typeof v !== 'object') return '';
-                                                                        return JSON.stringify(v, null, 2);
-                                                                    })();
                                                                     return (
-                                                                        <label key={key} className="block text-xs text-gray-300 sm:col-span-2">
-                                                                            {field.label}
-                                                                            <textarea value={realmValue}
-                                                                                onChange={(event) => {
-                                                                                    try {
-                                                                                        const parsed = JSON.parse(event.target.value);
-                                                                                        更新运行时配置字段(field, parsed);
-                                                                                    } catch {
-                                                                                        // JSON parse error — skip update
-                                                                                    }
-                                                                                }}
-                                                                                placeholder='{"levelNames":[],"parseRules":[]}'
-                                                                                className="mt-1 min-h-28 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm leading-5 text-gray-100 outline-none placeholder:text-gray-500 focus:border-wuxia-gold/45 font-mono" />
-                                                                        </label>
+                                                                        <Json运行时字段编辑器
+                                                                            key={`${key}-realm-config`}
+                                                                            label={field.label}
+                                                                            placeholder='{"levelNames":[],"parseRules":[]}'
+                                                                            value={读取运行时路径值(contributionDraft.modeRuntimeProfile, field.path)}
+                                                                            expectedShape="object"
+                                                                            onApply={(parsed) => 更新运行时配置字段(field, parsed)}
+                                                                        />
                                                                     );
                                                                 }
                                                                 if (fieldType === 'currencySystemEditor') {
@@ -2302,6 +2307,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                                                             placeholder={field.placeholder}
                                                                             value={读取运行时路径值(contributionDraft.modeRuntimeProfile, field.path)}
                                                                             onApply={(parsed) => 更新运行时配置字段(field, parsed)}
+                                                                            expectedShape={获取Json运行时字段形状(field)}
                                                                         />
                                                                     );
                                                                 }

@@ -49,6 +49,32 @@ export const isNativeCapacitorEnvironment = (): boolean => {
     return false;
 };
 
+export const isCapacitorPluginAvailable = (pluginName: string): boolean => {
+    const normalizedName = readEnvString(pluginName);
+    if (!normalizedName) return false;
+
+    try {
+        if (typeof Capacitor?.isPluginAvailable === 'function') {
+            return Capacitor.isPluginAvailable(normalizedName);
+        }
+    } catch {
+        // Fall through to the window-based runtime probe below.
+    }
+
+    if (typeof window === 'undefined') return false;
+    const maybeCapacitor = (window as any).Capacitor;
+
+    try {
+        if (typeof maybeCapacitor?.isPluginAvailable === 'function') {
+            return maybeCapacitor.isPluginAvailable(normalizedName);
+        }
+    } catch {
+        return false;
+    }
+
+    return false;
+};
+
 export const requiresRemoteSyncApi = (): boolean => {
     if (!isNativeCapacitorEnvironment()) return false;
     if (typeof window === 'undefined') return false;
@@ -81,3 +107,4 @@ export const 构建同步API地址 = buildSyncApiUrl;
 export const 是否原生Capacitor环境 = isNativeCapacitorEnvironment;
 export const 当前环境需要远程同步API = requiresRemoteSyncApi;
 export const 设置原生系统栏隐藏 = setNativeSystemBarsHidden;
+export const Capacitor插件可用 = isCapacitorPluginAvailable;

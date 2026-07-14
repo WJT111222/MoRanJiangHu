@@ -88,6 +88,16 @@ const 判断局域网主机 = (hostname: string): boolean => {
     return /\.local$/i.test(host);
 };
 
+const 规范化可解析地址 = (baseUrlRaw: string): string => {
+    const raw = (baseUrlRaw || '').trim();
+    if (!raw) return '';
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)) return raw;
+    if (/^(localhost|(?:\d{1,3}\.){3}\d{1,3}|\[[0-9a-f:]+\]|[a-z0-9.-]+\.local)(?::\d+)?(?:\/.*)?$/i.test(raw)) {
+        return `http://${raw}`;
+    }
+    return raw;
+};
+
 const 识别ComfyUI地址类型 = (baseUrlRaw: string): ComfyUI地址类型 => {
     try {
         const url = new URL((baseUrlRaw || '').trim());
@@ -243,7 +253,10 @@ const 构建OpenAI图片直连生成端点 = (baseUrlRaw: string, customPathRaw?
 };
 
 const 预定义供应商目标映射: Record<string, string> = {
-    'openai-official': 'https://api.openai.com'
+    openai: 'https://api.openai.com',
+    'openai-official': 'https://api.openai.com',
+    xai_official: 'https://api.x.ai',
+    'xai-official': 'https://api.x.ai'
 };
 
 const 当前是在线环境 = (): boolean => {
@@ -306,34 +319,36 @@ export const 获取代理决策 = (
 ): 代理决策 => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'unknown';
     const isNative = isNativeCapacitorEnvironment();
-    const 本地开发 = 是否本地开发环境();
-    const 在线 = 当前是在线环境();
     const 有自定义代理 = !!(options?.自定义图片代理地址 || '').trim();
     const 用户开启代理 = options?.图片需要代理 === true;
 
-    // 1) 用户显式开启代理 + 配了自定义代理地址 → 走自定义代理
+    // 1) 目标地址是 localhost/私网 → 强制直连（Cloudflare Worker 无法访问用户设备的 localhost）
+    try {
+        const targetUrl = new URL(规范化可解析地址(baseUrlRaw));
+        if (判断局域网主机(targetUrl.hostname)) {
+            return { 走代理: false, 原因: '目标是localhost/私网地址，强制直连', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
+        }
+    } catch {
+        // URL 解析失败时继续后续决策
+    }
+
+    // 2) 用户显式开启代理 + 配了自定义代理地址 → 走自定义代理
     if (用户开启代理 && 有自定义代理) {
         return { 走代理: true, 原因: '用户开启代理+自定义地址', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
     }
 
-    // 2) 用户显式开启代理 + 未配自定义地址 → 走默认代理
-    if (用户开启代理) {
+    // 3) 用户显式开启代理 + 未配自定义地址 + 命中白名单 → 走默认代理
+    if (用户开启代理 && 预定义供应商目标映射[供应商ID]) {
         return { 走代理: true, 原因: '用户开启代理+默认代理', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
     }
 
-    // 3) 本地开发环境 → 自动走代理（CORS 几乎必然失败）
-    if (本地开发 && options?.useRuntimeProxy && 可走同域图片代理()) {
-        return { 走代理: true, 原因: '本地开发环境自动走代理', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
+    // 4) 用户开启代理但目标不在默认白名单内 → 直连
+    if (用户开启代理) {
+        return { 走代理: false, 原因: '用户开启代理，但目标不在默认代理白名单内', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
     }
 
-    // 4) 在线环境 + openai-official → 走代理（白名单）
-    if (options?.useRuntimeProxy && 在线 && 预定义供应商目标映射[供应商ID]) {
-        return { 走代理: true, 原因: '在线环境+官方白名单', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
-    }
-
-    // 5) 在线环境 + 自定义端点 → 直连（CORS 通常由网关处理）
-    // 6) 本地开发但不可走代理（如原生未配远程同步） → 直连
-    return { 走代理: false, 原因: 本地开发 ? '本地开发但代理不可用' : '在线环境直连', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
+    // 5) 用户未开启代理 → 直连
+    return { 走代理: false, 原因: '用户未开启代理，直连', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
 };
 
 export const 构建OpenAI图片生成端点 = (
@@ -345,15 +360,16 @@ export const 构建OpenAI图片生成端点 = (
     const 决策 = 获取代理决策(baseUrlRaw, 供应商ID, options);
 
     if (决策.走代理) {
-        const proxyBase = 获取运行时代理基础地址(options?.自定义图片代理地址);
-        // 在线环境白名单走 ?provider= 模式
-        if (预定义供应商目标映射[供应商ID] && !(options?.自定义图片代理地址 || '').trim()) {
+        const 自定义代理地址 = (options?.自定义图片代理地址 || '').trim();
+        if (自定义代理地址) {
+            const targetUrl = 构建直连端点(baseUrlRaw, customPathRaw);
+            return `${自定义代理地址.replace(/\/+$/, '')}?url=${encodeURIComponent(targetUrl)}`;
+        }
+        if (预定义供应商目标映射[供应商ID]) {
+            const proxyBase = 获取运行时代理基础地址();
             const path = customPathRaw || '/v1/images/generations';
             return `${proxyBase}/api/image-backend/openai-image-proxy${path}?provider=${encodeURIComponent(供应商ID)}`;
         }
-        // 自定义代理 / 本地开发走 ?url= 模式：目标地址（含完整路径）整体编码到 ?url=
-        const targetUrl = 构建直连端点(baseUrlRaw, customPathRaw);
-        return `${proxyBase}/api/image-backend/openai-image-proxy?url=${encodeURIComponent(targetUrl)}`;
     }
 
     return 构建直连端点(baseUrlRaw, customPathRaw);

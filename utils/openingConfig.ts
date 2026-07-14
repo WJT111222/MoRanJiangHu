@@ -12,6 +12,7 @@ import type {
     同人来源类型,
     同人融合强度类型
 } from '../types';
+import type { ModeRuntimeProfile } from '../models/system';
 import { 获取题材模式配置, 获取题材模式选项, 规范化题材模式 } from './topicModeProfiles';
 import { 构建官方模式运行时配置, 规范化模式运行时配置 } from './modeRuntimeProfile';
 import { 是否自定义模式运行时配置 } from './effectiveTopicProfile';
@@ -240,7 +241,11 @@ const 应用运行时组织文案 = (
 };
 
 export const 获取题材开局配置文案 = (mode?: 题材模式类型, runtimeProfile?: unknown): 题材开局配置文案 => {
-    const profile = 获取题材模式配置(mode);
+    const typedRuntime = runtimeProfile && typeof runtimeProfile === 'object' ? runtimeProfile as ModeRuntimeProfile : undefined;
+    const effectiveMode = typedRuntime && 是否自定义模式运行时配置(typedRuntime, mode)
+        ? typedRuntime.identity.baseMode
+        : mode;
+    const profile = 获取题材模式配置(effectiveMode);
     if (profile.group === 'apocalypse') {
         return 应用运行时组织文案({
             intro: '题材模式已移到“世界观”。这里只决定初始关系侧重、第一幕切入方式；末日题材会按幸存者语境生成关系与场景。',

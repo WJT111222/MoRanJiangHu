@@ -564,7 +564,12 @@ export const 生成行情列表 = (force = false, previous: 拍卖行情[] = [],
     if (!force && activePrevious.length > 0 && now - previousTime < 6 * HOUR_MS) {
         return { 行情列表: activePrevious, 最近行情时间: previousTime || now };
     }
-    const shuffled = [...获取题材行情模板(mode, runtimeProfile)].sort(() => Math.random() - 0.5);
+    const eligibleTemplates = 获取题材行情模板(mode, runtimeProfile).filter((template) => !行情是否不符合题材(
+        { ...template, ID: '', 过期时间: 0 },
+        mode,
+        runtimeProfile
+    ));
+    const shuffled = [...eligibleTemplates].sort(() => Math.random() - 0.5);
     const count = 2 + Math.floor(Math.random() * 2);
     return {
         行情列表: shuffled.slice(0, count).map((template) => ({
@@ -794,7 +799,7 @@ export const 创建事件拍卖品 = (params: 拍卖行事件投放参数): 拍�
         来源描述: 读文本(params.来源描述, `源自「${params.事件名称 || (custom ? '市面风波' : '江湖风波')}」的流通货。`),
         关联事件: params.事件名称,
         主线类型: params.主线类型,
-        是否限时热点: params.是否限时热点 ?? true,
+        是否限时热点: params.是否限时热点 ?? false,
     };
 };
 
