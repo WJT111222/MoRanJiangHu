@@ -596,7 +596,7 @@ export const RELEASE_INFO = {
         "备用站：https://msjh.bacon.de5.net/"
     ],
     "notes": "创意工坊模式包支持把官方或社区内容完整载入可视化表单继续编辑，额外世界书、预设和扩展配置会继续保留。\n完善模式包运行配置贯通：自定义题材、组织、能力、货币与拍卖行情会更稳定地应用到实际游玩。\n修复 APK 创意工坊入口与启动兼容问题，社区内容加载和原生网络请求更稳定。\n优化手机端模式包编辑表单，长内容不再把输入框撑出屏幕；首页共创者名单新增“倒挂的梦”。\n完善 OpenAI/Grok 图片代理兼容与来源校验，降低错误代理地址带来的加载失败。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-    "releasePublishedAt": "2026-07-14T19:51:23+08:00"
+    "releasePublishedAt": "2026-07-14T20:00:31+08:00"
 } as const;
 
 export type ReleaseInfo = typeof RELEASE_INFO;
