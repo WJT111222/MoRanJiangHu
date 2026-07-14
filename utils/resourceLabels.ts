@@ -1,6 +1,6 @@
 import type { ModeRuntimeProfile, OpeningConfig, 题材模式类型 } from '../models/system';
 import { 获取题材模式配置 } from './topicModeProfiles';
-import { 是否自定义模式运行时配置, 按官方键合并覆盖, 读取界面文案覆盖分区 } from './effectiveTopicProfile';
+import { 是否自定义模式运行时配置, 按官方键合并覆盖, 读取界面文案覆盖分区, 解析生效题材模式 } from './effectiveTopicProfile';
 
 export type 资源槽位 = 'vitality' | 'stamina' | 'innerPower';
 
@@ -205,7 +205,8 @@ export const 获取题材资源文案 = (
     mode?: 题材模式类型 | null,
     runtimeProfile?: ModeRuntimeProfile | null
 ): 题材资源文案 => {
-    const labels = 获取资源展示文案(mode ? { 题材模式: mode } : null);
+    const effectiveMode = 解析生效题材模式(mode, runtimeProfile);
+    const labels = 获取资源展示文案(effectiveMode ? { 题材模式: effectiveMode } : null);
     const 覆盖 = 读取界面文案覆盖分区(runtimeProfile, '资源');
     return {
         分组标题: 覆盖.分组标题 || labels.sectionTitle,
@@ -877,7 +878,7 @@ const 合并题材界面文案 = (
 export const 获取题材界面文案 = (
     mode?: 题材模式类型 | null,
     runtimeProfile?: ModeRuntimeProfile | null
-): 题材界面文案 => 合并题材界面文案(创建界面文案(mode), mode, runtimeProfile);
+): 题材界面文案 => 合并题材界面文案(创建界面文案(解析生效题材模式(mode, runtimeProfile)), mode, runtimeProfile);
 
 export interface 题材档案文案 {
     档案题头: string;
@@ -958,7 +959,7 @@ export const 获取题材档案文案 = (
     mode?: 题材模式类型 | null,
     runtimeProfile?: ModeRuntimeProfile | null
 ): 题材档案文案 => {
-    const official = 创建档案文案(mode);
+    const official = 创建档案文案(解析生效题材模式(mode, runtimeProfile));
     if (!runtimeProfile || !是否自定义模式运行时配置(runtimeProfile, mode)) return official;
     return 按官方键合并覆盖(
         official as unknown as Record<string, string>,

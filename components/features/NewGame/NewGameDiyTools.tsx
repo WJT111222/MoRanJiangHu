@@ -78,7 +78,7 @@ export const buildWorldContextForDiy = (worldConfig: WorldGenConfig, openingConf
         `${effective.densityPromptLabel}：${worldConfig.sectDensity}`,
         `${effective.dynastyLabel}：${worldConfig.dynastySetting || '待生成'}`,
         `${effective.tianjiaoLabel}：${worldConfig.tianjiaoSetting || '待生成'}`,
-        usesCustomRuntime ? `模式包能力口径：${runtimeProfile?.ability?.primaryAxis || ''}` : '',
+        usesCustomRuntime && runtimeProfile?.ability?.primaryAxis ? `模式包能力口径：${runtimeProfile.ability.primaryAxis}` : '',
         worldConfig.worldExtraRequirement ? `玩家额外要求：${worldConfig.worldExtraRequirement}` : '',
         realmInstruction
     ].filter(Boolean).join('\n');
@@ -87,6 +87,7 @@ export const buildWorldContextForDiy = (worldConfig: WorldGenConfig, openingConf
 export const buildRealmExtraPromptForDiy = (worldConfig: WorldGenConfig, openingConfig?: OpeningConfig): string => {
     const topicMode = 获取DIY题材模式(worldConfig, openingConfig);
     const runtimeProfile = openingConfig?.modeRuntimeProfile || worldConfig.modeRuntimeProfile;
+    const effective = 解析生效题材配置(openingConfig?.题材模式, runtimeProfile);
     const usesCustomRuntime = Boolean(runtimeProfile && 是否自定义模式运行时配置(runtimeProfile, openingConfig?.题材模式));
     const 模式包境界名 = (runtimeProfile?.ability?.realmConfig?.levelNames || []).filter(Boolean);
     const realmInstruction = needsCustomRealmGuardForDiy(worldConfig, openingConfig)
@@ -97,7 +98,7 @@ export const buildRealmExtraPromptForDiy = (worldConfig: WorldGenConfig, opening
                 ? '仙侠题材应优先使用修真境界，如练气、筑基、金丹、元婴、化神、炼虚、合体、渡劫；不得生成斗者、斗师、斗王、斗皇、斗宗、斗尊等斗气体系。'
                 : '请生成符合本作品/题材代入感的境界体系，优先使用玩家提供的题材关键词，不要回退成无关作品模板。';
     return [
-        `当前题材：${topicMode}`,
+        `当前题材：${usesCustomRuntime ? effective.label : topicMode}`,
         `世界名称：${worldConfig.worldName || '未命名世界'}`,
         `题材关键词：${worldConfig.dynastySetting || ''}；${worldConfig.tianjiaoSetting || ''}；${worldConfig.worldExtraRequirement || ''}`,
         realmInstruction,

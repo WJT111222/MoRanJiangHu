@@ -1,6 +1,6 @@
 import type { ModeRuntimeProfile, 题材模式类型 } from '../models/system';
 import { 获取题材模式配置 } from './topicModeProfiles';
-import { 是否自定义模式运行时配置, 读取界面文案覆盖分区 } from './effectiveTopicProfile';
+import { 是否自定义模式运行时配置, 读取界面文案覆盖分区, 解析生效题材模式 } from './effectiveTopicProfile';
 
 const 无限流类别映射: Record<string, string> = { 招式: '主动能力', 内功: '精神训练', 外功: '体能强化', 轻功: '机动能力', 被动: '被动能力', 功法: '综合强化', 心法: '心理锚定', 身法: '机动能力', 术法: '超能力', 神通: '血统能力' };
 const 西方奇幻类别映射: Record<string, string> = { 招式: '战技', 内功: '魔力训练', 外功: '防护训练', 轻功: '机动专长', 被动: '被动专长', 功法: '综合能力', 心法: '冥想法', 身法: '机动专长', 术法: '法术', 神通: '传奇能力' };
@@ -34,6 +34,6 @@ export const 格式化能力类别 = (
         const 覆盖 = 读取界面文案覆盖分区(runtimeProfile, '能力类别');
         if (覆盖[text]) return 覆盖[text];
     }
-    const labels = 按题材获取类别映射(mode);
+    const labels = 按题材获取类别映射(解析生效题材模式(mode, runtimeProfile));
     return labels[text] || text;
 };

@@ -41,6 +41,16 @@ export const 是否自定义模式运行时配置 = (
     return Boolean(displayName && !官方题材标签集合.has(displayName));
 };
 
+export const 解析生效题材模式 = (
+    mode?: 题材模式类型 | null,
+    runtimeProfile?: ModeRuntimeProfile | null
+): 题材模式类型 | undefined => {
+    if (runtimeProfile && 是否自定义模式运行时配置(runtimeProfile, mode)) {
+        return runtimeProfile.identity?.baseMode || mode || undefined;
+    }
+    return mode || runtimeProfile?.identity?.baseMode || undefined;
+};
+
 /**
  * 读取 uiLabels 指定分区的合法覆盖项：只保留非空字符串值，键名裁剪空白。
  * 非法键的剥离由消费侧按官方结构合并时完成（未知键不会被拷贝进结果）。
@@ -87,8 +97,8 @@ export const 解析生效题材配置 = (
     mode?: 题材模式类型 | null,
     runtimeProfile?: ModeRuntimeProfile | null
 ): 生效题材配置 => {
-    const official = 获取题材模式配置(mode || runtimeProfile?.identity?.baseMode);
     const custom = 是否自定义模式运行时配置(runtimeProfile, mode);
+    const official = 获取题材模式配置(解析生效题材模式(mode, runtimeProfile));
     if (!custom || !runtimeProfile) {
         return { ...official, marketName: official.auctionName, usesCustomRuntime: false };
     }
@@ -101,15 +111,24 @@ export const 解析生效题材配置 = (
     const 密度选项覆盖 = 读取界面文案覆盖分区(runtimeProfile, '密度选项');
     const 组织名 = 非空文本(runtimeProfile.organization?.organizationName) || '组织';
     const 成员名 = 非空文本(runtimeProfile.organization?.memberName) || '成员';
+    const 组织口径 = [
+        非空文本(runtimeProfile.organization?.organizationName),
+        非空文本(runtimeProfile.organization?.memberName),
+        非空文本(runtimeProfile.organization?.contributionName)
+    ].filter(Boolean).join(' / ');
+    const 能力口径 = [
+        非空文本(runtimeProfile.ability?.primaryAxis),
+        非空文本(runtimeProfile.ability?.combatResolution)
+    ].filter(Boolean).join('；');
 
     const runtimePromptLines = [
         `本存档使用「${runtimeLabel}」自定义模式包，请严格使用模式包自身的世界观与用词口径。`,
         `交易口径：${非空文本(runtimeProfile.economy?.primaryCurrency) || official.currencyPrompt}`,
         `统一换算口径：${非空文本(runtimeProfile.economy?.exchangeRules) || official.currencyExchangePrompt}`,
         `地图/势力口径：${非空文本(runtimeProfile.map?.mapPrompt) || official.mapPrompt}`,
-        `组织口径：${非空文本(runtimeProfile.organization?.organizationName)} / ${非空文本(runtimeProfile.organization?.memberName)} / ${非空文本(runtimeProfile.organization?.contributionName)}`,
-        `能力口径：${非空文本(runtimeProfile.ability?.primaryAxis)}；${非空文本(runtimeProfile.ability?.combatResolution)}`
-    ].filter((line) => !/[：/]\s*$/.test(line) && !line.endsWith('；'));
+        组织口径 ? `组织口径：${组织口径}` : '',
+        能力口径 ? `能力口径：${能力口径}` : ''
+    ].filter(Boolean);
 
     const 向导标签 = <K extends keyof 题材模式配置>(key: K & string, fallback: string): string => (
         向导覆盖[key] || fallback
