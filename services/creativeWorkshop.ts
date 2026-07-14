@@ -42,6 +42,7 @@ const 看起来像HTML页面 = (text: string): boolean => /^\s*<!doctype\s+html\
 
 interface 列出创意工坊模块选项 {
     forceRefresh?: boolean;
+    onRefreshFallback?: (message: string) => void;
 }
 
 interface 云端创意工坊模块缓存载荷 {
@@ -197,6 +198,7 @@ const 规范化世界细节生成配置 = (raw: any): 创意工坊模块条目['
         : undefined;
     if (!source) return undefined;
     return {
+        ...source,
         aiGenerate: source.aiGenerate !== false,
         importantPeople: typeof source.importantPeople === 'string' ? source.importantPeople.trim() : '',
         importantFactions: typeof source.importantFactions === 'string' ? source.importantFactions.trim() : '',
@@ -294,6 +296,7 @@ const 升级旧版开局模块 = (entry: 创意工坊模块条目): 创意工坊
             suiteId,
             suiteTitle,
             mode,
+            packagePart: 'topic',
             modeRuntimeProfile: runtimeProfile || payload?.modeRuntimeProfile,
             content,
             contentBlocks,
@@ -320,6 +323,7 @@ const 规范化模块 = (raw: any, source: 创意工坊模块条目['source']): 
     const title = typeof raw.title === 'string' ? raw.title.trim() : '';
     if (!title) return null;
     return {
+        ...raw,
         id,
         type,
         title,
@@ -343,6 +347,7 @@ const 规范化模块 = (raw: any, source: 创意工坊模块条目['source']): 
         workshopKind: raw.workshopKind === 'standard_module' ? 'standard_module' : undefined,
         contentBlocks: Array.isArray(raw.contentBlocks)
             ? raw.contentBlocks.map((block: any) => ({
+                ...block,
                 id: String(block?.id || '').trim(),
                 title: String(block?.title || '').trim(),
                 purpose: String(block?.purpose || '').trim(),
@@ -358,6 +363,9 @@ const 规范化模块 = (raw: any, source: 创意工坊模块条目['source']): 
         contributor: typeof raw.contributor === 'string' ? raw.contributor.trim() : '',
         createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : '',
         updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : '',
+        version: Number.isInteger(Number(raw.version)) && Number(raw.version) > 0 ? Number(raw.version) : undefined,
+        baseModuleId: typeof raw.baseModuleId === 'string' && raw.baseModuleId.trim() ? raw.baseModuleId.trim() : undefined,
+        versionNote: typeof raw.versionNote === 'string' ? raw.versionNote.trim() : '',
         downloadUrl: 规范化下载地址(raw.downloadUrl, id),
         sha256: typeof raw.sha256 === 'string' ? raw.sha256 : '',
         ownerUserId: typeof raw.ownerUserId === 'string' ? raw.ownerUserId : undefined,
@@ -510,6 +518,15 @@ const 合并创意工坊模块 = (cloudEntries: 创意工坊模块条目[]): 创
         }));
 };
 
+export const 合并最新本地创意工坊模块 = (currentEntries: 创意工坊模块条目[]): 创意工坊模块条目[] => {
+    const nonLocalEntries = currentEntries.filter((entry) => entry.source !== 'local');
+    return filterCreativeWorkshopDuplicates(整合创意工坊模式包([
+        ...创意工坊模块列表,
+        ...nonLocalEntries,
+        ...读取本地创意工坊模块()
+    ]));
+};
+
 export const 列出创意工坊模块 = async (options: 列出创意工坊模块选项 = {}): Promise<创意工坊模块条目[]> => {
     const cachedCloudEntries = 读取云端创意工坊模块缓存();
     if (!options.forceRefresh && cachedCloudEntries.length > 0 && 云端创意工坊模块缓存仍新鲜()) {
@@ -517,11 +534,13 @@ export const 列出创意工坊模块 = async (options: 列出创意工坊模块
     }
 
     let cloudEntries: 创意工坊模块条目[] = [];
+    let cloudFetchSucceeded = false;
     for (const url of 构建创意工坊列表API候选地址()) {
         try {
             const response = await fetchWithTimeout(url, { method: 'GET', headers: { Accept: 'application/json' } });
             const payload = await 读取响应JSON(response);
             if (response.ok && payload?.ok !== false && Array.isArray(payload?.entries)) {
+                cloudFetchSucceeded = true;
                 cloudEntries = (payload.entries.map((entry: unknown) => 规范化当前模块(entry, 'cloud')).filter(Boolean) as 创意工坊模块条目[])
                     .filter((entry) => !已迁移旧版创意工坊云端模块ID集合.has(entry.id));
                 保存云端创意工坊模块缓存(cloudEntries);
@@ -531,7 +550,11 @@ export const 列出创意工坊模块 = async (options: 列出创意工坊模块
             cloudEntries = [];
         }
     }
-    return 合并创意工坊模块(cloudEntries.length > 0 ? cloudEntries : cachedCloudEntries);
+    if (options.forceRefresh && !cloudFetchSucceeded) {
+        if (cachedCloudEntries.length === 0) throw new Error('刷新社区工坊失败，当前列表未更新；请检查网络后重试。');
+        options.onRefreshFallback?.('刷新社区工坊失败，当前展示上次缓存内容。');
+    }
+    return 合并创意工坊模块(cloudFetchSucceeded ? cloudEntries : cachedCloudEntries);
 };
 
 export const 发布创意工坊模块 = async (params: 发布创意工坊模块参数): Promise<创意工坊模块条目> => {

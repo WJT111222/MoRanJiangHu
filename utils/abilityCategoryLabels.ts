@@ -1,4 +1,5 @@
 import type { ModeRuntimeProfile, 题材模式类型 } from '../models/system';
+import { 功法类型列表 } from '../models/kungfu';
 import { 获取题材模式配置 } from './topicModeProfiles';
 import { 是否自定义模式运行时配置, 读取界面文案覆盖分区 } from './effectiveTopicProfile';
 
@@ -9,7 +10,9 @@ const 末日类别映射: Record<string, string> = { 招式: '战斗技巧', 内
 const 现代类别映射: Record<string, string> = { 招式: '行动能力', 内功: '专注训练', 外功: '体能训练', 轻功: '机动能力', 被动: '被动能力', 功法: '综合能力', 心法: '心理训练', 身法: '机动能力', 术法: '特殊能力', 神通: '高阶能力' };
 const 武侠类别映射: Record<string, string> = { 招式: '武技', 内功: '内功心法', 外功: '外功', 轻功: '身法轻功', 被动: '杂学被动' };
 
-const 按题材获取类别映射 = (mode?: 题材模式类型 | null): Record<string, string> => {
+export const 规范能力类别键列表 = [...功法类型列表, '招式', '功法', '心法', '身法'] as const;
+
+export const 按题材获取类别映射 = (mode?: 题材模式类型 | null): Record<string, string> => {
     const group = 获取题材模式配置(mode || undefined).group;
     if (group === 'infinite') return 无限流类别映射;
     if (group === 'western_fantasy') return 西方奇幻类别映射;

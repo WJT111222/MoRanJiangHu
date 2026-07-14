@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { 从模式世界书提取提示词, 创意工坊模块分区, 创意工坊模块可发布到社区, 获取创意工坊模块来源标签, type 创意工坊模块条目, type 创意工坊模块类型, type 创意工坊世界细节生成配置 } from '../../../data/creativeWorkshopModules';
-import type { 接口设置结构, ModeRuntimeProfile, 世界书结构 } from '../../../types';
-import type { CurrencySystem, 题材模式类型 } from '../../../models/system';
+import { 从模式世界书提取提示词, 创意工坊模块分区, 创意工坊模块可发布到社区, 获取创意工坊模块来源标签, 是否完整模式包Payload, type 创意工坊模块条目, type 创意工坊模块类型, type 创意工坊世界细节生成配置 } from '../../../data/creativeWorkshopModules';
+import type { 接口设置结构, ModeRuntimeProfile, 世界书结构, 世界书条目结构 } from '../../../types';
+import { 模式市场行情影响类型列表, type CurrencySystem, type 题材模式类型, type 模式市场行情模板 } from '../../../models/system';
 import { 题材模式配置表, 题材模式顺序 } from '../../../utils/topicModeProfiles';
 import { 构建货币系统模板, 构建官方模式运行时配置, 规范化模式运行时配置, 渲染模式运行时配置世界书内容, 规范化显式货币系统 } from '../../../utils/modeRuntimeProfile';
+import { 获取题材界面文案, 获取题材资源文案, 获取题材档案文案 } from '../../../utils/resourceLabels';
+import { 按题材获取类别映射, 规范能力类别键列表 } from '../../../utils/abilityCategoryLabels';
 import { 开局生成性别选项 } from '../../../utils/openingConfig';
 import {
     编辑创意工坊模块,
@@ -11,6 +13,7 @@ import {
     删除本地创意工坊模块,
     发布创意工坊模块,
     导入本地创意工坊模块,
+    合并最新本地创意工坊模块,
     更新本地创意工坊模块,
     列出创意工坊模块,
     提取ComfyUI工作流模块JSON
@@ -34,8 +37,8 @@ const 可展示工坊类型: 创意工坊模块类型[] = ['topic', 'tavern_pres
 const 可展示工坊类型集合 = new Set<创意工坊模块类型>(可展示工坊类型);
 const 可展示工坊分区 = 创意工坊模块分区.filter((section) => 可展示工坊类型集合.has(section.id));
 const 默认生成性别占位 = `${开局生成性别选项.map((item) => item.value).join('、')}；留空默认全选`;
-type 运行时配置字段类型 = 'text' | 'textarea' | 'list' | 'record' | 'bool' | 'boolGroup' | 'baseMode' | 'currencyMode' | 'timeFormatMode' | 'realmConfig' | 'currencySystemModeSelector' | 'economyGroupTitle' | 'currencySystemEditor' | 'currencySystemJson' | 'json';
-type 运行时配置字段 = { label: string; path: string[]; type?: 运行时配置字段类型; placeholder?: string; boolGroup?: { label: string; key: string }[] };
+type 运行时配置字段类型 = 'text' | 'textarea' | 'list' | 'record' | 'number' | 'bool' | 'boolGroup' | 'baseMode' | 'currencyMode' | 'timeFormatMode' | 'realmConfig' | 'currencySystemModeSelector' | 'economyGroupTitle' | 'currencySystemEditor' | 'currencySystemJson' | 'json' | 'marketTemplates' | 'uiLabels';
+type 运行时配置字段 = { label: string; path: string[]; type?: 运行时配置字段类型; placeholder?: string; expectedShape?: 'array' | 'object'; boolGroup?: { label: string; key: string }[] };
 type 运行时配置分区 = { title: string; fields: 运行时配置字段[] };
 
 const 运行时配置分区列表: 运行时配置分区[] = [
@@ -72,7 +75,7 @@ const 运行时配置分区列表: 运行时配置分区[] = [
             { label: '底层记账单位', path: ['economy', 'accountingUnit'] },
             { label: '旧兼容换算说明', path: ['economy', 'exchangeRules'], type: 'textarea' },
             { label: '市场名称', path: ['economy', 'marketName'] },
-            { label: '市场行情模板 JSON（可选）', path: ['economy', 'marketEventTemplates'], type: 'json', placeholder: '[{"标题":"节礼采买","描述":"年节将近，衣料首饰行情看涨。","影响类型":"杂物","价格倍率":1.2,"热点标签":"节礼采买"}]' },
+            { label: '市场行情模板（可选）', path: ['economy', 'marketEventTemplates'], type: 'marketTemplates' },
             { label: '市场动词', path: ['economy', 'marketVerb'] },
             { label: '允许物品类型', path: ['economy', 'allowedItemTypes'], type: 'list' },
             { label: '禁用关键词', path: ['economy', 'bannedKeywords'], type: 'list' }
@@ -204,7 +207,7 @@ const 运行时配置分区列表: 运行时配置分区[] = [
     {
         title: '界面文案覆盖',
         fields: [
-            { label: 'UI 文案覆盖 JSON（可选）', path: ['uiLabels'], type: 'json', placeholder: '{"菜单":{"inventory":"随身箱笼"},"标题":{"背包":"随身箱笼"},"组织":{"能力库":"家塾书房"},"资源":{"能量":"心气"},"档案":{"档案题头":"府中人物档案"},"能力类别":{"招式":"才艺章法"},"向导":{"worldSizeLabel":"红楼版图"}}' }
+            { label: '界面文案覆盖（可选）', path: ['uiLabels'], type: 'uiLabels' }
         ]
     },
     {
@@ -217,11 +220,12 @@ const 运行时配置分区列表: 运行时配置分区[] = [
     }
 ];
 
-type 贡献草稿 = {
+export type 贡献草稿 = {
     title: string;
     subtitle: string;
     description: string;
     type: 创意工坊模块类型;
+    moduleKind: 'mode_package' | 'standard';
     mode: 题材模式类型;
     currencyDisplayMode: 'wuxia' | 'xianxia' | 'fantasy' | 'urban' | 'modern' | 'apocalypse' | 'infinite';
     auctionName: string;
@@ -246,6 +250,8 @@ type 贡献草稿 = {
     style: string;
     scope: 'main' | 'scene' | 'nsfw' | 'all';
     versionNote: string;
+    sourceModuleSnapshot?: 创意工坊模块条目;
+    mapDiyDraft?: 创意工坊世界细节生成配置['mapDiyDraft'];
 };
 
 const 创建默认模式元数据草稿 = (mode: 题材模式类型): Pick<贡献草稿, 'currencyDisplayMode' | 'auctionName' | 'marketVerb' | 'mapPrompt' | 'skillNames' | 'presetItemKeywords' | 'backgroundSuggestions' | 'talentSuggestions' | 'modeRuntimeProfile'> => {
@@ -300,11 +306,12 @@ const 构建模块摘要 = (entry: 创意工坊模块条目): string => [
         : (entry.injectionPreview?.length ? entry.injectionPreview : [`模块数据：${JSON.stringify(entry.payload, null, 2)}`]))
 ].filter(Boolean).join('\n');
 
-const 空贡献草稿 = (): 贡献草稿 => ({
+export const 空贡献草稿 = (): 贡献草稿 => ({
     title: '',
     subtitle: '',
     description: '',
     type: 'topic',
+    moduleKind: 'mode_package',
     mode: '武侠',
     ...创建默认模式元数据草稿('武侠'),
     tags: '',
@@ -404,11 +411,11 @@ const Json运行时字段编辑器: React.FC<{
         try {
             const parsed = JSON.parse(trimmed);
             if (expectedShape === 'array' && !Array.isArray(parsed)) {
-                setError('该字段需要 JSON 数组，当前输入不是数组，字段未写入。');
+                setError('该字段需要 JSON 数组，当前输入不是数组，未写入。');
                 return;
             }
-            if (expectedShape === 'object' && (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))) {
-                setError('该字段需要 JSON 对象，当前输入不是对象，字段未写入。');
+            if (expectedShape === 'object' && (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))) {
+                setError('该字段需要 JSON 对象，当前输入不是对象，未写入。');
                 return;
             }
             setError('');
@@ -434,11 +441,138 @@ const Json运行时字段编辑器: React.FC<{
     );
 };
 
-const 获取Json运行时字段形状 = (field: 运行时配置字段): 'array' | 'object' | undefined => {
-    const path = field.path.join('.');
-    if (path === 'economy.marketEventTemplates') return 'array';
-    if (path === 'uiLabels') return 'object';
-    return undefined;
+const 市场行情模板编辑器: React.FC<{
+    value: unknown;
+    onApply: (templates: 模式市场行情模板[] | undefined) => void;
+}> = ({ value, onApply }) => {
+    const templates = Array.isArray(value) ? value as 模式市场行情模板[] : [];
+    const incompleteRows = templates.map((template, index) => (!String(template.标题 || '').trim() || !String(template.描述 || '').trim() ? index : -1)).filter((index) => index >= 0);
+    const update = (index: number, patch: Partial<模式市场行情模板>) => {
+        onApply(templates.map((template, current) => current === index ? { ...template, ...patch } : template));
+    };
+    const remove = (index: number) => {
+        const next = templates.filter((_, current) => current !== index);
+        onApply(next.length ? next : undefined);
+    };
+    return (
+        <div className="sm:col-span-2 rounded-lg border border-white/10 bg-black/20 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <div className="text-xs font-bold text-gray-200">市场行情模板（可选）</div>
+                    <div className="mt-1 text-[11px] leading-5 text-gray-400">自定义包未填写时使用题材中性行情；官方模式仍保留官方模板。最多保存 24 条。</div>
+                </div>
+                <button type="button" disabled={templates.length >= 24} onClick={() => onApply([...templates, { 标题: '', 描述: '', 影响类型: '全部', 价格倍率: 1 }])} className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] text-emerald-200 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-45">添加行情（{templates.length}/24）</button>
+            </div>
+            <div className="mt-3 space-y-3">
+                {templates.length === 0 ? <div className="rounded border border-dashed border-white/10 px-3 py-4 text-center text-[11px] text-gray-500">尚未配置自定义行情模板</div> : null}
+                {templates.map((template, index) => (
+                    <div key={index} className={`grid gap-2 rounded-lg border ${incompleteRows.includes(index) ? 'border-red-400/45' : 'border-white/10'} bg-white/[0.025] p-3 sm:grid-cols-12`}>
+                        <label className="text-[11px] text-gray-400 sm:col-span-3">标题
+                            <input maxLength={40} value={template.标题 || ''} onChange={(event) => update(index, { 标题: event.target.value })} placeholder="节礼采买" className="mt-1 h-9 w-full rounded border border-white/10 bg-black/30 px-2 text-xs text-gray-100 outline-none focus:border-wuxia-gold/45" />
+                        </label>
+                        <label className="text-[11px] text-gray-400 sm:col-span-5">描述
+                            <input maxLength={200} value={template.描述 || ''} onChange={(event) => update(index, { 描述: event.target.value })} placeholder="年节将近，衣料首饰行情看涨。" className="mt-1 h-9 w-full rounded border border-white/10 bg-black/30 px-2 text-xs text-gray-100 outline-none focus:border-wuxia-gold/45" />
+                        </label>
+                        <label className="text-[11px] text-gray-400 sm:col-span-2">影响类型
+                            <select value={template.影响类型 || '全部'} onChange={(event) => update(index, { 影响类型: event.target.value as 模式市场行情模板['影响类型'] })} className="mt-1 h-9 w-full rounded border border-white/10 bg-black/40 px-2 text-xs text-gray-100 outline-none focus:border-wuxia-gold/45">
+                                {模式市场行情影响类型列表.map((type) => <option key={type} value={type}>{type}</option>) }
+                            </select>
+                        </label>
+                        <label className="text-[11px] text-gray-400 sm:col-span-2">价格倍率
+                            <input type="number" min="0.2" max="5" step="0.05" value={template.价格倍率 ?? ''} onChange={(event) => update(index, { 价格倍率: event.target.value as unknown as number })} className="mt-1 h-9 w-full rounded border border-white/10 bg-black/30 px-2 text-xs text-gray-100 outline-none focus:border-wuxia-gold/45" />
+                        </label>
+                        <label className="text-[11px] text-gray-400 sm:col-span-10">热点标签
+                            <input maxLength={24} value={template.热点标签 || ''} onChange={(event) => update(index, { 热点标签: event.target.value || undefined })} placeholder="可选，如：节礼采买" className="mt-1 h-9 w-full rounded border border-white/10 bg-black/30 px-2 text-xs text-gray-100 outline-none focus:border-wuxia-gold/45" />
+                        </label>
+                        <div className="flex items-end sm:col-span-2"><button type="button" onClick={() => remove(index)} className="h-9 w-full rounded border border-red-500/25 bg-red-500/10 px-2 text-[11px] text-red-200 hover:bg-red-500/20">删除</button></div>
+                    </div>
+                ))}
+            </div>
+            {incompleteRows.length > 0 && <div className="mt-2 text-[11px] leading-5 text-red-300">第 {incompleteRows.map((index) => index + 1).join('、')} 条行情缺少标题或描述，补全后才能保存。</div>}
+        </div>
+    );
+};
+
+type 界面文案分区名 = NonNullable<ModeRuntimeProfile['uiLabels']> extends infer T ? keyof T : never;
+const 界面文案分区顺序: Array<{ key: 界面文案分区名; label: string }> = [
+    { key: '菜单', label: '菜单' }, { key: '标题', label: '标题' }, { key: '组织', label: '组织' }, { key: '资源', label: '资源' },
+    { key: '档案', label: '档案' }, { key: '能力类别', label: '能力类别' }, { key: '向导', label: '向导' }, { key: '密度选项', label: '密度选项' }
+];
+
+const 获取界面文案分区默认值 = (mode: 题材模式类型, section: 界面文案分区名): Record<string, string> => {
+    if (section === '菜单' || section === '标题' || section === '组织') return 获取题材界面文案(mode)[section] as unknown as Record<string, string>;
+    if (section === '资源') {
+        const labels = 获取题材资源文案(mode);
+        return { 分组标题: labels.分组标题, 气血: labels.气血, 精力: labels.精力, 能量: labels.能量 };
+    }
+    if (section === '档案') return 获取题材档案文案(mode) as unknown as Record<string, string>;
+    if (section === '能力类别') {
+        const mapped = 按题材获取类别映射(mode);
+        return Object.fromEntries(规范能力类别键列表.map((key) => [key, mapped[key] || key]));
+    }
+    const profile = 题材模式配置表[mode];
+    if (section === '密度选项') return Object.fromEntries(profile.densityOptions.map((option) => [option.value, option.label]));
+    return {
+        worldSizeLabel: profile.worldSizeLabel,
+        worldSizeHint: profile.worldSizeHint,
+        dynastyLabel: profile.dynastyLabel,
+        dynastyHint: profile.dynastyHint,
+        densityLabel: profile.densityLabel,
+        densityPromptLabel: profile.densityPromptLabel,
+        tianjiaoLabel: profile.tianjiaoLabel
+    };
+};
+
+const 界面文案覆盖编辑器: React.FC<{
+    mode: 题材模式类型;
+    value: ModeRuntimeProfile['uiLabels'];
+    onApply: (labels: ModeRuntimeProfile['uiLabels'] | undefined) => void;
+}> = ({ mode, value, onApply }) => {
+    const [section, setSection] = useState<界面文案分区名>('菜单');
+    const defaults = 获取界面文案分区默认值(mode, section);
+    const overrides = (value?.[section] || {}) as Record<string, string>;
+    const unknownKeys = Object.keys(overrides).filter((key) => !Object.prototype.hasOwnProperty.call(defaults, key));
+    const update = (key: string, nextValue: string) => {
+        const nextSection = { ...overrides };
+        if (nextValue) nextSection[key] = nextValue;
+        else delete nextSection[key];
+        const next = { ...(value || {}) } as NonNullable<ModeRuntimeProfile['uiLabels']>;
+        if (Object.keys(nextSection).length) (next as any)[section] = nextSection;
+        else delete (next as any)[section];
+        onApply(Object.keys(next).length ? next : undefined);
+    };
+    return (
+        <div className="sm:col-span-2 rounded-lg border border-white/10 bg-black/20 p-3">
+            <div className="text-xs font-bold text-gray-200">界面文案覆盖（可选）</div>
+            <div className="mt-1 text-[11px] leading-5 text-gray-400">只填写需要改名的项目；留空即继承当前基础题材。右侧灰字为官方默认文案。</div>
+            <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+                {界面文案分区顺序.map((item) => (
+                    <button key={String(item.key)} type="button" onClick={() => setSection(item.key)} className={`shrink-0 rounded px-2.5 py-1.5 text-[11px] ${section === item.key ? 'bg-wuxia-gold/20 text-wuxia-gold border border-wuxia-gold/35' : 'border border-white/10 text-gray-400 hover:text-gray-200'}`}>{item.label}</button>
+                ))}
+            </div>
+            <div className="mt-3 max-h-80 space-y-2 overflow-y-auto pr-1">
+                {Object.entries(defaults).map(([key, defaultValue]) => (
+                    <label key={key} className="grid gap-1 rounded border border-white/10 bg-white/[0.02] p-2 sm:grid-cols-[minmax(110px,0.7fr)_minmax(0,1.3fr)] sm:items-center">
+                        <span className="min-w-0 text-[11px] text-gray-300"><span className="font-mono text-gray-500">{key}</span><span className="ml-2 break-all">默认：{defaultValue}</span></span>
+                        <input maxLength={120} value={overrides[key] || ''} onChange={(event) => update(key, event.target.value)} placeholder="留空继承默认文案" className="h-9 min-w-0 rounded border border-white/10 bg-black/30 px-2 text-xs text-gray-100 outline-none placeholder:text-gray-600 focus:border-wuxia-gold/45" />
+                    </label>
+                ))}
+            </div>
+            {unknownKeys.length ? (
+                <div className="mt-3 rounded border border-amber-500/25 bg-amber-500/10 p-2">
+                    <div className="text-[11px] font-bold text-amber-200">未识别键（当前引擎不会消费）</div>
+                    <div className="mt-2 space-y-1.5">
+                        {unknownKeys.map((key) => (
+                            <div key={key} className="flex items-center gap-2">
+                                <code className="min-w-0 flex-1 truncate text-[11px] text-gray-300">{key} = {overrides[key]}</code>
+                                <button type="button" onClick={() => update(key, '')} className="shrink-0 rounded border border-red-500/25 px-2 py-1 text-[10px] text-red-200">清除</button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : null}
+        </div>
+    );
 };
 
 const 格式化只读列表 = (value: unknown): string => {
@@ -446,18 +580,70 @@ const 格式化只读列表 = (value: unknown): string => {
     return typeof value === 'string' ? value : '';
 };
 
-const 提取模块运行时配置 = (entry: 创意工坊模块条目): ModeRuntimeProfile | null => {
+const 是否普通对象 = (value: unknown): value is Record<string, any> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+const 深合并普通对象 = (base: unknown, overlay: unknown): Record<string, any> => {
+    const result: Record<string, any> = 是否普通对象(base) ? JSON.parse(JSON.stringify(base)) : {};
+    if (!是否普通对象(overlay)) return result;
+    for (const [key, value] of Object.entries(overlay)) {
+        if (key === '__proto__' || key === 'prototype' || key === 'constructor' || value === undefined) continue;
+        result[key] = 是否普通对象(value) && 是否普通对象(result[key]) ? 深合并普通对象(result[key], value) : value;
+    }
+    return result;
+};
+
+const 提取模块原始运行时配置 = (entry: 创意工坊模块条目): Record<string, any> => {
     const payload = entry.payload as any;
-    const rawProfile = entry.modeRuntimeProfile || payload?.modeRuntimeProfile;
-    if (!rawProfile) return null;
+    const nested = 是否普通对象(payload?.modeRuntimeProfile) ? payload.modeRuntimeProfile : {};
+    const top = 是否普通对象(entry.modeRuntimeProfile) ? entry.modeRuntimeProfile : {};
+    return 深合并普通对象(nested, top);
+};
+
+const 提取模块运行时配置 = (entry: 创意工坊模块条目): ModeRuntimeProfile | null => {
+    const rawProfile = 提取模块原始运行时配置(entry);
+    if (!Object.keys(rawProfile).length) return null;
+    const payload = entry.payload as any;
     const baseMode = rawProfile.identity?.baseMode || payload?.mode || '武侠';
     return 规范化模式运行时配置(rawProfile, baseMode);
 };
 
+const 合并世界书来源 = (payloadBooks: 世界书结构[], topBooks: 世界书结构[]): 世界书结构[] => {
+    const result = payloadBooks.map((book) => JSON.parse(JSON.stringify(book)) as 世界书结构);
+    for (const top of topBooks) {
+        const index = result.findIndex((book) => book.id === top.id);
+        if (index < 0) {
+            result.push(JSON.parse(JSON.stringify(top)) as 世界书结构);
+            continue;
+        }
+        const payloadBook = result[index];
+        const entries = [...(payloadBook.条目 || [])];
+        for (const topEntry of top.条目 || []) {
+            const entryIndex = entries.findIndex((item) => item.id === topEntry.id);
+            if (entryIndex < 0) entries.push(topEntry);
+            else entries[entryIndex] = { ...entries[entryIndex], ...topEntry };
+        }
+        result[index] = { ...payloadBook, ...top, 条目: entries };
+    }
+    return result;
+};
+
 const 提取模块模式世界书 = (entry: 创意工坊模块条目): 世界书结构[] => {
     const payload = entry.payload as any;
-    const books = entry.modeWorldbooks || payload?.modeWorldbooks;
-    return Array.isArray(books) ? books : [];
+    const top = Array.isArray(entry.modeWorldbooks) ? entry.modeWorldbooks : [];
+    const nested = Array.isArray(payload?.modeWorldbooks) ? payload.modeWorldbooks : [];
+    return 合并世界书来源(nested, top);
+};
+
+const 提取模块内容块 = (entry: 创意工坊模块条目): NonNullable<创意工坊模块条目['contentBlocks']> => {
+    const payload = entry.payload as any;
+    const nested = Array.isArray(payload?.contentBlocks) ? payload.contentBlocks : [];
+    const top = Array.isArray(entry.contentBlocks) ? entry.contentBlocks : [];
+    const result = nested.map((block: any) => ({ ...block }));
+    for (const block of top) {
+        const index = result.findIndex((item: any) => item.id === block.id);
+        if (index < 0) result.push({ ...block });
+        else result[index] = { ...result[index], ...block };
+    }
+    return result;
 };
 
 const 提取模块模式元数据 = (entry: 创意工坊模块条目): Record<string, unknown> => {
@@ -479,16 +665,158 @@ const 提取模块模式元数据 = (entry: 创意工坊模块条目): Record<st
     };
 };
 
-const 提取模块世界细节生成配置 = (entry: 创意工坊模块条目): 创意工坊世界细节生成配置 => {
+const 提取模块原始世界细节生成配置 = (entry: 创意工坊模块条目): Record<string, any> => {
     const payload = entry.payload as any;
-    const raw = entry.worldDetailGeneration || payload?.worldDetailGeneration;
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { aiGenerate: true };
+    const nested = 是否普通对象(payload?.worldDetailGeneration) ? payload.worldDetailGeneration : {};
+    const top = 是否普通对象(entry.worldDetailGeneration) ? entry.worldDetailGeneration : {};
+    return 深合并普通对象(nested, top);
+};
+
+const 提取模块世界细节生成配置 = (entry: 创意工坊模块条目): 创意工坊世界细节生成配置 => {
+    const raw = 提取模块原始世界细节生成配置(entry);
+    if (!Object.keys(raw).length) return { aiGenerate: true };
     return {
         aiGenerate: raw.aiGenerate !== false,
         importantPeople: typeof raw.importantPeople === 'string' ? raw.importantPeople.trim() : '',
         importantFactions: typeof raw.importantFactions === 'string' ? raw.importantFactions.trim() : '',
         mapDesign: typeof raw.mapDesign === 'string' ? raw.mapDesign.trim() : '',
         mapDiyDraft: raw.mapDiyDraft && typeof raw.mapDiyDraft === 'object' && !Array.isArray(raw.mapDiyDraft) ? raw.mapDiyDraft : undefined
+    };
+};
+
+const 官方题材模式集: ReadonlySet<string> = new Set(Object.keys(题材模式配置表));
+
+type 模式包正文分区 = 'topic' | 'worldRules' | 'ability';
+const 读取模式包正文 = (entry: 创意工坊模块条目, section: 模式包正文分区): string => {
+    const payload = entry.payload as any;
+    const blocks = 提取模块内容块(entry) as Array<{ id?: string; title?: string; injectionTarget?: string; content?: string }>;
+    const config = section === 'topic'
+        ? { id: 'topic-main', title: '题材模板', worldbookTitle: '题材口径', payloadKey: 'manualWorldPrompt', target: 'manualWorldPrompt' }
+        : section === 'worldRules'
+            ? { id: 'world-rules-main', title: '世界规则', worldbookTitle: '世界规则', payloadKey: 'worldExtraRequirement', target: 'worldExtraRequirement' }
+            : { id: 'ability-main', title: '能力体系', worldbookTitle: '能力体系', payloadKey: 'manualRealmPrompt', target: 'manualRealmPrompt' };
+    const exact = blocks.find((block) => block.id === config.id || block.id?.endsWith(`-${config.id}`));
+    if (typeof exact?.content === 'string' && exact.content.trim()) return exact.content;
+    const books = 提取模块模式世界书(entry);
+    const managedBook = books.find((book) => (book.条目 || []).some((item) => 标准世界书条目键(item.id) === section)) || books.find((book) => (book.条目 || []).filter((item) => 标准世界书条目标题.has(item.标题)).length >= 3);
+    const managedEntries = managedBook?.条目 || [];
+    const byId = managedEntries.find((item) => 标准世界书条目键(item.id) === section);
+    if (byId?.内容?.trim()) return byId.内容;
+    const byTitle = managedEntries.filter((item) => item.标题 === config.worldbookTitle);
+    if (byTitle.length === 1 && byTitle[0].内容?.trim()) return byTitle[0].内容;
+    if (typeof payload?.[config.payloadKey] === 'string' && payload[config.payloadKey].trim()) return payload[config.payloadKey];
+    const titled = blocks.filter((block) => block.title === config.title);
+    const standardTitleCount = new Set(blocks.filter((block) => ['题材模板', '世界规则', '能力体系'].includes(block.title || '')).map((block) => block.title)).size;
+    if (standardTitleCount >= 3 && titled.length === 1 && titled[0].content?.trim()) return titled[0].content;
+    const extracted = 从模式世界书提取提示词(books) as any;
+    if (typeof extracted?.[config.payloadKey] === 'string' && extracted[config.payloadKey].trim()) return extracted[config.payloadKey];
+    return blocks.filter((block) => block.injectionTarget === config.target).map((block) => block.content?.trim()).filter(Boolean).join('\n\n');
+};
+
+const 是否模式包模块 = (entry: 创意工坊模块条目): boolean => 是否完整模式包Payload(entry.payload);
+
+export const 从模式包Payload构建模块 = (payload: any): 创意工坊模块条目 | null => {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload) || payload.schema !== 'moranjianghu-creative-workshop-mode-package') return null;
+    const title = typeof payload.suiteTitle === 'string' && payload.suiteTitle.trim() ? payload.suiteTitle.trim() : '导入模式包';
+    const id = typeof payload.suiteId === 'string' && payload.suiteId.trim() ? payload.suiteId.trim() : `payload-mode-package-${Date.now()}`;
+    return {
+        id: `local-${id}-mode-package`,
+        type: 'topic',
+        formatVersion: 2,
+        workshopKind: 'standard_module',
+        title,
+        subtitle: `${payload.mode || payload.modeRuntimeProfile?.identity?.baseMode || '武侠'} · 完整模式包`,
+        description: typeof payload.description === 'string' ? payload.description : '',
+        tags: [payload.mode || payload.modeRuntimeProfile?.identity?.baseMode || '武侠', '模式包'],
+        payload,
+        worldDetailGeneration: payload.worldDetailGeneration,
+        modeWorldbooks: Array.isArray(payload.modeWorldbooks) ? payload.modeWorldbooks : undefined,
+        modeRuntimeProfile: payload.modeRuntimeProfile,
+        contentBlocks: Array.isArray(payload.contentBlocks) ? payload.contentBlocks : undefined,
+        usagePrompt: typeof payload.usagePrompt === 'string' ? payload.usagePrompt : '',
+        safetyNotes: Array.isArray(payload.safetyNotes) ? payload.safetyNotes : [],
+        injectionPreview: [`完整模式包：${title}`],
+        source: 'local',
+        contributor: ''
+    };
+};
+
+const 数组转短语 = (value: unknown): string => (Array.isArray(value) ? value.map((item) => String(item ?? '').trim()).filter(Boolean).join('、') : '');
+
+const 合法货币显示模式 = (value: unknown): 贡献草稿['currencyDisplayMode'] | '' => (
+    typeof value === 'string' && ['wuxia', 'xianxia', 'fantasy', 'urban', 'modern', 'apocalypse', 'infinite'].includes(value)
+        ? value as 贡献草稿['currencyDisplayMode']
+        : ''
+);
+
+/**
+ * 反向映射：把已保存/导入的工坊模块还原为可编辑的贡献草稿（「以此为底稿编辑」）。
+ * 模式包模块还原完整表单；普通 topic/ability/comfy_workflow 模块还原正文表单；
+ * 酒馆预设没有对应表单形态，返回 null。
+ * 保存时只更新表单管理的标准世界书条目，额外世界书、条目及其注入元数据原样保留。
+ */
+export const 模块转贡献草稿 = (entry: 创意工坊模块条目): 贡献草稿 | null => {
+    if (!entry || entry.type === 'tavern_preset') return null;
+    const payload = entry.payload as any;
+    const 世界细节 = 提取模块世界细节生成配置(entry);
+    const 基础 = {
+        title: (entry.title || '').trim(),
+        subtitle: (entry.subtitle || '').trim(),
+        description: (entry.description || '').trim(),
+        usagePrompt: (entry.usagePrompt || payload?.usagePrompt || '').trim(),
+        safetyNotes: (Array.isArray(entry.safetyNotes) ? entry.safetyNotes : Array.isArray(payload?.safetyNotes) ? payload.safetyNotes : []).join('\n'),
+        versionNote: (entry.versionNote || '').trim(),
+        aiGenerateWorldDetails: 世界细节.aiGenerate !== false,
+        importantPeople: 世界细节.importantPeople || '',
+        importantFactions: 世界细节.importantFactions || '',
+        mapDesign: 世界细节.mapDesign || '',
+        mapDiyDraft: 世界细节.mapDiyDraft,
+        sourceModuleSnapshot: JSON.parse(JSON.stringify(entry)) as 创意工坊模块条目
+    };
+    if (是否模式包模块(entry)) {
+        const runtime = 提取模块运行时配置(entry);
+        if (!runtime) return null;
+        const baseMode = (官方题材模式集.has(runtime.identity.baseMode) ? runtime.identity.baseMode : '武侠') as 题材模式类型;
+        const metadata = 提取模块模式元数据(entry);
+        const 用户标签 = (entry.tags || []).filter((tag) => tag !== baseMode && tag !== '模式包');
+        return {
+            ...空贡献草稿(),
+            ...基础,
+            type: 'topic',
+            moduleKind: 'mode_package',
+            mode: baseMode,
+            tags: 用户标签.join('、'),
+            currencyDisplayMode: 合法货币显示模式(metadata.currencyDisplayMode) || runtime.economy.currencyDisplayMode as 贡献草稿['currencyDisplayMode'] || 'wuxia',
+            auctionName: String(metadata.auctionName || ''),
+            marketVerb: String(metadata.marketVerb || ''),
+            mapPrompt: String(metadata.mapPrompt || ''),
+            skillNames: 数组转短语(metadata.skillNames),
+            presetItemKeywords: 数组转短语(metadata.presetItemKeywords),
+            backgroundSuggestions: 数组转短语(metadata.backgroundSuggestions),
+            talentSuggestions: 数组转短语(metadata.talentSuggestions),
+            modeRuntimeProfile: runtime,
+            topicBody: 读取模式包正文(entry, 'topic'),
+            worldRulesBody: 读取模式包正文(entry, 'worldRules'),
+            abilityBody: 读取模式包正文(entry, 'ability')
+        };
+    }
+    const mode = (官方题材模式集.has(String(payload?.mode)) ? payload.mode : (entry.tags || []).find((tag) => 官方题材模式集.has(tag)) || '武侠') as 题材模式类型;
+    const blocks = (entry.contentBlocks || payload?.contentBlocks || []) as Array<{ content?: string }>;
+    const body = typeof payload?.workflowJson === 'string' && payload.workflowJson
+        ? payload.workflowJson
+        : (typeof blocks[0]?.content === 'string' && blocks[0].content) || (typeof payload?.content === 'string' ? payload.content : '');
+    const entryType: 创意工坊模块类型 = entry.type === 'ability' || entry.type === 'comfy_workflow' ? entry.type : 'topic';
+    return {
+        ...空贡献草稿(),
+        ...创建默认模式元数据草稿(mode),
+        ...基础,
+        type: entryType,
+        moduleKind: 'standard',
+        mode,
+        tags: (entry.tags || []).filter((tag) => tag !== mode && tag !== '酒馆预设').join('、'),
+        body,
+        style: typeof payload?.style === 'string' ? payload.style : '',
+        scope: ['main', 'scene', 'nsfw', 'all'].includes(payload?.scope) ? payload.scope : 'main'
     };
 };
 
@@ -521,7 +849,8 @@ const 构建世界细节生成配置 = (draft: 贡献草稿): 创意工坊世界
     aiGenerate: draft.aiGenerateWorldDetails,
     importantPeople: draft.importantPeople.trim(),
     importantFactions: draft.importantFactions.trim(),
-    mapDesign: draft.mapDesign.trim()
+    mapDesign: draft.mapDesign.trim(),
+    mapDiyDraft: draft.mapDiyDraft
 });
 
 const 世界细节配置有自定义内容 = (config: 创意工坊世界细节生成配置): boolean => (
@@ -656,14 +985,115 @@ const 构建贡献模式世界书 = (draft: 贡献草稿, suiteId: string, suite
             创建时间: Date.now(),
             更新时间: Date.now()
         }
-    ].filter((entry) => entry.内容)
+    ].filter((entry) => entry.内容) as 世界书条目结构[]
 }];
 
-const 构建贡献模块 = (draft: 贡献草稿, contributor: string, existingEntries?: 创意工坊模块条目[]): 创意工坊模块条目 => {
+type 标准世界书条目类型 = 模式包正文分区 | 'metadata' | 'runtime' | 'worldDetails';
+const 标准世界书条目标题 = new Set(['模式元数据', '运行时模式配置', '世界细节生成策略', '题材口径', '世界规则', '能力体系']);
+const 标准世界书条目后缀: Array<[string, 标准世界书条目类型]> = [
+    ['-runtime-profile', 'runtime'], ['-world-details', 'worldDetails'], ['-world-rules', 'worldRules'],
+    ['-metadata', 'metadata'], ['-topic', 'topic'], ['-ability', 'ability']
+];
+const 标准世界书条目键 = (id?: string): 标准世界书条目类型 | null => {
+    const hit = 标准世界书条目后缀.find(([suffix]) => typeof id === 'string' && id.endsWith(suffix));
+    return hit?.[1] || null;
+};
+
+const 合并模式世界书 = (original: 世界书结构[], generated: 世界书结构[]): 世界书结构[] => {
+    if (!original.length) return generated;
+    const generatedBook = generated[0];
+    if (!generatedBook) return original;
+    const generatedIds = new Set((generatedBook.条目 || []).map((entry) => entry.id));
+    const managedByExactId = original.findIndex((book) => (book.条目 || []).some((entry) => generatedIds.has(entry.id)));
+    const legacyManagedIndex = original.findIndex((book) => (book.条目 || []).filter((entry) => 标准世界书条目标题.has(entry.标题)).length >= 3);
+    const managedBookIndex = managedByExactId >= 0 ? managedByExactId : legacyManagedIndex;
+    if (managedBookIndex < 0) return [...original, generatedBook];
+    const legacyFallback = managedByExactId < 0;
+    const managed = original[managedBookIndex];
+    const generatedById = new Map<string, 世界书条目结构>();
+    const generatedByTitle = new Map<string, 世界书条目结构>();
+    for (const entry of generatedBook.条目 || []) {
+        generatedById.set(entry.id, entry);
+        generatedByTitle.set(entry.标题, entry);
+    }
+    const titleCounts = new Map<string, number>();
+    for (const entry of managed.条目 || []) titleCounts.set(entry.标题, (titleCounts.get(entry.标题) || 0) + 1);
+    const seen = new Set<string>();
+    const entries = (managed.条目 || []).map((entry) => {
+        const next = generatedById.get(entry.id) || (legacyFallback && titleCounts.get(entry.标题) === 1 ? generatedByTitle.get(entry.标题) : undefined);
+        if (!next) return entry;
+        seen.add(next.id);
+        return { ...entry, 内容: next.内容, 更新时间: next.更新时间 };
+    });
+    const missing = (generatedBook.条目 || []).filter((entry) => !seen.has(entry.id));
+    return original.map((book, index) => index === managedBookIndex ? {
+        ...book,
+        标题: generatedBook.标题,
+        描述: generatedBook.描述,
+        常驻大纲: generatedBook.常驻大纲,
+        更新时间: generatedBook.更新时间,
+        条目: [...entries, ...missing]
+    } : book);
+};
+
+const 标准内容块配置: Array<{ id: string; title: string }> = [
+    { id: 'topic-main', title: '题材模板' },
+    { id: 'world-rules-main', title: '世界规则' },
+    { id: 'world-detail-main', title: '世界细节生成策略' },
+    { id: 'ability-main', title: '能力体系' }
+];
+
+type 工坊内容块 = NonNullable<创意工坊模块条目['contentBlocks']>[number];
+const 合并模式包内容块 = (
+    original: NonNullable<创意工坊模块条目['contentBlocks']>,
+    generated: NonNullable<创意工坊模块条目['contentBlocks']>
+): NonNullable<创意工坊模块条目['contentBlocks']> => {
+    if (!original.length) return generated;
+    const generatedIds = new Set(generated.map((block) => block.id));
+    const hasCanonicalIds = original.some((block) => generatedIds.has(block.id));
+    const standardTitles = new Set(标准内容块配置.map((item) => item.title));
+    const legacyFallback = !hasCanonicalIds && original.filter((block) => standardTitles.has(block.title)).length >= 3;
+    const generatedById = new Map<string, 工坊内容块>();
+    const generatedByTitle = new Map<string, 工坊内容块>();
+    for (const block of generated) {
+        generatedById.set(block.id, block);
+        generatedByTitle.set(block.title, block);
+    }
+    const titleCounts = new Map<string, number>();
+    for (const block of original) titleCounts.set(block.title, (titleCounts.get(block.title) || 0) + 1);
+    const seen = new Set<string>();
+    const merged = original.map((block) => {
+        const next = generatedById.get(block.id) || (legacyFallback && titleCounts.get(block.title) === 1 ? generatedByTitle.get(block.title) : undefined);
+        if (!next) return block;
+        seen.add(next.id);
+        return { ...block, content: next.content };
+    });
+    return [...merged, ...generated.filter((block) => !seen.has(block.id))];
+};
+
+const 剥离模式包Payload字段 = (payload: Record<string, unknown>): Record<string, unknown> => {
+    const {
+        suiteId: _suiteId, suiteTitle: _suiteTitle, packagePart: _packagePart, modeMetadata: _modeMetadata,
+        modeRuntimeProfile: _modeRuntimeProfile, worldDetailGeneration: _worldDetailGeneration, modeWorldbooks: _modeWorldbooks,
+        manualWorldPrompt: _manualWorldPrompt, worldExtraRequirement: _worldExtraRequirement, manualRealmPrompt: _manualRealmPrompt,
+        sourceModuleParts: _sourceModuleParts, ...rest
+    } = payload as any;
+    return rest;
+};
+
+export const 构建贡献模块 = (draft: 贡献草稿, contributor: string, existingEntries?: 创意工坊模块条目[]): 创意工坊模块条目 => {
     const title = draft.title.trim();
-    const baseId = existingEntries?.find(e => e.title === title && e.contributor === contributor)?.baseModuleId || `mod_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
-    const existingVersions = existingEntries?.filter(e => (e.baseModuleId === baseId) || (e.title === title && e.contributor === contributor && !e.baseModuleId)) || [];
-    const nextVersion = existingVersions.length + 1;
+    const source = draft.sourceModuleSnapshot;
+    const sourceIsModePackage = Boolean(source && 是否模式包模块(source));
+    const rawSourcePayload = source?.payload && typeof source.payload === 'object' && !Array.isArray(source.payload) ? source.payload as Record<string, unknown> : {};
+    const sourcePayload = sourceIsModePackage ? 剥离模式包Payload字段(rawSourcePayload) : rawSourcePayload;
+    const effectiveContributor = contributor.trim() || source?.contributor || '';
+    const sameSourceChain = Boolean(source && !sourceIsModePackage && source.title === title && (!source.contributor || source.contributor === effectiveContributor));
+    const matchingEntry = existingEntries?.find((entry) => entry.title === title && entry.contributor === effectiveContributor && !是否模式包模块(entry));
+    const baseId = matchingEntry?.baseModuleId || (sameSourceChain ? source?.baseModuleId : undefined) || `mod_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const existingVersions = existingEntries?.filter((entry) => entry.baseModuleId === baseId || (entry.title === title && entry.contributor === effectiveContributor && !entry.baseModuleId)) || [];
+    const maxVersion = Math.max(0, ...existingVersions.map((entry) => Number(entry.version) || 0), sameSourceChain ? Number(source?.version || 0) : 0);
+    const nextVersion = maxVersion + 1;
     const bodyLines = 分割文本行(draft.body);
     const tavernPreset = (() => {
         if (draft.type !== 'tavern_preset') return null;
@@ -680,7 +1110,7 @@ const 构建贡献模块 = (draft: 贡献草稿, contributor: string, existingEn
     const style = draft.style.trim();
     const scopeLabel = draft.scope === 'nsfw' ? 'NSFW 生图' : draft.scope === 'scene' ? '场景生图' : draft.scope === 'all' ? '通用生图' : '普通生图';
     const injectionTarget = draft.type === 'ability' ? 'manualRealmPrompt' : draft.type === 'comfy_workflow' ? 'imageWorkflow' : draft.type === 'tavern_preset' ? 'referenceOnly' : 'manualWorldPrompt';
-    const contentBlocks: NonNullable<创意工坊模块条目['contentBlocks']> = [
+    const generatedContentBlocks: NonNullable<创意工坊模块条目['contentBlocks']> = [
         {
             id: `${draft.type}-main`,
             title: draft.type === 'ability' ? '能力与境界规则' : draft.type === 'comfy_workflow' ? 'ComfyUI 工作流' : draft.type === 'tavern_preset' ? '酒馆预设 JSON' : '世界与题材规则',
@@ -689,6 +1119,8 @@ const 构建贡献模块 = (draft: 贡献草稿, contributor: string, existingEn
             content: draft.body.trim()
         }
     ];
+    const originalContentBlocks = source && !sourceIsModePackage ? 提取模块内容块(source) : [];
+    const contentBlocks = 合并模式包内容块(originalContentBlocks, generatedContentBlocks);
     const safetyNotes = 分割文本行(draft.safetyNotes);
     const usagePrompt = draft.usagePrompt.trim() || (draft.type === 'comfy_workflow'
         ? '在文生图设置中选择该工作流；发布前请确认 JSON 可用。'
@@ -721,6 +1153,7 @@ const 构建贡献模块 = (draft: 贡献草稿, contributor: string, existingEn
             `使用提示：${usagePrompt}`
         ];
     return {
+        ...(source || {}),
         id: `local-${draft.type}-${Date.now()}`,
         type: draft.type,
         formatVersion: 2,
@@ -730,17 +1163,20 @@ const 构建贡献模块 = (draft: 贡献草稿, contributor: string, existingEn
         description: draft.description.trim() || (draft.type === 'tavern_preset' ? '玩家贡献的酒馆预设，可在酒馆预设设置中直接选择使用。' : `${draft.mode}可用的玩家贡献模块。`),
         tags,
         payload: draft.type === 'comfy_workflow'
-            ? { schema: 'moranjianghu-creative-workshop-standard-module', version: 2, scope: draft.scope, style, workflowJson: draft.body.trim(), content: draft.body.trim(), contentBlocks, usagePrompt, safetyNotes }
+            ? { ...sourcePayload, schema: 'moranjianghu-creative-workshop-standard-module', version: 2, scope: draft.scope, style, workflowJson: draft.body.trim(), content: draft.body.trim(), contentBlocks, usagePrompt, safetyNotes }
             : draft.type === 'tavern_preset'
-                ? { schema: 'moranjianghu-creative-workshop-tavern-preset', version: 1, tavernPreset, content: draft.body.trim(), contentBlocks, usagePrompt, safetyNotes }
-                : { schema: 'moranjianghu-creative-workshop-standard-module', version: 2, mode: draft.mode, content: draft.body.trim(), contentBlocks, usagePrompt, safetyNotes },
+                ? { ...sourcePayload, schema: 'moranjianghu-creative-workshop-tavern-preset', version: 1, tavernPreset, content: draft.body.trim(), contentBlocks, usagePrompt, safetyNotes }
+                : { ...sourcePayload, schema: 'moranjianghu-creative-workshop-standard-module', version: 2, mode: draft.mode, content: draft.body.trim(), contentBlocks, usagePrompt, safetyNotes },
         tavernPreset: tavernPreset || undefined,
         contentBlocks,
+        modeRuntimeProfile: undefined,
+        modeWorldbooks: undefined,
+        worldDetailGeneration: undefined,
         usagePrompt,
         safetyNotes,
         injectionPreview: injectionPreview.length ? injectionPreview : ['暂未填写注入内容。'],
         source: 'local',
-        contributor: contributor.trim(),
+        contributor: effectiveContributor,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         version: nextVersion,
@@ -749,12 +1185,19 @@ const 构建贡献模块 = (draft: 贡献草稿, contributor: string, existingEn
     };
 };
 
-const 构建模式包模块 = (draft: 贡献草稿, contributor: string, existingEntries?: 创意工坊模块条目[]): 创意工坊模块条目 => {
+export const 构建模式包模块 = (draft: 贡献草稿, contributor: string, existingEntries?: 创意工坊模块条目[]): 创意工坊模块条目 => {
     const stamp = Date.now();
     const suiteTitle = draft.title.trim();
-    const baseId = existingEntries?.find(e => e.title === suiteTitle && e.contributor === contributor)?.baseModuleId || `suite-${draft.mode}-${stamp}`;
-    const existingVersions = existingEntries?.filter(e => (e.baseModuleId === baseId) || (e.title === suiteTitle && e.contributor === contributor && !e.baseModuleId)) || [];
-    const nextVersion = existingVersions.length + 1;
+    const source = draft.sourceModuleSnapshot;
+    const sourcePayload = source?.payload && typeof source.payload === 'object' && !Array.isArray(source.payload) ? source.payload as Record<string, unknown> : {};
+    const sourceSuiteId = typeof (sourcePayload as any).suiteId === 'string' ? (sourcePayload as any).suiteId : '';
+    const effectiveContributor = contributor.trim() || source?.contributor || '';
+    const sameSourceChain = Boolean(source && source.title === suiteTitle && (!source.contributor || source.contributor === effectiveContributor));
+    const matchingEntry = existingEntries?.find((entry) => entry.title === suiteTitle && entry.contributor === effectiveContributor && 是否模式包模块(entry));
+    const baseId = matchingEntry?.baseModuleId || (sameSourceChain ? source?.baseModuleId || sourceSuiteId : undefined) || `suite-${draft.mode}-${stamp}`;
+    const existingVersions = existingEntries?.filter((entry) => entry.baseModuleId === baseId || (entry.title === suiteTitle && entry.contributor === effectiveContributor && !entry.baseModuleId)) || [];
+    const maxVersion = Math.max(0, ...existingVersions.map((entry) => Number(entry.version) || 0), sameSourceChain ? Number(source?.version || 0) : 0);
+    const nextVersion = maxVersion + 1;
     const suiteId = baseId;
     const baseMode = draft.modeRuntimeProfile.identity.baseMode || draft.mode;
     const tags = [
@@ -765,9 +1208,10 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string, existin
     const safetyNotes = 分割文本行(draft.safetyNotes);
     const usagePrompt = draft.usagePrompt.trim() || '作为完整模式包注入新建存档：模式专属世界书会统一接管题材口径、世界规则和能力体系。';
     const modeMetadata = 构建模式元数据(draft);
-    const worldDetailGeneration = 构建世界细节生成配置(draft);
-    const worldDetailContent = 渲染世界细节生成配置(worldDetailGeneration);
-    const modeRuntimeProfile = 规范化模式运行时配置({
+    const normalizedWorldDetailGeneration = 构建世界细节生成配置(draft);
+    const worldDetailGeneration = 深合并普通对象(source ? 提取模块原始世界细节生成配置(source) : {}, normalizedWorldDetailGeneration) as 创意工坊世界细节生成配置;
+    const worldDetailContent = 渲染世界细节生成配置(normalizedWorldDetailGeneration);
+    const normalizedModeRuntimeProfile = 规范化模式运行时配置({
         ...draft.modeRuntimeProfile,
         identity: {
             ...draft.modeRuntimeProfile.identity,
@@ -804,9 +1248,12 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string, existin
             defaultTalents: modeMetadata.talentSuggestions
         }
     }, baseMode);
-    const modeWorldbooks = 构建贡献模式世界书({ ...draft, modeRuntimeProfile }, suiteId, suiteTitle);
+    const modeRuntimeProfile = 深合并普通对象(source ? 提取模块原始运行时配置(source) : {}, normalizedModeRuntimeProfile) as ModeRuntimeProfile;
+    const generatedWorldbooks = 构建贡献模式世界书({ ...draft, modeRuntimeProfile }, suiteId, suiteTitle);
+    const originalWorldbooks = source ? 提取模块模式世界书(source) : [];
+    const modeWorldbooks = 合并模式世界书(originalWorldbooks, generatedWorldbooks);
     const extractedPrompts = 从模式世界书提取提示词(modeWorldbooks);
-    const contentBlocks: NonNullable<创意工坊模块条目['contentBlocks']> = [
+    const generatedContentBlocks: NonNullable<创意工坊模块条目['contentBlocks']> = [
         {
             id: 'topic-main',
             title: '题材模板',
@@ -836,9 +1283,12 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string, existin
             content: draft.abilityBody.trim()
         }
     ];
+    const originalContentBlocks = source ? 提取模块内容块(source) : [];
+    const contentBlocks = 合并模式包内容块(originalContentBlocks, generatedContentBlocks);
     const content = contentBlocks.map((block) => [`【${block.title}】`, block.content].join('\n')).join('\n\n');
     return {
-        id: `local-${suiteId}-mode-package`,
+        ...(source || {}),
+        id: `local-${suiteId}-v${nextVersion}-${stamp}-${Math.random().toString(36).slice(2, 6)}`,
         type: 'topic',
         formatVersion: 2,
         workshopKind: 'standard_module',
@@ -847,6 +1297,7 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string, existin
         description: draft.description.trim() || `${modeRuntimeProfile.identity.baseMode}完整模式包。`,
         tags,
         payload: {
+            ...sourcePayload,
             schema: 'moranjianghu-creative-workshop-mode-package',
             version: 3,
             suiteId,
@@ -884,7 +1335,7 @@ const 构建模式包模块 = (draft: 贡献草稿, contributor: string, existin
             `能力体系：${draft.abilityBody.trim().slice(0, 160)}`
         ],
         source: 'local',
-        contributor: contributor.trim(),
+        contributor: effectiveContributor,
         createdAt: new Date(stamp).toISOString(),
         updatedAt: new Date(stamp).toISOString(),
         version: nextVersion,
@@ -918,16 +1369,21 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         空贡献草稿().modeRuntimeProfile.economy.currencySystem ? 'dynamic' : 'legacy'
     ));
     const [showContributionForm, setShowContributionForm] = useState(false);
+    const [templateMode, setTemplateMode] = useState<题材模式类型>('武侠');
     const jsonImportInputRef = useRef<HTMLInputElement | null>(null);
+    const contributionFormRef = useRef<HTMLDivElement | null>(null);
+    const refreshRequestIdRef = useRef(0);
     const contributionModule = useMemo(() => 构建贡献模块(contributionDraft, contributor, entries), [contributionDraft, contributor, entries]);
+    const isModePackageDraft = contributionDraft.type === 'topic' && contributionDraft.moduleKind === 'mode_package';
     const contributionModules = useMemo(() => (
-        contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset'
-            ? [contributionModule]
-            : [构建模式包模块(contributionDraft, contributor, entries)]
-    ), [contributionDraft, contributionModule, contributor]);
+        isModePackageDraft
+            ? [构建模式包模块(contributionDraft, contributor, entries)]
+            : [contributionModule]
+    ), [contributionDraft, contributionModule, contributor, isModePackageDraft]);
     const worldDetailsReady = contributionDraft.aiGenerateWorldDetails || 世界细节配置有自定义内容(构建世界细节生成配置(contributionDraft));
+    const marketTemplatesReady = (contributionDraft.modeRuntimeProfile.economy.marketEventTemplates || []).every((template) => String(template.标题 || '').trim() && String(template.描述 || '').trim());
     const contributionReady = contributionDraft.title.trim().length > 0 && (
-        contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset'
+        !isModePackageDraft
             ? contributionDraft.body.trim().length > 0
             : contributionDraft.topicBody.trim().length > 0
                 && contributionDraft.worldRulesBody.trim().length > 0
@@ -940,6 +1396,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                 && 分割短语(contributionDraft.backgroundSuggestions).length > 0
                 && 分割短语(contributionDraft.talentSuggestions).length > 0
                 && worldDetailsReady
+                && marketTemplatesReady
     );
     useEffect(() => {
         if (currencySystemJsonError) return;
@@ -997,6 +1454,17 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         setCurrencySystemJsonError('');
         setCurrencySystemEditMode(nextDraft.modeRuntimeProfile.economy.currencySystem ? 'dynamic' : 'legacy');
 
+    };
+
+    const 贡献草稿有未保存内容 = (): boolean => {
+        const { sourceModuleSnapshot: _source, ...currentComparable } = contributionDraft;
+        const { sourceModuleSnapshot: _emptySource, ...emptyComparable } = 空贡献草稿();
+        return Boolean(contributionDraft.sourceModuleSnapshot) || JSON.stringify(currentComparable) !== JSON.stringify(emptyComparable);
+    };
+
+    const 确认并清空贡献草稿 = () => {
+        if (贡献草稿有未保存内容() && !window.confirm('清空会永久丢弃当前所有未保存内容，包括运行时配置、行情、界面文案和世界书正文。确定继续吗？')) return;
+        重置贡献草稿();
     };
 
     const 提交工坊反馈 = () => {
@@ -1077,19 +1545,28 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
             } else {
                 parsedValue = value;
             }
-            const isBaseModeChange = field.path.join('.') === 'identity.baseMode' && 题材模式顺序.includes(parsedValue as 题材模式类型);
+            const fieldPath = field.path.join('.');
+            const isBaseModeChange = fieldPath === 'identity.baseMode' && 题材模式顺序.includes(parsedValue as 题材模式类型);
             if (isBaseModeChange) {
                 const nextMode = parsedValue as 题材模式类型;
-                return {
-                    ...prev,
-                    mode: nextMode,
-                    ...创建默认模式元数据草稿(nextMode)
-                };
+                const nextProfile = 写入运行时路径值(prev.modeRuntimeProfile, field.path, nextMode);
+                return { ...prev, mode: nextMode, modeRuntimeProfile: nextProfile };
             }
             const nextProfile = 写入运行时路径值(prev.modeRuntimeProfile, field.path, parsedValue);
+            const metadataPatch: Partial<贡献草稿> = {};
+            if (fieldPath === 'economy.currencyDisplayMode') metadataPatch.currencyDisplayMode = parsedValue;
+            if (fieldPath === 'economy.marketName') metadataPatch.auctionName = String(parsedValue || '');
+            if (fieldPath === 'economy.marketVerb') metadataPatch.marketVerb = String(parsedValue || '');
+            if (fieldPath === 'map.mapPrompt') metadataPatch.mapPrompt = String(parsedValue || '');
+            if (fieldPath === 'ability.skillPool') metadataPatch.skillNames = 数组转短语(parsedValue);
+            if (fieldPath === 'items.initialItemPool') metadataPatch.presetItemKeywords = 数组转短语(parsedValue);
+            if (fieldPath === 'opening.defaultBackgrounds') metadataPatch.backgroundSuggestions = 数组转短语(parsedValue);
+            if (fieldPath === 'opening.defaultTalents') metadataPatch.talentSuggestions = 数组转短语(parsedValue);
+            const deferNormalization = field.type === 'marketTemplates' || field.type === 'uiLabels';
             return {
                 ...prev,
-                modeRuntimeProfile: 规范化模式运行时配置(nextProfile, prev.mode)
+                ...metadataPatch,
+                modeRuntimeProfile: deferNormalization ? nextProfile : 规范化模式运行时配置(nextProfile, prev.mode)
             };
         });
     };
@@ -1139,23 +1616,24 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
     const groupedEntries = useMemo(() => {
         const groups = new Map<string, { key: string; title: string; contributor: string; versions: 创意工坊模块条目[] }>();
         for (const entry of activeEntries) {
-            const groupKey = entry.baseModuleId || `${entry.title}::${entry.contributor || 'anon'}`;
+            const ownerKey = entry.ownerUserId || entry.ownerUsername || entry.contributor || 'anon';
+            const groupKey = `${ownerKey}::${entry.baseModuleId || entry.title}`;
             let group = groups.get(groupKey);
             if (!group) {
                 group = { key: groupKey, title: entry.title, contributor: entry.contributor || '', versions: [] };
                 groups.set(groupKey, group);
             }
-            group.versions.push(entry);
+            group.versions.push({ ...entry });
         }
         for (const group of groups.values()) {
             group.versions.sort((a, b) => {
                 const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
                 const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-                return aTime - bTime;
+                return aTime - bTime || a.id.localeCompare(b.id);
             });
-            group.versions.forEach((v, i) => {
-                if (!v.version || v.version < 1) v.version = i + 1;
-                if (!v.baseModuleId) v.baseModuleId = group.key;
+            group.versions.forEach((versionEntry, index) => {
+                versionEntry.version = index + 1;
+                if (!versionEntry.baseModuleId) versionEntry.baseModuleId = group.key;
             });
             group.versions.sort((a, b) => (b.version || 1) - (a.version || 1));
         }
@@ -1172,18 +1650,31 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
     };
 
     const refreshEntries = async (options?: { forceRefresh?: boolean }) => {
+        const requestId = ++refreshRequestIdRef.current;
         setLoading(true);
         try {
-            const nextEntries = (await 列出创意工坊模块({ forceRefresh: options?.forceRefresh === true })).filter((entry) => 可展示工坊类型集合.has(entry.type));
+            let refreshWarning = '';
+            const nextEntries = (await 列出创意工坊模块({
+                forceRefresh: options?.forceRefresh === true,
+                onRefreshFallback: (message) => { refreshWarning = message; }
+            })).filter((entry) => 可展示工坊类型集合.has(entry.type));
+            if (requestId !== refreshRequestIdRef.current) return;
+            if (refreshWarning) setStatus(refreshWarning);
             setEntries(nextEntries);
             if (!可展示工坊类型集合.has(activeType)) {
                 setActiveType('topic');
             }
         } catch (error: any) {
-            setStatus(`读取创意工坊失败：${error?.message || '未知错误'}`);
+            if (requestId === refreshRequestIdRef.current) setStatus(`读取创意工坊失败：${error?.message || '未知错误'}`);
         } finally {
-            setLoading(false);
+            if (requestId === refreshRequestIdRef.current) setLoading(false);
         }
+    };
+
+    const 同步本地模块列表 = () => {
+        refreshRequestIdRef.current += 1;
+        setLoading(false);
+        setEntries((currentEntries) => 合并最新本地创意工坊模块(currentEntries));
     };
 
     const 处理下载JSON = (entry: 创意工坊模块条目) => {
@@ -1234,7 +1725,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
 
     const 发布贡献套装 = async () => {
         if (!contributionReady) {
-            setStatus(contributionDraft.type === 'comfy_workflow' ? '请先填写模块名称和工作流内容。' : contributionDraft.type === 'tavern_preset' ? '请先填写预设名称并粘贴酒馆预设 JSON。' : '请完整填写模式元数据，以及模式专属世界书的题材口径、世界规则和能力体系三段内容。');
+            setStatus(isModePackageDraft ? '请完整填写模式元数据，以及模式专属世界书的题材口径、世界规则和能力体系三段内容。' : contributionDraft.type === 'comfy_workflow' ? '请先填写模块名称和工作流内容。' : contributionDraft.type === 'tavern_preset' ? '请先填写预设名称并粘贴酒馆预设 JSON。' : '请先填写模块名称和注入正文。');
             return;
         }
         if (contributionDraft.type === 'tavern_preset' && !contributionModule.tavernPreset) {
@@ -1255,9 +1746,9 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
             for (const module of contributionModules) {
                 published.push(await 发布创意工坊模块({ module, contributor, anonymous: anonymousContribution }));
             }
-            setStatus(contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset'
-                ? `已发布到社区工坊：${published[0]?.title || contributionDraft.title}。`
-                : `已发布完整模式包「${contributionDraft.title.trim()}」。`);
+            setStatus(isModePackageDraft
+                ? `已发布完整模式包「${contributionDraft.title.trim()}」。`
+                : `已发布到社区工坊：${published[0]?.title || contributionDraft.title}。`);
             重置贡献草稿();
             await refreshEntries({ forceRefresh: true });
         } catch (error: any) {
@@ -1295,6 +1786,50 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         } as 创意工坊模块条目;
     };
 
+    const 替换贡献草稿 = (next: 贡献草稿, reason: string): boolean => {
+        if (贡献草稿有未保存内容() && !window.confirm(`${reason}会覆盖当前未保存的贡献草稿。确定继续吗？`)) return false;
+        setContributionDraft(next);
+        setCurrencySystemJsonError('');
+        setShowContributionForm(true);
+        return true;
+    };
+
+    const 以模块为底稿编辑 = (entry: 创意工坊模块条目) => {
+        const draft = 模块转贡献草稿(entry);
+        if (!draft) {
+            setStatus('该模块类型暂不支持载入贡献表单编辑。');
+            return;
+        }
+        if (!替换贡献草稿(draft, `载入「${entry.title}」`)) return;
+        setStatus(`已把「${entry.title}」完整载入贡献表单。保存时只更新表单管理的标准字段，额外世界书、预设和扩展载荷会保留；请按需修改模块名称以创建新版本。`);
+        window.setTimeout(() => contributionFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    };
+
+    const 构建官方模板草稿 = (mode: 题材模式类型): 贡献草稿 => ({
+        ...空贡献草稿(),
+        mode,
+        ...创建默认模式元数据草稿(mode),
+        title: `${mode}模式包模板`,
+        subtitle: `${mode} · 官方默认值模板`,
+        description: `以${mode}官方默认配置生成的模式包模板，可下载后修改或直接在表单中改造。`,
+        aiGenerateWorldDetails: true,
+        topicBody: '（模板：在此填写题材口径、时代、货币、叙事边界和题材禁忌）',
+        worldRulesBody: '（模板：在此填写势力、市场、地图、资源和社会规则）',
+        abilityBody: '（模板：在此填写成长体系、战力边界和技能命名）'
+    });
+
+    const 下载官方模板 = () => {
+        const entry = 构建模式包模块(构建官方模板草稿(templateMode), '官方模板');
+        下载JSON(entry);
+        setStatus(`已下载「${templateMode}」官方模式包模板 JSON，可在外部编辑后通过「导入 JSON 测试」带回。`);
+    };
+
+    const 以官方模板起草 = () => {
+        if (!替换贡献草稿(构建官方模板草稿(templateMode), `载入「${templateMode}」官方模板`)) return;
+        setStatus(`已按「${templateMode}」官方默认值初始化贡献表单。`);
+        window.setTimeout(() => contributionFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    };
+
     const 开始编辑模块 = (entry: 创意工坊模块条目) => {
         setEditingEntryId(entry.id);
         setEditingDraft({
@@ -1329,7 +1864,8 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                 });
             setStatus(entry.source === 'local' ? `已更新本地导入：${updated.title}。` : `已更新社区工坊：${updated.title}。`);
             setEditingEntryId('');
-            await refreshEntries({ forceRefresh: true });
+            if (entry.source === 'local') 同步本地模块列表();
+            else await refreshEntries({ forceRefresh: true });
         } catch (error: any) {
             setStatus(`编辑失败：${error?.message || '未知错误'}`);
         } finally {
@@ -1358,7 +1894,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
             删除本地创意工坊模块(entry.id);
             setStatus(`已删除本地导入：${entry.title}。`);
             if (previewEntry?.id === entry.id) setPreviewEntry(null);
-            await refreshEntries({ forceRefresh: true });
+            同步本地模块列表();
         } catch (error: any) {
             setStatus(`删除本地导入失败：${error?.message || '未知错误'}`);
         } finally {
@@ -1378,14 +1914,14 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         try {
             const modules = contributionModules.map((module) => 导入本地创意工坊模块(module));
             const first = modules[0];
-            setStatus(contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset'
-                ? `已保存本地测试「${first.title}」，可在本地导入分区预览；要分享给其他玩家请点击发布到社区。`
-                : `已保存完整模式包「${contributionDraft.title.trim()}」到本地测试列表；要分享给其他玩家请点击发布到社区。`);
+            setStatus(isModePackageDraft
+                ? `已保存完整模式包「${contributionDraft.title.trim()}」到本地测试列表；要分享给其他玩家请点击发布到社区。`
+                : `已保存本地测试「${first.title}」，可在本地导入分区预览；要分享给其他玩家请点击发布到社区。`);
             setActiveType(first.type);
             setSourceFilter('local');
-            setPreviewEntry(first);
             重置贡献草稿();
-            await refreshEntries({ forceRefresh: true });
+            同步本地模块列表();
+            setPreviewEntry(first);
         } catch (error: any) {
             setStatus(`保存失败：${error?.message || '未知错误'}`);
         }
@@ -1395,6 +1931,8 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         if (!payload) return [];
         if (Array.isArray(payload)) return payload.flatMap((item) => 从JSON载荷提取创意工坊模块(item));
         if (Array.isArray(payload.modules)) return payload.modules.flatMap((item: any) => 从JSON载荷提取创意工坊模块(item));
+        const payloadModePackage = 从模式包Payload构建模块(payload);
+        if (payloadModePackage) return [payloadModePackage];
         if (payload.module && typeof payload.module === 'object') return 从JSON载荷提取创意工坊模块(payload.module);
         if (payload.type && payload.title) return [payload as 创意工坊模块条目];
         const tavernPreset = 规范化酒馆预设(payload);
@@ -1435,7 +1973,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
         if (files.length === 0) return;
         setBusyId('import-json');
         try {
-            const imported: 创意工坊模块条目[] = [];
+            const candidates: 创意工坊模块条目[] = [];
             for (const file of files) {
                 const text = await file.text();
                 const payload = JSON.parse(text);
@@ -1447,8 +1985,9 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                 if (modules.length === 0) {
                     throw new Error(`${file.name} 不是可识别的创意工坊 JSON`);
                 }
-                modules.forEach((module) => imported.push(导入本地创意工坊模块(module)));
+                candidates.push(...modules);
             }
+            const imported = candidates.map((module) => 导入本地创意工坊模块(module));
             const first = imported[0];
             setStatus(`已导入 ${imported.length} 个本地 JSON 预设${first ? `：${first.title}` : ''}。本地导入只保存在当前浏览器/设备，用于预览和测试；需要公开分享时请点击发布到社区。`);
             if (first) {
@@ -1456,7 +1995,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                 setPreviewEntry(first);
             }
             setSourceFilter('local');
-            await refreshEntries();
+            同步本地模块列表();
         } catch (error: any) {
             setStatus(`导入 JSON 失败：${error?.message || '未知错误'}`);
         } finally {
@@ -1907,13 +2446,25 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                             <span className="text-[11px] text-gray-500">{cloudUsername ? `联机账号：${cloudUsername}` : '发布社区投稿需要先登录联机账号'}</span>
                             <button type="button" onClick={() => jsonImportInputRef.current?.click()} disabled={busyId === 'import-json'} title="导入 JSON 只保存到当前浏览器/设备，用于本地预览和测试。完整 JSON 可以让 AI 生成后直接导入。" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100 hover:bg-emerald-500/15 disabled:opacity-50">{busyId === 'import-json' ? '导入中' : '导入 JSON 测试'}</button>
                             <button type="button" onClick={() => setShowContributionForm((value) => !value)} className="rounded-lg border border-wuxia-gold/25 px-3 py-2 text-xs text-wuxia-gold hover:border-wuxia-gold/45">{showContributionForm ? '收起贡献表单' : '贡献新预设'}</button>
+                            <div className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/25 px-2 py-1">
+                                <select value={templateMode} onChange={(event) => setTemplateMode(event.target.value as 题材模式类型)} className="h-7 rounded border border-white/10 bg-black/40 px-1.5 text-[11px] text-gray-200 outline-none focus:border-wuxia-gold/40">
+                                    {题材模式顺序.map((mode) => (
+                                        <option key={mode} value={mode}>{mode}</option>
+                                    ))}
+                                </select>
+                                <button type="button" onClick={下载官方模板} title="下载所选官方模式的完整模式包 JSON 模板，可在外部编辑后导入" className="rounded border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11px] text-gray-200 hover:border-white/25">下载官方模板</button>
+                                <button type="button" onClick={以官方模板起草} title="按所选官方模式的默认值初始化下方贡献表单" className="rounded border border-wuxia-gold/25 px-2 py-1.5 text-[11px] text-wuxia-gold hover:border-wuxia-gold/45">载入表单</button>
+                            </div>
                             <button type="button" onClick={() => void refreshEntries({ forceRefresh: true })} disabled={loading} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-200 hover:border-white/25 disabled:opacity-50">{loading ? '刷新中' : '刷新社区'}</button>
                         </div>
                     </div>
 
                     {showContributionForm && (
-                        <div className="mb-4 grid gap-4 rounded-xl border border-wuxia-gold/15 bg-white/[0.035] p-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+                        <div ref={contributionFormRef} className="mb-4 grid gap-4 rounded-xl border border-wuxia-gold/15 bg-white/[0.035] p-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
                             <div className="space-y-3">
+                                <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-[11px] leading-5 text-emerald-100">
+                                    底稿编辑会保留原模块的额外世界书、预设、地图 DIY 与扩展载荷；表单只更新自己管理的标准字段。建议保留原模块名称以继续版本链，或改名另存新包。
+                                </div>
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <label className="block text-xs text-gray-300">
                                         模块名称
@@ -1931,8 +2482,18 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                 <div className="grid gap-3 sm:grid-cols-3">
                                     <label className="block text-xs text-gray-300">
                                         贡献类型
-                                        <select value={contributionDraft.type} onChange={(event) => setContributionDraft((prev) => ({ ...prev, type: event.target.value as 创意工坊模块类型 }))} className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-sm text-gray-100 outline-none focus:border-wuxia-gold/45">
-                                            <option value="topic">完整模式包（模式专属世界书）</option>
+                                        <select
+                                            value={isModePackageDraft ? 'topic_mode_package' : contributionDraft.type === 'topic' ? 'topic_standard' : contributionDraft.type}
+                                            onChange={(event) => {
+                                                const value = event.target.value;
+                                                if (value === 'topic_mode_package') setContributionDraft((prev) => ({ ...prev, type: 'topic', moduleKind: 'mode_package' }));
+                                                else if (value === 'topic_standard') setContributionDraft((prev) => ({ ...prev, type: 'topic', moduleKind: 'standard' }));
+                                                else setContributionDraft((prev) => ({ ...prev, type: value as 创意工坊模块类型, moduleKind: 'standard' }));
+                                            }}
+                                            className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-sm text-gray-100 outline-none focus:border-wuxia-gold/45"
+                                        >
+                                            <option value="topic_mode_package">完整模式包（模式专属世界书）</option>
+                                            <option value="topic_standard">普通题材补充模块</option>
                                             <option value="tavern_preset">酒馆预设</option>
                                             <option value="comfy_workflow">ComfyUI 工作流</option>
                                         </select>
@@ -1943,6 +2504,8 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                             value={contributionDraft.mode}
                                             onChange={(event) => {
                                                 const mode = event.target.value as 题材模式类型;
+                                                if (mode === contributionDraft.mode) return;
+                                                if (!window.confirm('切换适用模式会重置模式元数据与运行时配置。确定继续吗？')) return;
                                                 setContributionDraft((prev) => ({ ...prev, mode, ...创建默认模式元数据草稿(mode) }));
                                             }}
                                             className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-sm text-gray-100 outline-none focus:border-wuxia-gold/45"
@@ -1976,10 +2539,15 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                     简介
                                     <input value={contributionDraft.description} onChange={(event) => setContributionDraft((prev) => ({ ...prev, description: event.target.value }))} placeholder="一句话说明这个预设会改变什么体验" className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-sm text-gray-100 outline-none placeholder:text-gray-500 focus:border-wuxia-gold/45" />
                                 </label>
-                                {contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset' ? (
+                                {!isModePackageDraft ? (
                                     <label className="block text-xs text-gray-300">
-                                        {contributionDraft.type === 'tavern_preset' ? '酒馆预设 JSON' : '工作流内容'}
-                                        <textarea value={contributionDraft.body} onChange={(event) => setContributionDraft((prev) => ({ ...prev, body: event.target.value }))} placeholder={contributionDraft.type === 'tavern_preset' ? '粘贴 SillyTavern 酒馆预设 JSON，prompts / prompt_order 以及开关状态会被保留。' : '粘贴 ComfyUI API Workflow JSON，或写清工作流下载/使用说明。'} className="mt-1 min-h-36 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm leading-6 text-gray-100 outline-none placeholder:text-gray-500 focus:border-wuxia-gold/45" />
+                                        {contributionDraft.type === 'tavern_preset' ? '酒馆预设 JSON' : contributionDraft.type === 'comfy_workflow' ? '工作流内容' : '模块注入正文'}
+                                        <textarea
+                                            value={contributionDraft.body}
+                                            onChange={(event) => setContributionDraft((prev) => ({ ...prev, body: event.target.value }))}
+                                            placeholder={contributionDraft.type === 'tavern_preset' ? '粘贴 SillyTavern 酒馆预设 JSON，prompts / prompt_order 以及开关状态会被保留。' : contributionDraft.type === 'comfy_workflow' ? '粘贴 ComfyUI API Workflow JSON，或写清工作流下载/使用说明。' : '填写该普通模块要注入的世界观、规则或题材补充正文。'}
+                                            className="mt-1 min-h-36 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm leading-6 text-gray-100 outline-none placeholder:text-gray-500 focus:border-wuxia-gold/45"
+                                        />
                                     </label>
                                 ) : (
                                     <div className="grid gap-3">
@@ -1991,7 +2559,10 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                                 </div>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setContributionDraft((prev) => ({ ...prev, ...创建默认模式元数据草稿(prev.mode) }))}
+                                                    onClick={() => {
+                                                        if (!window.confirm('将全部模式元数据与运行时配置重置为当前题材默认值。确定继续吗？')) return;
+                                                        setContributionDraft((prev) => ({ ...prev, ...创建默认模式元数据草稿(prev.mode) }));
+                                                    }}
                                                     className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] text-gray-200 hover:border-white/25"
                                                 >
                                                     套用当前题材默认
@@ -2299,6 +2870,25 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                                                         </label>
                                                                     );
                                                                 }
+                                                                if (fieldType === 'marketTemplates') {
+                                                                    return (
+                                                                        <市场行情模板编辑器
+                                                                            key={`${key}-market-templates`}
+                                                                            value={读取运行时路径值(contributionDraft.modeRuntimeProfile, field.path)}
+                                                                            onApply={(templates) => 更新运行时配置字段(field, templates)}
+                                                                        />
+                                                                    );
+                                                                }
+                                                                if (fieldType === 'uiLabels') {
+                                                                    return (
+                                                                        <界面文案覆盖编辑器
+                                                                            key={`${key}-ui-labels`}
+                                                                            mode={contributionDraft.modeRuntimeProfile.identity.baseMode || contributionDraft.mode}
+                                                                            value={contributionDraft.modeRuntimeProfile.uiLabels}
+                                                                            onApply={(labels) => 更新运行时配置字段(field, labels)}
+                                                                        />
+                                                                    );
+                                                                }
                                                                 if (fieldType === 'json') {
                                                                     return (
                                                                         <Json运行时字段编辑器
@@ -2306,8 +2896,8 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                                                             label={field.label}
                                                                             placeholder={field.placeholder}
                                                                             value={读取运行时路径值(contributionDraft.modeRuntimeProfile, field.path)}
+                                                                            expectedShape={field.expectedShape}
                                                                             onApply={(parsed) => 更新运行时配置字段(field, parsed)}
-                                                                            expectedShape={获取Json运行时字段形状(field)}
                                                                         />
                                                                     );
                                                                 }
@@ -2366,21 +2956,21 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                 <div className="flex flex-wrap gap-2">
                                     <button type="button" onClick={() => void 保存贡献模块到本地()} disabled={!contributionReady} className="rounded-lg border border-emerald-500/35 bg-emerald-500/15 px-4 py-2 text-xs font-bold text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-45">保存到本地</button>
                                     <button type="button" onClick={() => void 发布贡献套装()} disabled={!contributionReady || Boolean(busyId)} title={cloudUsername ? '发布到社区工坊' : '点击后先登录联机账号'} className="rounded-lg border border-sky-500/35 bg-sky-500/15 px-4 py-2 text-xs font-bold text-sky-100 hover:bg-sky-500/25 disabled:opacity-45">发布到社区</button>
-                                    <button type="button" onClick={重置贡献草稿} className="rounded-lg border border-white/10 px-4 py-2 text-xs text-gray-200 hover:border-white/25">清空</button>
+                                    <button type="button" onClick={确认并清空贡献草稿} className="rounded-lg border border-white/10 px-4 py-2 text-xs text-gray-200 hover:border-white/25">清空</button>
                                 </div>
                             </div>
                             <div className="rounded-lg border border-white/10 bg-black/25 p-3">
                                 <div className="text-xs font-bold tracking-[0.14em] text-wuxia-gold">实时预览</div>
                                 <div className="mt-3 text-base font-serif font-bold text-gray-100">{contributionDraft.title.trim() || '未命名预设'}</div>
-                                <div className="mt-1 text-xs text-wuxia-gold/80">{contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset' ? contributionModule.subtitle : `${contributionDraft.mode} · 完整模式包`}</div>
-                                <p className="mt-2 text-sm leading-6 text-gray-300">{contributionDraft.description.trim() || (contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset' ? contributionModule.description : '一次贡献一个模式专属世界书，包含题材口径、世界规则和能力体系。')}</p>
+                                <div className="mt-1 text-xs text-wuxia-gold/80">{isModePackageDraft ? `${contributionDraft.mode} · 完整模式包` : contributionModule.subtitle}</div>
+                                <p className="mt-2 text-sm leading-6 text-gray-300">{contributionDraft.description.trim() || (isModePackageDraft ? '一次贡献一个模式专属世界书，包含题材口径、世界规则和能力体系。' : contributionModule.description)}</p>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {contributionModules[0]?.tags.map((tag) => <span key={tag} className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-gray-300">{tag}</span>)}
                                 </div>
                                 <div className="mt-3 rounded-lg border border-wuxia-gold/15 bg-black/30 p-3">
                                     <div className="text-xs font-bold tracking-[0.14em] text-wuxia-gold">标准格式预览</div>
-                                    <div className="mt-2 text-xs leading-5 text-gray-300">使用提示：{contributionDraft.type === 'comfy_workflow' || contributionDraft.type === 'tavern_preset' ? contributionModule.usagePrompt : '完整模式包会以模式专属世界书的形式统一生效。'}</div>
-                                    {contributionDraft.type !== 'comfy_workflow' && contributionDraft.type !== 'tavern_preset' && (
+                                    <div className="mt-2 text-xs leading-5 text-gray-300">使用提示：{isModePackageDraft ? '完整模式包会以模式专属世界书的形式统一生效。' : contributionModule.usagePrompt}</div>
+                                    {isModePackageDraft && (
                                         <div className="mt-2 rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-1.5 text-[11px] leading-5 text-emerald-100">
                                             世界细节：{contributionDraft.aiGenerateWorldDetails ? 'AI 默认生成' : '贡献者自定义'}
                                         </div>
@@ -2462,6 +3052,9 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                     )}
                                     <div className="mt-4 grid gap-2 sm:grid-cols-3">
                                         <button type="button" onClick={() => setPreviewEntry(entry)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">{entry.type === 'tavern_preset' ? '预览预设' : '预览注入'}</button>
+                                        {entry.type !== 'tavern_preset' ? (
+                                            <button type="button" onClick={() => 以模块为底稿编辑(entry)} title="把这个模块完整载入下方贡献表单，用可视化表单修改后另存" className="rounded-lg border border-wuxia-gold/30 bg-wuxia-gold/10 px-3 py-2 text-xs text-wuxia-gold hover:bg-wuxia-gold/20">以此为底稿编辑</button>
+                                        ) : null}
                                         <button type="button" onClick={() => 处理下载JSON(entry)} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">下载 JSON</button>
                                         <button type="button" onClick={() => void 复制文本(构建模块摘要(entry)).then((ok) => setStatus(ok ? `已复制「${entry.title}」注入摘要。` : '复制失败，请改用下载 JSON。'))} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-200 hover:border-white/25">复制摘要</button>
                                         {canPublishEntry && (
