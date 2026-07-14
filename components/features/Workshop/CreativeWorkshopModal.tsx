@@ -2838,6 +2838,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                                                             label={field.label}
                                                                             placeholder='{"levelNames":[],"parseRules":[]}'
                                                                             value={读取运行时路径值(contributionDraft.modeRuntimeProfile, field.path)}
+                                                                            expectedShape="object"
                                                                             onApply={(parsed) => 更新运行时配置字段(field, parsed)}
                                                                         />
                                                                     );
