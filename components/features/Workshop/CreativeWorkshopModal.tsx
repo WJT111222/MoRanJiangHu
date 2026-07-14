@@ -2460,8 +2460,8 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                     </div>
 
                     {showContributionForm && (
-                        <div ref={contributionFormRef} className="mb-4 grid gap-4 rounded-xl border border-wuxia-gold/15 bg-white/[0.035] p-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
-                            <div className="space-y-3">
+                        <div ref={contributionFormRef} className="mb-4 grid min-w-0 gap-4 rounded-xl border border-wuxia-gold/15 bg-white/[0.035] p-4 [&_div]:min-w-0 [&_input]:min-w-0 [&_label]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+                            <div className="min-w-0 space-y-3">
                                 <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-[11px] leading-5 text-emerald-100">
                                     底稿编辑会保留原模块的额外世界书、预设、地图 DIY 与扩展载荷；表单只更新自己管理的标准字段。建议保留原模块名称以继续版本链，或改名另存新包。
                                 </div>
@@ -2959,7 +2959,7 @@ const CreativeWorkshopModal: React.FC<Props> = ({ open, onClose, onNovelDecompos
                                     <button type="button" onClick={确认并清空贡献草稿} className="rounded-lg border border-white/10 px-4 py-2 text-xs text-gray-200 hover:border-white/25">清空</button>
                                 </div>
                             </div>
-                            <div className="rounded-lg border border-white/10 bg-black/25 p-3">
+                            <div className="min-w-0 rounded-lg border border-white/10 bg-black/25 p-3">
                                 <div className="text-xs font-bold tracking-[0.14em] text-wuxia-gold">实时预览</div>
                                 <div className="mt-3 text-base font-serif font-bold text-gray-100">{contributionDraft.title.trim() || '未命名预设'}</div>
                                 <div className="mt-1 text-xs text-wuxia-gold/80">{isModePackageDraft ? `${contributionDraft.mode} · 完整模式包` : contributionModule.subtitle}</div>
