@@ -51,6 +51,30 @@ describe('OpenAI image runtime proxy', () => {
         expect(fetchMock.mock.calls[0][0]).toBe('https://api.openai.com/v1/images/generations');
     });
 
+    it('proxies xAI official provider image generation requests', async () => {
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        }));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const response = await onRequest({
+            request: new Request('https://msjh.example/api/image-backend/openai-image-proxy/v1/images/generations?provider=xai_official', {
+                method: 'POST',
+                headers: {
+                    Authorization: 'Bearer xai-test',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model: 'grok-imagine-image-quality', prompt: 'test' })
+            }),
+            params: { path: ['v1', 'images', 'generations'] }
+        });
+
+        expect(response.status).toBe(200);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock.mock.calls[0][0]).toBe('https://api.x.ai/v1/images/generations');
+    });
+
     it('rejects requests that do not use a whitelisted provider (url mode removed)', async () => {
         const fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);

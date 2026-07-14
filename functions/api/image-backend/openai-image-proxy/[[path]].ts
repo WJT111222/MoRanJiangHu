@@ -14,7 +14,10 @@ const readString = (value: unknown): string => (
 );
 
 const PROVIDER_TARGET_MAPPING: Record<string, string> = {
-    'openai-official': 'https://api.openai.com'
+    openai: 'https://api.openai.com',
+    'openai-official': 'https://api.openai.com',
+    xai_official: 'https://api.x.ai',
+    'xai-official': 'https://api.x.ai'
 };
 
 const normalizePath = (pathRaw: unknown): string => {
@@ -86,18 +89,6 @@ export async function onRequest({ request, params }: any): Promise<Response> {
     }
 
     const requestUrl = new URL(request.url);
-    const urlParam = readString(requestUrl.searchParams.get('url'));
-
-    // ?url= 模式：直接转发到指定地址（用于自定义端点/本地开发）
-    if (urlParam) {
-        let targetUrl: string;
-        try {
-            targetUrl = new URL(urlParam).toString();
-        } catch {
-            return jsonResponse({ error: 'Invalid url parameter.' }, 400);
-        }
-        return forwardRequest(targetUrl, request, method);
-    }
 
     const providerID = readString(requestUrl.searchParams.get('provider'));
     const targetBase = PROVIDER_TARGET_MAPPING[providerID];

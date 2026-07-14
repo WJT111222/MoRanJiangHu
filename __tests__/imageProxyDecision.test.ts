@@ -38,7 +38,7 @@ describe('Simplified image proxy decision - user control first', () => {
     it('should use direct connection when user does not enable proxy (default)', () => {
         const decision = 获取代理决策(
             'https://api.openai.com/v1',
-            'openai-official',
+            'openai',
             { 图片需要代理: false }
         );
         
@@ -46,15 +46,26 @@ describe('Simplified image proxy decision - user control first', () => {
         expect(decision.原因).toContain('未开启代理');
     });
 
-    it('should use proxy when user explicitly enables proxy', () => {
+    it('should keep direct connection for non-whitelisted providers when proxy is enabled but no custom proxy is configured', () => {
         const decision = 获取代理决策(
             'https://cdn.moe-atelier.site/v1',
             'openai-custom',
             { 图片需要代理: true }
         );
         
+        expect(decision.走代理).toBe(false);
+        expect(decision.原因).toContain('非白名单供应商');
+    });
+
+    it('should use default proxy for whitelisted official providers when enabled and custom proxy is empty', () => {
+        const decision = 获取代理决策(
+            'https://api.x.ai/v1',
+            'xai_official',
+            { 图片需要代理: true }
+        );
+
         expect(decision.走代理).toBe(true);
-        expect(decision.原因).toContain('用户开启代理');
+        expect(decision.原因).toContain('官方白名单');
     });
 
     it('should use custom proxy address when user provides it', () => {
@@ -90,14 +101,34 @@ describe('Simplified image proxy decision - user control first', () => {
         expect(endpoint).not.toContain('/api/image-backend/openai-image-proxy');
     });
 
-    it('should build proxied endpoint when user enables proxy', () => {
+    it('should build direct endpoint when user enables proxy for non-whitelisted provider without custom proxy', () => {
         const endpoint = 构建OpenAI图片生成端点(
             'https://cdn.moe-atelier.site/v1',
             '/v1/images/generations',
             { 图片需要代理: true }
         );
         
-        expect(endpoint).toContain('/api/image-backend/openai-image-proxy');
-        expect(endpoint).toContain('url=');
+        expect(endpoint).toBe('https://cdn.moe-atelier.site/v1/images/generations');
+        expect(endpoint).not.toContain('/api/image-backend/openai-image-proxy');
+    });
+
+    it('should build default provider proxy endpoint for OpenAI when enabled', () => {
+        const endpoint = 构建OpenAI图片生成端点(
+            'https://api.openai.com/v1',
+            '/v1/images/generations',
+            { 图片需要代理: true, 供应商ID: 'openai' }
+        );
+
+        expect(endpoint).toContain('/api/image-backend/openai-image-proxy/v1/images/generations?provider=openai');
+    });
+
+    it('should build user custom CORS proxy endpoint when custom proxy is configured', () => {
+        const endpoint = 构建OpenAI图片生成端点(
+            'https://cdn.moe-atelier.site/v1',
+            '/v1/images/generations',
+            { 图片需要代理: true, 自定义图片代理地址: 'https://my-proxy.example.com' }
+        );
+
+        expect(endpoint).toBe('https://my-proxy.example.com?url=https%3A%2F%2Fcdn.moe-atelier.site%2Fv1%2Fimages%2Fgenerations');
     });
 });

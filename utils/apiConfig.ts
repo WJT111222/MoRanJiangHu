@@ -39,6 +39,7 @@ export const 供应商标签: Record<接口供应商类型, string> = {
     gemini: 'Gemini',
     claude: 'Claude',
     openai: 'OpenAI',
+    xai_official: 'xAI / Grok',
     deepseek: 'DeepSeek',
     zhipu: '智谱',
     mimo_api: '小米 MiMo API',
@@ -954,6 +955,10 @@ const 供应商默认值: Record<接口供应商类型, { baseUrl: string; model
         baseUrl: 'https://api.openai.com/v1',
         model: 'gpt-4o-mini'
     },
+    xai_official: {
+        baseUrl: 'https://api.x.ai/v1',
+        model: 'grok-imagine-image-quality'
+    },
     deepseek: {
         baseUrl: 'https://api.deepseek.com/v1',
         model: 'deepseek-chat'
@@ -1308,6 +1313,7 @@ const 选取有效预设ID = <T extends { id: string }>(list: T[], candidate: un
 export const 推断供应商 = (baseUrlRaw: unknown): 接口供应商类型 => {
     const baseUrl = 读取字符串(baseUrlRaw).toLowerCase();
     if (!baseUrl) return 'openai';
+    if (baseUrl.includes('api.x.ai')) return 'xai_official';
     if (baseUrl.includes('token-plan-cn.xiaomimimo.com')) return 'mimo_token_plan';
     if (baseUrl.includes('xiaomimimo.com')) return 'mimo_api';
     if (baseUrl.includes('generativelanguage.googleapis.com') || baseUrl.includes('googleapis.com')) return 'gemini';
@@ -1322,7 +1328,7 @@ export const 推断供应商 = (baseUrlRaw: unknown): 接口供应商类型 => {
 };
 
 const 标准化供应商 = (value: unknown, fallback: 接口供应商类型): 接口供应商类型 => {
-    if (value === 'gemini' || value === 'claude' || value === 'openai' || value === 'deepseek' || value === 'zhipu' || value === 'mimo_api' || value === 'mimo_token_plan' || value === 'openai_compatible') {
+    if (value === 'gemini' || value === 'claude' || value === 'openai' || value === 'xai_official' || value === 'deepseek' || value === 'zhipu' || value === 'mimo_api' || value === 'mimo_token_plan' || value === 'openai_compatible') {
         return value;
     }
     return fallback;

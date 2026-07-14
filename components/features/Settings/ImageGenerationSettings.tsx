@@ -2208,7 +2208,7 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
             <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3">
                 <div>
                     <div className="text-sm font-bold text-fuchsia-200">经代理访问</div>
-                    <div className="text-xs text-gray-400">开启后生图请求走代理，解决 CORS 跨域问题。本地 dev 环境自动开启。</div>
+                    <div className="text-xs text-gray-400">默认直连。开启后：若填写自定义 CORS 代理则使用你的代理；若留空，仅 OpenAI/Grok 等官方白名单端点走本站默认代理，普通自定义端点仍直连。</div>
                 </div>
                 <ToggleSwitch
                     checked={Boolean(form.功能模型占位.图片需要代理)}
@@ -2219,13 +2219,13 @@ const ImageGenerationSettings: React.FC<Props> = ({ settings, onSave }) => {
             <div className="mt-2 space-y-2 rounded-xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-3">
                 <div>
                     <div className="text-sm font-bold text-fuchsia-200">自定义图片代理地址</div>
-                    <div className="text-xs text-gray-400">可选。留空则使用默认代理，或填写你自己的 CORS 代理地址。</div>
+                    <div className="text-xs text-gray-400">可选。填写后使用你的 CORS 代理；留空时只对白名单官方端点使用默认代理。CivitAI/NovelAI 属于高风险官方域名记录，但不走 OpenAI 兼容代理。</div>
                 </div>
                 <input
                     type="text"
                     value={form.功能模型占位.自定义图片代理地址 || ''}
                     onChange={(e) => updatePlaceholder('自定义图片代理地址', e.target.value)}
-                    placeholder="留空则使用默认代理（msjh.bacon159.pp.ua），或填写你自己的 CORS 代理"
+                    placeholder="例如 https://your-cors-proxy.example.com；留空仅白名单官方端点走默认代理"
                     disabled={!form.功能模型占位.图片需要代理}
                     className="w-full rounded-lg border border-fuchsia-500/30 bg-black/40 px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-fuchsia-400 disabled:opacity-50"
                 />
