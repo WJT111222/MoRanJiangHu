@@ -46,6 +46,31 @@ const jsonResponse = (payload: unknown, status = 200): Response => (
     })
 );
 
+const forwardRequest = async (targetUrl: string, request: Request, method: string): Promise<Response> => {
+    const headers = new Headers();
+    const authorization = request.headers.get('authorization');
+    if (authorization) headers.set('Authorization', authorization);
+    headers.set('Content-Type', request.headers.get('content-type') || 'application/json');
+    headers.set('Accept', request.headers.get('accept') || 'application/json');
+
+    const response = await fetch(targetUrl, {
+        method,
+        headers,
+        body: method === 'GET' ? undefined : request.body
+    });
+
+    const responseHeaders = new Headers(CORS_HEADERS);
+    ['content-type', 'cache-control'].forEach((key) => {
+        const value = response.headers.get(key);
+        if (value) responseHeaders.set(key, value);
+    });
+    return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders
+    });
+};
+
 export async function onRequestOptions(): Promise<Response> {
     return new Response(null, {
         status: 204,
@@ -61,6 +86,19 @@ export async function onRequest({ request, params }: any): Promise<Response> {
     }
 
     const requestUrl = new URL(request.url);
+    const urlParam = readString(requestUrl.searchParams.get('url'));
+
+    // ?url= 模式：直接转发到指定地址（用于自定义端点/本地开发）
+    if (urlParam) {
+        let targetUrl: string;
+        try {
+            targetUrl = new URL(urlParam).toString();
+        } catch {
+            return jsonResponse({ error: 'Invalid url parameter.' }, 400);
+        }
+        return forwardRequest(targetUrl, request, method);
+    }
+
     const providerID = readString(requestUrl.searchParams.get('provider'));
     const targetBase = PROVIDER_TARGET_MAPPING[providerID];
 
@@ -90,20 +128,5 @@ export async function onRequest({ request, params }: any): Promise<Response> {
     headers.set('Accept', request.headers.get('accept') || 'application/json');
 
     const targetUrl = buildTargetUrl(targetBase, path);
-    const response = await fetch(targetUrl, {
-        method,
-        headers,
-        body: method === 'GET' ? undefined : request.body
-    });
-
-    const responseHeaders = new Headers(CORS_HEADERS);
-    ['content-type', 'cache-control'].forEach((key) => {
-        const value = response.headers.get(key);
-        if (value) responseHeaders.set(key, value);
-    });
-    return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: responseHeaders
-    });
+    return forwardRequest(targetUrl, request, method);
 }

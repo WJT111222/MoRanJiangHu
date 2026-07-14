@@ -78,16 +78,22 @@ export const 测试OpenAI兼容图片接口 = async (params: {
     label: string;
     供应商ID?: string;
     自定义图片代理地址?: string;
+    图片需要代理?: boolean;
     setTimeoutFn?: typeof setTimeout;
     clearTimeoutFn?: typeof clearTimeout;
 }): Promise<OpenAI图片测试结果> => {
     const rawModel = (params.model || '').trim();
     const model = 规范化OpenAI图片模型名称(rawModel) || 'gpt-image-2';
     const isGptImageModel = /^(gpt-image|chatgpt-image)/i.test(model);
+    // 测试时：不使用 useRuntimeProxy，只尊重用户的 图片需要代理 设置
     const endpoint = 构建OpenAI图片生成端点(
         params.rawBaseUrl,
         isGptImageModel ? '/v1/images/generations' : params.path,
-        { useRuntimeProxy: true, 供应商ID: params.供应商ID, 自定义图片代理地址: params.自定义图片代理地址 }
+        { 
+            供应商ID: params.供应商ID, 
+            自定义图片代理地址: params.自定义图片代理地址,
+            图片需要代理: params.图片需要代理
+        }
     );
     if (!endpoint) throw new Error('OpenAI 兼容图片接口缺少 API 地址。');
     const headers: Record<string, string> = {

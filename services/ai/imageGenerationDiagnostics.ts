@@ -38,7 +38,10 @@ export const 翻译连接测试错误 = (error: any, context?: { baseUrl?: strin
     }
 
     if (/failed to fetch|networkerror|network error|load failed|fetch failed|cors|cross-origin|refused|timeout|abort|econnrefused|enotfound|certificate|ssl/.test(lower)) {
-        return `${backendLabel}连接失败。可能是服务器没有启动、地址或端口填错、网络不可达、浏览器跨域拦截，或本地/云端后端已经休眠。${baseUrl}\n建议先在浏览器打开该地址确认能访问；如果是 Cloud Studio/云端 ComfyUI，请保持工作区页面一直打开，并确认后端开启了 CORS。${raw ? `\n原始错误：${raw}` : ''}`;
+        const corsHint = /cors|cross-origin/.test(lower) 
+            ? '\n💡 如果是跨域 CORS 问题，可以在「图片生成设置」中开启「图片需要代理」选项。' 
+            : '';
+        return `${backendLabel}连接失败。可能是服务器没有启动、地址或端口填错、网络不可达、浏览器跨域拦截，或本地/云端后端已经休眠。${baseUrl}\n建议先在浏览器打开该地址确认能访问；如果是 Cloud Studio/云端 ComfyUI，请保持工作区页面一直打开，并确认后端开启了 CORS。${corsHint}${raw ? `\n原始错误：${raw}` : ''}`;
     }
 
     if (/401|unauthorized|invalid api key|invalid_api_key|incorrect api key|permission denied/.test(lower)) {
@@ -306,34 +309,31 @@ export const 获取代理决策 = (
 ): 代理决策 => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'unknown';
     const isNative = isNativeCapacitorEnvironment();
-    const 本地开发 = 是否本地开发环境();
-    const 在线 = 当前是在线环境();
     const 有自定义代理 = !!(options?.自定义图片代理地址 || '').trim();
     const 用户开启代理 = options?.图片需要代理 === true;
 
-    // 1) 用户显式开启代理 + 配了自定义代理地址 → 走自定义代理
+    // 1) 目标地址是 localhost/私网 → 强制直连（Cloudflare Worker 无法访问用户设备的 localhost）
+    try {
+        const targetUrl = new URL((baseUrlRaw || '').trim());
+        if (判断局域网主机(targetUrl.hostname)) {
+            return { 走代理: false, 原因: '目标是localhost/私网地址，强制直连', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
+        }
+    } catch {
+        // URL 解析失败时继续后续决策
+    }
+
+    // 2) 用户显式开启代理 + 配了自定义代理地址 → 走自定义代理
     if (用户开启代理 && 有自定义代理) {
         return { 走代理: true, 原因: '用户开启代理+自定义地址', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
     }
 
-    // 2) 用户显式开启代理 + 未配自定义地址 → 走默认代理
+    // 3) 用户显式开启代理 + 未配自定义地址 → 走默认代理
     if (用户开启代理) {
         return { 走代理: true, 原因: '用户开启代理+默认代理', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
     }
 
-    // 3) 本地开发环境 → 自动走代理（CORS 几乎必然失败）
-    if (本地开发 && options?.useRuntimeProxy && 可走同域图片代理()) {
-        return { 走代理: true, 原因: '本地开发环境自动走代理', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
-    }
-
-    // 4) 在线环境 + openai-official → 走代理（白名单）
-    if (options?.useRuntimeProxy && 在线 && 预定义供应商目标映射[供应商ID]) {
-        return { 走代理: true, 原因: '在线环境+官方白名单', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
-    }
-
-    // 5) 在线环境 + 自定义端点 → 直连（CORS 通常由网关处理）
-    // 6) 本地开发但不可走代理（如原生未配远程同步） → 直连
-    return { 走代理: false, 原因: 本地开发 ? '本地开发但代理不可用' : '在线环境直连', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
+    // 4) 用户未开启代理 → 直连（让用户看到真实的连接结果，如果遇到 CORS 问题，错误提示会建议开启代理）
+    return { 走代理: false, 原因: '用户未开启代理，直连', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
 };
 
 export const 构建OpenAI图片生成端点 = (
