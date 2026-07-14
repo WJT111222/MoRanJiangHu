@@ -93,7 +93,8 @@ const 判断局域网主机 = (hostname: string): boolean => {
 
 const 识别ComfyUI地址类型 = (baseUrlRaw: string): ComfyUI地址类型 => {
     try {
-        const url = new URL((baseUrlRaw || '').trim());
+        const raw = (baseUrlRaw || '').trim();
+        const url = new URL(/^https?:\/\//i.test(raw) ? raw : `http://${raw}`);
         const host = url.hostname.toLowerCase();
         if (/(^|\.)cnb\.run$/i.test(host) || /(^|\.)cnb\.space$/i.test(host)
             || /(^|\.)cloudstudio\.net$/i.test(host) || /(^|\.)cloudstudio\.com$/i.test(host) || /(^|\.)cloudstudio\.club$/i.test(host) || /(^|\.)coding\.net$/i.test(host)) return 'cnb';
@@ -274,7 +275,9 @@ export const 获取代理决策 = (
 
     // localhost/私网目标只能由客户端直连；远端 Worker 或公共代理无法访问用户设备内网。
     try {
-        const targetUrl = new URL((baseUrlRaw || '').trim());
+        const raw = (baseUrlRaw || '').trim();
+        const urlToParse = /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
+        const targetUrl = new URL(urlToParse);
         if (判断局域网主机(targetUrl.hostname)) {
             return { 走代理: false, 原因: '目标是localhost/私网地址，强制直连', 原始baseUrl: baseUrlRaw, 供应商ID, origin, isNative };
         }
