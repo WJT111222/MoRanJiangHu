@@ -46,6 +46,7 @@
     "@capacitor/browser": "^8.0.3",
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",
+    "@capacitor/filesystem": "^8.1.2",
     "@types/dompurify": "^3.0.5",
     "dompurify": "^3.4.11",
     "fflate": "^0.8.2",

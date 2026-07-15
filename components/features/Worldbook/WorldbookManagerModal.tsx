@@ -525,11 +525,18 @@ const WorldbookManagerModal: React.FC<Props> = ({ builtinPromptEntries, worldboo
                                                 {selectedBook.条目.map((entry) => (
                                                     <button key={entry.id} type="button" onClick={() => setSelectedEntryId(entry.id)} className={`w-full rounded-xl border p-3 text-left ${selectedEntry?.id === entry.id ? 'border-wuxia-gold/60 bg-wuxia-gold/10' : 'border-wuxia-gold/10 bg-black/30'}`}>
                                                         <div className={`text-sm font-serif ${selectedEntry?.id === entry.id ? 'text-wuxia-gold' : 'text-gray-200'}`}>{entry.标题}</div>
-                                                        <div className="mt-1 text-[11px] text-gray-500">{获取条目形态标签(entry.条目形态)} · {获取条目类型标签(entry.类型)}</div>
+                                                        <div className="mt-1 text-[11px] text-gray-500">{entry.启用 === false ? '已停用' : '已启用'} · {获取条目形态标签(entry.条目形态)} · {获取条目类型标签(entry.类型)}</div>
                                                     </button>
                                                 ))}
                                             </div>
                                             {selectedEntry && <div className="space-y-3">
+                                                <div className="flex items-center justify-between gap-3 rounded-xl border border-wuxia-gold/15 bg-wuxia-gold/5 px-3 py-2">
+                                                    <div>
+                                                        <div className="text-sm text-gray-200">启用这个条目</div>
+                                                        <div className="mt-0.5 text-[11px] text-gray-500">关闭后只停用当前条目，不影响同一本世界书里的其他条目。</div>
+                                                    </div>
+                                                    <ToggleSwitch checked={selectedEntry.启用 !== false} onChange={(next) => setBookDraft((prev) => prev.map((book) => book.id === selectedBook.id ? { ...book, 更新时间: Date.now(), 条目: book.条目.map((entry) => entry.id === selectedEntry.id ? { ...entry, 启用: next } : entry) } : book))} ariaLabel={`切换世界书条目 ${selectedEntry.标题 || '未命名'} 启用状态`} />
+                                                </div>
                                                 <label className="block">
                                                     <div className={fieldLabelClass}>条目标题</div>
                                                     <input className={inputClass} value={selectedEntry.标题} onChange={(e) => setBookDraft((prev) => prev.map((book) => book.id === selectedBook.id ? { ...book, 更新时间: Date.now(), 条目: book.条目.map((entry) => entry.id === selectedEntry.id ? 更新条目注入说明({ ...entry, 标题: e.target.value }) : entry) } : book))} />

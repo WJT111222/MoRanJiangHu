@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Directory, Filesystem } from '@capacitor/filesystem';
 import * as dbService from '../../../services/dbService';
 import {
     读取云端游玩会话,
@@ -557,23 +558,21 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
     );
 
     const saveArchiveToDevice = async (blob: Blob, fileName: string): Promise<boolean> => {
-        const runtime = typeof window !== 'undefined' ? (window as any) : undefined;
-        const filesystem = runtime?.Capacitor?.Plugins?.Filesystem;
-        if (!filesystem?.writeFile) return false;
+        if (!isNativeCapacitorEnvironment()) return false;
 
-        await filesystem.writeFile({
+        await Filesystem.writeFile({
             path: fileName,
             data: await blobToBase64(blob),
-            directory: 'DOCUMENTS',
+            directory: Directory.Documents,
             recursive: false
         });
         return true;
     };
 
-    const downloadArchiveBlob = async (blob: Blob, fileName: string): Promise<void> => {
+    const downloadArchiveBlob = async (blob: Blob, fileName: string, options?: { batch?: boolean }): Promise<void> => {
         if (await saveArchiveToDevice(blob, fileName)) {
             setTransferMessage(`已导出到设备文档目录：${fileName}`);
-            alert(`导出完成：${fileName}\n已保存到设备文档目录。`);
+            if (!options?.batch) alert(`导出完成：${fileName}\n已保存到设备文档目录。`);
             return;
         }
 
@@ -593,7 +592,10 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
             source: 'SaveLoadModal.downloadArchiveBlob',
             kind: 'save-archive-export',
             detail: { fileName, reason: 'download-clicked' }
-        }, 30_000);
+        }, options?.batch ? 0 : 30_000);
+        if (options?.batch) {
+            await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
+        }
         setTransferMessage(`已开始下载：${fileName}`);
     };
 
@@ -602,52 +604,50 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         setSyncing(true);
         setTransferMessage('正在整理全部存档包...');
         try {
-            if (isNativeCapacitorEnvironment()) {
-                const allSummaries = (await dbService.读取存档摘要列表())
-                    .filter((item) => typeof item.id === 'number');
-                if (allSummaries.length === 0) {
-                    throw new Error('当前没有可导出的存档');
-                }
-                const result = await 顺序导出存档({
-                    items: allSummaries,
-                    readSave: async (item) => 读取完整存档(item),
-                    buildArchive: async (fullSave, item, index) => {
-                        const blob = await 导出ZIP存档文件({ saves: [fullSave] });
-                        const stamp = new Date(item.时间戳 || Date.now()).toISOString().replace(/[:]/g, '-');
-                        const title = 构建存档标题(item);
-                        const titlePart = 构建安全文件名片段(title, `save-${index + 1}`);
-                        const typePart = item.类型 === 'auto' ? 'auto' : 'manual';
-                        const serial = String(index + 1).padStart(3, '0');
-                        return {
-                            blob,
-                            title,
-                            fileName: `wuxia-save-${serial}-${typePart}-${stamp}-${titlePart}.zip`
-                        };
-                    },
-                    writeArchive: async (archive) => {
-                        const saved = await saveArchiveToDevice(archive.blob, archive.fileName);
-                        if (!saved) throw new Error('当前 APK 无法访问设备文档目录');
-                    },
-                    onProgress: ({ current, total, item, phase }) => {
-                        const title = 构建存档标题(item);
-                        const phaseText = phase === 'reading'
-                            ? '读取存档'
-                            : phase === 'building'
-                                ? '整理压缩包'
-                                : phase === 'writing'
-                                    ? '写入设备'
-                                    : '已完成';
-                        setTransferMessage(`${phaseText} ${current} / ${total}：${title}`);
-                    }
-                });
-                setTransferMessage(`全部导出完成：共 ${result.completed} 条，已分别保存到设备文档目录。`);
-                alert(`导出完成：共 ${result.completed} 条存档。\n已按独立 ZIP 分别保存到设备文档目录。`);
-                return;
+            const nativeExport = isNativeCapacitorEnvironment();
+            const allSummaries = (await dbService.读取存档摘要列表())
+                .filter((item) => typeof item.id === 'number');
+            if (allSummaries.length === 0) {
+                throw new Error('当前没有可导出的存档');
             }
-            const blob = await 导出ZIP存档文件();
-            const stamp = new Date().toISOString().replace(/[:]/g, '-');
-            const fileName = `wuxia-saves-${stamp}.zip`;
-            await downloadArchiveBlob(blob, fileName);
+            const result = await 顺序导出存档({
+                items: allSummaries,
+                readSave: async (item) => 读取完整存档(item),
+                buildArchive: async (fullSave, item, index) => {
+                    const blob = await 导出ZIP存档文件({ saves: [fullSave] });
+                    const stamp = new Date(item.时间戳 || Date.now()).toISOString().replace(/[:]/g, '-');
+                    const title = 构建存档标题(item);
+                    const titlePart = 构建安全文件名片段(title, `save-${index + 1}`);
+                    const typePart = item.类型 === 'auto' ? 'auto' : 'manual';
+                    const serial = String(index + 1).padStart(3, '0');
+                    return {
+                        blob,
+                        title,
+                        fileName: `wuxia-save-${serial}-${typePart}-${stamp}-${titlePart}.zip`
+                    };
+                },
+                writeArchive: async (archive) => {
+                    if (nativeExport) {
+                        await saveArchiveToDevice(archive.blob, archive.fileName);
+                    } else {
+                        await downloadArchiveBlob(archive.blob, archive.fileName, { batch: true });
+                    }
+                },
+                onProgress: ({ current, total, item, phase }) => {
+                    const title = 构建存档标题(item);
+                    const phaseText = phase === 'reading'
+                        ? '读取存档'
+                        : phase === 'building'
+                            ? '整理压缩包'
+                            : phase === 'writing'
+                                ? (nativeExport ? '写入设备' : '下载存档')
+                                : '已完成';
+                    setTransferMessage(`${phaseText} ${current} / ${total}：${title}`);
+                }
+            });
+            const destination = nativeExport ? '设备文档目录' : '浏览器下载目录';
+            setTransferMessage(`全部导出完成：共 ${result.completed} 条，已分别保存到${destination}。`);
+            alert(`导出完成：共 ${result.completed} 条存档。\n已按独立 ZIP 分别保存到${destination}。`);
         } catch (error: any) {
             console.error(error);
             const completedText = error instanceof 存档批量导出错误

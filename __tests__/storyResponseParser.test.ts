@@ -4,6 +4,23 @@ import { 规范化可渲染对白日志 } from '../utils/dialogueLogNormalizer';
 import { 构建标签缺失补充提示 } from '../utils/parseErrorHints';
 
 describe('storyResponseParser', () => {
+    it('合并模型返回的多个正文标签，避免界面只显示第一段', () => {
+        const parsed = parseStoryRawText([
+            '<正文>',
+            '【角色乙】山雨落在青瓦上。',
+            '</正文>',
+            '<正文>',
+            '【角色甲】门外传来急促脚步声。',
+            '</正文>',
+            '<短期记忆>两段正文均已发生。</短期记忆>'
+        ].join('\n'));
+
+        expect(parsed.logs).toEqual([
+            { sender: '角色乙', text: '山雨落在青瓦上。' },
+            { sender: '角色甲', text: '门外传来急促脚步声。' }
+        ]);
+    });
+
     it('parses Izumi-style options tag into quick action options', () => {
         const parsed = parseStoryRawText([
             '<正文>',

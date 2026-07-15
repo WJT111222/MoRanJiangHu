@@ -857,6 +857,28 @@ const 修复标签协议文本 = (content: string): string => {
     return 补全协议缺失区块(rebuilt);
 };
 
+const 合并重复正文标签 = (content: string): string => {
+    const source = content || '';
+    const bodyRegex = /<\s*正文\s*>\s*([\s\S]*?)\s*<\s*\/\s*正文\s*>/gi;
+    const matches = Array.from(source.matchAll(bodyRegex));
+    if (matches.length <= 1) return source;
+
+    const payload = matches
+        .map((match) => (match[1] || '').trim())
+        .filter(Boolean)
+        .join('\n');
+    const first = matches[0];
+    const firstIndex = first.index ?? 0;
+    const last = matches[matches.length - 1];
+    const lastIndex = (last.index ?? firstIndex) + last[0].length;
+    const between = source.slice(firstIndex, lastIndex)
+        .replace(bodyRegex, '')
+        .trim();
+    if (between) return source;
+
+    return `${source.slice(0, firstIndex)}<正文>\n${payload}\n</正文>${source.slice(lastIndex)}`;
+};
+
 const 提取标签内容列表 = (
     text: string,
     tag: string,
@@ -1717,7 +1739,8 @@ const 解析标签协议响应 = (content: string, options?: Required<StoryParse
     const textWithoutThinking = thinkingSegment.textWithoutThinking;
     const titleSections = 提取标题区块内容(textWithoutThinking);
     const thinkingParts = 提取标签内容列表(text, 'thinking', { 兼容错误闭合: true });
-    const bodyBlock = 提取首个标签内容(textWithoutThinking, '正文') || titleSections.正文 || '';
+    const bodyBlocks = 提取标签内容列表(textWithoutThinking, '正文');
+    const bodyBlock = bodyBlocks.length > 0 ? bodyBlocks.join('\n') : (titleSections.正文 || '');
     const storyPlanBlock = 提取首个标签内容(textWithoutThinking, '剧情规划', { 兼容错误闭合: true }) || titleSections.剧情规划 || '';
     const variablePlanBlock = 提取首个标签内容(textWithoutThinking, '变量规划', { 兼容错误闭合: true }) || titleSections.变量规划 || '';
     const shortTerm = 提取首个标签内容(textWithoutThinking, '短期记忆', { 兼容错误闭合: true }) || titleSections.短期记忆 || '';
@@ -1813,7 +1836,7 @@ const 修复思考区后半段标签协议文本 = (sourceText: string): string 
 
     const thinkingSegment = 提取首尾思考区段(source);
     if (!thinkingSegment.matched) {
-        return 修复标签协议文本(source);
+        return 修复标签协议文本(合并重复正文标签(source));
     }
 
     const tail = thinkingSegment.textWithoutThinking;
@@ -1823,7 +1846,7 @@ const 修复思考区后半段标签协议文本 = (sourceText: string): string 
 
     const prefixLength = Math.max(0, source.length - tail.length);
     const prefix = source.slice(0, prefixLength);
-    const repairedTail = 修复标签协议文本(tail);
+    const repairedTail = 修复标签协议文本(合并重复正文标签(tail));
     return `${prefix}${repairedTail}`;
 };
 
@@ -1927,7 +1950,7 @@ export const parseStoryRawText = (content: string, options?: StoryParseOptions):
     const parseOptions = 规范化解析选项(options || 默认解析选项);
     const rawText = typeof content === 'string' ? content : '';
     // 预处理：将 GLM HTML 注释思维链转换为标准 <thinking> 格式
-    const preprocessedText = 转换HTML注释思维链(清理GLMMath标签(rawText));
+    const preprocessedText = 合并重复正文标签(转换HTML注释思维链(清理GLMMath标签(rawText)));
     const declaredNames = 解析角色名单标签(
         提取首个标签内容(preprocessedText, '角色名单', { 兼容错误闭合: true })
         || 提取首个标签内容(preprocessedText, 'rolelist')
