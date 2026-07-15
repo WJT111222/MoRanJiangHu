@@ -31,12 +31,6 @@ import { 对AI输出执行酒馆正则 } from '../../utils/tavernRegexEngine';
 import { 提取酒馆选项 } from '../../utils/tavernOptionRenderer';
 import { 获取预设已分类正则脚本 } from '../../utils/tavernPreset';
 import { 从文本解析推理块 } from '../../utils/tavernTemplateEngine';
-import {
-    构建后台队列负载指标,
-    读取后台队列运行时内存指标,
-    评估后台队列内存压力,
-    选择后台队列执行模式
-} from './queueMemoryPressure';
 
 type 回忆检索进度 = {
     phase: 'start' | 'stream' | 'done' | 'error';
@@ -2600,51 +2594,9 @@ export const 执行主剧情发送工作流 = async (
                     { id: 'map', enabled: mapGenerationEnabled, config: 获取地图自动更新接口配置(currentState.apiConfig) }
                 ].filter((item) => item.enabled && 接口配置是否可用(item.config));
                 const parallelChannelKeys = parallelStageEntries.map((item) => 获取队列阶段渠道键(item.config, activeApi)).filter(Boolean);
-                const 后处理三阶段渠道允许并行 = parallelStageEntries.length >= 2
+                const 后处理三阶段可并行 = parallelStageEntries.length >= 2
                     && parallelChannelKeys.length === parallelStageEntries.length
                     && new Set(parallelChannelKeys).size === parallelChannelKeys.length;
-                const 后台队列运行时内存指标 = 读取后台队列运行时内存指标();
-                const 后台队列负载指标 = 构建后台队列负载指标({
-                    history: updatedDisplayHistory,
-                    social: simulatedState.社交,
-                    world: simulatedState.世界,
-                    response: responseForExecution
-                });
-                const 后台队列内存压力 = 评估后台队列内存压力({
-                    runtime: 后台队列运行时内存指标,
-                    workload: 后台队列负载指标
-                });
-                const 后处理三阶段执行模式 = 选择后台队列执行模式({
-                    channelsAllowParallel: 后处理三阶段渠道允许并行,
-                    pressureLevel: 后台队列内存压力.level
-                });
-                const 后处理三阶段可并行 = 后处理三阶段执行模式 === 'parallel';
-                const 节省内存模式 = 后台队列内存压力.level === 'high';
-                const 节省内存提示 = '检测到当前设备或本回合数据的内存压力较高，已自动启用节省内存模式。后台阶段将依次处理，耗时可能略有增加。';
-                const 节省内存提示阶段 = parallelStageEntries[0]?.id || '';
-                const 附加节省内存提示 = (stageId: string, text: string): string => {
-                    if (!节省内存模式 || stageId !== 节省内存提示阶段) return text;
-                    return `${节省内存提示}\n${text}`;
-                };
-                const 构建高压力流式进度文本 = (stageId: string, text: string): string => {
-                    const displayText = 节省内存模式 && text.length > 6_000
-                        ? `……（节省内存模式下仅显示末尾内容）\n${text.slice(-6_000)}`
-                        : text;
-                    return 附加节省内存提示(stageId, displayText);
-                };
-                recordDiagnosticLog('info', ['后台队列内存压力评估', {
-                    executionMode: 后处理三阶段执行模式,
-                    pressureLevel: 后台队列内存压力.level,
-                    reasons: 后台队列内存压力.reasons,
-                    heapRatio: 后台队列内存压力.heapRatio,
-                    workloadScore: 后台队列内存压力.score,
-                    deviceMemoryGB: 后台队列运行时内存指标.deviceMemoryGB,
-                    usedJSHeapSize: 后台队列运行时内存指标.usedJSHeapSize,
-                    jsHeapSizeLimit: 后台队列运行时内存指标.jsHeapSizeLimit,
-                    workload: 后台队列负载指标,
-                    activeStageCount: parallelStageEntries.length,
-                    channelsAllowParallel: 后处理三阶段渠道允许并行
-                }]);
 
                 const 执行动态世界阶段 = async (
                     stateSnapshot: typeof simulatedState,
@@ -2673,7 +2625,7 @@ export const 执行主剧情发送工作流 = async (
                                 phase: "start",
                                 text: attempt > 1
                                     ? `正在重新执行动态世界更新...（第 ${attempt} 次手动重试）`
-                                    : 附加节省内存提示('world', 后处理三阶段可并行 ? "正在并行执行动态世界更新..." : "正在执行动态世界更新...")
+                                    : (后处理三阶段可并行 ? "正在并行执行动态世界更新..." : "正在执行动态世界更新...")
                             });
                         },
                         onAutoRetry: (attempt, maxAttempts, reason) => {
@@ -2698,7 +2650,7 @@ export const 执行主剧情发送工作流 = async (
                                     ? (_delta, accumulated) => {
                                         options?.onWorldEvolutionProgress?.({
                                             phase: "stream",
-                                            text: 构建高压力流式进度文本('world', accumulated)
+                                            text: accumulated
                                         });
                                     }
                                     : undefined
@@ -2752,7 +2704,7 @@ export const 执行主剧情发送工作流 = async (
                                 phase: "start",
                                 text: attempt > 1
                                     ? `正在重新分析并修订剧情规划...（第 ${attempt} 次手动重试）`
-                                    : 附加节省内存提示('planning', 后处理三阶段可并行 ? "正在并行分析并修订剧情规划..." : "正在分析并修订剧情规划...")
+                                    : (后处理三阶段可并行 ? "正在并行分析并修订剧情规划..." : "正在分析并修订剧情规划...")
                             });
                         },
                         onAutoRetry: (attempt, maxAttempts, reason) => {
@@ -2786,7 +2738,7 @@ export const 执行主剧情发送工作流 = async (
                                 ? (_delta, accumulated) => {
                                     options?.onPlanningProgress?.({
                                         phase: "stream",
-                                        text: 构建高压力流式进度文本('planning', accumulated)
+                                        text: accumulated
                                     });
                                 }
                                 : undefined,
@@ -2834,7 +2786,7 @@ export const 执行主剧情发送工作流 = async (
                                 phase: "start",
                                 text: attempt > 1
                                     ? `正在重新执行地图更新...（第 ${attempt} 次手动重试）`
-                                    : 附加节省内存提示('map', 后处理三阶段可并行 ? "正在并行执行地图更新..." : "正在执行地图更新...")
+                                    : (后处理三阶段可并行 ? "正在并行执行地图更新..." : "正在执行地图更新...")
                             });
                         },
                         onAutoRetry: (attempt, maxAttempts, reason) => {
@@ -2907,10 +2859,6 @@ export const 执行主剧情发送工作流 = async (
                     ]);
                 } else {
                     worldEvolutionResult = await 执行动态世界阶段(simulatedState, responseForExecution, displayAiData);
-                    if (节省内存模式 && worldEvolutionResult) {
-                        worldEvolutionResult = { ...worldEvolutionResult, rawText: '' };
-                        await 让出主线程();
-                    }
                     if (!本次仍是最新前台回合()) {
                         options?.onWorldEvolutionProgress?.({
                             phase: "skipped",
@@ -2937,10 +2885,6 @@ export const 执行主剧情发送工作流 = async (
                         );
                     }
                     planningResult = await 执行规划分析阶段(simulatedState, responseForExecution);
-                    if (节省内存模式 && planningResult) {
-                        planningResult = { ...planningResult, rawText: undefined };
-                        await 让出主线程();
-                    }
                     if (!本次仍是最新前台回合()) {
                         options?.onPlanningProgress?.({
                             phase: "skipped",
@@ -2967,10 +2911,6 @@ export const 执行主剧情发送工作流 = async (
                         );
                     }
                     mapUpdateResult = await 执行地图更新阶段(simulatedState, responseForExecution, displayAiData);
-                    if (节省内存模式 && mapUpdateResult) {
-                        mapUpdateResult = { ...mapUpdateResult, rawText: '' };
-                        await 让出主线程();
-                    }
                 }
                 if (controller.signal.aborted) {
                     throw controller.signal.reason || new DOMException('Aborted', 'AbortError');
@@ -2988,8 +2928,8 @@ export const 执行主剧情发送工作流 = async (
                 if (worldEvolutionResult) {
                     options?.onWorldEvolutionProgress?.({
                         phase: worldEvolutionResult.phase,
-                        text: 附加节省内存提示('world', worldEvolutionResult.statusText || (worldEvolutionResult.ok ? "动态世界更新完成。" : "动态世界未产生更新。")),
-                        rawText: 节省内存模式 ? undefined : worldEvolutionResult.rawText,
+                        text: worldEvolutionResult.statusText || (worldEvolutionResult.ok ? "动态世界更新完成。" : "动态世界未产生更新。"),
+                        rawText: worldEvolutionResult.rawText,
                         commandTexts: 构建带索引命令文本(worldEvolutionResult.commands, 当前命令偏移 + 1)
                     });
                     if (后处理三阶段可并行 && worldEvolutionResult.commands.length > 0) {
@@ -3007,8 +2947,8 @@ export const 执行主剧情发送工作流 = async (
                 if (planningResult) {
                     options?.onPlanningProgress?.({
                         phase: planningResult.updated ? "done" : "skipped",
-                        text: 附加节省内存提示('planning', planningResult.message),
-                        rawText: 节省内存模式 ? undefined : planningResult.rawText,
+                        text: planningResult.message,
+                        rawText: planningResult.rawText,
                         commandTexts: 构建带索引命令文本(planningResult.commands, 当前命令偏移 + 1)
                     });
                     if (planningResult.updated || planningResult.commands.length > 0) {
@@ -3033,8 +2973,8 @@ export const 执行主剧情发送工作流 = async (
                 if (mapUpdateResult) {
                     options?.onMapUpdateProgress?.({
                         phase: mapUpdateResult.phase,
-                        text: 附加节省内存提示('map', mapUpdateResult.statusText || (mapUpdateResult.ok ? "地图更新完成。" : "地图更新未产生更新。")),
-                        rawText: 节省内存模式 ? undefined : mapUpdateResult.rawText,
+                        text: mapUpdateResult.statusText || (mapUpdateResult.ok ? "地图更新完成。" : "地图更新未产生更新。"),
+                        rawText: mapUpdateResult.rawText,
                         commandTexts: 构建带索引命令文本(mapUpdateResult.commands, 当前命令偏移 + 1)
                     });
                     if (mapUpdateResult.commands.length > 0) {
