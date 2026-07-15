@@ -855,8 +855,19 @@ export const 构建同人运行时提示词包 = (params: {
     const customLevelNames = workshopRealmConfig && Array.isArray(workshopRealmConfig.levelNames) && workshopRealmConfig.levelNames.length > 0
         ? workshopRealmConfig.levelNames
         : null;
+    const manualRealmSchema = 读取境界映射母板(params.realmPrompt, 'realm_prompt');
+    const manualRealmIsComplete = Boolean(
+        params.realmPrompt
+        && manualRealmSchema
+        && manualRealmSchema.mapping.length >= 3
+        && /【九阶命名与能力边界】/.test(params.realmPrompt)
+        && /【阶段推进表】/.test(params.realmPrompt)
+        && /【大境突破表】/.test(params.realmPrompt)
+    );
     const realmSchema: 境界映射母板 = customLevelNames
         ? 从境界配置构建映射母板(customLevelNames)
+        : manualRealmIsComplete
+            ? manualRealmSchema as 境界映射母板
         : isXianxia
             ? 构建仙侠境界母板()
             : 读取境界母板优先级({
@@ -865,6 +876,8 @@ export const 构建同人运行时提示词包 = (params: {
             });
     const realmBlocks: 境界区块集合 = customLevelNames
         ? 构建默认境界区块集合(realmSchema)
+        : manualRealmIsComplete
+            ? 读取境界区块优先级({ realmPrompt: params.realmPrompt, worldPrompt: params.worldPrompt }, realmSchema)
         : isXianxia
             ? 构建仙侠境界区块集合()
             : 读取境界区块优先级({

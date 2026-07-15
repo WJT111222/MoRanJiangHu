@@ -43,6 +43,24 @@ describe('xianxia hardcoded realm system', () => {
         expect(获取单位境界显示({ 境界层级: 17, 当前灵力: 1 }, '未知境界', { forceXianxia: true })).toBe('金丹初期');
     });
 
+    it('优先显示剑来模式导入的自定义境界母板，不被仙侠默认名称覆盖', () => {
+        const realmPrompt = buildRealmPromptFromDraft({
+            rows: [
+                { id: 'r1', name: '太初境一层', level: 1, power: '太初之力', breakthrough: '凝聚太初气', parameters: '灵力', description: '太初起步' },
+                { id: 'r2', name: '太初境二层', level: 2, power: '太初之力增强', breakthrough: '稳固根基', parameters: '灵力', description: '太初二层' },
+                { id: 'r3', name: '太初境三层', level: 3, power: '太初之力纯熟', breakthrough: '登楼', parameters: '灵力', description: '太初三层' },
+                { id: 'r13', name: '登楼境初期', level: 13, power: '登楼之力', breakthrough: '登楼圆满', parameters: '灵力', description: '登楼初期' }
+            ],
+            updatedAt: Date.now()
+        });
+
+        expect(获取单位境界显示(
+            { 境界: '未知境界', 境界层级: 3, 灵根: '火灵根' },
+            '未知境界',
+            { openingConfig: 仙侠开局, forceXianxia: true, realmPrompt }
+        )).toBe('太初境三层');
+    });
+
     it('does not force xianxia realm labels in explicit infinite-flow saves', () => {
         const openingConfig = { 题材模式: '无限流' } as any;
         expect(获取单位境界显示(

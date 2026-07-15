@@ -85,6 +85,9 @@ export const 获取单位境界显示 = (
 ): string => {
     const raw = 读取文本(unit?.境界);
     const mappedRealm = 获取境界映射名称(unit?.境界层级, options);
+    const manualMappedRealm = options?.realmPrompt
+        ? 提取境界映射(options.realmPrompt).find((item) => item.level === Math.max(1, Math.floor(Number(unit?.境界层级) || 1)))?.label || ''
+        : '';
     const hardcodedXianxia = 获取硬编码仙侠境界名称(unit?.境界层级);
     const explicitMode = 读取文本(options?.openingConfig?.题材模式);
     const level = Math.max(1, Number(unit?.境界层级) || 0);
@@ -94,6 +97,7 @@ export const 获取单位境界显示 = (
     const allowXianxiaInference = !explicitMode || explicitMode === '仙侠' || explicitMode === '都市修仙';
     const shouldUseXianxia = allowXianxiaInference && (options?.forceXianxia === true || 推断单位仙侠(unit));
     const { known: currentKnownRegex, xianxia: currentXianxiaRegex } = 获取动态境界正则(options);
+    if (manualMappedRealm) return manualMappedRealm;
     if (shouldUseXianxia && hardcodedXianxia && (!raw || !currentXianxiaRegex.test(raw) || currentKnownRegex.test(raw))) {
         return hardcodedXianxia;
     }

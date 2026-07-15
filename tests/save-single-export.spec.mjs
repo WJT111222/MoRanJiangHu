@@ -92,7 +92,7 @@ const injectSavesAndReload = async (page) => {
     await page.goto('http://127.0.0.1:4173', { waitUntil: 'networkidle' });
     await closeReleaseNotesIfOpen(page);
     await page.evaluate(async (payload) => {
-        const req = indexedDB.open('WuxiaGameDB', 3);
+        const req = indexedDB.open('WuxiaGameDB', 4);
         const db = await new Promise((resolve, reject) => {
             req.onerror = () => reject(req.error);
             req.onsuccess = () => resolve(req.result);
@@ -153,4 +153,31 @@ test('可以只导出选中的单个存档', async ({ page }) => {
     expect(manifest.saves).toHaveLength(1);
     expect(manifest.saves[0].标题).toBe('单档导出甲');
     expect(manifest.saves[0].标题).not.toBe('单档导出乙');
+});
+
+test('导出全部时逐条下载独立 ZIP，每个压缩包只含一条存档', async ({ page }) => {
+    test.setTimeout(60000);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.addInitScript(() => {
+        localStorage.setItem('moranjianghu.releaseNotesSuppressDate', new Date().toISOString().slice(0, 10));
+    });
+
+    await injectSavesAndReload(page);
+    await expect.poll(() => clickByTexts(page, ['本地游玩'])).toBe(true);
+    await expect.poll(() => clickByTexts(page, ['重入江湖', '读取进度', '继续游戏', '读取', '载入'])).toBe(true);
+
+    const downloads = [];
+    page.on('download', (download) => downloads.push(download));
+    await page.getByRole('button', { name: '导出全部存档' }).click({ force: true });
+    await expect.poll(() => downloads.length, { timeout: 30000 }).toBe(2);
+
+    const titles = [];
+    for (const download of downloads) {
+        const downloadedPath = await download.path();
+        const exportedZip = unzipSync(readFileSync(downloadedPath));
+        const manifest = JSON.parse(strFromU8(exportedZip['manifest.json']));
+        expect(manifest.saves).toHaveLength(1);
+        titles.push(manifest.saves[0].标题);
+    }
+    expect(titles.sort()).toEqual(['单档导出乙', '单档导出甲'].sort());
 });
