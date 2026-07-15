@@ -83,6 +83,7 @@ lerna-debug.log*
 # Local tooling state
 /.wrangler/
 /.codex/
+/.worktrees/
 /.mimocode/
 /.playwright-mcp/
 /.playwright-cli/
