@@ -3,15 +3,20 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('存档批量导出 UI', () => {
-    it('网页端也逐条读取、压缩和下载，不再构建整库单 ZIP', () => {
+    it('导出全部只生成一个总 ZIP，并通过流式写入降低峰值内存', () => {
         const source = fs.readFileSync(
             path.join(process.cwd(), 'components/features/SaveLoad/SaveLoadModal.tsx'),
             'utf8'
         );
 
-        expect(source).not.toContain('const blob = await 导出ZIP存档文件();');
-        expect(source).toMatch(/phase === 'writing'\s*\? \(nativeExport \? '写入设备' : '下载存档'\)/);
-        expect(source).toContain('items: allSummaries');
+        expect(source).toContain('创建存档ZIP流式写入');
+        expect(source).toContain('navigator.storage?.getDirectory');
+        expect(source).toContain('Filesystem.appendFile');
+        expect(source).not.toContain('downloadArchiveBlob(archive.blob');
+        expect(source).not.toContain('buildArchive: async');
+        expect(source).toMatch(/wuxia-saves-.*\.zip/);
+        expect(source).toContain("[html[data-theme='day']_&]:text-cyan-900");
+        expect(source).toContain('已处理 ${completed} / ${total} 条');
     });
 
     it('APK 使用已安装的 Capacitor Filesystem 插件写入文档目录', () => {

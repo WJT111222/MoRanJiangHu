@@ -8,14 +8,13 @@ import {
     上传本地存档到云端
 } from '../../../services/cloudPlayService';
 import { 增量同步到对象存储, 读取对象存储同步配置 } from '../../../services/objectStorageSync';
-import { 导出ZIP存档文件, 解析ZIP存档文件 } from '../../../services/saveArchiveService';
+import { 创建存档ZIP流式写入, 导出ZIP存档文件, 解析ZIP存档文件 } from '../../../services/saveArchiveService';
 import { 存档结构 } from '../../../types';
 import { parseJsonWithRepair } from '../../../utils/jsonRepair';
 import { isNativeCapacitorEnvironment } from '../../../utils/nativeRuntime';
 import { 创建并记录ObjectURL, 延迟释放并记录ObjectURL } from '../../../utils/objectUrlLifecycle';
 import { buildSaveDebugSummary, recordSaveLoadError, recordSaveLoadTrace } from '../../../utils/saveLoadTrace';
 import { 读取存档游玩回合数 } from '../../../utils/saveTurn';
-import { 顺序导出存档, 存档批量导出错误 } from '../../../services/saveExportBatch';
 import GameButton from '../../ui/GameButton';
 
 interface Props {
@@ -557,6 +556,15 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         })
     );
 
+    const bytesToBase64 = (bytes: Uint8Array): string => {
+        let binary = '';
+        const blockSize = 0x8000;
+        for (let offset = 0; offset < bytes.length; offset += blockSize) {
+            binary += String.fromCharCode(...bytes.subarray(offset, offset + blockSize));
+        }
+        return btoa(binary);
+    };
+
     const saveArchiveToDevice = async (blob: Blob, fileName: string): Promise<boolean> => {
         if (!isNativeCapacitorEnvironment()) return false;
 
@@ -603,6 +611,9 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         if (syncing) return;
         setSyncing(true);
         setTransferMessage('正在整理全部存档包...');
+        let completed = 0;
+        let total = 0;
+        let nativeExportPath = '';
         try {
             const nativeExport = isNativeCapacitorEnvironment();
             const allSummaries = (await dbService.读取存档摘要列表())
@@ -610,51 +621,75 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
             if (allSummaries.length === 0) {
                 throw new Error('当前没有可导出的存档');
             }
-            const result = await 顺序导出存档({
-                items: allSummaries,
-                readSave: async (item) => 读取完整存档(item),
-                buildArchive: async (fullSave, item, index) => {
-                    const blob = await 导出ZIP存档文件({ saves: [fullSave] });
-                    const stamp = new Date(item.时间戳 || Date.now()).toISOString().replace(/[:]/g, '-');
-                    const title = 构建存档标题(item);
-                    const titlePart = 构建安全文件名片段(title, `save-${index + 1}`);
-                    const typePart = item.类型 === 'auto' ? 'auto' : 'manual';
-                    const serial = String(index + 1).padStart(3, '0');
-                    return {
-                        blob,
-                        title,
-                        fileName: `wuxia-save-${serial}-${typePart}-${stamp}-${titlePart}.zip`
-                    };
-                },
-                writeArchive: async (archive) => {
-                    if (nativeExport) {
-                        await saveArchiveToDevice(archive.blob, archive.fileName);
-                    } else {
-                        await downloadArchiveBlob(archive.blob, archive.fileName, { batch: true });
+            total = allSummaries.length;
+            const stamp = new Date().toISOString().replace(/[:]/g, '-');
+            const fileName = `wuxia-saves-${stamp}.zip`;
+
+            if (nativeExport) {
+                nativeExportPath = fileName;
+                let firstChunk = true;
+                await Filesystem.deleteFile({ path: fileName, directory: Directory.Documents }).catch(() => undefined);
+                await 创建存档ZIP流式写入({
+                    total: allSummaries.length,
+                    readSave: (index) => 读取完整存档(allSummaries[index]),
+                    writeChunk: async (chunk) => {
+                        const chunkSize = 256 * 1024;
+                        for (let offset = 0; offset < chunk.length; offset += chunkSize) {
+                            const data = bytesToBase64(chunk.subarray(offset, offset + chunkSize));
+                            if (firstChunk) {
+                                await Filesystem.writeFile({ path: fileName, data, directory: Directory.Documents, recursive: false });
+                                firstChunk = false;
+                            } else {
+                                await Filesystem.appendFile({ path: fileName, data, directory: Directory.Documents });
+                            }
+                        }
+                    },
+                    onProgress: ({ current, total, save }) => {
+                        completed = current;
+                        setTransferMessage(`正在写入总存档包 ${current} / ${total}：${save.角色数据?.姓名 || '未知角色'}`);
                     }
-                },
-                onProgress: ({ current, total, item, phase }) => {
-                    const title = 构建存档标题(item);
-                    const phaseText = phase === 'reading'
-                        ? '读取存档'
-                        : phase === 'building'
-                            ? '整理压缩包'
-                            : phase === 'writing'
-                                ? (nativeExport ? '写入设备' : '下载存档')
-                                : '已完成';
-                    setTransferMessage(`${phaseText} ${current} / ${total}：${title}`);
+                });
+            } else {
+                const root = await navigator.storage?.getDirectory?.();
+                if (!root) throw new Error('当前浏览器不支持低内存单文件导出，请使用最新版 Chrome 或 APK');
+                const tempName = `.moran-export-${Date.now()}-${Math.random().toString(16).slice(2)}.zip`;
+                const handle = await root.getFileHandle(tempName, { create: true });
+                const writable = await handle.createWritable();
+                let cleanupDeferred = false;
+                try {
+                    await 创建存档ZIP流式写入({
+                        total: allSummaries.length,
+                        readSave: (index) => 读取完整存档(allSummaries[index]),
+                        writeChunk: (chunk) => writable.write(chunk),
+                        onProgress: ({ current, total, save }) => {
+                            completed = current;
+                            setTransferMessage(`正在生成总存档包 ${current} / ${total}：${save.角色数据?.姓名 || '未知角色'}`);
+                        }
+                    });
+                    await writable.close();
+                    const archiveFile = await handle.getFile();
+                    await downloadArchiveBlob(archiveFile, fileName);
+                    cleanupDeferred = true;
+                    window.setTimeout(() => { void root.removeEntry(tempName).catch(() => undefined); }, 60_000);
+                } catch (error) {
+                    await writable.abort().catch(() => undefined);
+                    throw error;
+                } finally {
+                    if (!cleanupDeferred) await root.removeEntry(tempName).catch(() => undefined);
                 }
-            });
+            }
+
             const destination = nativeExport ? '设备文档目录' : '浏览器下载目录';
-            setTransferMessage(`全部导出完成：共 ${result.completed} 条，已分别保存到${destination}。`);
-            alert(`导出完成：共 ${result.completed} 条存档。\n已按独立 ZIP 分别保存到${destination}。`);
+            setTransferMessage(`全部导出完成：共 ${completed} 条，已合并为一个 ZIP 保存到${destination}。`);
+            alert(`导出完成：共 ${completed} 条存档。\n已合并为一个 ZIP 保存到${destination}。`);
         } catch (error: any) {
             console.error(error);
-            const completedText = error instanceof 存档批量导出错误
-                ? `已成功导出 ${error.completed} / ${error.total} 条。`
-                : '';
-            setTransferMessage(`导出失败：${error?.message || '未知错误'}${completedText ? ` ${completedText}` : ''}`);
-            alert(`导出失败：${error?.message || '未知错误'}${completedText ? `\n${completedText}` : ''}`);
+            if (nativeExportPath) {
+                await Filesystem.deleteFile({ path: nativeExportPath, directory: Directory.Documents }).catch(() => undefined);
+            }
+            const progressText = total > 0 ? `已处理 ${completed} / ${total} 条。` : '';
+            setTransferMessage(`导出失败：${error?.message || '未知错误'}${progressText ? ` ${progressText}` : ''}`);
+            alert(`导出失败：${error?.message || '未知错误'}${progressText ? `\n${progressText}` : ''}`);
         } finally {
             setSyncing(false);
         }
@@ -1065,7 +1100,7 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
                             </div>
                         </div>
                         {transferMessage && (
-                            <div className="px-6 py-2 text-[11px] text-wuxia-cyan bg-wuxia-cyan/10 border-b border-wuxia-cyan/25">
+                            <div className="px-6 py-2 text-[11px] text-wuxia-cyan bg-wuxia-cyan/10 border-b border-wuxia-cyan/25 [html[data-theme='day']_&]:bg-cyan-100 [html[data-theme='day']_&]:text-cyan-900 [html[data-theme='day']_&]:border-cyan-300">
                                 {transferMessage}
                             </div>
                         )}

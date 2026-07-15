@@ -1,4 +1,4 @@
-import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
+import { strFromU8, strToU8, unzipSync, zipSync, Zip, ZipPassThrough } from 'fflate';
 import type { 存档结构 } from '../types';
 import * as dbService from './dbService';
 import { 是否图片资源引用, 读取图片资源远程兜底地址 } from '../utils/imageAssets';
@@ -315,6 +315,108 @@ export const 导出ZIP存档文件 = async (options?: { saves?: 存档结构[]; 
 
     files['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2));
     return new Blob([zipSync(files)], { type: 'application/zip' });
+};
+
+export const 创建存档ZIP流式写入 = async (options: {
+    saves?: 存档结构[];
+    total?: number;
+    readSave?: (index: number) => Promise<存档结构>;
+    includeImages?: boolean;
+    writeChunk: (chunk: Uint8Array) => Promise<void> | void;
+    onProgress?: (progress: { current: number; total: number; save: 存档结构 }) => void;
+}): Promise<{ total: number }> => {
+    const saves = Array.isArray(options.saves) ? options.saves : [];
+    const total = saves.length || Math.max(0, Math.trunc(options.total || 0));
+    if (total === 0) throw new Error('当前没有可导出的存档');
+    if (saves.length === 0 && !options.readSave) throw new Error('缺少存档读取器');
+
+    const includeImages = options.includeImages !== false;
+    const manifest: ZIP清单结构 = {
+        format: 'wuxia-save-zip',
+        version: ZIP存档版本,
+        exportedAt: new Date().toISOString(),
+        saves: []
+    };
+
+    let writeChain = Promise.resolve();
+    let streamError: unknown;
+    let finished = false;
+    let resolveFinished: (() => void) | undefined;
+    let rejectFinished: ((error: unknown) => void) | undefined;
+    const finishedPromise = new Promise<void>((resolve, reject) => {
+        resolveFinished = resolve;
+        rejectFinished = reject;
+    });
+    const zip = new Zip((error, chunk, final) => {
+        if (error) {
+            streamError = error;
+            rejectFinished?.(error);
+            return;
+        }
+        writeChain = writeChain.then(() => options.writeChunk(chunk)).catch((writeError) => {
+            streamError = writeError;
+            throw writeError;
+        });
+        if (final) {
+            finished = true;
+            writeChain.then(() => resolveFinished?.()).catch((writeError) => rejectFinished?.(writeError));
+        }
+    });
+
+    const 写入文件 = async (path: string, bytes: Uint8Array): Promise<void> => {
+        if (streamError) throw streamError;
+        const entry = new ZipPassThrough(path);
+        zip.add(entry);
+        entry.push(bytes, true);
+        await writeChain;
+        if (streamError) throw streamError;
+    };
+
+    try {
+        for (let index = 0; index < total; index += 1) {
+            const save = saves[index] || await options.readSave!(index);
+            const saveKey = 构建存档键(save, index);
+            const gameDataPath = `${游戏数据目录名}/${saveKey}.json`;
+            const historyPath = `${聊天记录目录名}/${saveKey}.json`;
+            const files: Record<string, Uint8Array> = {};
+            const sourceToPath = new Map<string, string>();
+            const sourceToBytes = new Map<string, Promise<图片二进制结构>>();
+            const gameData = 深拷贝(save) as any;
+            delete gameData.id;
+            gameData.历史记录 = [];
+
+            await 处理导出对象图片(gameData, saveKey, files, sourceToPath, sourceToBytes, includeImages, ['save', saveKey]);
+            files[gameDataPath] = strToU8(JSON.stringify(gameData, null, 2));
+            files[historyPath] = strToU8(JSON.stringify({
+                version: ZIP存档版本,
+                records: Array.isArray(save.历史记录) ? save.历史记录 : []
+            }, null, 2));
+
+            manifest.saves.push({
+                key: saveKey,
+                类型: save.类型,
+                时间戳: save.时间戳,
+                标题: 读取文本(save.角色数据?.姓名) || '未知角色',
+                游戏数据文件: gameDataPath,
+                聊天记录文件: historyPath,
+                图片文件数: Array.from(sourceToPath.values()).length
+            });
+
+            for (const [path, bytes] of Object.entries(files)) {
+                await 写入文件(path, bytes);
+            }
+            options.onProgress?.({ current: index + 1, total, save });
+        }
+
+        await 写入文件('manifest.json', strToU8(JSON.stringify(manifest, null, 2)));
+        zip.end();
+        await finishedPromise;
+        if (!finished) await writeChain;
+        return { total };
+    } catch (error) {
+        zip.terminate();
+        throw error;
+    }
 };
 
 export const 解析ZIP存档文件 = async (file: Blob): Promise<dbService.存档导出结构> => {

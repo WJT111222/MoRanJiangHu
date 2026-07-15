@@ -155,7 +155,7 @@ test('可以只导出选中的单个存档', async ({ page }) => {
     expect(manifest.saves[0].标题).not.toBe('单档导出乙');
 });
 
-test('导出全部时逐条下载独立 ZIP，每个压缩包只含一条存档', async ({ page }) => {
+test('导出全部时只下载一个总 ZIP，压缩包包含全部存档', async ({ page }) => {
     test.setTimeout(60000);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.addInitScript(() => {
@@ -166,18 +166,14 @@ test('导出全部时逐条下载独立 ZIP，每个压缩包只含一条存档'
     await expect.poll(() => clickByTexts(page, ['本地游玩'])).toBe(true);
     await expect.poll(() => clickByTexts(page, ['重入江湖', '读取进度', '继续游戏', '读取', '载入'])).toBe(true);
 
-    const downloads = [];
-    page.on('download', (download) => downloads.push(download));
+    const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: '导出全部存档' }).click({ force: true });
-    await expect.poll(() => downloads.length, { timeout: 30000 }).toBe(2);
-
-    const titles = [];
-    for (const download of downloads) {
-        const downloadedPath = await download.path();
-        const exportedZip = unzipSync(readFileSync(downloadedPath));
-        const manifest = JSON.parse(strFromU8(exportedZip['manifest.json']));
-        expect(manifest.saves).toHaveLength(1);
-        titles.push(manifest.saves[0].标题);
-    }
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/^wuxia-saves-.*\.zip$/);
+    const downloadedPath = await download.path();
+    const exportedZip = unzipSync(readFileSync(downloadedPath));
+    const manifest = JSON.parse(strFromU8(exportedZip['manifest.json']));
+    expect(manifest.saves).toHaveLength(2);
+    const titles = manifest.saves.map((item) => item.标题);
     expect(titles.sort()).toEqual(['单档导出乙', '单档导出甲'].sort());
 });

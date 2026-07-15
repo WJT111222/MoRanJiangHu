@@ -13,6 +13,31 @@ vi.mock('../services/dbService', () => ({
 }));
 
 describe('saveArchiveService object-storage image export', () => {
+    it('支持逐条写入同一个 ZIP 流，最终只生成一个可导入压缩包', async () => {
+        const { 创建存档ZIP流式写入 } = await import('../services/saveArchiveService');
+        const chunks: Uint8Array[] = [];
+        const saves = [
+            { id: 1, 类型: 'manual', 时间戳: 1713600000000, 角色数据: { 姓名: '流式甲' }, 历史记录: [] },
+            { id: 2, 类型: 'auto', 时间戳: 1713686400000, 角色数据: { 姓名: '流式乙' }, 历史记录: [] }
+        ] as any;
+
+        await 创建存档ZIP流式写入({
+            saves,
+            includeImages: false,
+            writeChunk: async (chunk) => { chunks.push(chunk); }
+        });
+
+        const archive = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.length, 0));
+        let offset = 0;
+        for (const chunk of chunks) {
+            archive.set(chunk, offset);
+            offset += chunk.length;
+        }
+        const entries = unzipSync(archive);
+        const manifest = JSON.parse(strFromU8(entries['manifest.json']));
+        expect(manifest.saves.map((item: any) => item.标题)).toEqual(['流式甲', '流式乙']);
+    });
+
     it('converts local wuxia asset refs to syncable remote URLs when exporting without embedded images', async () => {
         const dbService = await import('../services/dbService');
         const { 导出ZIP存档文件 } = await import('../services/saveArchiveService');
