@@ -85,6 +85,12 @@ describe('云端游玩存储模式', () => {
         } as any);
 
         await vi.waitFor(() => expect(syncToObjectStorage).toHaveBeenCalledTimes(1));
+        expect(syncToObjectStorage).toHaveBeenCalledWith(
+            expect.any(Object),
+            [expect.objectContaining({ id: 1 })],
+            undefined,
+            { includeImages: false, includeAncestors: false }
+        );
     });
 
     it('从云端游玩开启新存档时会覆盖旧的本地游玩标记并恢复 TG 同步', async () => {
