@@ -24,7 +24,7 @@ export type 后台队列内存压力评估 = {
 
 const JS堆高压力比例 = 0.7;
 const 低内存设备GB = 4;
-const 中等负载分数 = 10;
+const 中等负载分数 = 4;
 const 高负载分数 = 20;
 const 地图节点统计上限 = 5_000;
 

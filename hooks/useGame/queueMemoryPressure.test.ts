@@ -39,11 +39,11 @@ describe('后台队列内存压力评估', () => {
         const result = 评估后台队列内存压力({
             runtime: { deviceMemoryGB: 4 },
             workload: {
-                historyChars: 180_000,
-                socialCount: 80,
-                mapNodeCount: 300,
-                commandCount: 70,
-                responseChars: 18_000
+                historyChars: 60_000,
+                socialCount: 45,
+                mapNodeCount: 120,
+                commandCount: 20,
+                responseChars: 6_000
             }
         });
 
