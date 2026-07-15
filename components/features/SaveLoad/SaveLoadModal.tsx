@@ -14,6 +14,7 @@ import { isNativeCapacitorEnvironment } from '../../../utils/nativeRuntime';
 import { 创建并记录ObjectURL, 延迟释放并记录ObjectURL } from '../../../utils/objectUrlLifecycle';
 import { buildSaveDebugSummary, recordSaveLoadError, recordSaveLoadTrace } from '../../../utils/saveLoadTrace';
 import { 读取存档游玩回合数 } from '../../../utils/saveTurn';
+import { 顺序导出存档, 存档批量导出错误 } from '../../../services/saveExportBatch';
 import GameButton from '../../ui/GameButton';
 
 interface Props {
@@ -601,14 +602,59 @@ const SaveLoadModal: React.FC<Props> = ({ onClose, onLoadGame, onSaveGame, mode,
         setSyncing(true);
         setTransferMessage('正在整理全部存档包...');
         try {
+            if (isNativeCapacitorEnvironment()) {
+                const allSummaries = (await dbService.读取存档摘要列表())
+                    .filter((item) => typeof item.id === 'number');
+                if (allSummaries.length === 0) {
+                    throw new Error('当前没有可导出的存档');
+                }
+                const result = await 顺序导出存档({
+                    items: allSummaries,
+                    readSave: async (item) => 读取完整存档(item),
+                    buildArchive: async (fullSave, item, index) => {
+                        const blob = await 导出ZIP存档文件({ saves: [fullSave] });
+                        const stamp = new Date(item.时间戳 || Date.now()).toISOString().replace(/[:]/g, '-');
+                        const title = 构建存档标题(item);
+                        const titlePart = 构建安全文件名片段(title, `save-${index + 1}`);
+                        const typePart = item.类型 === 'auto' ? 'auto' : 'manual';
+                        const serial = String(index + 1).padStart(3, '0');
+                        return {
+                            blob,
+                            title,
+                            fileName: `wuxia-save-${serial}-${typePart}-${stamp}-${titlePart}.zip`
+                        };
+                    },
+                    writeArchive: async (archive) => {
+                        const saved = await saveArchiveToDevice(archive.blob, archive.fileName);
+                        if (!saved) throw new Error('当前 APK 无法访问设备文档目录');
+                    },
+                    onProgress: ({ current, total, item, phase }) => {
+                        const title = 构建存档标题(item);
+                        const phaseText = phase === 'reading'
+                            ? '读取存档'
+                            : phase === 'building'
+                                ? '整理压缩包'
+                                : phase === 'writing'
+                                    ? '写入设备'
+                                    : '已完成';
+                        setTransferMessage(`${phaseText} ${current} / ${total}：${title}`);
+                    }
+                });
+                setTransferMessage(`全部导出完成：共 ${result.completed} 条，已分别保存到设备文档目录。`);
+                alert(`导出完成：共 ${result.completed} 条存档。\n已按独立 ZIP 分别保存到设备文档目录。`);
+                return;
+            }
             const blob = await 导出ZIP存档文件();
             const stamp = new Date().toISOString().replace(/[:]/g, '-');
             const fileName = `wuxia-saves-${stamp}.zip`;
             await downloadArchiveBlob(blob, fileName);
         } catch (error: any) {
             console.error(error);
-            setTransferMessage(`导出失败：${error?.message || '未知错误'}`);
-            alert(`导出失败：${error?.message || '未知错误'}`);
+            const completedText = error instanceof 存档批量导出错误
+                ? `已成功导出 ${error.completed} / ${error.total} 条。`
+                : '';
+            setTransferMessage(`导出失败：${error?.message || '未知错误'}${completedText ? ` ${completedText}` : ''}`);
+            alert(`导出失败：${error?.message || '未知错误'}${completedText ? `\n${completedText}` : ''}`);
         } finally {
             setSyncing(false);
         }

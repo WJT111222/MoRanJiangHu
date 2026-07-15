@@ -930,7 +930,10 @@ export const 后台同步存档到云端 = (save: 存档结构): void => {
             .then(async () => {
                 const objectStorageConfig = await 读取对象存储云端游玩配置();
                 if (!objectStorageConfig) return;
-                await 增量同步到对象存储(objectStorageConfig, [save]);
+                await 增量同步到对象存储(objectStorageConfig, [save], undefined, {
+                    includeImages: false,
+                    includeAncestors: false
+                });
             })
             .catch((error) => {
                 console.warn('对象存储云端游玩自动同步失败:', error);
