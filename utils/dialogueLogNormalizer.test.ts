@@ -41,4 +41,22 @@ describe('规范化可渲染对白日志', () => {
             }
         ]);
     });
+
+    it('不会因为未闭合 judge 标签而丢弃同一日志中的后续正文', () => {
+        const logs = 规范化可渲染对白日志([{
+            sender: '旁白',
+            text: [
+                '外面的官道上传来急促马蹄声。',
+                '<judge>',
+                '【判定】[洞察]辨认来者｜判定值 8/难度 6｜结果=成功',
+                '【旁白】李星云听出马蹄来自熟悉的坐骑。'
+            ].join('\n')
+        }]);
+
+        const renderedText = logs.map(item => item.text).join('\n');
+        expect(renderedText).toContain('外面的官道上传来急促马蹄声。');
+        expect(renderedText).toContain('【判定】[洞察]辨认来者');
+        expect(renderedText).toContain('李星云听出马蹄来自熟悉的坐骑。');
+        expect(renderedText).not.toContain('<judge>');
+    });
 });

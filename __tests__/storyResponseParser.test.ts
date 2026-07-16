@@ -677,6 +677,24 @@ describe('storyResponseParser', () => {
         expect(parsed.logs.map(item => item.text).join('\n')).not.toContain('判定值 22 / 难度 15');
     });
 
+    it('preserves judgment and trailing story after an unclosed judge tag', () => {
+        const parsed = parseStoryRawText([
+            '<正文>',
+            '【旁白】外面的官道上传来急促马蹄声。',
+            '<judge>',
+            '【判定】[洞察]辨认来者｜判定值 8/难度 6｜结果=成功',
+            '【旁白】李星云听出马蹄来自熟悉的坐骑。',
+            '</正文>',
+            '<短期记忆>李星云在酒楼辨认出接近者。</短期记忆>'
+        ].join('\n'));
+
+        expect(parsed.logs).toEqual([
+            { sender: '旁白', text: '外面的官道上传来急促马蹄声。' },
+            { sender: '【判定】', text: '【判定】[洞察]辨认来者｜判定值 8/难度 6｜结果=成功' },
+            { sender: '旁白', text: '李星云听出马蹄来自熟悉的坐骑。' }
+        ]);
+    });
+
     it('strips HTML comment fragments leaked by tavern presets from body instead of retrying a complete story', () => {
         const parsed = parseStoryRawText([
             '<正文>',

@@ -2,6 +2,7 @@ import { GameResponse } from '../../types';
 import { 规范化对白日志 } from '../../utils/dialogueLogNormalizer';
 import { 是否可信正文标签发送者, 规范化正文发送者名 } from '../../utils/dialogueSpeakerGuard';
 import { 拆分判定日志与后续正文, 提取判定日志前缀, 是否判定日志文本 } from '../../utils/judgmentFormat';
+import { 提取并清理Judge区块 } from '../../utils/judgeBlockExtractor';
 import { parseJsonWithRepair } from '../../utils/jsonRepair';
 import { 是否裸标准游戏时间行, 检测裸标准游戏时间行 } from '../../utils/bodyTextSanitizer';
 
@@ -836,8 +837,15 @@ const 修复标签协议文本 = (content: string): string => {
         while (stack.length > 0 && stack[stack.length - 1] !== tagName) {
             const top = stack[stack.length - 1];
             if (!isAuxiliaryNestedTag && top === 'judge') {
-                const closing = stack.pop() as string;
-                rebuilt += `</${closing}>`;
+                stack.pop();
+                if (tagName === '正文') {
+                    const unmatchedOpenIndex = rebuilt.lastIndexOf('<judge>');
+                    if (unmatchedOpenIndex >= 0) {
+                        rebuilt = `${rebuilt.slice(0, unmatchedOpenIndex)}${rebuilt.slice(unmatchedOpenIndex + '<judge>'.length)}`;
+                    }
+                } else {
+                    rebuilt += '</judge>';
+                }
                 continue;
             }
             if (isAuxiliaryNestedTag) break;
@@ -1038,25 +1046,16 @@ const 提取正文中的Judge区块 = (body: string): { cleanBody: string; judge
         return { cleanBody: '', judgeBlocks: undefined };
     }
 
-    const judgeBlocks: NonNullable<GameResponse['judge_blocks']> = [];
-    const cleanBody = source.replace(/<\s*judge\s*>([\s\S]*?)(?:<\s*\/\s*judge\s*>|<\s*judge\s*>|$)/gi, (_full, payload: string) => {
-        const normalized = (payload || '').replace(/\r\n/g, '\n').trim();
-        if (normalized) {
-            judgeBlocks.push({
-                raw: normalized,
-                text: normalized,
-                attachedTo: `judge_${judgeBlocks.length + 1}`,
-                isNsfw: /NSFW判定/i.test(normalized)
-            });
-        }
-        return '\n';
-    })
-        .replace(/(^|\n)\s*<\s*\/??\s*judge\s*>\s*(?=\n|$)/gi, '$1')
-        .replace(/[\t ]+\n/g, '\n')
-        .replace(/\n{3,}/g, '\n\n');
+    const extraction = 提取并清理Judge区块(source);
+    const judgeBlocks: NonNullable<GameResponse['judge_blocks']> = extraction.blocks.map((normalized, index) => ({
+        raw: normalized,
+        text: normalized,
+        attachedTo: `judge_${index + 1}`,
+        isNsfw: /NSFW判定/i.test(normalized)
+    }));
 
     return {
-        cleanBody: 清理正文Judge残片(cleanBody),
+        cleanBody: 清理正文Judge残片(extraction.cleanText),
         judgeBlocks: judgeBlocks.length > 0 ? judgeBlocks : undefined
     };
 };

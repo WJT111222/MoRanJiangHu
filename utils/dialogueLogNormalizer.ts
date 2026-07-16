@@ -1,6 +1,7 @@
 import type { GameLog } from '../types';
 
 import { 是否可信角色发送者, 规范化正文发送者名 } from './dialogueSpeakerGuard';
+import { 提取并清理Judge区块 } from './judgeBlockExtractor';
 import { 是否判定日志文本 } from './judgmentFormat';
 
 type NormalizeOptions = {
@@ -589,7 +590,8 @@ export const 规范化可渲染对白日志 = (logs: GameLog[] | undefined): Gam
     }
     const normalized = 保护引号换行日志(logs).flatMap((item) => {
         const rawSender = (item?.sender || '旁白').trim() || '旁白';
-        const rawText = typeof item?.text === 'string' ? item.text.trim() : String(item?.text ?? '').trim();
+        const sourceText = typeof item?.text === 'string' ? item.text.trim() : String(item?.text ?? '').trim();
+        const rawText = 提取并清理Judge区块(sourceText).cleanText;
         const rawSource = 读取日志原始片段(item);
         const text = 拆分过长旁白段落(rawSender === '旁白' ? '旁白' : 清理说话人(rawSender, confirmedSpeakers) || '旁白', rawText);
         if (是否Judge残留文本(text)) return [];

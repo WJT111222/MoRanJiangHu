@@ -5,6 +5,7 @@ import type { 酒馆沙箱动作 } from '../../../models/system';
 import GameButton from '../../ui/GameButton';
 import { 构建区域文字样式 } from '../../../utils/visualSettings';
 import { 规范化可渲染对白日志 } from '../../../utils/dialogueLogNormalizer';
+import { 提取并清理Judge区块 } from '../../../utils/judgeBlockExtractor';
 import { 拆分判定日志与后续正文, 提取判定日志前缀, 是否判定日志文本 } from '../../../utils/judgmentFormat';
 
 interface Props {
@@ -225,8 +226,7 @@ const TurnItem: React.FC<Props> = ({
         .filter(log => !isDisclaimerLog(log))
         .map((log) => ({
             ...log,
-            text: String(log?.text || '')
-                .replace(/<\s*judge\s*>[\s\S]*?(?:<\s*\/\s*judge\s*>|$)/gi, '')
+            text: 提取并清理Judge区块(String(log?.text || '')).cleanText
                 .replace(/^\s+/, '')
         }))
         .flatMap((log) => {

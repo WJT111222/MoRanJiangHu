@@ -26,7 +26,7 @@ const run = async () => {
         await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
         await page.setContent([
             '<!doctype html>',
-            '<html><head><meta charset="utf-8" /></head>',
+            '<html data-theme="day"><head><meta charset="utf-8" /></head>',
             '<body><div id="root"></div><script type="module" src="/tests/fixtures/judgment-render-harness.jsx"></script></body></html>'
         ].join(''), { waitUntil: 'domcontentloaded' });
         await page.waitForFunction(() => document.body.dataset.e2eReady === 'true', null, { timeout: 30_000 });
@@ -55,7 +55,10 @@ const run = async () => {
                         && text.includes('过目不忘的观察力')
                         && text.includes('晨光渐亮');
                 }),
-                duplicatedModifierValue: judgmentCards.some((node) => (node.textContent || '').includes('+5+5,过目不忘的观察力'))
+                duplicatedModifierValue: judgmentCards.some((node) => (node.textContent || '').includes('+5+5,过目不忘的观察力')),
+                malformedJudgeTrailingBodyVisible: narratorBlocks.some((node) => (node.textContent || '').includes('李星云听出马蹄来自熟悉的坐骑。')),
+                judgeTagLeaked: narratorBlocks.some((node) => (node.textContent || '').includes('<judge>')),
+                dayThemeActive: document.documentElement.dataset.theme === 'day'
             };
         });
 
@@ -68,6 +71,9 @@ const run = async () => {
             || !result.parsedTargetVisible
             || !result.leadingResultDetailsVisible
             || result.duplicatedModifierValue
+            || !result.malformedJudgeTrailingBodyVisible
+            || result.judgeTagLeaked
+            || !result.dayThemeActive
             || !result.judgmentText.includes('成功')
             || !result.judgmentText.includes('洞察')
         ) {
