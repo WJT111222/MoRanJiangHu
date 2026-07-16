@@ -594,7 +594,7 @@ export const RELEASE_INFO = {
         "备用站：https://msjh.bacon.de5.net/"
     ],
     "notes": "优化全部存档导出：现在一次点击只生成一个总 ZIP，不再需要逐个下载压缩包。\n网页端与 APK 端改为分块写入，降低大存档批量导出时的内存峰值和闪退风险。\n导出过程中会显示当前处理进度；如果中途失败，会明确提示已处理数量并清理未完成文件。\n修复 Gemini 3.1 Pro 多段正文只显示后半段的问题，完整正文现在会正常展示。\n附加世界书新增条目级启用开关，可单独停用或启用任意条目。\n剑来等模式包导入自定义境界母板后，角色境界显示优先采用自定义名称，不再回退到默认炼气境界。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/",
-    "releasePublishedAt": "2026-07-16T12:29:04+08:00"
+    "releasePublishedAt": "2026-07-16T13:05:11+08:00"
 } as const;
 
 export type ReleaseInfo = typeof RELEASE_INFO;
