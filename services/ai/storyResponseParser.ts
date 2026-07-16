@@ -411,7 +411,10 @@ const 是否畸形非正文协议标签行 = (line: string): boolean => {
     const tagToken = 提取行首标签名(line);
     if (!tagToken) return false;
     const normalized = 归一化协议标签名(tagToken);
-    return Boolean(normalized) && 协议标签集合.has(normalized) && normalized !== '正文';
+    return Boolean(normalized)
+        && 协议标签集合.has(normalized)
+        && normalized !== '正文'
+        && normalized !== 'judge';
 };
 
 const 清理正文残留协议内容 = (body: string): string => {
