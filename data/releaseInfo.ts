@@ -15,7 +15,7 @@ export const RELEASE_INFO = {
         {
             "versionName": "1.0.674",
             "versionCode": 674,
-            "releasePublishedAt": "2026-10-06T13:06:39+08:00",
+            "releasePublishedAt": "2026-10-06T13:12:02+08:00",
             "releaseNotes": [
                 "修复角色对话暂存丢失：场外私聊里暂存、还没随主回合写入剧情的内容，此前在保存或导入存档时会被丢弃，重进游戏后就找不到了；现在会随存档完整保留，提交行动后照常写入剧情。",
                 "修复群聊偶尔漏出格式标记：群聊中角色发言偶尔残留 <正文> 之类的孤立标记，现已彻底清理，气泡显示更干净。",
@@ -1011,9 +1011,9 @@ export const RELEASE_INFO = {
         "同步更新 Web、APK 与更新清单到 v1.0.674。"
     ],
     "notes": "修复角色对话暂存丢失：场外私聊里暂存、还没随主回合写入剧情的内容，此前在保存或导入存档时会被丢弃，重进游戏后就找不到了；现在会随存档完整保留，提交行动后照常写入剧情。\n修复群聊偶尔漏出格式标记：群聊中角色发言偶尔残留 <正文> 之类的孤立标记，现已彻底清理，气泡显示更干净。\nAI 接口报错提示更完整：主对话通道返回 401/403/404 时，会直接给出中文排查建议（核对 API Key、接口地址、模型名等）；生图工作流设置里的「连接测试」失败时也优先显示这类中文提示，不再只显示一串英文原始报错。\n官网：https://msjh.bacon159.pp.ua/\n备用站：https://msjh.bacon.de5.net/\n同步更新 Web、APK 与更新清单到 v1.0.674。",
-    "releasePublishedAt": "2026-10-06T13:06:39+08:00",
-    "apkSize": 5909204,
-    "apkSha256": "eaf7dbb063ece0181453f1452439278e8127b2814cb4280eaa497a593d0ea76c"
+    "releasePublishedAt": "2026-10-06T13:12:02+08:00",
+    "apkSize": 5910150,
+    "apkSha256": "76397ee89a3b2634637305205867b9f3630f028e14dc5d22221b72edb4bf4d91"
 } as const;
 
 export type ReleaseInfo = typeof RELEASE_INFO;
