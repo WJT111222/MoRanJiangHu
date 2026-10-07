@@ -44,7 +44,9 @@
     "preset:images": "node scripts/generate-preset-item-images.mjs",
     "preset:feedback": "node scripts/sync-item-preset-feedback-data.mjs",
     "preset:thumbs": "node scripts/generate-preset-thumbnails.mjs",
-    "preset:thumbs:audit": "node scripts/audit-preset-thumbnails.mjs"
+    "preset:thumbs:audit": "node scripts/audit-preset-thumbnails.mjs",
+    "apk:verify-assets": "node .workbuddy/tools/verify-apk-asset-paths.mjs",
+    "apk:blackscan": "node .workbuddy/tools/check-apk-blackscan.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
