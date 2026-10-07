@@ -718,11 +718,11 @@ const WorkflowGraphSettings: React.FC<{
         const [showTip, setShowTip] = useState(false);
         return (
             <div className="relative" onMouseEnter={() => setShowTip(true)} onMouseLeave={() => setShowTip(false)}>
-                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 bg-black/30 text-[10px] text-gray-400 cursor-help">?</span>
+                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 bg-black/30 text-[10px] text-gray-400 cursor-help [html[data-theme='day']_&]:border-gray-400 [html[data-theme='day']_&]:bg-white [html[data-theme='day']_&]:text-gray-600">?</span>
                 {showTip && (
-                    <div className="workflow-stage-tip absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-md border border-wuxia-gold/30 bg-gray-950 px-3 py-2 text-[10px] leading-5 text-gray-200 shadow-lg">
+                    <div className="workflow-stage-tip absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-md border border-wuxia-gold/30 bg-gray-950 px-3 py-2 text-[10px] leading-5 text-gray-200 shadow-lg [html[data-theme='day']_&]:border-amber-700/30 [html[data-theme='day']_&]:bg-white [html[data-theme='day']_&]:text-gray-700 [html[data-theme='day']_&]:shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
                         {tipText}
-                        <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-950" />
+                        <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-950 [html[data-theme='day']_&]:border-t-white" />
                     </div>
                 )}
             </div>
