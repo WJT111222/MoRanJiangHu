@@ -504,7 +504,32 @@ const assertSingleReactInstancePlugin = (): Plugin => ({
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
-  const productionBase = env.VITE_BASE_PATH || '/';
+
+  // --- 防 MSYS 路径转换污染 base（务必保留，勿删） ---
+  // 事故背景：v1.0.674 / v1.0.675 的 APK 都是 100% 黑屏。构建走 Git Bash 时，
+  // MSYS 会把形如 `/f/code/MoRanJiangHu` 的绝对路径展开成 Windows 路径再塞回进程
+  // 环境；若这个值最终落到 VITE_BASE_PATH，vite 就会把它当作 base 写进 index.html，
+  // 产出 `/workbuddy/resources/vendor/PortableGit/assets/...` 这类引用。APK 内不存在
+  // 这些文件 → 主 bundle 全部 404 → 纯黑屏，而且 APK 自身 sha/size 完全自洽，
+  // 通道级校验查不出来。
+  // 这里在配置阶段就断言：base 只允许「以单个 / 开头的 URL 前缀」，一旦出现盘符、
+  // 反斜杠、冒号或两段以上斜杠，直接抛错让构建失败，而不是产出一个坏包。
+  const rawBase = env.VITE_BASE_PATH || '/';
+  const looksLikeMsysPath =
+    /^[A-Za-z]:[\\/]/.test(rawBase) ||              // C:\ 或 C:/
+    rawBase.includes('\\') ||                        // 反斜杠
+    /:\d+/.test(rawBase) ||                          // 端口/盘符混合
+    rawBase.split('/').filter(Boolean).length > 1;   // 多段路径
+  if (looksLikeMsysPath) {
+    throw new Error(
+      `[vite] 检测到非法 base: ${JSON.stringify(rawBase)}。\n` +
+        '  这通常是 Git Bash 的 MSYS 路径转换把绝对路径注入了 VITE_BASE_PATH，' +
+        '会让 APK 产出 100% 黑屏（index.html 资源路径指向不存在的目录）。\n' +
+        '  修法：清掉该环境变量后重新构建（如 `unset VITE_BASE_PATH` 或改用 `npm run build:apk`），' +
+        '或所有构建命令加 MSYS2_ARG_CONV_EXCL=\'*\'。'
+    );
+  }
+  const productionBase = rawBase;
   return {
     base: mode === 'production' ? productionBase : '/',
     server: {
