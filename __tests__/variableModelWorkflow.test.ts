@@ -69,3 +69,56 @@ describe('variableModelWorkflow inventory commands', () => {
         ]);
     });
 });
+
+const 名字测试基态 = (社交: any[] = []) => ({
+    角色: { 姓名: '杨培强' }, 环境: {}, 世界: {}, 社交,
+    战斗: {}, 玩家门派: {}, 任务列表: [], 约定列表: []
+});
+const 运行姓名校验 = (commands: any[], options: { social?: any[]; playerInput?: string; openingConfig?: any } = {}) => {
+    vi.mocked(textAIService.generateVariableCalibrationUpdate).mockReset();
+    vi.mocked(textAIService.generateVariableCalibrationUpdate).mockResolvedValue({ commands, reports: [], rawText: '<命令>测试姓名命令</命令>' } as any);
+    return 执行变量模型校准工作流({
+        playerInput: options.playerInput || '', parsedResponse: { logs: [], tavern_commands: [] } as any,
+        baseState: 名字测试基态(options.social) as any, promptPool: [], worldEvolutionEnabled: false,
+        openingConfig: options.openingConfig
+    }, { apiConfig: 创建变量接口配置(), gameConfig: {} });
+};
+
+describe('变量生成模板姓名来源策略与重试', () => {
+    it.each(['苏婉清', '赵平安'])('自由创造 %s 仍拒绝并自动重试一次', async name => {
+        await expect(运行姓名校验([{ action: 'push', key: '社交', value: { 姓名: name } }])).rejects.toThrow('模板姓名黑名单');
+        expect(textAIService.generateVariableCalibrationUpdate).toHaveBeenCalledTimes(2);
+        expect(JSON.stringify(vi.mocked(textAIService.generateVariableCalibrationUpdate).mock.calls[1])).toContain('自动重试：变量生成结果未通过前端校验');
+    });
+    it.each(['苏婉清', '赵灵儿', '赵平安', '林砚舟', '辛夷'])('已有 %s 更新与重复 push 不触发重试', async name => {
+        const commands = [{ action: 'set', key: '社交[0].好感度', value: 20 }, { action: 'push', key: '社交', value: { id: 'npc-existing', 姓名: name } }];
+        const result = await 运行姓名校验(commands, { social: [{ id: 'npc-existing', 姓名: name, 好感度: 0 }] });
+        expect(result?.commands).toEqual(commands);
+        expect(textAIService.generateVariableCalibrationUpdate).toHaveBeenCalledTimes(1);
+    });
+    it('完整社交数组重排不被黑名单或删除保护误判', async () => {
+        const social = [{ id: 'female', 姓名: '苏婉清' }, { id: 'male', 姓名: '赵平安' }];
+        const commands = [{ action: 'set', key: '社交', value: [...social].reverse() }];
+        expect((await 运行姓名校验(commands, { social }))?.commands).toEqual(commands);
+        expect(textAIService.generateVariableCalibrationUpdate).toHaveBeenCalledTimes(1);
+    });
+    it.each([['苏婉清', '新增一个角色，名字叫苏婉清'], ['赵平安', '创建一个叫赵平安的人物']])('明确指定 %s 不触发重试', async (name, playerInput) => {
+        const commands = [{ action: 'push', key: '社交', value: { 姓名: name } }];
+        expect((await 运行姓名校验(commands, { playerInput }))?.commands).toEqual(commands);
+        expect(textAIService.generateVariableCalibrationUpdate).toHaveBeenCalledTimes(1);
+    });
+    it('普通对白引用仍不能放行自由生成模板名', async () => {
+        await expect(运行姓名校验([{ action: 'push', key: '社交', value: { 姓名: '苏婉清' } }], { playerInput: '我敲门：“苏婉清，在吗？”' })).rejects.toThrow('模板姓名黑名单');
+    });
+    it('开局配置伙伴及后续回合采用相同来源豁免', async () => {
+        const commands = [{ action: 'push', key: '社交', value: { 姓名: '苏婉清' } }];
+        expect((await 运行姓名校验(commands, { openingConfig: { 初始伙伴: { 姓名: '苏婉清', enabled: true } } }))?.commands).toEqual(commands);
+        expect((await 运行姓名校验(commands, { social: [{ 姓名: '苏婉清' }] }))?.commands).toEqual(commands);
+    });
+    it('姓名豁免不绕过既有 NPC 改名/删除或主角同名保护', async () => {
+        const social = [{ id: 'old', 姓名: '江婉' }];
+        await expect(运行姓名校验([{ action: 'set', key: '社交[0].姓名', value: '苏婉清' }], { social, playerInput: '新角色叫苏婉清' })).rejects.toThrow('改写');
+        await expect(运行姓名校验([{ action: 'delete', key: '社交[0]', value: null }], { social })).rejects.toThrow('删除');
+        await expect(运行姓名校验([{ action: 'push', key: '社交', value: { 姓名: '杨培强' } }], { playerInput: '新角色叫杨培强' })).rejects.toThrow('主角');
+    });
+});

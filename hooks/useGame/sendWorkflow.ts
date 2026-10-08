@@ -1,3 +1,6 @@
+import { buildNpcTemplateNameContext } from '../../services/npcTemplateNameContext';
+import type { NpcTemplateNameContext } from '../../utils/npcTemplateNamePolicy';
+import { 提取命中模板姓名黑名单 } from '../../utils/templateNameBlacklist';
 import { 规范化正文发送者名 } from '../../utils/dialogueSpeakerGuard';
 import { normalizeNpcNameKey } from '../../utils/npcName';
 import * as textAIService from '../../services/ai/text';
@@ -274,17 +277,33 @@ export const 校验响应未命中女性姓名黑名单 = (
     response: GameResponse,
     rawText: string,
     stageLabel = '主剧情',
-    currentSocial?: any[]
+    currentSocial?: any[],
+    nameContext: NpcTemplateNameContext = {}
 ) => {
     const hits = 提取命中新女性角色姓名黑名单({
+        ...nameContext,
         response,
-        currentSocial
+        currentSocial: currentSocial ?? nameContext.currentSocial
     });
     if (hits.length <= 0) return;
     const detail = `${stageLabel}命中女性模板姓名黑名单：${hits.join('、')}。请完整重新生成本回合正文和变量命令，改用更贴合世界观的原创真实姓名，并保持正文 sender 与社交姓名一致。`;
     const error = new textAIService.StoryResponseParseError(detail, rawText, detail);
     (error as any).parseDetail = detail;
     throw error;
+};
+
+// 开局、普通回合共用此入口；保留旧女性校验导出以兼容现有调用。
+export const 校验响应未命中模板姓名黑名单 = (
+    response: GameResponse,
+    rawText: string,
+    stageLabel = '主剧情',
+    nameContext: NpcTemplateNameContext = {}
+) => {
+    校验响应未命中女性姓名黑名单(response, rawText, stageLabel, nameContext.currentSocial, nameContext);
+    const hits = 提取命中模板姓名黑名单({ ...nameContext, response });
+    if (!hits.length) return;
+    const detail = `${stageLabel}命中男性/中性模板姓名黑名单：${hits.join('、')}。请重新生成 AI 自由创造的新角色姓名，并保持正文 sender 与社交姓名一致。`;
+    throw new textAIService.StoryResponseParseError(detail, rawText, detail);
 };
 
 export const 校验响应人称一致性 = (
@@ -457,14 +476,12 @@ export const 校验响应正文词汇审查 = (
     currentSocial: any[],
     rawText: string,
     stageLabel = '主剧情',
-    enabled = true
+    enabled = true,
+    nameContext: NpcTemplateNameContext = {}
 ) => {
     if (enabled === false) return;
-    校验响应未命中女性姓名黑名单(
-        response,
-        rawText,
-        stageLabel,
-        currentSocial
+    校验响应未命中模板姓名黑名单(
+        response, rawText, stageLabel, { ...nameContext, currentSocial }
     );
     校验响应未泄露名器档案名称(
         response,
@@ -1857,6 +1874,7 @@ export const 执行主剧情发送工作流 = async (
             autoRetryEnabled: deps.游戏设置启用自动重试(runtimeGameConfig)
         }]);
 
+        const npcNameContext = await buildNpcTemplateNameContext(currentState, currentState.开局配置, sendInput);
         const aiResult = await deps.执行带自动重试的生成请求<textAIService.StoryResponseResult>({
             enabled: deps.游戏设置启用自动重试(runtimeGameConfig),
             onRetry: (attempt, maxAttempts, reason) => {
@@ -2027,7 +2045,8 @@ export const 执行主剧情发送工作流 = async (
                     currentState.社交,
                     rawStoryText,
                     "主剧情",
-                    runtimeGameConfig.启用正文词汇审查 !== false
+                    runtimeGameConfig.启用正文词汇审查 !== false,
+                    npcNameContext
                 );
                 校验响应人称一致性(
                     reviewedStoryResult.response,

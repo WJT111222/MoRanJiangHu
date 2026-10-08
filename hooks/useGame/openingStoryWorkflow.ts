@@ -1,3 +1,5 @@
+import { buildNpcTemplateNameContext } from '../../services/npcTemplateNameContext';
+import { 校验响应未命中模板姓名黑名单 } from './sendWorkflow';
 import * as textAIService from '../../services/ai/text';
 import * as dbService from '../../services/dbService';
 import { recordAiParseFailureDiagnostic } from '../../services/diagnosticContext';
@@ -1146,6 +1148,10 @@ export const 执行开场剧情生成工作流 = async (
             requireActionOptionsTag: openingGameConfig.启用行动选项 !== false,
             autoRetryEnabled: openingAutoRetryEnabled
         }]);
+        const npcNameContext = await buildNpcTemplateNameContext(
+            { ...openingStatePayload, ...options?.命令基态, 社交: options?.命令基态?.社交 ?? contextData.社交 ?? [] },
+            options?.开局配置, options?.开局额外要求 || ''
+        );
         const aiResult = await deps.执行带自动重试的生成请求<textAIService.StoryResponseResult>({
             enabled: openingAutoRetryEnabled,
             onRetry: (attempt, maxAttempts, reason) => {
@@ -1211,14 +1217,17 @@ export const 执行开场剧情生成工作流 = async (
                             includeReasoning: (openingGameConfig.DeepSeek策略?.开局Thinking === true) || (openingGameConfig.GLM策略?.开局Thinking === true)
                         }
                     );
-                if (!useStreaming) {
-                    return requestOpeningStory(controller.signal);
+                const result = !useStreaming
+                    ? await requestOpeningStory(controller.signal)
+                    : await 执行开场剧情流式请求带空闲超时(
+                        controller.signal,
+                        (signal, markStreamActivity) => requestOpeningStory(signal, markStreamActivity),
+                        获取游玩请求超时毫秒(openingGameConfig.游玩请求超时设置)
+                    );
+                if (openingGameConfig.启用正文词汇审查 !== false) {
+                    校验响应未命中模板姓名黑名单(result.response, result.rawText, '开局主剧情', npcNameContext);
                 }
-                return 执行开场剧情流式请求带空闲超时(
-                    controller.signal,
-                    (signal, markStreamActivity) => requestOpeningStory(signal, markStreamActivity),
-                    获取游玩请求超时毫秒(openingGameConfig.游玩请求超时设置)
-                );
+                return result;
             }
         });
         let aiData = aiResult.response;
@@ -1530,7 +1539,7 @@ export const 执行开场剧情生成工作流 = async (
                         .join('\n\n');
                     return 执行变量模型校准工作流(
                         {
-                            playerInput: '',
+                            playerInput: options?.开局额外要求 || '',
                             parsedResponse: responseForExecution,
                             baseState: {
                                 角色: commandBaseState.角色,

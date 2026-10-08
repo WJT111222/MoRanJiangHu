@@ -1,3 +1,4 @@
+import { buildNpcTemplateNameContext } from '../../services/npcTemplateNameContext';
 import { normalizeNpcNameKey, isMultilingualNpcName } from '../../utils/npcName';
 import * as textAIService from '../../services/ai/text';
 import type { GameResponse, OpeningConfig, TavernCommand, 世界书结构, 内置提示词条目结构, 提示词结构 } from '../../types';
@@ -632,6 +633,8 @@ export const 执行变量模型校准工作流 = async (
     const variableApi = 获取变量计算接口配置(deps.apiConfig);
     if (!接口配置是否可用(variableApi)) return null;
 
+    const npcNameContext = await buildNpcTemplateNameContext(params.baseState, params.openingConfig, params.playerInput);
+
     const runtimeExtraPrompt = 按功能开关过滤提示词内容(
         构建运行时额外提示词(runtimeGameConfig.额外提示词 || '', runtimeGameConfig),
         runtimeGameConfig
@@ -801,6 +804,7 @@ export const 执行变量模型校准工作流 = async (
             });
 
         const blacklistHits = 提取命中新女性角色姓名黑名单({
+            ...npcNameContext,
             commands: dedupedCommands,
             currentSocial: params.baseState.社交,
             includeLogSenders: false
@@ -813,6 +817,8 @@ export const 执行变量模型校准工作流 = async (
         }
 
         const templateNameHits = 提取命中模板姓名黑名单({
+            ...npcNameContext,
+            includeLogSenders: false,
             commands: dedupedCommands,
             currentSocial: params.baseState.社交
         });
