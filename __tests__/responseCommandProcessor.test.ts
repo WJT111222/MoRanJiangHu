@@ -1,3 +1,4 @@
+import { parseStoryRawText } from '../services/ai/storyResponseParser';
 import { describe, expect, it } from 'vitest';
 import { 执行响应命令处理, 响应命令处理状态 } from '../hooks/useGame/responseCommandProcessor';
 import { 规范化社交列表 } from '../hooks/useGame/stateTransforms';
@@ -1700,4 +1701,44 @@ describe('responseCommandProcessor NPC death fallback', () => {
         expect(result.社交[0].境界).toBe('开脉境一重');
         expect(result.社交[0].境界层级).toBe(1);
     });
+});
+
+
+describe('多语言 NPC 新增与保留', () => {
+    const names = ['Alice', 'Emily Carter', 'Alex Morgan', 'Jean-Luc', "O'Connor", 'O’Connor', 'José Álvarez'];
+    it.each(names)('从 AI 响应新增并保留 %s 的显示格式', (name) => {
+        const response = parseStoryRawText(`<正文>\n【${name}】“你好。”\n</正文>\n<命令>\npush 社交 = ${JSON.stringify({ id: 'NPC-MULTILINGUAL', 姓名: name, 性别: '女', 身份: '旅人', 简介: '来自远方' })}\n</命令>`);
+        const state = 执行响应命令处理(response, 构建基础状态(), deps, undefined, { applyState: false });
+        expect(state.社交).toHaveLength(1);
+        expect(state.社交[0]).toMatchObject({ 姓名: name, 对白登场: true });
+        let social = state.社交;
+        for (let i = 0; i < 5; i++) social = 规范化社交列表(social, { 合并同名: false });
+        expect(social.map(npc => npc.姓名)).toEqual([name]);
+    });
+    it.each([
+        ['Emily Carter', 'Emily Carter'], ['Emily Carter', 'emily carter'],
+        ["O'Connor", 'O’Connor'], ['O’Connor', "O'Connor"],
+        ['José Álvarez', 'José Álvarez'],
+    ])('旁白 %s 为命令姓名 %s 提供新增依据', (bodyName, commandName) => {
+        const state = 执行响应命令处理({ logs: [{ sender: '旁白', text: `${bodyName} 走进大厅。` }], tavern_commands: [{ action: 'push', key: '社交', value: { 姓名: commandName, 性别: '女', 身份: '旅人' } }] } as any, 构建基础状态(), deps, undefined, { applyState: false });
+        expect(state.社交.map(npc => npc.姓名)).toEqual([commandName]);
+    });
+    it('不把 Alex 模糊匹配成 Alexander', () => {
+        const state = 执行响应命令处理({ logs: [{ sender: '旁白', text: 'Alexander 走进大厅。' }], tavern_commands: [{ action: 'push', key: '社交', value: { 姓名: 'Alex', 身份: '旅人' } }] } as any, 构建基础状态(), deps, undefined, { applyState: false });
+        expect(state.社交).toEqual([]);
+    });
+    it.each(['未命名NPC', '角色1', 'NPC3', '自己已经没有', 'Alice\u0000', '<Alice>', '社交'])('拒绝占位或污染姓名 %s', name => {
+        const state = 执行响应命令处理({ logs: [{ sender: '旁白', text: `${name} 出现。` }], tavern_commands: [{ action: 'push', key: '社交', value: { 姓名: name } }] } as any, 构建基础状态(), deps, undefined, { applyState: false });
+        expect(state.社交).toEqual([]);
+    });
+    it('中文真实姓名不再仅因姓氏表缺失被删除', () => {
+        const list = 规范化社交列表([{ 姓名: '阿卡菲尔', 对白登场: true, 自动补全头像: true }]);
+        expect(规范化社交列表(list).map(npc => npc.姓名)).toEqual(['阿卡菲尔']);
+    });
+});
+
+
+it('完整档案也不能用尾部控制字符绕过新增姓名校验', () => {
+    const state = 执行响应命令处理({ logs: [{ sender: 'Alice', text: '“你好。”' }], tavern_commands: [{ action: 'push', key: '社交', value: { id: 'NPC-CONTROL', 姓名: 'Alice\n', 身份: '旅人', 简介: '完整档案' } }] } as any, 构建基础状态(), deps, undefined, { applyState: false });
+    expect(state.社交).toEqual([]);
 });

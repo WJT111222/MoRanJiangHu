@@ -1,3 +1,4 @@
+import { normalizeNpcNameKey, isMultilingualNpcName } from '../../utils/npcName';
 import * as textAIService from '../../services/ai/text';
 import type { GameResponse, OpeningConfig, TavernCommand, 世界书结构, 内置提示词条目结构, 提示词结构 } from '../../types';
 import { 获取变量计算接口配置, 接口配置是否可用, 变量校准功能已启用, 获取展开货币系统 } from '../../utils/apiConfig';
@@ -201,7 +202,9 @@ const 提取命令中的任务奖励占位 = (commands: TavernCommand[]): string
 };
 
 const 标准化人物匹配文本 = (value: unknown): string => (
-    读取文本(value).replace(/\s+/g, '').replace(/[·・\-—_【】（）()《》“”"'，,。！？!?:：；;]/g, '')
+    isMultilingualNpcName(读取文本(value))
+        ? normalizeNpcNameKey(value)
+        : 读取文本(value).replace(/\s+/g, '').replace(/[·・\-—_【】（）()《》“”"'，,。！？!?:：；;]/g, '')
 );
 
 const 非人物对白发送者集合 = new Set([
@@ -296,7 +299,7 @@ export const 构建正文对白人物审计提示 = (
     const lines = senders.map((sender) => {
         const index = 查找社交NPC索引(baseState.社交, sender);
         if (index < 0) {
-            return `- ${sender}：本回合有独立对白框，但当前 \`社交[]\` 未找到对应完整档案；必须通过 \`push 社交 = {...}\` 新建完整 NPC 档案，包含真实姓名(2-4字)、性别、年龄、境界、身份、简介、是否主要角色、是否在场、位置、记忆、天赋列表、出身背景、当前装备、背包、BUFF、DEBUFF、技艺、战斗数值与七部位状态；当前装备未确认的槽位写“无”，背包没有明确随身物就写空数组，禁止只写“剧情对话人物/未知身份/未知境界”。`;
+            return `- ${sender}：本回合有独立对白框，但当前 \`社交[]\` 未找到对应完整档案；必须通过 \`push 社交 = {...}\` 新建完整 NPC 档案，包含真实姓名（中文通常2-4字；外文保留原语言格式；已有姓名原样保留）、性别、年龄、境界、身份、简介、是否主要角色、是否在场、位置、记忆、天赋列表、出身背景、当前装备、背包、BUFF、DEBUFF、技艺、战斗数值与七部位状态；当前装备未确认的槽位写“无”，背包没有明确随身物就写空数组，禁止只写“剧情对话人物/未知身份/未知境界”。`;
         }
         const npc = Array.isArray(baseState.社交) ? (baseState.社交 as any[])[index] : null;
         const gaps = 对白人物基础缺口(npc, { xianxiaMode: options?.xianxiaMode === true });
@@ -576,11 +579,7 @@ const 序列化命令去重键 = (cmd: TavernCommand): string => {
     ].join('::');
 };
 
-const 规范化姓名键 = (value: unknown): string => (
-    typeof value === 'string'
-        ? value.trim().replace(/[\s\u3000]+/g, '')
-        : ''
-);
+const 规范化姓名键 = normalizeNpcNameKey;
 
 const 提取变量命令NPC姓名改写 = (commands: TavernCommand[], currentSocial: any[]): string[] => {
     if (!Array.isArray(commands) || !Array.isArray(currentSocial)) return [];

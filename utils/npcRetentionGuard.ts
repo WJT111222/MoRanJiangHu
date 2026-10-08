@@ -1,13 +1,10 @@
+import { normalizeNpcNameKey } from './npcName';
 import type { TavernCommand } from '../types';
 import { normalizeStateCommandKey } from './stateHelpers';
 
 const 深拷贝 = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
-const 规范化NPC键 = (value: unknown): string => (
-    typeof value === 'string'
-        ? value.trim().replace(/[\s\u3000]+/g, '').toLowerCase()
-        : ''
-);
+const 规范化NPC键 = normalizeNpcNameKey;
 
 const 读取NPC键列表 = (npc: any): string[] => {
     if (!npc || typeof npc !== 'object' || Array.isArray(npc)) return [];

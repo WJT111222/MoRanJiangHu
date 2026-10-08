@@ -1,3 +1,4 @@
+import { isMultilingualNpcName, hasNpcNamePollution, normalizeNpcNameKey } from './npcName';
 import { 是否判定日志文本 } from './judgmentFormat';
 import { 姓名含已知中文姓氏 } from './chineseName';
 
@@ -43,13 +44,13 @@ const 是否可接受未知中文角色名 = (value: string): boolean => {
 
 export const 规范化正文发送者名 = (senderRaw: string): string => {
     const sender = (senderRaw || '')
-        .replace(/[【】\[\]「」『』“”"']/g, '')
-        .replace(/\s+/g, '')
+        .replace(/[【】\[\]「」『』“”"]/g, '')
         .trim();
     if (!sender) return '旁白';
     if (sender === '判定') return '【判定】';
     if (sender === 'NSFW判定') return '【NSFW判定】';
-    return sender;
+    // 中文标签沿用去空白行为，外文姓名保留原始词间空格。
+    return isMultilingualNpcName(sender) ? sender : sender.replace(/\s+/g, '');
 };
 
 export const 是否特殊正文发送者 = (senderRaw: string): boolean => {
@@ -66,6 +67,8 @@ export const 是否疑似叙事短语标签 = (senderRaw: string): boolean => {
     const sender = 规范化正文发送者名(senderRaw);
     if (!sender || sender === '旁白') return false;
     if (结构或句子符号正则.test(sender)) return true;
+    if (hasNpcNamePollution(senderRaw)) return true;
+    if (isMultilingualNpcName(sender)) return false;
     if (sender.length > 6) return true;
     if (泛称或非角色标签正则.test(sender)) return true;
     if (身体部位或物件标签正则.test(sender)) return true;
@@ -96,6 +99,7 @@ export const 是否可信角色发送者 = (
     senderRaw: string,
     options?: { knownSpeakers?: string[]; allowUnknownName?: boolean; declaredNames?: Set<string> }
 ): boolean => {
+    if (/[\p{Cc}\p{Cf}<>＝=]/u.test(senderRaw)) return false;
     const sender = 规范化正文发送者名(senderRaw);
     if (!sender || 是否特殊正文发送者(sender)) return false;
 
@@ -109,7 +113,7 @@ export const 是否可信角色发送者 = (
     const knownSpeakers = (options?.knownSpeakers || [])
         .map(item => 规范化正文发送者名(item))
         .filter(Boolean);
-    if (knownSpeakers.some(item => item === sender)) return true;
+    if (knownSpeakers.some(item => normalizeNpcNameKey(item) === normalizeNpcNameKey(sender))) return true;
 
     if (options?.declaredNames?.has(sender)) return true;
 
@@ -117,7 +121,7 @@ export const 是否可信角色发送者 = (
         return options?.allowUnknownName !== false && 是否可接受未知中文角色名(sender);
     }
 
-    if (/^[A-Za-z][A-Za-z0-9_· -]{1,23}$/.test(sender)) {
+    if (isMultilingualNpcName(sender)) {
         return options?.allowUnknownName !== false;
     }
 

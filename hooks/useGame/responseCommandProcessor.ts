@@ -1,3 +1,4 @@
+import { normalizeNpcNameKey, isMultilingualNpcName, hasNpcNamePollution, textMentionsNpcName } from '../../utils/npcName';
 import {
     GameResponse,
     角色数据结构,
@@ -292,11 +293,7 @@ type 响应命令处理依赖 = {
     命令后校准?: (state: 响应命令处理状态) => { state: 响应命令处理状态; corrections?: string[] } | 响应命令处理状态;
 };
 
-const 归一化文本键 = (value: unknown): string => (
-    typeof value === 'string'
-        ? value.trim().replace(/\s+/g, '').toLowerCase()
-        : ''
-);
+const 归一化文本键 = normalizeNpcNameKey;
 
 const 噪声对白发送者片段正则 = /(?:轻声|低声|细语|小声|柔声|温声|沉声|冷声|厉声|压低|喃喃|喃语|嘀咕|说道|说着|问道|答道|开口|补充|解释|提醒|笑着|苦笑|皱眉|抬眼|抬头|看向|望向|回头|点头|摇头|叹息|擦净|将|把|并|却|已经|刚刚)/;
 const 噪声对白发送者收尾正则 = /(?:地|着|了|道|问|说)$/;
@@ -304,7 +301,8 @@ const 噪声对白发送者完整短语正则 = /^(?:(?:他|她|它|你|我|他�
 
 const 是否噪声对白发送者 = (sender: string): boolean => {
     const name = (sender || '').trim();
-    if (!name) return true;
+    if (!name || hasNpcNamePollution(sender)) return true;
+    if (isMultilingualNpcName(name)) return false;
     if (/[，。！？；：、,.!?;:\s\n\r]/.test(name)) return true;
     if (/^[\u4e00-\u9fa5]{2,4}$/u.test(name) && !姓名含已知中文姓氏(name)) return true;
     if (噪声对白发送者完整短语正则.test(name)) return true;
@@ -322,7 +320,7 @@ const 是否对白NPC发送者 = (senderRaw: unknown, playerNameRaw: unknown): b
     if (/^[\u4e00-\u9fa5]{2,4}$/u.test(sender) && !姓名含已知中文姓氏(sender)) return false;
     const playerName = 归一化文本键(playerNameRaw);
     if (playerName && 归一化文本键(sender) === playerName) return false;
-    return sender.length <= 16;
+    return isMultilingualNpcName(sender) || sender.length <= 16;
 };
 
 const 稳定哈希文本 = (text: string): string => {
@@ -1384,7 +1382,7 @@ const 净化角色天赋背景命令 = (
 
 const 规范化命令姓名 = (value: unknown): string => (
     typeof value === 'string'
-        ? value.trim().replace(/[\s\u3000]+/g, '')
+        ? value.trim()
         : ''
 );
 
@@ -1413,7 +1411,7 @@ const 净化社交姓名命令 = (cmd: any, currentSocial: any[]): any | null =>
     if ((cmd?.action || 'set') !== 'set') return cmd;
     const currentName = 规范化命令姓名(currentSocial?.[index]?.姓名);
     const nextName = 规范化命令姓名(cmd?.value);
-    if (!currentName || !nextName || currentName === nextName) return cmd;
+    if (!currentName || !nextName || normalizeNpcNameKey(currentName) === normalizeNpcNameKey(nextName)) return cmd;
     // 占位名（如"角色9"）允许被改成真名：这正是把对话框真名回填进社交档案的通道，不能拦。
     if (是否占位名(currentName) && !是否占位名(nextName)) return cmd;
     return null;
@@ -1488,6 +1486,9 @@ const 净化新增社交命令 = (
         // 其余命令（非新增社交对象）放行交给后续逻辑。
         return 是否新增社交对象命令(cmd, currentSocial) ? null : cmd;
     }
+    // 在 trim 之前检查原始姓名，避免尾部控制字符被清理后绕过新增校验。
+    const rawName = cmd?.value?.姓名 || cmd?.value?.名称;
+    if (typeof rawName === 'string' && hasNpcNamePollution(rawName)) return null;
     if (是否保留栏目式社交姓名(nextName)) return null;
     const nextKey = 归一化文本键(nextName);
     if (playerName && nextKey === 归一化文本键(playerName)) return null;
@@ -1498,7 +1499,7 @@ const 净化新增社交命令 = (
             .includes(nextKey)
     ));
     if (existing) return cmd;
-    if (dialogueSenderKeys.has(nextKey) || responseFactText.includes(nextName)) return cmd;
+    if (dialogueSenderKeys.has(nextKey) || textMentionsNpcName(responseFactText, nextName)) return cmd;
     return null;
 };
 

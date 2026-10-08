@@ -1,3 +1,5 @@
+import { 规范化正文发送者名 } from '../../utils/dialogueSpeakerGuard';
+import { normalizeNpcNameKey } from '../../utils/npcName';
 import * as textAIService from '../../services/ai/text';
 import { 是否流式连接中断错误消息 } from '../../services/ai/chatCompletionClient';
 import { recordAiParseFailureDiagnostic } from '../../services/diagnosticContext';
@@ -655,11 +657,7 @@ const 构建叙事人称检测文本 = (response: GameResponse): string => {
 const 统计明显第二人称叙述 = (value: string): number => (value.match(第二人称叙述动作正则) || []).length;
 const 统计明显第一人称叙述 = (value: string): number => (value.match(第一人称叙述动作正则) || []).length;
 
-const 规范化姓名键 = (value: unknown): string => (
-    typeof value === 'string'
-        ? value.trim().replace(/[\s\u3000]+/g, '')
-        : ''
-);
+const 规范化姓名键 = normalizeNpcNameKey;
 
 const 提取社交姓名改写 = (response: GameResponse, currentSocial: any[]): string[] => {
     if (!Array.isArray(response?.tavern_commands) || !Array.isArray(currentSocial)) return [];
@@ -755,7 +753,7 @@ const 创建主剧情流式超时错误 = (stage: string, timeoutMs: number): Er
 const 主剧情协议必需标签 = ['正文', '短期记忆', '命令'];
 
 const 规范化已知对白姓名 = (value: unknown): string => (
-    typeof value === 'string' ? value.replace(/[【】\[\]「」『』“”"']/g, '').replace(/\s+/g, '').trim() : ''
+    typeof value === 'string' ? 规范化正文发送者名(value) : ''
 );
 
 export const 收集主剧情已知对白说话人 = (

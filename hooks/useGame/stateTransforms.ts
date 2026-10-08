@@ -1,3 +1,4 @@
+import { normalizeNpcNameKey, isMultilingualNpcName, hasNpcNamePollution } from '../../utils/npcName';
 import { 角色数据结构, 环境信息结构, 装备槽位 } from '../../types';
 import type { 背景开局货币 } from '../../types';
 import { normalizeCanonicalGameTime, 环境时间转标准串, 结构化时间转标准串 } from './timeUtils';
@@ -2362,10 +2363,7 @@ const 合并补充文本 = (left?: string, right?: string): string | undefined =
     return `${l} ${r}`;
 };
 
-const 归一化键 = (raw: unknown): string => {
-    if (typeof raw !== 'string') return '';
-    return raw.trim().replace(/\s+/g, '').toLowerCase();
-};
+const 归一化键 = normalizeNpcNameKey;
 
 const NPC占位身份词列表 = [
     '掌事太监', '教引姑姑', '贴身侍卫', '带队侍卫', '随行护卫', '值守护卫', '掌事宫女',
@@ -3442,15 +3440,16 @@ const 噪声NPC姓名完整短语正则 = /^(?:(?:他|她|它|你|我|他们|她
 
 const 是否噪声NPC姓名 = (value: unknown): boolean => {
     const name = 规范化文本(value);
-    if (!name) return true;
+    if (!name || hasNpcNamePollution(typeof value === 'string' ? value : '')) return true;
+    if (/^(?:未命名NPC|未命名|未知|无名|角色|NPC|npc)\d*$/u.test(name)) return true;
+    if (/^(旁白|判定|NSFW判定|免责声明|disclaimer|主神|系统|提示|公告)$/.test(name)) return true;
+    if (isMultilingualNpcName(name)) return false;
     if (name.length > 12 || name.length > NPC真实姓名最大长度) return true;
     if (/[，。！？；：、,.!?;:\s\n\r]/.test(name)) return true;
     if (/^[\u4e00-\u9fa5]{2,3}$/u.test(name)) {
         if (/^(此时|此刻|同时|另一边|不远处|远方|身后|前方|这时|那时|突然|忽然|瞬间|刹那|所有人|全场)$/u.test(name)) return true;
         return false;
     }
-    if (/^[\u4e00-\u9fa5]{4,6}$/u.test(name) && !姓名含已知中文姓氏(name)) return true;
-    if (/^(旁白|判定|NSFW判定|免责声明|disclaimer|主神|系统|提示|公告)$/.test(name)) return true;
     if (/^(?:自己|自身|本人|主角|玩家|他|她|它|你|我|他们|她们|对方|那人|此人|有人|众人)(?:已经|没有|只能|只好|仍旧|还是|刚刚|继续|再|又|便|就|不再|无法|不能)?.*$/u.test(name)) return true;
     if (噪声NPC姓名完整短语正则.test(name)) return true;
     if (/^(?:自己|自身|本人|主角|玩家|他|她|它|你|我|他们|她们|对方|那人|此人|有人|众人).{1,10}$/.test(name) && 噪声NPC姓名片段正则.test(name)) return true;
