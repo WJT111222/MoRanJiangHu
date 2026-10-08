@@ -2261,10 +2261,10 @@ export const 获取角色对话接口配置 = (settings: 接口设置结构): �
     });
 };
 
-export const 获取变量计算接口配置 = (settings: 接口设置结构): 当前可用接口结构 | null => {
+export const 获取变量计算接口配置 = (settings: 接口设置结构, options?: { manualReview?: boolean }): 当前可用接口结构 | null => {
     const feature = (settings as any)?.功能模型占位;
     const enabled = Boolean(feature?.变量计算独立模型开关);
-    if (!enabled) return null;
+    if (!enabled && !options?.manualReview) return null;
     return 构建独立文本接口配置(settings, {
         渠道ID: feature?.变量计算渠道ID,
         使用模型: feature?.变量计算使用模型,
