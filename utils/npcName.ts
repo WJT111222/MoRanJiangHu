@@ -5,13 +5,17 @@ export const normalizeNpcNameKey = (value: unknown): string => typeof value === 
 
 export const hasNpcNamePollution = (value: string): boolean => /[\p{Cc}\p{Cf}<>＝=\[\]{}]/u.test(value);
 
-// 汉字仍使用既有中文规则；外文名允许 Unicode 字母、组合重音及内部姓名分隔符。
-export const isMultilingualNpcName = (value: string): boolean => {
+// 只检查字符格式，不证明文本是人物姓名；调用方仍须检查叙事语义和栏目/占位标签。
+export const isNpcNameFormatValid = (value: unknown): boolean => {
+    if (typeof value !== 'string') return false;
     const name = value.trim();
     if (hasNpcNamePollution(value) || Array.from(name).length < 2 || Array.from(name).length > 64) return false;
-    if (!/^[\p{L}\p{M}]+(?:(?: +|[’'\-])[\p{L}\p{M}]+)*$/u.test(name.normalize('NFC'))) return false;
-    return /\p{L}/u.test(name) && !/^[\p{Script=Han}\p{M}]+$/u.test(name);
+    return /\p{L}/u.test(name) && /^[\p{L}\p{M}]+(?:(?: +|[’'\-])[\p{L}\p{M}]+)*$/u.test(name.normalize('NFC'));
 };
+
+export const isMultilingualNpcName = (value: string): boolean => (
+    isNpcNameFormatValid(value) && !/^[\p{Script=Han}\p{M}]+$/u.test(value.trim())
+);
 
 // 外文名需要字母边界，避免 Alex 命中 Alexander；中文保留正文连续书写的匹配方式。
 export const textMentionsNpcName = (text: string, name: string): boolean => {

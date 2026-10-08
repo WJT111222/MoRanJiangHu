@@ -1,7 +1,7 @@
 import { isMultilingualNpcName, hasNpcNamePollution } from './npcName';
 import type { GameLog } from '../types';
 
-import { 是否可信角色发送者, 规范化正文发送者名 } from './dialogueSpeakerGuard';
+import { 是否可信角色发送者, 是否含姓名叙事污染, 规范化正文发送者名 } from './dialogueSpeakerGuard';
 import { 提取并清理Judge区块 } from './judgeBlockExtractor';
 import { 是否判定日志文本 } from './judgmentFormat';
 
@@ -49,11 +49,14 @@ const 清理说话人 = (value: string, confirmedSpeakers?: Set<string>): string
         .trim();
     const special = 规范化正文发送者名(text);
     if (special === '奖励') return special;
+    if (special === '你' || special === '我') return special;
+    if (是否含姓名叙事污染(text)) return '';
 
     // [修复] 如果原始 sender 已在确认名单中，直接通过，避免二次验证误杀
     const normalizedOriginal = 规范化正文发送者名(text);
-    if (!hasNpcNamePollution(value) && confirmedSpeakers?.has(normalizedOriginal)) return normalizedOriginal;
-    if (isMultilingualNpcName(text)) return text;
+    if (!hasNpcNamePollution(value) && confirmedSpeakers?.has(normalizedOriginal)
+        && 是否可信角色发送者(normalizedOriginal, { declaredNames: confirmedSpeakers })) return normalizedOriginal;
+    if (isMultilingualNpcName(text)) return 是否可信角色发送者(text) ? text : '';
 
     text = text.split(/[，,、；;。！？!?\s]/).filter(Boolean).pop() || text;
     for (let i = 0; i < 3; i += 1) {

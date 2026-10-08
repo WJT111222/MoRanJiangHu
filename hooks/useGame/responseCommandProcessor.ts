@@ -1,4 +1,5 @@
-import { normalizeNpcNameKey, isMultilingualNpcName, hasNpcNamePollution, textMentionsNpcName } from '../../utils/npcName';
+import { normalizeNpcNameKey, isMultilingualNpcName, isNpcNameFormatValid, hasNpcNamePollution, textMentionsNpcName } from '../../utils/npcName';
+import { 是否含姓名叙事污染 } from '../../utils/dialogueSpeakerGuard';
 import {
     GameResponse,
     角色数据结构,
@@ -19,7 +20,7 @@ import { 规范化任务列表自动结算 } from '../../utils/taskCompat';
 import { 结算已完成任务奖励 } from '../../utils/taskRewards';
 import { sanitizeInventoryCommand } from './inventoryCommandGuard';
 import { 姓名含已知中文姓氏 } from '../../utils/chineseName';
-import { 合并保留既有NPC列表, 命令存在社交删除风险, 是否占位名 } from '../../utils/npcRetentionGuard';
+import { 合并保留既有NPC列表, 命令存在社交删除风险, 是否占位名, 查找姓名保护对应NPC, 检测NPC姓名改写风险命令 } from '../../utils/npcRetentionGuard';
 import { 提取NPC境界回退风险命令索引 } from '../../utils/npcRealmRegressionGuard';
 import type { 境界配置 } from '../../utils/realmConfig';
 import { 提取NPC死亡风险命令索引, 状态效果是死亡判定 } from '../../utils/npcDeathGuard';
@@ -302,6 +303,7 @@ const 噪声对白发送者完整短语正则 = /^(?:(?:他|她|它|你|我|他�
 const 是否噪声对白发送者 = (sender: string): boolean => {
     const name = (sender || '').trim();
     if (!name || hasNpcNamePollution(sender)) return true;
+    if (!isNpcNameFormatValid(sender) || 是否含姓名叙事污染(sender)) return true;
     if (isMultilingualNpcName(name)) return false;
     if (/[，。！？；：、,.!?;:\s\n\r]/.test(name)) return true;
     if (/^[\u4e00-\u9fa5]{2,4}$/u.test(name) && !姓名含已知中文姓氏(name)) return true;
@@ -1406,12 +1408,24 @@ const 提取社交姓名命令索引 = (rawKey: unknown): number | null => {
 };
 
 const 净化社交姓名命令 = (cmd: any, currentSocial: any[]): any | null => {
+    if (检测NPC姓名改写风险命令([cmd], currentSocial).length > 0) return null;
+    const key = normalizeStateCommandKey(typeof cmd?.key === 'string' ? cmd.key : '');
+    // 完整对象更新/重复 push/数组重排也保留已有显示拼写。
+    const preserveName = (npc: any): any => {
+        const previous = 查找姓名保护对应NPC(npc, currentSocial);
+        return previous?.姓名 && normalizeNpcNameKey(previous.姓名) === normalizeNpcNameKey(npc?.姓名 || npc?.名称 || npc?.name)
+            ? { ...npc, 姓名: previous.姓名 } : npc;
+    };
+    if (/^gameState\.社交(?:\[\d+\])?$/.test(key)) {
+        return { ...cmd, value: Array.isArray(cmd?.value) ? cmd.value.map(preserveName) : preserveName(cmd?.value) };
+    }
     const index = 提取社交姓名命令索引(cmd?.key);
     if (index == null) return cmd;
     if ((cmd?.action || 'set') !== 'set') return cmd;
     const currentName = 规范化命令姓名(currentSocial?.[index]?.姓名);
     const nextName = 规范化命令姓名(cmd?.value);
-    if (!currentName || !nextName || normalizeNpcNameKey(currentName) === normalizeNpcNameKey(nextName)) return cmd;
+    if (!currentName || !nextName) return cmd;
+    if (normalizeNpcNameKey(currentName) === normalizeNpcNameKey(nextName)) return { ...cmd, value: currentSocial[index].姓名 };
     // 占位名（如"角色9"）允许被改成真名：这正是把对话框真名回填进社交档案的通道，不能拦。
     if (是否占位名(currentName) && !是否占位名(nextName)) return cmd;
     return null;
@@ -1480,6 +1494,16 @@ const 净化新增社交命令 = (
     dialogueSenderKeys: Set<string>,
     playerName?: string
 ): any | null => {
+    const key = normalizeStateCommandKey(typeof cmd?.key === 'string' ? cmd.key : '');
+    // 所有整项写入都检查格式和叙事污染，包括整体 set；不能靠档案或正文依据绕过。
+    const invalidName = (name: unknown): boolean => typeof name === 'string'
+        && (!isNpcNameFormatValid(name) || 是否含姓名叙事污染(name) || 是否保留栏目式社交姓名(name.trim())
+            || /^(?:未命名NPC|未命名|未知|无名|角色|NPC)\d*$/iu.test(name.trim()));
+    if (/^gameState\.社交(?:\[\d+\])?$/.test(key)) {
+        const entries = Array.isArray(cmd?.value) ? cmd.value : [cmd?.value];
+        if (entries.some(npc => invalidName(npc?.姓名 || npc?.名称 || npc?.name))) return null;
+    }
+    if (/^gameState\.社交\[\d+\]\.姓名$/.test(key) && invalidName(cmd?.value)) return null;
     const nextName = 提取新增社交命令姓名(cmd);
     if (!nextName) {
         // 整体 push 社交 / 整槽 set 社交[N] 但漏写姓名 → 会造出无姓名空壳，直接丢弃；
@@ -1503,11 +1527,7 @@ const 净化新增社交命令 = (
     return null;
 };
 
-const 规范化人物键 = (value: unknown): string => (
-    typeof value === 'string'
-        ? value.trim().replace(/\s+/g, '').toLowerCase()
-        : ''
-);
+const 规范化人物键 = normalizeNpcNameKey;
 
 const 明确性别集合 = new Set(['男', '女', '男娘', '扶她']);
 
@@ -1824,10 +1844,10 @@ export const 执行响应命令处理 = (
         storyBuffer = deps.规范化剧情状态(storyBuffer);
 
         // 过滤与主角同名的NPC条目，防止主角被NPC化（tavern_commands分支也需要此防护）
-        const playerNormKeyTavern = typeof charBuffer?.姓名 === 'string' ? charBuffer.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
+        const playerNormKeyTavern = normalizeNpcNameKey(charBuffer?.姓名);
         if (playerNormKeyTavern) {
             socialBuffer = socialBuffer.filter((npc: any) => {
-                const npcName = typeof npc?.姓名 === 'string' ? npc.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
+                const npcName = normalizeNpcNameKey(npc?.姓名);
                 return !npcName || npcName !== playerNormKeyTavern;
             });
         }
@@ -1966,10 +1986,10 @@ export const 执行响应命令处理 = (
     );
 
     // 过滤与主角同名的NPC条目，防止主角被NPC化
-    const playerNormKey = typeof charBuffer?.姓名 === 'string' ? charBuffer.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
+    const playerNormKey = normalizeNpcNameKey(charBuffer?.姓名);
     if (playerNormKey) {
         normalizedSocial = normalizedSocial.filter((npc: any) => {
-            const npcName = typeof npc?.姓名 === 'string' ? npc.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
+            const npcName = normalizeNpcNameKey(npc?.姓名);
             return !npcName || npcName !== playerNormKey;
         });
     }

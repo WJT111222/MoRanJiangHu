@@ -32,7 +32,7 @@ import { 生成地图更新 } from './mapUpdateWorkflow';
 import { 获取激活小说拆分注入文本 } from '../../services/novelDecompositionInjection';
 import { 同步剧情小说分解时间校准 } from '../../services/novelDecompositionCalibration';
 import { 提取命中新女性角色姓名黑名单 } from '../../utils/femaleNameSelector';
-import { 检测社交删除风险命令 } from '../../utils/npcRetentionGuard';
+import { 检测NPC姓名改写风险命令, 检测社交删除风险命令 } from '../../utils/npcRetentionGuard';
 import { 检测NPC境界回退风险命令 } from '../../utils/npcRealmRegressionGuard';
 import { 获取境界配置, type 境界配置 } from '../../utils/realmConfig';
 import { 构建标签缺失补充提示 } from '../../utils/parseErrorHints';
@@ -674,28 +674,6 @@ const 构建叙事人称检测文本 = (response: GameResponse): string => {
 const 统计明显第二人称叙述 = (value: string): number => (value.match(第二人称叙述动作正则) || []).length;
 const 统计明显第一人称叙述 = (value: string): number => (value.match(第一人称叙述动作正则) || []).length;
 
-const 规范化姓名键 = normalizeNpcNameKey;
-
-const 提取社交姓名改写 = (response: GameResponse, currentSocial: any[]): string[] => {
-    if (!Array.isArray(response?.tavern_commands) || !Array.isArray(currentSocial)) return [];
-    const issues: string[] = [];
-    response.tavern_commands.forEach((cmd: any) => {
-        if ((cmd?.action || 'set') !== 'set') return;
-        const key = typeof cmd?.key === 'string' ? cmd.key.replace(/^gameState\./, '') : '';
-        const direct = key.match(/^社交\[(\d+)\]\.姓名$/);
-        const whole = key.match(/^社交\[(\d+)\]$/);
-        const index = direct ? Number(direct[1]) : (whole ? Number(whole[1]) : NaN);
-        if (!Number.isInteger(index) || index < 0) return;
-        const currentName = 规范化姓名键(currentSocial[index]?.姓名);
-        const nextName = direct
-            ? 规范化姓名键(cmd?.value)
-            : 规范化姓名键(cmd?.value?.姓名);
-        if (currentName && nextName && currentName !== nextName) {
-            issues.push(`社交[${index}].姓名：${currentName} -> ${nextName}`);
-        }
-    });
-    return issues;
-};
 
 export const 校验响应未改写既有NPC姓名 = (
     response: GameResponse,
@@ -703,7 +681,7 @@ export const 校验响应未改写既有NPC姓名 = (
     rawText: string,
     stageLabel = '主剧情'
 ) => {
-    const issues = 提取社交姓名改写(response, currentSocial);
+    const issues = 检测NPC姓名改写风险命令(response?.tavern_commands || [], currentSocial);
     if (issues.length <= 0) return;
     const detail = `${stageLabel}试图改写已生成 NPC 姓名：${issues.join('；')}。前端不会修改既有变量，请完整重新生成本回合正文和变量命令；已有 NPC 姓名必须原样保留。`;
     const error = new textAIService.StoryResponseParseError(detail, rawText, detail);

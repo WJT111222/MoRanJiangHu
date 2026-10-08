@@ -33,3 +33,9 @@ it('已知角色名保持显示格式，审计和改名保护使用统一比较�
     expect(查找社交NPC索引(social, 'O’Connor')).toBe(1);
     expect(() => 校验响应未改写既有NPC姓名({ tavern_commands: [{ action: 'set', key: '社交[1].姓名', value: 'O’Connor' }] } as any, social, '')).not.toThrow();
 });
+
+it.each([['Alex', 'Alexander'], ['Ann', 'Anna']])('对白审计不会把 %s 匹配到 %s', (sender, name) => {
+    expect(查找社交NPC索引([{ 姓名: name, 身份: sender, 简介: `${sender} is here` }], sender)).toBe(-1);
+    expect(查找社交NPC索引([{ 姓名: name, 是否主要角色: true, 身份: sender }], sender)).toBe(-1);
+    expect(查找社交NPC索引([{ 姓名: name }, { 姓名: sender }], sender)).toBe(1);
+});

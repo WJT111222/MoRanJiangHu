@@ -1,3 +1,4 @@
+import { normalizeNpcNameKey } from '../../utils/npcName';
 import type {
     WorldGenConfig,
     世界数据结构,
@@ -1255,10 +1256,10 @@ const 合并玩家到重要成员 = (
     playerMember: 详细门派结构['重要成员'][number] | null
 ): 详细门派结构['重要成员'] => {
     if (!playerMember) return members;
-    const playerNameKey = playerMember.姓名.trim();
+    const playerNameKey = normalizeNpcNameKey(playerMember.姓名);
     const existingIndex = members.findIndex((item: any) => (
         String(item?.id || '').trim() === playerMember.id
-        || (playerNameKey && String(item?.姓名 || '').trim() === playerNameKey)
+        || (playerNameKey && normalizeNpcNameKey(item?.姓名) === playerNameKey)
     ));
     if (existingIndex >= 0) {
         const next = [...members];
@@ -1334,7 +1335,7 @@ const 创建默认同门名录 = (sectName: string, openingConfig?: OpeningConfi
     const seed = 生成稳定哈希(`${sectName}|${openingConfig?.题材模式 || ''}|同门`);
     const surnames = ['沈', '顾', '林', '陆', '许', '程', '韩', '苏', '叶', '周', '秦', '赵'];
     const givenNames = ['照临', '清砚', '明棠', '砚舟', '若衡', '怀瑾', '听澜', '云笙', '承岳', '知微', '景行', '映雪'];
-    const playerKey = typeof playerName === 'string' ? playerName.trim().replace(/\s+/g, '').toLowerCase() : '';
+    const playerKey = normalizeNpcNameKey(playerName);
     const isApocalypse = 是末日题材(openingConfig);
     const isInfinite = 是无限流题材(openingConfig);
     const isModern = 是现代组织题材(openingConfig);
@@ -1354,7 +1355,7 @@ const 创建默认同门名录 = (sectName: string, openingConfig?: OpeningConfi
         const name = `${按种子取项(surnames, seed, index * 3)}${按种子取项(givenNames, seed, index * 5 + 1)}`;
         // 兜底1：随机生成的同门若与主角同名，直接跳过，避免主角被当作 NPC 进入社交/门派成员。
         // 兜底2：命中男性/中性模板姓名黑名单（如"林砚舟"）也跳过，避免开局同门反复撞同一批模板名。
-        if (playerKey && name.trim().replace(/\s+/g, '').toLowerCase() === playerKey) return null;
+        if (playerKey && normalizeNpcNameKey(name) === playerKey) return null;
         if (候选名命中模板黑名单(name)) return null;
         const identity = 按种子取项(roles, seed, index * 7 + 2);
         const duty = isApocalypse
