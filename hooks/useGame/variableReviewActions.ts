@@ -12,7 +12,7 @@ export const variableReviewErrorMessage = (error: any): { code: VariableReviewEr
     if (error instanceof VariableReviewError) return error;
     const message = error?.message || '请求失败，请重试。';
     const code: VariableReviewErrorCode = error?.name === 'AbortError' ? 'cancelled'
-        : /配置.*API|API.*配置/.test(message) ? 'apiConfig'
+        : error?.name === 'VariableReviewApiConfigurationError' || /配置.*API|API.*配置/.test(message) ? 'apiConfig'
         : /掐断|截断|流式.*完整/.test(message) ? 'truncated'
         : /解析失败|协议/.test(message) ? 'parse'
         : /API Error|HTTP|API failed/.test(message) ? 'api' : 'request';

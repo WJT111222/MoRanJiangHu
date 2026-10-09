@@ -52,6 +52,13 @@ describe('变量审查修复：真实请求/模拟/确认写回', () => {
         expect(result.acceptedCommands).toHaveLength(1);
         expect(result.rejectedCommands.some(c => c.code === 'alreadySettled')).toBe(true);
         expect(result.previewState.角色.金钱.金元宝).toBe(200);
+        // 直接重走生产review-apply分支，证明不是仅在preview时丢弃数组命令。
+        const prepared = await workflow.prepareVariableReview(rig.source);
+        const validation = await workflow.validateVariableReviewCommands(prepared, [setInventory([coin(300)])] as any, rig.dependencies);
+        const execution = workflow.executeVariableReviewCommands(prepared, validation, rig.dependencies, 'review-apply');
+        expect(execution.acceptedCommands).toEqual([]);
+        expect(execution.rejectedCommands[0].code).toBe('alreadySettled');
+        expect(execution.previewState.角色.金钱.金元宝).toBe(200);
         await rig.actions.applyVariableReview(result);
         expect(rig.source.currentState.角色.金钱.金元宝).toBe(200);
         expect(rig.source.currentState.社交[0].姓名).toBe('Alice');
@@ -75,6 +82,36 @@ describe('变量审查修复：真实请求/模拟/确认写回', () => {
         expect(result.acceptedCommands).toEqual([]); expect(result.changes).toEqual([]);
         expect(result.rejectedCommands[0].code).toBe('ineffective'); expect(result.status).toBe('blocked');
         expect(result.previewState.角色.金钱.金元宝).toBe(100);
+    });
+    it('混合修复也不能将被同步吞回的钱包命令标为accepted', async () => {
+        const rig = physicalRig();
+        rig.source.history[1].structuredResponse!.logs.push({ sender: '旁白', text: 'Alice走进大厅。' });
+        propose([{ ...reviewGold, key: '角色.金钱.金元宝' }, { action: 'push', key: '社交', value: { id: 'NPC001', 姓名: 'Alice', 身份: '旅人' } }]);
+        const result = await rig.actions.reviewVariables();
+        expect(result.acceptedCommands).toHaveLength(1);
+        expect(result.rejectedCommands[0].code).toBe('ineffective');
+        await rig.actions.applyVariableReview(result);
+        expect(rig.source.currentState.角色.金钱.金元宝).toBe(100);
+        expect(rig.source.currentState.社交[0].姓名).toBe('Alice');
+    });
+    it('实体货币数组删除被旧钱包吞回时，库存diff不能冒充有效收支修复', async () => {
+        const rig = physicalRig();
+        rig.source.history[1].structuredResponse!.logs[0].text = '林岳支付100金元宝，消耗全部货币。';
+        propose([setInventory([])]);
+        const result = await rig.actions.reviewVariables();
+        expect(result.acceptedCommands).toEqual([]);
+        expect(result.rejectedCommands[0].code).toBe('ineffective');
+        expect(result.changes).toEqual([]);
+        expect(result.previewState.角色.物品列表[0].堆叠数量).toBe(100);
+    });
+    it('同币种多个收支加另一币种事实时仍保守拒绝，不能忽略部分事实', async () => {
+        const rig = physicalRig();
+        rig.source.history[1].structuredResponse!.logs[0].text = '林岳获得100金元宝。林岳支付20金元宝。林岳获得10银子。';
+        propose([setInventory([coin(101)])]);
+        const result = await rig.actions.reviewVariables();
+        expect(result.acceptedCommands).toEqual([]);
+        expect(result.rejectedCommands[0].code).toBe('insufficientEvidence');
+        expect(result.changes).toEqual([]);
     });
     it.each([['new', 2], ['delete', 0], ['count', 3]])('没有可信基准时库存整数组%s数量不可变化', async (_kind, count) => {
         const rig = createReviewRig('林岳获得两枚回气丹。');
@@ -143,6 +180,7 @@ describe('手动审查严格配置，普通调用保持fallback', () => {
     it.each([
         [{ 变量计算渠道ID: 'deleted', 变量计算使用模型: 'review' }, '已失效'],
         [{}, '请先配置变量计算 API'],
+        [{ 变量计算API密钥: 'test-key' }, '配置不完整'],
         [{ 变量计算渠道ID: 'variable', 变量计算API地址: 'https://custom.test/v1', 变量计算使用模型: 'review' }, '缺少 API key'],
         [{ 变量计算渠道ID: 'variable', 变量计算API地址: 'https://custom.test/v1', 变量计算API密钥: 'test-key' }, '缺少 model']
     ])('失效或不完整配置%j从真实workflow报错，不向正文API发送', async (feature, message) => {
@@ -158,6 +196,23 @@ describe('手动审查严格配置，普通调用保持fallback', () => {
     });
     it('普通自动变量旧失效渠道fallback不变', () => {
         expect(获取变量计算接口配置(config({ 变量计算渠道ID: 'deleted', 变量计算使用模型: 'review', 变量计算独立模型开关: true }))?.baseUrl).toBe('https://story.test/v1');
+    });
+    it('继承目标失效也不得静默选择另一个主渠道', async () => {
+        const rig = createReviewRig();
+        rig.dependencies.apiConfig = { ...config({ 变量计算渠道ID: '', 变量计算使用模型: 'review' }), activeConfigId: 'deleted' };
+        const error = await rig.actions.reviewVariables().catch(error => error);
+        expect(error.message).toContain('继承渠道已失效');
+        expect(variableReviewErrorMessage(error).code).toBe('apiConfig');
+        expect(client.请求模型文本).not.toHaveBeenCalled();
+    });
+    it('只有独立URL/key/model的完整变量连接无需借用正文provider', async () => {
+        const rig = createReviewRig();
+        rig.dependencies.apiConfig = { configs: [], 功能模型占位: { 变量计算API地址: 'https://variable.test/v1', 变量计算API密钥: 'variable-key', 变量计算使用模型: 'review' } };
+        propose([]); await rig.actions.reviewVariables();
+        const api = vi.mocked(client.请求模型文本).mock.calls[0][0];
+        expect(api.baseUrl).toBe('https://variable.test/v1');
+        expect(api.apiKey).toBe('variable-key');
+        expect(api.model).toBe('review');
     });
 });
 

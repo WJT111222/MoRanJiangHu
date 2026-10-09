@@ -14,10 +14,15 @@ export const extractReviewEconomicSnapshot = (state: any, openingConfig?: Openin
     const known = new Set(['baseAmount', ...tiers.flatMap(t => [t.key, t.label, ...题材货币字段别名[t.key]])]);
     const unknownWallet = Object.fromEntries(Object.entries(wallet).filter(([key, value]) => !known.has(key) && typeof value === 'number'));
     const inventory: Record<string, { name: string; count: number }> = {};
+    const currencyInventory: Record<string, number> = {};
     for (const item of items) {
         const name = String(item?.名称 || '').trim();
         const type = String(item?.类型 || '');
-        if (/^货币(?:[:：]|$)/u.test(type) || tiers.some(t => t.label === name) || Object.hasOwn(role.金钱 || {}, name)) continue;
+        if (/^货币(?:[:：]|$)/u.test(type) || tiers.some(t => t.label === name) || Object.hasOwn(role.金钱 || {}, name)) {
+            const key = normalizeNpcNameKey(name);
+            currencyInventory[key] = (currencyInventory[key] || 0) + Math.max(1, Math.trunc(Number(item?.堆叠数量 ?? item?.数量) || 1));
+            continue;
+        }
         const id = String(item?.ID || item?.id || '');
         const identity = id ? `id:${id}` : `name:${normalizeNpcNameKey(name)}`;
         if (!name) continue;
@@ -26,9 +31,9 @@ export const extractReviewEconomicSnapshot = (state: any, openingConfig?: Openin
     }
     const total = 获取角色金钱BaseAmount(wallet, openingConfig?.modeRuntimeProfile, mode);
     const tierTotal = 计算角色货币底层总值(wallet, openingConfig?.modeRuntimeProfile, mode);
-    return { total, tierTotal, unknownWallet, inventory };
+    return { total, tierTotal, unknownWallet, inventory, currencyInventory };
 };
-export interface ReviewEconomicIssue { code: 'insufficientEvidence' | 'alreadySettled'; reason: string }
+export interface ReviewEconomicIssue { code: 'insufficientEvidence' | 'alreadySettled' | 'ineffective'; reason: string }
 const insufficient = (reason: string): ReviewEconomicIssue => ({ code: 'insufficientEvidence', reason });
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const verbs = '获得|得到|收入|赚得|拾得|支付|花费|失去|扣除|消耗|使用|吃掉|卖出';
@@ -57,7 +62,9 @@ export const expectedReviewWealth = (current: any, before: any, body: string, op
     const mode = 获取货币显示模式(openingConfig, current.角色);
     const tiers = 获取世界观货币层级配置(openingConfig?.modeRuntimeProfile, mode);
     const facts = tiers.map(tier => ({ delta: signedFact(body, [tier.label, ...题材货币字段别名[tier.key]].filter(n => !/层货币/.test(n)).map(escape).join('|'), current.角色?.姓名 || ''), multiplier: tier.multiplier })).filter(fact => fact.delta !== null);
-    if (facts.length !== 1) return { issue: insufficient('正文缺少唯一明确、已发生且属于主角的币种收支事实；仅报告疑点') };
+    const units = tiers.flatMap(t => [t.label, ...题材货币字段别名[t.key]]).filter(n => !/层货币/.test(n)).map(escape).join('|');
+    const mentions = Array.from(body.matchAll(new RegExp(`(${verbs})\\s*\\d+(?:\\.\\d+)?\\s*(?:枚|个)?\\s*(?:${units})(?![\\p{L}\\p{N}])`, 'gu')));
+    if (mentions.length !== 1 || facts.length !== 1) return { issue: insufficient('正文缺少唯一明确、已发生且主体属于主角的币种收支事实；仅报告疑点') };
     const expected = prior.total + facts[0].delta! * facts[0].multiplier;
     if (now.total === expected) return { issue: { code: 'alreadySettled', reason: '正文收支已正确结算，不得重复执行' } };
     if (now.total !== prior.total || expected < 0) return { issue: insufficient('实际财富、回合前基准与正文不构成可核实的漏结算修复') };
@@ -68,6 +75,10 @@ export const compareReviewEconomicChange = (current: any, simulated: any, before
     const next = extractReviewEconomicSnapshot(simulated, openingConfig);
     const body = reviewNarratorFacts(logs);
     if (stableVariableReviewJson(now.unknownWallet) !== stableVariableReviewJson(next.unknownWallet)) return insufficient('未知币种实际余额变化无法可靠核实，未应用财富修复');
+    if (now.total === next.total && stableVariableReviewJson(now.currencyInventory) !== stableVariableReviewJson(next.currencyInventory)) {
+        // 删除最后一笔实体货币时，原规范化可能沿用旧钱包。库存diff不能冒充收支已经修复。
+        return { code: 'ineffective', reason: '实体货币数量改变，但执行并规范化后未产生有效业务财富变化；不能作为收支修复' };
+    }
     if (now.total !== next.total || now.tierTotal !== next.tierTotal) {
         const check = expectedReviewWealth(current, before, body, openingConfig);
         if (check.issue) return check.issue;

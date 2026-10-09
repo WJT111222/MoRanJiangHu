@@ -17,7 +17,7 @@ import { 校验变量命令角色安全, validateVariableCommandBasics, readVari
 import { 执行带完整性校验的请求, 流式结果疑似被上游掐断 } from './streamIntegrity';
 import { 规范化环境信息, 规范化角色物品容器映射, 规范化社交列表 } from './stateTransforms';
 import { 规范化世界状态, 规范化战斗状态, 规范化门派状态, 规范化剧情状态, 规范化剧情规划状态, 规范化女主剧情规划状态, 规范化同人剧情规划状态, 规范化同人女主剧情规划状态, 战斗结束自动清空 } from './storyState';
-import { compareReviewEconomicChange, expectedReviewWealth, reviewNarratorFacts } from './variableReviewEconomy';
+import { compareReviewEconomicChange, expectedReviewWealth, reviewNarratorFacts, extractReviewEconomicSnapshot } from './variableReviewEconomy';
 import { createVariableReviewBusinessSnapshot, stableVariableReviewJson, variableReviewRoots, isVariableReviewExcludedField, variableReviewCommandTouchesExcludedData, extractVariableReviewBusinessState } from './variableReviewSnapshot';
 
 const reviewRoots = variableReviewRoots;
@@ -218,6 +218,14 @@ export const executeVariableReviewCommands = (prepared: Prepared, validation: Aw
         return { acceptedCommands, previewState };
     };
     let execution = execute(validation.acceptedCommands);
+    // 混合修复中即使NPC等域有diff，被实体货币同步吞回的钱包命令也不能继续显示accepted。
+    if (extractReviewEconomicSnapshot(prepared.input.currentState, deps.openingConfig).total === extractReviewEconomicSnapshot(execution.previewState, deps.openingConfig).total) {
+        const ineffectiveMoney = execution.acceptedCommands.filter(command => /^gameState\.角色\.金钱(?:\.|$)/.test(normalizeStateCommandKey(command.key)));
+        if (ineffectiveMoney.length) {
+            rejectedCommands.push(...ineffectiveMoney.map(command => ({ command, code: 'ineffective' as const, reason: '命令执行并规范化后未产生有效业务财富变化' })));
+            execution = execute(execution.acceptedCommands.filter(command => !ineffectiveMoney.includes(command)));
+        }
+    }
     const issue = compareReviewEconomicChange(prepared.input.currentState, execution.previewState, prepared.beforeState, prepared.response.logs, deps.openingConfig);
     if (issue) {
         // 经济变化来自角色域；整批角色修复保守拒绝，独立NPC等安全修复可以继续。

@@ -71,6 +71,8 @@ export const mergeVariableReviewBusinessState = (live: 响应命令处理状态,
             return merge(entry, old);
         });
         if (!next || typeof next !== 'object') return next;
+        // 替换成另一件物品时不能把旧物品图片合并给新ID；同一身份的图片继续原样保留。
+        if (id(next) && id(previous) && id(next) !== id(previous)) previous = undefined;
         const result: any = {};
         for (const key of Object.keys(next)) result[key] = merge(next[key], previous?.[key]);
         if (previous && typeof previous === 'object' && !Array.isArray(previous)) {
