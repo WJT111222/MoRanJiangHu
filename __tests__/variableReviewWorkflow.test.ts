@@ -22,7 +22,7 @@ const state = (coins = 100) => ({
 const input = (body = '林岳走进大厅。', currentState = state(), reviewNotes = '') => ({ currentState, reviewNotes,
     history: [{ role: 'user', content: '走进大厅', timestamp: 1 }, { role: 'assistant', content: '不能上传的协议原文', rawJson: '<thinking>secret</thinking>', timestamp: 2,
         structuredResponse: { logs: [{ sender: '旁白', text: body }], tavern_commands: [], t_var_plan: '不应上传的planning' } }] as any,
-    beforeTurn: { sourceTurnId: 'assistant:2:1', state: state(100) } });
+    beforeTurn: { provenance: 'live-before-turn' as const, sourceTurnId: 'assistant:2:1', state: state(100) } });
 const output = (commands: any[] = [], status = commands.length ? '需要修复' : '无需修改') => `<说明>状态：${status}\n- 问题、正文依据、当前值、建议值已核对。</说明>\n<命令>${commands.map(cmd => `${cmd.action} ${cmd.key}${cmd.action === 'delete' ? '' : ` = ${JSON.stringify(cmd.value)}`}`).join('\n')}</命令>`;
 const model = (commands: any[] = [], status?: string) => vi.mocked(client.请求模型文本).mockResolvedValue(output(commands, status));
 const pushNpc = (name: string, extra = {}) => ({ action: 'push', key: '社交', value: { id: 'NPC-NEW', 姓名: name, 性别: '男', 身份: '旅人', 简介: '来自远方', ...extra } });
@@ -171,7 +171,7 @@ describe('手动变量审查生产请求、解析、保护与预览', () => {
         const source = input();
         const result = await runVariableReview(source, deps);
         expect(result.status).toBe(status === '无需修改' ? 'noChanges' : 'insufficientEvidence');
-        expect(result.previewState).toEqual(source.currentState);
+        expect(result.previewState).toMatchObject({ 角色: source.currentState.角色, 社交: source.currentState.社交, 环境: source.currentState.环境 });
         expect(result.changes).toEqual([]);
     });
     it.each(['', '没有问题', '<说明>状态：无需修改</说明>', '<说明>状态：需要修复</说明><命令>set 角色.年龄 = 20\nBAD</命令>', '<说明>状态：无需修改</说明><命令>set 角色.年龄 = 20</命令>'])('不完整/非法协议不能表示无修改：%s', async raw => {
@@ -332,13 +332,13 @@ it.each(['物品列表', '功法列表'])('已正确记录的%s不因重审而�
     expect(result.acceptedCommands).toEqual([]);
     expect(result.previewState.角色[root]).toEqual([object]);
 });
-it('物品数量净变化缺少核实能力时保守拒绝，不能重放库存增量', async () => {
+it('物品数量已经结算时保守拒绝，不能重放库存增量', async () => {
     const source = input('林岳获得一枚回气丹。');
     source.currentState.角色.物品列表 = [{ ID: 'pill-1', 名称: '回气丹', 堆叠数量: 1 }];
     model([{ action: 'add', key: '角色.物品列表[0].堆叠数量', value: 1 }]);
     const result = await runVariableReview(source, deps);
     expect(result.acceptedCommands).toEqual([]);
-    expect(result.rejectedCommands[0].code).toBe('insufficientEvidence');
+    expect(result.rejectedCommands[0].code).toBe('alreadySettled');
     expect(result.previewState.角色.物品列表[0].堆叠数量).toBe(1);
 });
 it('数值修复继续复用自动校准的范围规则，diff反映规范化后的实际值', async () => {

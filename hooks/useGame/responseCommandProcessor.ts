@@ -1630,13 +1630,14 @@ export const 执行响应命令处理 = (
     baseState?: Partial<响应命令处理状态>,
     options?: {
         applyState?: boolean;
-        executionMode?: 'normal' | 'review-preview';
+        executionMode?: 'normal' | 'review-preview' | 'review-apply';
         reviewNameContext?: NpcTemplateNameContext;
         onCommandDiagnostic?: (diagnostic: { command: TavernCommand; status: 'accepted' | 'rejected'; code?: VariableCommandRejectionCode; reason?: string }) => void;
         heroinePlanEnabled?: boolean;
     }
 ): 响应命令处理状态 => {
-    const reviewPreview = options?.executionMode === 'review-preview';
+    const reviewApply = options?.executionMode === 'review-apply';
+    const reviewPreview = options?.executionMode === 'review-preview' || reviewApply;
     if (reviewPreview) {
         currentState = JSON.parse(JSON.stringify(currentState));
         baseState = baseState ? JSON.parse(JSON.stringify(baseState)) : undefined;
@@ -1792,9 +1793,20 @@ export const 执行响应命令处理 = (
             if (touchedRoots.has('玩家门派')) sectBuffer = deps.规范化门派状态(sectBuffer);
             const playerKey = normalizeNpcNameKey(charBuffer?.姓名);
             if (touchedRoots.has('社交')) socialBuffer = socialBuffer.filter(npc => !playerKey || normalizeNpcNameKey(npc?.姓名) !== playerKey);
-            return { ...currentState, ...baseState, 角色: charBuffer, 环境: envBuffer, 社交: socialBuffer, 世界: worldBuffer, 战斗: battleBuffer,
+            const reviewedState = { ...currentState, ...baseState, 角色: charBuffer, 环境: envBuffer, 社交: socialBuffer, 世界: worldBuffer, 战斗: battleBuffer,
                 玩家门派: sectBuffer, 任务列表: tasksBuffer, 约定列表: agreementsBuffer, 剧情: storyBuffer, 剧情规划: storyPlanBuffer,
                 女主剧情规划: heroinePlanBuffer, 同人剧情规划: fandomStoryPlanBuffer, 同人女主剧情规划: fandomHeroinePlanBuffer };
+            if (reviewApply && options?.applyState !== false) {
+                if (touchedRoots.has('角色')) deps.设置角色?.(reviewedState.角色);
+                if (touchedRoots.has('环境')) deps.设置环境?.(reviewedState.环境);
+                if (touchedRoots.has('社交')) deps.设置社交?.(reviewedState.社交);
+                if (touchedRoots.has('世界')) deps.设置世界?.(reviewedState.世界);
+                if (touchedRoots.has('战斗')) deps.设置战斗?.(reviewedState.战斗);
+                if (touchedRoots.has('玩家门派')) deps.设置玩家门派?.(reviewedState.玩家门派);
+                if (touchedRoots.has('任务列表')) deps.设置任务列表?.(reviewedState.任务列表);
+                if (touchedRoots.has('约定列表')) deps.设置约定列表?.(reviewedState.约定列表);
+            }
+            return reviewedState;
         }
 
         // 金钱命令写穿透：AI 本回合写过的金钱字段为权威，同步三层/旧别名/baseAmount，
