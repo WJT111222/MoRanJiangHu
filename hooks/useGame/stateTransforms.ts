@@ -1,3 +1,5 @@
+import { normalizeNpcNameKey, isMultilingualNpcName, isNpcNameFormatValid, hasNpcNamePollution } from '../../utils/npcName';
+import { 是否含姓名叙事污染 } from '../../utils/dialogueSpeakerGuard';
 import { 角色数据结构, 环境信息结构, 装备槽位 } from '../../types';
 import type { 背景开局货币 } from '../../types';
 import { normalizeCanonicalGameTime, 环境时间转标准串, 结构化时间转标准串 } from './timeUtils';
@@ -2362,10 +2364,7 @@ const 合并补充文本 = (left?: string, right?: string): string | undefined =
     return `${l} ${r}`;
 };
 
-const 归一化键 = (raw: unknown): string => {
-    if (typeof raw !== 'string') return '';
-    return raw.trim().replace(/\s+/g, '').toLowerCase();
-};
+const 归一化键 = normalizeNpcNameKey;
 
 const NPC占位身份词列表 = [
     '掌事太监', '教引姑姑', '贴身侍卫', '带队侍卫', '随行护卫', '值守护卫', '掌事宫女',
@@ -2418,6 +2417,7 @@ const 判断NPC姓名疑似占位 = (raw: unknown): boolean => {
     const name = 规范化文本(raw).replace(/\s+/g, '');
     if (!name) return false;
     if (/^(?:npc|NPC|角色|人物|路人|队友|随行者|护卫|弟子|同门)\d*$/u.test(name)) return true;
+    if (/^(?:护院|侍卫)\d+$/u.test(name)) return true;
     if (/^[甲乙丙丁戊己庚辛壬癸]号?(?:护卫|侍卫|弟子|随行者|队友)$/u.test(name)) return true;
     if (NPC占位外观词列表.some((token) => name.startsWith(token)) && 提取NPC角色身份词(name).length > 0) return true;
     if (提取NPC角色身份词(name).some((token) => NPC占位身份词集合.has(token))) {
@@ -3442,15 +3442,17 @@ const 噪声NPC姓名完整短语正则 = /^(?:(?:他|她|它|你|我|他们|她
 
 const 是否噪声NPC姓名 = (value: unknown): boolean => {
     const name = 规范化文本(value);
-    if (!name) return true;
+    if (!name || hasNpcNamePollution(typeof value === 'string' ? value : '')) return true;
+    if (/^(?:未命名NPC|未命名|未知|无名|角色|NPC|npc)\d*$/u.test(name)) return true;
+    if (/^(旁白|判定|NSFW判定|免责声明|disclaimer|主神|系统|提示|公告)$/.test(name)) return true;
+    if (是否含姓名叙事污染(name) || !isNpcNameFormatValid(name)) return true;
+    if (isMultilingualNpcName(name)) return false;
     if (name.length > 12 || name.length > NPC真实姓名最大长度) return true;
     if (/[，。！？；：、,.!?;:\s\n\r]/.test(name)) return true;
     if (/^[\u4e00-\u9fa5]{2,3}$/u.test(name)) {
         if (/^(此时|此刻|同时|另一边|不远处|远方|身后|前方|这时|那时|突然|忽然|瞬间|刹那|所有人|全场)$/u.test(name)) return true;
         return false;
     }
-    if (/^[\u4e00-\u9fa5]{4,6}$/u.test(name) && !姓名含已知中文姓氏(name)) return true;
-    if (/^(旁白|判定|NSFW判定|免责声明|disclaimer|主神|系统|提示|公告)$/.test(name)) return true;
     if (/^(?:自己|自身|本人|主角|玩家|他|她|它|你|我|他们|她们|对方|那人|此人|有人|众人)(?:已经|没有|只能|只好|仍旧|还是|刚刚|继续|再|又|便|就|不再|无法|不能)?.*$/u.test(name)) return true;
     if (噪声NPC姓名完整短语正则.test(name)) return true;
     if (/^(?:自己|自身|本人|主角|玩家|他|她|它|你|我|他们|她们|对方|那人|此人|有人|众人).{1,10}$/.test(name) && 噪声NPC姓名片段正则.test(name)) return true;
@@ -3491,6 +3493,10 @@ const 修复NPC真实姓名列表 = (list: any[], options?: { 保留非姓名库
 const 是否应丢弃NPC条目 = (rawNpc: any): boolean => {
     if (!rawNpc || typeof rawNpc !== 'object' || Array.isArray(rawNpc)) return false;
     const name = 取首个非空文本(rawNpc?.姓名, rawNpc?.名称, rawNpc?.name);
+    const rawName = rawNpc?.姓名 || rawNpc?.名称 || rawNpc?.name;
+    // 明确非法格式或叙事污染不能凭稳定 ID/完整档案获得豁免；历史占位档案仍沿用原修复通道。
+    if (typeof rawName === 'string' && hasNpcNamePollution(rawName)) return true;
+    if (是否含姓名叙事污染(name) || (!判断NPC姓名疑似占位(name) && !isNpcNameFormatValid(name))) return true;
     // "角色9" 这类占位名含数字，不被 是否噪声NPC姓名 命中，需额外用占位判断兜住，否则空壳会被当正常姓名保留。
     if (!是否噪声NPC姓名(name) && !判断NPC姓名疑似占位(name)) return false;
     if (rawNpc?.对白登场 === true || rawNpc?.自动补全头像 === true) return true;

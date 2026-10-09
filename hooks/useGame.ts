@@ -1,3 +1,4 @@
+import { normalizeNpcNameKey } from '../utils/npcName';
 
 import {
     角色数据结构,
@@ -895,10 +896,10 @@ export const useGame = () => {
 
     /** 过滤社交列表中与主角同名的NPC条目 */
     const 应用同名NPC过滤 = (list: NPC结构[], playerName?: string): NPC结构[] => {
-        const key = typeof playerName === 'string' ? playerName.trim().replace(/\s+/g, '').toLowerCase() : '';
+        const key = normalizeNpcNameKey(playerName);
         if (!key) return list;
         return list.filter((npc: any) => {
-            const npcName = typeof npc?.姓名 === 'string' ? npc.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
+            const npcName = normalizeNpcNameKey(npc?.姓名);
             return !npcName || npcName !== key;
         });
     };
@@ -3205,10 +3206,10 @@ export const useGame = () => {
         if (missing.length === 0) return;
         let normalized = 规范化社交列表安全([...currentSocial, ...missing], { 合并同名: false });
         // 过滤与主角同名的NPC条目，防止主角被NPC化
-        const playerNameKeySect = typeof 角色?.姓名 === 'string' ? 角色.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
+        const playerNameKeySect = normalizeNpcNameKey(角色?.姓名);
         if (playerNameKeySect) {
             normalized = normalized.filter((npc: any) => {
-                const npcName = typeof npc?.姓名 === 'string' ? npc.姓名.trim().replace(/\s+/g, '').toLowerCase() : '';
+                const npcName = normalizeNpcNameKey(npc?.姓名);
                 return !npcName || npcName !== playerNameKeySect;
             });
         }
