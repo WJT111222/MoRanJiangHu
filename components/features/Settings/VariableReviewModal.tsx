@@ -2,6 +2,8 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import type { VariableReviewResult } from '../../../hooks/useGame/variableReviewWorkflow';
 import { variableReviewErrorMessage, type VariableReviewActions, type VariableReviewProgress } from '../../../hooks/useGame/variableReviewActions';
+import VariableReviewSettingsPanel from './VariableReviewSettingsPanel';
+import { normalizeVariableReviewSettings, type VariableReviewConfiguration, type VariableReviewSettings } from '../../../utils/variableReviewSettings';
 
 export interface VariableReviewModalProps { actions: VariableReviewActions; revision?: unknown; onClose: () => void }
 const stages: Record<VariableReviewProgress, string> = { prepare: '准备最近回合与变量上下文', generate: 'AI 正在审查正文与变量', validate: '校验修复命令与保护规则', simulate: '模拟执行并计算实际变化' };
@@ -16,6 +18,9 @@ const commandText = (cmd: VariableReviewResult['acceptedCommands'][number]) => `
 
 const VariableReviewModal: React.FC<VariableReviewModalProps> = ({ actions, revision, onClose }) => {
     const [notes, setNotes] = React.useState('');
+    const [configuration, setConfiguration] = React.useState<VariableReviewConfiguration | null>(null);
+    const [configurationLoading, setConfigurationLoading] = React.useState(!!actions.getVariableReviewConfiguration);
+    const [configurationRetry, setConfigurationRetry] = React.useState(0);
     const [phase, setPhase] = React.useState<'input' | 'reviewing' | 'result' | 'applying' | 'applied'>('input');
     const [stage, setStage] = React.useState<VariableReviewProgress>('prepare');
     const [result, setResult] = React.useState<VariableReviewResult | null>(null);
@@ -29,6 +34,18 @@ const VariableReviewModal: React.FC<VariableReviewModalProps> = ({ actions, revi
     const backdrop = React.useRef<HTMLDivElement>(null);
     const actionsRef = React.useRef(actions);
     actionsRef.current = actions;
+    React.useEffect(() => {
+        let cancelled = false;
+        setConfigurationLoading(!!actions.getVariableReviewConfiguration);
+        if (actions.getVariableReviewConfiguration) actions.getVariableReviewConfiguration().then(next => {
+            if (!cancelled) { setConfiguration(next); setConfigurationLoading(false); }
+        }).catch(cause => { if (!cancelled) { setConfigurationLoading(false); setError({ code: 'apiConfig', message: `审查配置加载失败：${cause?.message || '请重试。'}`, applied: false }); } });
+        return () => { cancelled = true; };
+    }, [actions, configurationRetry]);
+    const updateConfiguration = (settings: VariableReviewSettings) => {
+        setConfiguration(previous => previous ? { ...previous, settings } : null);
+        actions.saveVariableReviewSettings?.(settings).catch(cause => { if (alive.current) setError(variableReviewErrorMessage(cause)); });
+    };
     const close = () => {
         if (phase === 'applying') return;
         sequence.current++;
@@ -42,13 +59,13 @@ const VariableReviewModal: React.FC<VariableReviewModalProps> = ({ actions, revi
         const previousFocus = document.activeElement as HTMLElement | null;
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
-        panel.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus();
+        panel.current?.querySelector<HTMLButtonElement>('button')?.focus();
         const viewport = window.visualViewport;
         const resize = () => {
             if (backdrop.current) {
                 backdrop.current.style.height = `${viewport?.height || window.innerHeight}px`;
                 backdrop.current.style.top = `${viewport?.offsetTop || 0}px`;
-                if (document.activeElement?.tagName === 'TEXTAREA' && panel.current?.contains(document.activeElement)) {
+                if (['TEXTAREA', 'INPUT'].includes(document.activeElement?.tagName || '') && panel.current?.contains(document.activeElement)) {
                     (document.activeElement as HTMLElement).scrollIntoView?.({ block: 'nearest' });
                 }
             }
@@ -59,7 +76,7 @@ const VariableReviewModal: React.FC<VariableReviewModalProps> = ({ actions, revi
         const keydown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeRef.current(); }
             if (event.key === 'Tab') {
-                const nodes = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), textarea, summary, [tabindex="0"]') || []).filter(node => node.getClientRects().length > 0);
+                const nodes = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea, summary, [tabindex="0"]') || []).filter(node => node.getClientRects().length > 0);
                 const first = nodes[0], last = nodes[nodes.length - 1];
                 if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
                 else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
@@ -86,12 +103,13 @@ const VariableReviewModal: React.FC<VariableReviewModalProps> = ({ actions, revi
         return () => { cancelled = true; };
     }, [actions, revision, result, phase, expired]);
     const start = async () => {
-        if (busy.current) return;
+        if (busy.current || configurationLoading || (actions.getVariableReviewConfiguration && !configuration)) return;
         busy.current = true;
         const request = ++sequence.current;
         setError(null); setSuccess(''); setResult(null); setExpired(false); setPhase('reviewing'); setStage('prepare');
         try {
-            const next = await actions.reviewVariables({ reviewNotes: notes, onProgress: nextStage => { if (alive.current && sequence.current === request) setStage(nextStage); } });
+            const settings = configuration ? normalizeVariableReviewSettings(configuration.settings) : undefined;
+            const next = await actions.reviewVariables({ settings, reviewNotes: notes, onProgress: nextStage => { if (alive.current && sequence.current === request) setStage(nextStage); } });
             if (alive.current && sequence.current === request) { setResult(next); setPhase('result'); }
         } catch (cause) {
             if (alive.current && sequence.current === request) { setError(variableReviewErrorMessage(cause)); setPhase('input'); }
@@ -124,8 +142,12 @@ const VariableReviewModal: React.FC<VariableReviewModalProps> = ({ actions, revi
                     {phase === 'input' && <>
                         <p>AI 会根据最近完成回合的正文与当前变量检查遗漏和不一致。备注仅用于指定审查重点，不会被当作已经发生的事实。</p>
                         <p className="variable-review-muted">本次审查范围：最近完成回合正文 + 当前主要变量状态。包括角色、环境、世界、社交、战斗、门派、任务和约定；不包含整章历史、图片或缓存。数据过多时会明确提示裁剪。</p>
-                        <label className="variable-review-label" htmlFor="variable-review-notes">玩家备注（可选）</label>
-                        <textarea id="variable-review-notes" rows={4} value={notes} onChange={event => setNotes(event.target.value)} placeholder="例如：重点检查装备，或检查正文中新出现但未记录的 NPC。" />
+                        {configurationLoading && <p role="status">正在加载审查设置…</p>}
+                        {!configurationLoading && !configuration && actions.getVariableReviewConfiguration && <button type="button" className="variable-review-secondary" onClick={() => { setError(null); setConfigurationRetry(value => value + 1); }}>重试加载配置</button>}
+                        {configuration && <VariableReviewSettingsPanel configuration={configuration} actions={actions} onChange={updateConfiguration} />}
+                        <label className="variable-review-label" htmlFor="variable-review-notes">本次审查备注（可选）</label>
+                        <textarea id="variable-review-notes" rows={4} value={notes} onChange={event => setNotes(event.target.value)} placeholder="例如：重点检查当前人物的服装和装备，或检查正文中新出现但未记录的 NPC。" />
+                        <p className="variable-review-muted">备注仅用于指定本次审查重点，不会被直接视为已经发生的剧情事实。</p>
                     </>}
                     {(phase === 'reviewing' || phase === 'applying') && <div className="variable-review-loading" role="status" aria-live="polite"><span className="animate-pulse">{phase === 'applying' ? '应用中：重新校验、写入并保存…' : `审查中：${stages[stage]}…`}</span><p>确认应用前不会修改真实变量。</p></div>}
                     {result && <>
@@ -151,7 +173,7 @@ const VariableReviewModal: React.FC<VariableReviewModalProps> = ({ actions, revi
                 </div>
                 <footer className="variable-review-footer">
                     <button type="button" className="variable-review-secondary" onClick={close} disabled={phase === 'applying'}>{phase === 'applied' ? '关闭' : '取消'}</button>
-                    {phase === 'input' && <button type="button" className="variable-review-primary" onClick={start}>开始审查</button>}
+                    {phase === 'input' && <button type="button" className="variable-review-primary" disabled={configurationLoading || (!!actions.getVariableReviewConfiguration && !configuration)} onClick={start}>开始变量审查</button>}
                     {phase === 'reviewing' && <span>等待 AI 返回…</span>}
                     {result && phase !== 'reviewing' && <>
                         {phase !== 'applying' && <button type="button" className="variable-review-secondary" onClick={reset}>{expired ? '重新审查' : '再次审查'}</button>}

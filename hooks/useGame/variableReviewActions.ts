@@ -3,6 +3,8 @@ import type { 回合快照结构 } from './turnSnapshot';
 import type { 响应命令处理状态 } from './responseCommandProcessor';
 import { variableReviewBusinessSeal, mergeVariableReviewBusinessState } from './variableReviewSnapshot';
 import { prepareVariableReview, runVariableReview, assertVariableReviewPreviewCurrent, validateVariableReviewCommands, executeVariableReviewCommands, type VariableReviewInput, type VariableReviewResult, type VariableReviewDependencies, type VariableReviewChange } from './variableReviewWorkflow';
+import type { VariableReviewConfiguration, VariableReviewSettings, VariableReviewModelOption } from '../../utils/variableReviewSettings';
+import { normalizeVariableReviewSettings, resolveVariableReviewApi } from '../../utils/variableReviewSettings';
 
 export type VariableReviewErrorCode = 'apiConfig' | 'request' | 'api' | 'truncated' | 'parse' | 'stale' | 'applyValidation' | 'saveFailed' | 'consumed' | 'busy' | 'cancelled';
 export class VariableReviewError extends Error {
@@ -19,9 +21,12 @@ export const variableReviewErrorMessage = (error: any): { code: VariableReviewEr
     return { code, message: code === 'apiConfig' && error?.name !== 'VariableReviewApiConfigurationError' ? '请先配置变量计算 API。' : code === 'cancelled' ? '审查已取消。' : message, applied: false };
 };
 export type VariableReviewProgress = 'prepare' | 'generate' | 'validate' | 'simulate';
-export interface VariableReviewOptions { reviewNotes?: string; onProgress?: (stage: VariableReviewProgress) => void }
+export interface VariableReviewOptions { settings?: VariableReviewSettings; reviewNotes?: string; onProgress?: (stage: VariableReviewProgress) => void }
 export interface VariableReviewApplyResult { changesCount: number; saved: true }
 export interface VariableReviewActions {
+    getVariableReviewConfiguration?: () => Promise<VariableReviewConfiguration>;
+    saveVariableReviewSettings?: (settings: VariableReviewSettings) => Promise<void>;
+    refreshVariableReviewModels?: (settings: VariableReviewSettings) => Promise<VariableReviewModelOption[]>;
     reviewVariables: (options?: VariableReviewOptions) => Promise<VariableReviewResult>;
     applyVariableReview: (result: VariableReviewResult) => Promise<VariableReviewApplyResult>;
     cancelVariableReview: () => void;
@@ -45,6 +50,7 @@ const staleMessage = '游戏状态或正文已发生变化，本次审查结果�
 export const createVariableReviewActions = (deps: {
     getInput: () => VariableReviewInput;
     getDependencies: () => VariableReviewDependencies;
+    saveSettings?: (settings: VariableReviewSettings) => Promise<void>;
     commitState: (state: 响应命令处理状态, changes: VariableReviewChange[]) => void;
     saveState: (state: 响应命令处理状态, history: 聊天记录结构[]) => Promise<unknown>;
 }): VariableReviewActions => {
@@ -69,8 +75,16 @@ export const createVariableReviewActions = (deps: {
             const controller = new AbortController();
             active = controller;
             try {
-                const result = await runVariableReview({ ...deps.getInput(), reviewNotes: options.reviewNotes }, {
-                    ...deps.getDependencies(), signal: controller.signal, onStage: options.onProgress,
+                // 第一个await前冻结设置和实际连接，主库对象后续变化不能改变本次请求。
+                const dependencies = deps.getDependencies();
+                const settings = options.settings ? normalizeVariableReviewSettings(options.settings) : dependencies.reviewSettings && clone(dependencies.reviewSettings);
+                const frozenDependencies = { ...dependencies, apiConfig: clone(dependencies.apiConfig), reviewSettings: settings,
+                    reviewApi: settings ? resolveVariableReviewApi(settings, dependencies.apiConfig) : undefined };
+                const input = { ...deps.getInput(), reviewNotes: options.reviewNotes };
+                if (options.settings && deps.saveSettings) await deps.saveSettings(settings!);
+                ensureActive(controller);
+                const result = await runVariableReview(input, {
+                    ...frozenDependencies, signal: controller.signal, onStage: options.onProgress,
                     onStreamDelta: () => options.onProgress?.('generate')
                 });
                 ensureActive(controller);

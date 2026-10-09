@@ -1007,7 +1007,7 @@ export const generateVariableCalibrationUpdate = async (
             { role: 'system', content: variableReviewSystemPrompt },
             { role: 'user', content: buildVariableReviewTaskPrompt(params.stateJson, params.response, params.reviewContext) }
         ], {
-            temperature: 0.2, signal, errorDetailLimit: Number.POSITIVE_INFINITY,
+            temperature: apiConfig.temperature ?? 0.2, variableReviewSampling: true, signal, errorDetailLimit: Number.POSITIVE_INFINITY,
             streamOptions: onStreamDelta || onStreamEnd ? { stream: true, onDelta: onStreamDelta, onStreamEnd } : undefined
         });
         return parseVariableReviewResponse(rawText);

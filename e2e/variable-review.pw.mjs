@@ -53,7 +53,7 @@ for (const mobile of [false, true]) for (const theme of ['day', 'ink']) {
         });
         await enterGame(page, theme);
         const dialog = page.getByRole('dialog', { name: '变量审查' });
-        await page.getByLabel('玩家备注（可选）').fill('重点检查正文中的 NPC');
+        await page.getByLabel('本次审查备注（可选）').fill('重点检查正文中的 NPC');
         if (mobile) {
             // 缩小可视窗口模拟键盘占位，底部操作仍在窗口内。
             await page.setViewportSize({ width: 390, height: 420 });
@@ -61,7 +61,7 @@ for (const mobile of [false, true]) for (const theme of ['day', 'ink']) {
             expect(footer.y + footer.height).toBeLessThanOrEqual(420);
             await page.setViewportSize({ width: 390, height: 844 });
         }
-        await page.getByRole('button', { name: '开始审查' }).click();
+        await page.getByRole('button', { name: '开始变量审查' }).click();
         await expect(dialog.getByText(/实际变量变化（/)).toBeVisible();
         await dialog.getByText('展开对象 / 长内容').last().click();
         await dialog.getByText(/命令诊断：/).click();
@@ -83,5 +83,116 @@ for (const mobile of [false, true]) for (const theme of ['day', 'ink']) {
         expect(saved).toHaveLength(1); expect(saved[0].names.filter(name => name === '卡尔')).toHaveLength(1);
         expect(saved[0].time).toBe('1:01:01:08:00'); expect(saved[0].history).toHaveLength(2);
         await expect(dialog.getByRole('button', { name: '应用修复' })).toHaveCount(0);
+    });
+}
+
+for (const mobile of [false, true]) {
+    test(`${mobile ? '手机' : '桌面'} day：审查设置保存、模型刷新、独立连接与Prompt恢复`, async ({ page }) => {
+        test.setTimeout(60000);
+        await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1280, height: 900 });
+        const modelRequests = []; const reviewRequests = []; let aiRequests = 0;
+        for (const domain of ['review.test', 'own-review.test']) await page.route(`https://${domain}/**`, async route => {
+            const request = route.request(); const headers = { 'access-control-allow-origin': '*' };
+            if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { ...headers, 'access-control-allow-headers': '*' } });
+            if (request.method() === 'GET') {
+                modelRequests.push({ url: request.url(), auth: request.headers().authorization });
+                return route.fulfill({ headers, contentType: 'application/json', body: JSON.stringify({ data: [{ id: 'review-gpt-id', display_name: '[按次] Gemini Flash' }, { id: 'other-model' }] }) });
+            }
+            aiRequests++;
+            const body = JSON.parse(request.postData());
+            reviewRequests.push({ url: request.url(), auth: request.headers().authorization, body });
+            const content = '<说明>状态：无需修改</说明><命令></命令>';
+            return route.fulfill(body.stream
+                ? { headers, contentType: 'text/event-stream', body: `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\ndata: [DONE]\n\n` }
+                : { headers, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content } }] }) });
+        });
+        await enterGame(page, 'day');
+        const dialog = page.getByRole('dialog', { name: '变量审查' });
+        const strategy = page.getByLabel('审查提示词', { exact: true }); await strategy.waitFor();
+        await expect(page.getByRole('button', { name: '开始变量审查' })).toBeEnabled();
+        expect(aiRequests).toBe(0);
+        await strategy.fill('重点检查人物服装与装备。');
+        await page.getByLabel('自定义审查 Model ID').fill('review-gpt-id');
+        if (mobile) {
+            await page.setViewportSize({ width: 390, height: 420 });
+            const footer = await dialog.locator('.variable-review-footer').boundingBox();
+            expect(footer.y + footer.height).toBeLessThanOrEqual(420);
+            await page.setViewportSize({ width: 390, height: 844 });
+        }
+        await page.getByRole('button', { name: '刷新模型', exact: true }).click();
+        await expect(page.getByText('审查模型列表已刷新。')).toBeVisible();
+        expect(modelRequests[0].url).toContain('review.test');
+        await page.getByLabel('使用独立 API').check();
+        await page.getByLabel('Base URL', { exact: true }).fill('https://own-review.test/v1');
+        await page.getByLabel('API Key', { exact: true }).fill('own-test-key');
+        await page.getByRole('button', { name: '刷新模型', exact: true }).click();
+        await expect(page.getByText('审查模型列表已刷新。')).toBeVisible();
+        expect(modelRequests.at(-1).url).toContain('own-review.test');
+        expect(modelRequests.at(-1).auth).toBe('Bearer own-test-key');
+        const modelGroup = page.getByRole('group', { name: '审查模型列表' });
+        await expect(modelGroup.getByRole('button', { name: '[按次] Gemini Flash', exact: true })).toBeVisible();
+        await page.getByLabel('自定义审查 Model ID').fill('manual-current');
+        await modelGroup.getByRole('button', { name: /manual-current/ }).click();
+        await page.getByRole('button', { name: '[按次] Gemini Flash', exact: true }).click();
+        await page.getByLabel('Top P（可选）').fill('0.8');
+        await page.getByLabel('Top P（可选）').blur();
+        await page.getByLabel('Temperature（可选）').fill('999');
+        await page.getByLabel('Temperature（可选）').blur();
+        await expect(page.getByLabel('Temperature（可选）')).toHaveValue('2');
+        await page.getByLabel('本次审查备注（可选）').fill('这次备注不保存');
+        await page.getByRole('button', { name: '恢复默认审查提示词' }).click();
+        await page.getByRole('alertdialog').getByRole('button', { name: '恢复默认', exact: true }).click();
+        await expect(strategy).toHaveValue(/最终复核/);
+        await expect(page.getByLabel('本次审查备注（可选）')).toHaveValue('这次备注不保存');
+        await expect(page.getByLabel('自定义审查 Model ID')).toHaveValue('review-gpt-id');
+        await strategy.fill('浏览器重载后保留的审查策略');
+        const settings = await page.evaluate(async () => {
+            const db = await import('/services/dbService.ts');
+            // 等待最后一个设置事务写入，避免只验证React草稿。
+            for (let i = 0; i < 50; i++) { const value = await db.读取设置('variable_review_settings'); if (value?.customPrompt === '浏览器重载后保留的审查策略') return value; await new Promise(r => setTimeout(r, 20)); }
+        });
+        expect(settings.apiMode).toBe('independent'); expect(settings.model).toBe('review-gpt-id'); expect(settings.reviewNotes).toBeUndefined(); expect(aiRequests).toBe(0);
+        await dialog.locator('.variable-review-body').evaluate(el => { el.scrollTop = 0; });
+        expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+        const colors = await dialog.locator('#review-model-id').evaluate(el => ({ foreground: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor }));
+        expect(colors.foreground).toBe('rgb(56, 46, 36)'); expect(['rgb(255, 254, 249)', 'rgba(255, 255, 255, 0.9)']).toContain(colors.background);
+        await page.screenshot({ path: `/tmp/variable-review-settings-${mobile ? 'mobile' : 'desktop'}-day.png` });
+        await page.getByRole('button', { name: '开始变量审查' }).click();
+        await expect(dialog.getByText('在本次审查范围内，未发现需要修改的变量。')).toBeVisible();
+        expect(reviewRequests).toHaveLength(1);
+        expect(reviewRequests[0].url).toContain('own-review.test');
+        expect(reviewRequests[0].auth).toBe('Bearer own-test-key');
+        expect(reviewRequests[0].body).toMatchObject({ model: 'review-gpt-id', top_p: 0.8, temperature: 2 });
+        await page.getByRole('button', { name: '关闭变量审查' }).click(); await page.reload();
+        const persisted = await page.evaluate(async () => (await import('/services/dbService.ts')).读取设置('variable_review_settings'));
+        expect(persisted.customPrompt).toBe('浏览器重载后保留的审查策略'); expect(persisted.apiKey).toBe('own-test-key');
+    });
+}
+
+for (const operation of ['清空全部设置', '清空全部数据']) for (const preserve of [true, false]) {
+    test(`真实IndexedDB ${operation} 保留API=${preserve}：审查连接与主API保护一致`, async ({ page }) => {
+        await page.goto('/'); await page.waitForFunction(() => !!document.querySelector('button'));
+        const result = await page.evaluate(async ({ operation, preserve }) => {
+            const db = await import('/services/dbService.ts');
+            const { normalizeVariableReviewSettings } = await import('/utils/variableReviewSettings.ts');
+            const originalMain = { activeConfigId: 'kept', configs: [{ id: 'kept', 名称: '保留接口', 供应商: 'openai_compatible', baseUrl: 'https://kept.test/v1', apiKey: 'kept-main-key', model: 'story-id' }] };
+            const originalReview = { ...normalizeVariableReviewSettings(), apiMode: 'independent', provider: 'deepseek', baseUrl: 'https://own.test/v1', apiKey: 'kept-review-key', model: 'review-id', maxOutputTokens: 8192, temperature: 0.1, topP: 0.8, customPrompt: '原自定义Prompt' };
+            await db.保存设置('api_settings', originalMain); await db.保存设置('variable_review_settings', originalReview);
+            await db.导入全部设置备份({ type: 'moranjianghu_settings_backup', settings: [
+                { key: 'api_settings', value: { ...originalMain, configs: [{ ...originalMain.configs[0], apiKey: 'imported-main-key' }] } },
+                { key: 'variable_review_settings', value: { ...originalReview, apiKey: 'imported-review-key', customPrompt: '导入Prompt' } }
+            ] }, { 保留现有APIKey: preserve });
+            const importedMain = await db.读取设置('api_settings'); const importedReview = await db.读取设置('variable_review_settings');
+            await db[operation]({ 保留APIKey: preserve });
+            return { importedMain, importedReview, main: await db.读取设置('api_settings'), review: await db.读取设置('variable_review_settings') };
+        }, { operation, preserve });
+        expect(result.importedMain.configs[0].apiKey).toBe(preserve ? 'kept-main-key' : 'imported-main-key');
+        expect(result.importedReview.apiKey).toBe(preserve ? 'kept-review-key' : 'imported-review-key');
+        expect(result.importedReview.customPrompt).toBe('导入Prompt');
+        if (preserve) {
+            expect(result.main.configs[0].apiKey).toBe('kept-main-key');
+            expect(result.review).toMatchObject({ apiMode: 'independent', provider: 'deepseek', baseUrl: 'https://own.test/v1', apiKey: 'kept-review-key', model: 'review-id', maxOutputTokens: 8192, temperature: 0.1, topP: 0.8 });
+            expect(result.review.customPrompt).toBeUndefined();
+        } else { expect(result.main).toBeNull(); expect(result.review).toBeNull(); }
     });
 }

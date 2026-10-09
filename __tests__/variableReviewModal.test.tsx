@@ -10,7 +10,7 @@ import { createReviewRig, reviewOutput, reviewGold } from './helpers/variableRev
 vi.mock('../services/ai/chatCompletionClient', async importOriginal => ({ ...await importOriginal<typeof import('../services/ai/chatCompletionClient')>(), 请求模型文本: vi.fn() }));
 beforeEach(() => { vi.stubGlobal('crypto', webcrypto); vi.mocked(client.请求模型文本).mockReset(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
-const start = () => fireEvent.click(screen.getByRole('button', { name: '开始审查' }));
+const start = () => fireEvent.click(screen.getByRole('button', { name: '开始变量审查' }));
 const apply = () => screen.getByRole('button', { name: '应用修复' }) as HTMLButtonElement;
 describe('VariableManager与真实workflow共用的变量审查弹窗', () => {
     it('打开、传递独立备注、展示diff/诊断并确认应用一次', async () => {
@@ -19,7 +19,7 @@ describe('VariableManager与真实workflow共用的变量审查弹窗', () => {
         render(<VariableManager runtimeState={rig.source.currentState as any} onReplaceSection={vi.fn()} onApplyCommand={vi.fn()} variableReviewActions={rig.actions} />);
         fireEvent.click(screen.getByRole('button', { name: '变量审查' }));
         expect(screen.getByRole('dialog', { name: '变量审查' })).toBeTruthy();
-        fireEvent.change(screen.getByLabelText('玩家备注（可选）'), { target: { value: '重点看看金钱' } }); start();
+        fireEvent.change(screen.getByLabelText('本次审查备注（可选）'), { target: { value: '重点看看金钱' } }); start();
         await screen.findByText(/实际变量变化（/);
         expect(screen.getByText('角色.金钱.金币')).toBeTruthy(); expect(apply().disabled).toBe(false);
         const payload = JSON.parse(vi.mocked(client.请求模型文本).mock.calls[0][1][2].content);
@@ -55,7 +55,7 @@ describe('VariableManager与真实workflow共用的变量审查弹窗', () => {
         rig.source.currentState.角色.年龄++;
         rendered.rerender(<VariableReviewModal actions={rig.actions} revision={2} onClose={vi.fn()} />);
         await screen.findByText('预览已过期'); expect(apply().disabled).toBe(true);
-        fireEvent.click(screen.getByRole('button', { name: '重新审查' })); expect(screen.getByRole('button', { name: '开始审查' })).toBeTruthy(); expect(rig.commit).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByRole('button', { name: '重新审查' })); expect(screen.getByRole('button', { name: '开始变量审查' })).toBeTruthy(); expect(rig.commit).not.toHaveBeenCalled();
     });
     it('关闭正在审查的弹窗会abort，请求不能继续写入', async () => {
         const rig = createReviewRig(); const close = vi.fn();

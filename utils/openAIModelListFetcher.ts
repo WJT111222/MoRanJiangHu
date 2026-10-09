@@ -8,7 +8,9 @@ export interface 模型列表获取配置 {
     供应商?: string;
 }
 
-export const 获取OpenAI兼容模型列表 = async (config: 模型列表获取配置): Promise<string[]> => {
+export interface 模型列表元数据 { id: string; label: string }
+
+export const 获取OpenAI兼容模型元数据 = async (config: 模型列表获取配置): Promise<模型列表元数据[]> => {
     const baseUrl = (config.baseUrl || '').trim();
     const apiKey = (config.apiKey || '').trim();
     if (!baseUrl || !apiKey) {
@@ -42,13 +44,13 @@ export const 获取OpenAI兼容模型列表 = async (config: 模型列表获取�
                 data = await res.json();
             }
             if (data && Array.isArray(data.data)) {
-                // 只保留有效的字符串 id：部分兼容实现会返回数字 id 或嵌套对象，
-                // 调用方（设置页）会对每项调用 .trim()，非字符串会直接抛 TypeError。
-                const modelIds = data.data
-                    .map((model: { id?: unknown }) => model?.id)
-                    .filter((id: unknown): id is string => typeof id === 'string' && id.trim().length > 0)
-                    .map((id: string) => id.trim());
-                if (modelIds.length > 0) return modelIds;
+                const models: 模型列表元数据[] = data.data.flatMap((model: any) => {
+                    if (typeof model?.id !== 'string' || !model.id.trim()) return [];
+                    const id = model.id.trim();
+                    const label = [model.label, model.display_name, model.name].find(value => typeof value === 'string' && value.trim());
+                    return [{ id, label: label?.trim() || id }];
+                });
+                if (models.length > 0) return models;
             }
         } catch (e: any) {
             lastError = e;
@@ -57,3 +59,7 @@ export const 获取OpenAI兼容模型列表 = async (config: 模型列表获取�
 
     throw lastError || new Error('获取失败：返回格式错误。');
 };
+
+// 原调用方继续获得 string[]；请求、鉴权、原生传输和错误处理共用一个实现。
+export const 获取OpenAI兼容模型列表 = async (config: 模型列表获取配置): Promise<string[]> =>
+    (await 获取OpenAI兼容模型元数据(config)).map(model => model.id);

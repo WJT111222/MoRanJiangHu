@@ -34,3 +34,17 @@ html[data-theme="day"] .variable-review-modal textarea { background: #fffef9; co
 html[data-theme="day"] .variable-review-modal textarea::placeholder { color: #75644e; }
 html[data-theme="day"] .variable-review-muted { color: #645440; }
 @media (max-width: 480px) { .variable-review-backdrop { padding-left: 8px; padding-right: 8px; } .variable-review-body { padding: 12px; } .variable-review-footer, .variable-review-header { padding: 10px 12px; } .variable-review-footer button { flex: 1 1 auto; } }
+/* 审查独立配置与策略编辑，PC/手机共用。 */
+.variable-review-settings { min-width: 0; }
+.variable-review-settings > * + * { margin-top: 10px; }
+.variable-review-settings-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.variable-review-settings-row > input, .variable-review-settings-row > div { flex: 1 1 160px; min-width: 0; }
+.variable-review-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.variable-review-settings input:not([type="radio"]) { width: 100%; min-width: 0; padding: 9px; border: 1px solid #b29c82; border-radius: 8px; background: #493c32; color: #fff4df; }
+.variable-review-modal .variable-review-control, .variable-review-modal .variable-review-select-panel { background: #493c32; color: #fff4df; border-color: #b29c82; }
+.variable-review-settings input::placeholder { color: #d1c0a6; }
+.variable-review-settings input:focus-visible { outline: 2px solid #d6a848; outline-offset: 2px; }
+html[data-theme="day"] .variable-review-settings input:not([type="radio"]), html[data-theme="day"] .variable-review-modal .variable-review-control, html[data-theme="day"] .variable-review-modal .variable-review-select-panel { background: #fffef9; color: #382e24; border-color: #9a8469; }
+html[data-theme="day"] .variable-review-settings input::placeholder { color: #75644e; }
+html[data-theme="day"] .variable-review-modal .variable-review-select-option { color: #382e24; }
+@media (max-width: 480px) { .variable-review-settings-grid { grid-template-columns: minmax(0, 1fr); } }

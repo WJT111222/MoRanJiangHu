@@ -40,6 +40,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createVariableReviewActions, findVariableReviewBeforeTurn, type VariableReviewActions } from './useGame/variableReviewActions';
 import type { VariableReviewInput } from './useGame/variableReviewWorkflow';
+import { createVariableReviewConfigurationActions } from '../services/variableReviewSettingsService';
 import * as dbService from '../services/dbService';
 import * as textAIService from '../services/ai/text';
 import { 终止全部ComfyUI生图任务 } from '../services/ai/image';
@@ -4346,14 +4347,16 @@ export const useGame = () => {
     variableReviewBridgeRef.current = variableReviewBridge;
     const variableReviewActionsRef = useRef<VariableReviewActions | null>(null);
     if (!variableReviewActionsRef.current) {
-        variableReviewActionsRef.current = createVariableReviewActions({
+        const configuration = createVariableReviewConfigurationActions(() => variableReviewBridgeRef.current.dependencies.apiConfig);
+        variableReviewActionsRef.current = { ...createVariableReviewActions({
             getInput: () => {
                 const latest = variableReviewBridgeRef.current.input;
                 // 请求Ref即时更新，覆盖loading尚未触发React重渲染的短窗口。
                 const requestActive = [abortControllerRef.current, variableGenerationAbortControllerRef.current].some(controller => controller && !controller.signal.aborted);
                 return { ...latest, turnInProgress: latest.turnInProgress || requestActive, currentState: { ...latest.currentState, 社交: 社交Ref.current }, beforeTurn: findVariableReviewBeforeTurn(latest.history, 回合快照栈Ref.current) };
             },
-            getDependencies: () => variableReviewBridgeRef.current.dependencies,
+            getDependencies: () => ({ ...variableReviewBridgeRef.current.dependencies, reviewSettings: configuration.peekSettings() }),
+            saveSettings: configuration.saveVariableReviewSettings,
             commitState: (next, changes) => {
                 const bridge = variableReviewBridgeRef.current;
                 const changedRoots = new Set(changes.map(change => change.path.split(/[.\[]/)[0]));
@@ -4374,7 +4377,7 @@ export const useGame = () => {
                 if (!saved) throw new Error('存档入口未返回已保存的存档');
                 return saved;
             }
-        });
+        }), ...configuration };
     }
     const variableReviewRevision = useMemo(() => ({}), [角色, 环境, 社交, 世界, 战斗, 玩家门派, 任务列表, 约定列表, 剧情, 剧情规划, 女主剧情规划, 同人剧情规划, 同人女主剧情规划, 记忆系统, 历史记录, loading, 变量生成中, 后台队列处理中, 世界演变更新中, view, 可重Roll计数]);
     useEffect(() => () => variableReviewActionsRef.current?.cancelVariableReview(), []);

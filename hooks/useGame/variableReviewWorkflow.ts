@@ -19,6 +19,7 @@ import { 规范化环境信息, 规范化角色物品容器映射, 规范化社�
 import { 规范化世界状态, 规范化战斗状态, 规范化门派状态, 规范化剧情状态, 规范化剧情规划状态, 规范化女主剧情规划状态, 规范化同人剧情规划状态, 规范化同人女主剧情规划状态, 战斗结束自动清空 } from './storyState';
 import { compareReviewEconomicChange, expectedReviewWealth, reviewNarratorFacts, extractReviewEconomicSnapshot } from './variableReviewEconomy';
 import { createVariableReviewBusinessSnapshot, stableVariableReviewJson, variableReviewRoots, isVariableReviewExcludedField, variableReviewCommandTouchesExcludedData, extractVariableReviewBusinessState } from './variableReviewSnapshot';
+import { resolveVariableReviewApi, type VariableReviewSettings } from '../../utils/variableReviewSettings';
 
 const reviewRoots = variableReviewRoots;
 const excludeReviewField = isVariableReviewExcludedField;
@@ -53,6 +54,8 @@ export interface VariableReviewInput {
 }
 export interface VariableReviewDependencies {
     apiConfig: any;
+    reviewApi?: ReturnType<typeof resolveVariableReviewApi>;
+    reviewSettings?: VariableReviewSettings;
     gameConfig: any;
     openingConfig?: OpeningConfig;
     promptPool?: 提示词结构[];
@@ -101,7 +104,8 @@ export const prepareVariableReview = async (input: VariableReviewInput) => {
 type Prepared = Awaited<ReturnType<typeof prepareVariableReview>>;
 
 export const generateVariableReview = async (prepared: Prepared, deps: VariableReviewDependencies) => {
-    const api = 获取变量计算接口配置(deps.apiConfig, { manualReview: true });
+    const api = deps.reviewApi || (deps.reviewSettings ? resolveVariableReviewApi(deps.reviewSettings, deps.apiConfig) : 获取变量计算接口配置(deps.apiConfig, { manualReview: true }));
+    const reviewContext = { ...prepared.reviewContext, reviewStrategy: deps.reviewSettings?.customPrompt };
     if (!接口配置是否可用(api)) throw new Error('请先配置可用的变量计算 API / 模型。');
     const controller = new AbortController();
     let rejectAbort: (error: Error) => void;
@@ -119,14 +123,14 @@ export const generateVariableReview = async (prepared: Prepared, deps: VariableR
         timer = setTimeout(() => { timedOut = true; controller.abort(); }, idle ? timeouts.idleMs || 45000 : timeouts.firstResponseMs || 90000);
     };
     const rules = [构建变量相关规则提示词({ promptPool: deps.promptPool?.length ? deps.promptPool : 默认提示词, gameConfig: deps.gameConfig }), 构建变量路径登记提示(prepared.input.currentState)].filter(Boolean).join('\n\n');
-    if (rules.length + variableReviewSystemPrompt.length + buildVariableReviewTaskPrompt(prepared.stateJson, prepared.response, prepared.reviewContext).length > (prepared.input.maxContextChars ?? 160000)) {
+    if (rules.length + variableReviewSystemPrompt.length + buildVariableReviewTaskPrompt(prepared.stateJson, prepared.response, reviewContext).length > (prepared.input.maxContextChars ?? 160000)) {
         deps.signal?.removeEventListener('abort', abort);
         controller.signal.removeEventListener('abort', rejectOnAbort);
         throw new Error('变量结构规则与审查数据合计过大，未发起请求。');
     }
     const request = (stream: boolean, onStreamEnd?: (info: any) => void) => generateVariableCalibrationUpdate({
         taskMode: 'review', stateJson: prepared.stateJson, response: prepared.response,
-        reviewContext: prepared.reviewContext, calibrationRulesContext: rules
+        reviewContext, calibrationRulesContext: rules
     }, api!, controller.signal, undefined, stream ? (delta, text) => { resetTimer(true); deps.onStreamDelta?.(delta, text); } : undefined, true, onStreamEnd);
     resetTimer();
     try {
