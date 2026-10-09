@@ -5,6 +5,7 @@ import { DEFAULT_VARIABLE_REVIEW_PROMPT } from '../../../prompts/runtime/variabl
 import type { VariableReviewActions } from '../../../hooks/useGame/variableReviewActions';
 import type { VariableReviewConfiguration, VariableReviewSettings, VariableReviewModelOption } from '../../../utils/variableReviewSettings';
 import { supportsVariableReviewTopP, variableReviewSamplingLimits } from '../../../utils/variableReviewSampling';
+import { DEFAULT_REVIEW_CONTEXT_WINDOW, MIN_REVIEW_CONTEXT_WINDOW, MAX_REVIEW_CONTEXT_WINDOW } from '../../../utils/variableReviewBudget';
 
 const NumericInput: React.FC<{ id: string; value?: number; min: number; max: number; step?: number; placeholder: string; disabled?: boolean; onChange: (value?: number) => void }> = ({ value, onChange, ...props }) => {
     const [draft, setDraft] = React.useState(value === undefined ? '' : String(value));
@@ -26,7 +27,7 @@ const VariableReviewSettingsPanel: React.FC<Props> = ({ configuration, actions, 
     const { settings, library } = configuration;
     const topPSupported = supportsVariableReviewTopP({ model: settings.model, baseUrl: settings.apiMode === 'independent' ? settings.baseUrl : library.find(c => c.id === settings.mainConfigId)?.baseUrl });
     const limits = variableReviewSamplingLimits(settings.apiMode === 'independent' ? { baseUrl: settings.baseUrl, 供应商: settings.provider } : { baseUrl: library.find(c => c.id === settings.mainConfigId)?.baseUrl, 供应商: library.find(c => c.id === settings.mainConfigId)?.provider });
-    const [models, setModels] = React.useState<VariableReviewModelOption[]>([]);
+    const [models, setModels] = React.useState<VariableReviewModelOption[]>(configuration.modelMetadata || []);
     const [loading, setLoading] = React.useState(false);
     const [message, setMessage] = React.useState('');
     const [showKey, setShowKey] = React.useState(false);
@@ -34,7 +35,8 @@ const VariableReviewSettingsPanel: React.FC<Props> = ({ configuration, actions, 
     const sequence = React.useRef(0);
     const latest = React.useRef(settings); latest.current = settings;
     const source = JSON.stringify([settings.apiMode, settings.mainConfigId, settings.provider, settings.baseUrl, settings.apiKey]);
-    React.useEffect(() => { sequence.current++; setModels([]); setMessage(''); setLoading(false); }, [source]);
+    const previousSource = React.useRef(source);
+    React.useEffect(() => { if (previousSource.current !== source) { previousSource.current = source; sequence.current++; setModels([]); setMessage(''); setLoading(false); } }, [source]);
     React.useEffect(() => () => { sequence.current++; }, []);
     const update = <K extends keyof VariableReviewSettings>(key: K, value: VariableReviewSettings[K]) => onChange({ ...settings, [key]: value });
     const refresh = async () => {
@@ -50,6 +52,9 @@ const VariableReviewSettingsPanel: React.FC<Props> = ({ configuration, actions, 
     };
     const missing = settings.apiMode === 'main-library' && settings.mainConfigId && !library.some(c => c.id === settings.mainConfigId);
     const options = models.map(m => ({ value: m.id, label: m.label }));
+    const metadata = models.find(model => model.id === settings.model);
+    const autoWindow = metadata?.contextWindowTokens || metadata?.inputTokenLimit || DEFAULT_REVIEW_CONTEXT_WINDOW;
+    const windowChoice = settings.contextWindowMode === 'custom' ? 'custom' : settings.contextWindowMode === 'manual' ? String(settings.contextWindowTokens || '') : 'auto';
     if (settings.model && !options.some(o => o.value === settings.model)) options.push({ value: settings.model, label: `${settings.model}（当前/自定义）` });
     return <section className="variable-review-settings">
         <h3>API 来源</h3>
@@ -77,6 +82,13 @@ const VariableReviewSettingsPanel: React.FC<Props> = ({ configuration, actions, 
         </div></div>
         <label htmlFor="review-model-id">自定义审查 Model ID</label><input id="review-model-id" value={settings.model} onChange={e => update('model', e.target.value)} placeholder="也可手动填写实际 model ID" spellCheck={false} />
         {message && <p role="status" className="variable-review-muted">{message}</p>}
+        <div role="group" aria-label="审查上下文窗口"><label className="variable-review-label">上下文窗口（tokens）</label>
+            <InlineSelect value={windowChoice} options={[{ value: 'auto', label: '自动' }, ...[128000, 200000, 256000, 400000, 1000000].map(n => ({ value: String(n), label: n === 1000000 ? '1M' : `${n / 1000}K` })), { value: 'custom', label: '自定义' }]}
+                onChange={value => onChange({ ...settings, contextWindowMode: value === 'auto' ? 'auto' : value === 'custom' ? 'custom' : 'manual', contextWindowTokens: value === 'auto' || value === 'custom' ? settings.contextWindowTokens : Number(value) })}
+                buttonClassName="variable-review-control" panelClassName="variable-review-select-panel" optionClassName="variable-review-select-option" />
+            {settings.contextWindowMode === 'custom' && <><label htmlFor="review-context-window">自定义上下文窗口 Token</label><NumericInput id="review-context-window" min={MIN_REVIEW_CONTEXT_WINDOW} max={MAX_REVIEW_CONTEXT_WINDOW} value={settings.contextWindowTokens} placeholder="例如 200000 / 400000 / 1000000" onChange={value => update('contextWindowTokens', value)} /></>}
+            <p className="variable-review-muted">{settings.contextWindowMode === 'auto' || !settings.contextWindowMode ? `自动容量：${autoWindow.toLocaleString()} tokens（${metadata?.contextWindowTokens ? '当前接口模型metadata' : metadata?.inputTokenLimit ? '模型输入上限，保守作为上下文容量' : '未获得模型metadata，使用审查默认128K'}）。刷新模型可更新容量信息。` : '使用手动指定容量；刷新模型不会覆盖该值。'} 输入预算会扣除最大输出和安全预留；不会按容量偷偷删除业务数据。</p>
+        </div>
         <label htmlFor="review-tokens">最大输出 Token</label><div className="variable-review-settings-row">
             {[8192, 32768, 65536].map(n => <button key={n} type="button" className="variable-review-secondary" aria-pressed={settings.maxOutputTokens === n} onClick={() => update('maxOutputTokens', n)}>{n / 1024}K</button>)}
             <NumericInput id="review-tokens" min={1024} max={262144} value={settings.maxOutputTokens} placeholder="默认32K / 自定义" onChange={value => update('maxOutputTokens', value)} />

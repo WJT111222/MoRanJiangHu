@@ -4357,6 +4357,7 @@ export const useGame = () => {
             },
             getDependencies: () => ({ ...variableReviewBridgeRef.current.dependencies, reviewSettings: configuration.peekSettings() }),
             saveSettings: configuration.saveVariableReviewSettings,
+            getModelMetadata: configuration.getVariableReviewModelMetadata,
             commitState: (next, changes) => {
                 const bridge = variableReviewBridgeRef.current;
                 const changedRoots = new Set(changes.map(change => change.path.split(/[.\[]/)[0]));

@@ -1,6 +1,7 @@
 import { CapacitorHttp } from '@capacitor/core';
 import { 构建OpenAI兼容模型列表候选地址 } from './apiConfig';
 import { 是否原生Capacitor环境 } from './nativeRuntime';
+import { readReviewModelCapacity, type ReviewModelCapacity } from './variableReviewBudget';
 
 export interface 模型列表获取配置 {
     baseUrl: string;
@@ -8,7 +9,7 @@ export interface 模型列表获取配置 {
     供应商?: string;
 }
 
-export interface 模型列表元数据 { id: string; label: string }
+export interface 模型列表元数据 extends ReviewModelCapacity { id: string; label: string }
 
 export const 获取OpenAI兼容模型元数据 = async (config: 模型列表获取配置): Promise<模型列表元数据[]> => {
     const baseUrl = (config.baseUrl || '').trim();
@@ -48,7 +49,7 @@ export const 获取OpenAI兼容模型元数据 = async (config: 模型列表获�
                     if (typeof model?.id !== 'string' || !model.id.trim()) return [];
                     const id = model.id.trim();
                     const label = [model.label, model.display_name, model.name].find(value => typeof value === 'string' && value.trim());
-                    return [{ id, label: label?.trim() || id }];
+                    return [{ id, label: label?.trim() || id, ...readReviewModelCapacity(model) }];
                 });
                 if (models.length > 0) return models;
             }

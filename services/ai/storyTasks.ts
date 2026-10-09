@@ -37,7 +37,7 @@ import { 同人世界演变附加系统提示词, 同人世界演变附加COT提
 import { 归一化或补全境界体系提示词, 校验境界体系提示词完整性 } from '../../prompts/runtime/fandom';
 import { 默认COT伪装历史消息提示词 } from '../../prompts/runtime/defaults';
 import { 获取变量校准COT提示词 } from '../../prompts/runtime/variableCot';
-import { variableReviewSystemPrompt, buildVariableReviewTaskPrompt, type VariableReviewTaskContext } from '../../prompts/runtime/variableReview';
+import { buildVariableReviewMessages, type VariableReviewTaskContext } from '../../prompts/runtime/variableReview';
 import { 构建AI角色声明提示词 } from '../../prompts/runtime/roleIdentity';
 import {
     构建统一规划分析专用上下文,
@@ -1002,11 +1002,7 @@ export const generateVariableCalibrationUpdate = async (
     if (!apiConfig.apiKey) throw new Error('Missing API Key');
     if (params.taskMode === 'review') {
         if (!params.reviewContext) throw new Error('变量审查缺少审查上下文');
-        const rawText = await 请求模型文本(apiConfig, [
-            { role: 'system', content: params.calibrationRulesContext || '沿用当前登记的变量结构和字段规则。' },
-            { role: 'system', content: variableReviewSystemPrompt },
-            { role: 'user', content: buildVariableReviewTaskPrompt(params.stateJson, params.response, params.reviewContext) }
-        ], {
+        const rawText = await 请求模型文本(apiConfig, buildVariableReviewMessages(params.stateJson, params.response, params.reviewContext, params.calibrationRulesContext || ''), {
             temperature: apiConfig.temperature ?? 0.2, variableReviewSampling: true, signal, errorDetailLimit: Number.POSITIVE_INFINITY,
             streamOptions: onStreamDelta || onStreamEnd ? { stream: true, onDelta: onStreamDelta, onStreamEnd } : undefined
         });

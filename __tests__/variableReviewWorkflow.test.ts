@@ -168,7 +168,8 @@ describe('手动变量审查生产请求、解析、保护与预览', () => {
     });
     it.each(['无需修改', '证据不足'])('正常空命令状态 %s 有独立语义且不产生隐式规范化', async status => {
         model([], status);
-        const source = input();
+        const source = input(status === '证据不足' ? '林岳购买了物品，但实际价格未知。' : '林岳走进大厅。');
+        if (status === '证据不足') vi.mocked(client.请求模型文本).mockResolvedValue(output([], status).replace('- 问题、正文依据、当前值、建议值已核对。', '疑点：正文提到购买物品，但无法确定实际价格，因此未修改金钱。'));
         const result = await runVariableReview(source, deps);
         expect(result.status).toBe(status === '无需修改' ? 'noChanges' : 'insufficientEvidence');
         expect(result.previewState).toMatchObject({ 角色: source.currentState.角色, 社交: source.currentState.社交, 环境: source.currentState.环境 });
@@ -216,13 +217,13 @@ describe('手动变量审查生产请求、解析、保护与预览', () => {
         source.currentState.世界.avatar = 'private-avatar';
         source.currentState.世界.portrait = 'private-portrait';
         source.currentState.世界.uiState = { visible: 'private-ui-state' };
-        const result = await runVariableReview(source, deps);
+        const result = await runVariableReview({ ...source, maxArrayItems: 60 }, deps);
         expect(result.coverage.truncated).toBe(true);
         expect(result.coverage.warnings.join('')).toContain('65项仅读取前60项');
         expect(JSON.stringify(vi.mocked(client.请求模型文本).mock.calls[0][1])).not.toContain('private-image');
         expect(JSON.stringify(vi.mocked(client.请求模型文本).mock.calls[0][1])).not.toMatch(/private-avatar|private-portrait|private-ui-state/);
         expect(result.previewState.社交).toHaveLength(65);
-        await expect(prepareVariableReview({ ...source, maxContextChars: 10 })).rejects.toThrow('上下文过大');
+        await expect(prepareVariableReview({ ...source, absoluteCharacterCap: 10 })).rejects.toThrow('工程字符安全上限');
     });
     it('自动开关关闭仍能读取变量API进行审查，普通变量生成仍关闭', async () => {
         expect(变量校准功能已启用(apiConfig)).toBe(false);

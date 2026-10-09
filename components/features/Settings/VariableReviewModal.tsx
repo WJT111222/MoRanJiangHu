@@ -4,6 +4,7 @@ import type { VariableReviewResult } from '../../../hooks/useGame/variableReview
 import { variableReviewErrorMessage, type VariableReviewActions, type VariableReviewProgress } from '../../../hooks/useGame/variableReviewActions';
 import VariableReviewSettingsPanel from './VariableReviewSettingsPanel';
 import { normalizeVariableReviewSettings, type VariableReviewConfiguration, type VariableReviewSettings } from '../../../utils/variableReviewSettings';
+import type { VariableReviewCapacity } from '../../../utils/variableReviewBudget';
 
 export interface VariableReviewModalProps { actions: VariableReviewActions; revision?: unknown; onClose: () => void }
 const stages: Record<VariableReviewProgress, string> = { prepare: '准备最近回合与变量上下文', generate: 'AI 正在审查正文与变量', validate: '校验修复命令与保护规则', simulate: '模拟执行并计算实际变化' };
@@ -24,6 +25,7 @@ const VariableReviewModal: React.FC<VariableReviewModalProps> = ({ actions, revi
     const [phase, setPhase] = React.useState<'input' | 'reviewing' | 'result' | 'applying' | 'applied'>('input');
     const [stage, setStage] = React.useState<VariableReviewProgress>('prepare');
     const [result, setResult] = React.useState<VariableReviewResult | null>(null);
+    const [capacity, setCapacity] = React.useState<VariableReviewCapacity | undefined>();
     const [error, setError] = React.useState<ReturnType<typeof variableReviewErrorMessage> | null>(null);
     const [expired, setExpired] = React.useState(false);
     const [success, setSuccess] = React.useState('');
@@ -106,13 +108,13 @@ const VariableReviewModal: React.FC<VariableReviewModalProps> = ({ actions, revi
         if (busy.current || configurationLoading || (actions.getVariableReviewConfiguration && !configuration)) return;
         busy.current = true;
         const request = ++sequence.current;
-        setError(null); setSuccess(''); setResult(null); setExpired(false); setPhase('reviewing'); setStage('prepare');
+        setError(null); setSuccess(''); setResult(null); setCapacity(undefined); setExpired(false); setPhase('reviewing'); setStage('prepare');
         try {
             const settings = configuration ? normalizeVariableReviewSettings(configuration.settings) : undefined;
-            const next = await actions.reviewVariables({ settings, reviewNotes: notes, onProgress: nextStage => { if (alive.current && sequence.current === request) setStage(nextStage); } });
+            const next = await actions.reviewVariables({ settings, reviewNotes: notes, onCapacity: nextCapacity => { if (alive.current && sequence.current === request) setCapacity(nextCapacity); }, onProgress: nextStage => { if (alive.current && sequence.current === request) setStage(nextStage); } });
             if (alive.current && sequence.current === request) { setResult(next); setPhase('result'); }
         } catch (cause) {
-            if (alive.current && sequence.current === request) { setError(variableReviewErrorMessage(cause)); setPhase('input'); }
+            if (alive.current && sequence.current === request) { const detail = variableReviewErrorMessage(cause); setError(detail); if (detail.capacity) setCapacity(detail.capacity); setPhase('input'); }
         } finally { if (sequence.current === request) busy.current = false; }
     };
     const apply = async () => {
@@ -130,14 +132,21 @@ const VariableReviewModal: React.FC<VariableReviewModalProps> = ({ actions, revi
             }
         } finally { if (sequence.current === request) busy.current = false; }
     };
-    const reset = () => { setResult(null); setError(null); setExpired(false); setSuccess(''); setPhase('input'); };
+    const reset = () => { setResult(null); setCapacity(undefined); setError(null); setExpired(false); setSuccess(''); setPhase('input'); };
     const canApply = phase === 'result' && !expired && !!result?.changes.length && !!result?.acceptedCommands.length;
+    const presentation = result?.reconciled;
     return createPortal(
         <div className="variable-review-backdrop" ref={backdrop} onClick={event => { if (event.target === event.currentTarget) close(); }}>
             <div className="variable-review-modal" role="dialog" aria-modal="true" aria-labelledby="variable-review-title" ref={panel}>
                 <header className="variable-review-header"><h2 id="variable-review-title">变量审查</h2><button type="button" className="variable-review-secondary" onClick={close} disabled={phase === 'applying'} aria-label="关闭变量审查">×</button></header>
                 <div className="variable-review-body">
-                    {error && <div role="alert" className="variable-review-error"><strong>{({ apiConfig: '未配置 API', request: '请求失败', api: 'API 返回错误', truncated: '响应截断', parse: '响应解析失败', stale: '预览已过期', applyValidation: '应用重新校验失败', saveFailed: '保存失败', consumed: '结果已消费', busy: '操作进行中', cancelled: '已取消' } as const)[error.code]}</strong><p>{error.message}</p></div>}
+                    {error && <div role="alert" className="variable-review-error"><strong>{({ capacity: '上下文容量不足', apiConfig: '未配置 API', request: '请求失败', api: 'API 返回错误', truncated: '响应截断', parse: '响应解析失败', stale: '预览已过期', applyValidation: '应用重新校验失败', saveFailed: '保存失败', consumed: '结果已消费', busy: '操作进行中', cancelled: '已取消' } as const)[error.code]}</strong><p>{error.message}</p></div>}
+                    {(capacity || result?.capacity) && (() => { const value = capacity || result!.capacity!; return <section aria-label="审查容量诊断" className={value.withinBudget ? 'variable-review-change' : 'variable-review-warning'}>
+                        <h3>容量诊断（估算）</h3><p>预计输入：{value.estimatedInputTokens.toLocaleString()} tokens · 模型上下文：{value.contextWindowTokens.toLocaleString()} tokens</p>
+                        <p>最大输出预算：{value.maxOutputTokens.toLocaleString()} · 安全预留：{value.safetyReserveTokens.toLocaleString()} · 可用输入：{Math.max(0, value.inputBudgetTokens).toLocaleString()}</p>
+                        <p>{value.withinBudget ? '安全预算内，预计剩余：' : '超出安全预算：'}{Math.abs(value.remainingTokens).toLocaleString()} tokens</p>
+                        <p className="variable-review-muted">容量来源：{({ manual: '手动设置', 'metadata-context': '当前接口模型metadata', 'metadata-input': '模型输入上限（保守）', fallback: 'metadata缺失，默认128K' })[value.source]}。token数为估算，已保留误差余量。</p>
+                    </section>; })()}
                     {success && <div role="status" className="variable-review-success">{success}</div>}
                     {phase === 'input' && <>
                         <p>AI 会根据最近完成回合的正文与当前变量检查遗漏和不一致。备注仅用于指定审查重点，不会被当作已经发生的事实。</p>
@@ -157,17 +166,27 @@ const VariableReviewModal: React.FC<VariableReviewModalProps> = ({ actions, revi
                         <section><h3>审查摘要</h3><p className="variable-review-wrap">{result.summary}</p>
                             {!result.changes.length && <p>{result.status === 'noChanges' ? '在本次审查范围内，未发现需要修改的变量。' : result.status === 'insufficientEvidence' ? '存在疑点，但证据不足，未生成修复命令。' : '没有可应用的合法变化；建议已被保护规则拦截，未修复变量。'}</p>}
                         </section>
-                        <section><h3>实际变量变化（{result.changes.length} 项）</h3><p className="variable-review-muted">以下为程序模拟执行后的差异，应用前仍会重新校验。</p>
-                            {result.changes.map((change, i) => <article className="variable-review-change" key={i}><strong className="variable-review-wrap">{change.path}</strong>
-                                <p>{change.before === undefined ? `＋ 新增${(change.after as any)?.姓名 ? `：${(change.after as any).姓名}` : ''}` : change.after === undefined ? '－ 删除' : '修改'}</p>
-                                <Value value={change.before} /><div aria-label="变更为">→</div><Value value={change.after} />
-                            </article>)}
+                        {presentation && <section aria-label="本次审查统计"><h3>本次审查</h3><div className="variable-review-counts">
+                            <span>补齐：{presentation.counts.supplement} 项</span><span>修正：{presentation.counts.correction} 项</span><span>清理：{presentation.counts.cleanup} 项</span><span>待确认：{presentation.counts.unresolved} 项</span>
+                        </div><p className="variable-review-muted">按实际变更字段／实体统计；数组清理按减少的条目数统计，不按AI说明或命令条数计数。</p></section>}
+                        <section aria-label="实际修改"><h3>{phase === 'applied' ? '本次已应用的修改' : '本次将应用的修改'}</h3><p className="variable-review-muted">{phase === 'applied' ? '以下为本次实际应用的变量变化。' : '以下为程序模拟确认的真实变化。点击“应用修复”后系统自动写入，无需手动编辑变量；应用前仍会重新校验。'}</p>
+                            {presentation ? (['supplement', 'correction', 'cleanup'] as const).map(category => <section key={category} aria-label={({ supplement: '补齐', correction: '修正', cleanup: '清理' })[category]}>
+                                <h4>{({ supplement: '补齐', correction: '修正', cleanup: '清理' })[category]}（{presentation.counts[category]} 项）</h4>
+                                {presentation.changes.filter(change => change.category === category).map((change, i) => <article className="variable-review-change" key={i}>
+                                    <strong className="variable-review-wrap">{change.label}</strong>{change.reason && <p className="variable-review-wrap">{change.reason}</p>}
+                                    <Value value={change.before} /><div aria-label="变更为">→</div><Value value={change.after} />
+                                </article>)}
+                            </section>) : result.changes.map((change, i) => <article className="variable-review-change" key={i}><strong>{change.path}</strong><Value value={change.before} /><div>→</div><Value value={change.after} /></article>)}
                         </section>
-                        <section><h3>疑点与说明</h3><p className="variable-review-muted">这些说明不代表已经修复，实际应用内容以变量变化为准。</p><ul>{result.issues.filter(issue => !/^状态[：:]/.test(issue.description)).map((issue, i) => <li className="variable-review-wrap" key={i}>{issue.description}</li>)}</ul></section>
-                        <details className="variable-review-diagnostics"><summary>命令诊断：提出 {result.proposedCommands.length} / Accepted {result.acceptedCommands.length} / Rejected {result.rejectedCommands.length}</summary>
+                        <section aria-label="仍需确认的疑点"><h3>仍需确认的疑点</h3><p className="variable-review-muted">这里只有 AI 无法安全自动处理的问题。这里的内容不会自动修改变量。</p>
+                            {result.issues.length ? <ul>{result.issues.map((issue, i) => <li className="variable-review-wrap" key={i}>{issue.description}</li>)}</ul> : <p>未发现需要玩家额外确认的问题。</p>}
+                        </section>
+                        <details className="variable-review-diagnostics"><summary>技术详情 · 提出 {result.proposedCommands.length} / Accepted {result.acceptedCommands.length} / Rejected {result.rejectedCommands.length}</summary>
                             <h4>AI 提出的命令</h4>{result.proposedCommands.map((cmd, i) => <pre key={i}>{commandText(cmd)}</pre>)}
                             <h4>Accepted · 已接受</h4>{result.acceptedCommands.map((cmd, i) => <pre key={i}>✓ {commandText(cmd)}</pre>)}
                             <h4>Rejected · 已拦截</h4>{result.rejectedCommands.map((item, i) => <div key={i}><pre>✗ {commandText(item.command)}</pre><p className="variable-review-wrap">原因：{item.reason}</p></div>)}
+                            <h4>AI 原始说明（不代表已修改）</h4><pre>{(result.rawDiagnostics || []).join('\n')}</pre>
+                            <h4>原始模拟差异</h4><pre>{format(result.changes)}</pre>
                         </details>
                     </>}
                 </div>

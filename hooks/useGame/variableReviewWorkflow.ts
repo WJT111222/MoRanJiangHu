@@ -4,15 +4,15 @@ import { buildNpcTemplateNameContext } from '../../services/npcTemplateNameConte
 import { 获取变量计算接口配置, 接口配置是否可用 } from '../../utils/apiConfig';
 import { normalizeStateCommandKey } from '../../utils/stateHelpers';
 import { normalizeNpcNameKey } from '../../utils/npcName';
-import { 构建变量路径登记提示, 构建变量路径登记表 } from '../../utils/variableRegistry';
+import { 构建变量路径登记表 } from '../../utils/variableRegistry';
 import { 默认提示词 } from '../../prompts';
 import { 获取境界配置 } from '../../utils/realmConfig';
 import { 检测NPC死亡判定风险命令 } from '../../utils/npcDeathGuard';
 import { 获取游玩请求超时毫秒 } from '../../utils/gameRequestTimeouts';
-import { 构建变量相关规则提示词 } from '../../prompts/runtime/variableCalibrationReference';
-import { buildVariableReviewTaskPrompt, variableReviewSystemPrompt, type VariableReviewTaskContext } from '../../prompts/runtime/variableReview';
+import { buildVariableReviewMessages, type VariableReviewTaskContext } from '../../prompts/runtime/variableReview';
+import { buildVariableReviewRules } from '../../prompts/runtime/variableReviewRules';
+import { assertReviewAbsoluteSize, calculateVariableReviewCapacity, assertVariableReviewCapacity, validReviewContextTokens, VariableReviewCapacityError, type VariableReviewCapacity, type ReviewModelCapacity } from '../../utils/variableReviewBudget';
 import { 执行响应命令处理, type 响应命令处理状态, type 响应命令处理依赖 } from './responseCommandProcessor';
-import { 清理变量模型上下文 } from './variableModelWorkflow';
 import { 校验变量命令角色安全, validateVariableCommandBasics, readVariableCommandValue, variableCommandProtectionCode, type VariableCommandRejectionCode } from './variableCommandValidation';
 import { 执行带完整性校验的请求, 流式结果疑似被上游掐断 } from './streamIntegrity';
 import { 规范化环境信息, 规范化角色物品容器映射, 规范化社交列表 } from './stateTransforms';
@@ -20,9 +20,9 @@ import { 规范化世界状态, 规范化战斗状态, 规范化门派状态, �
 import { compareReviewEconomicChange, expectedReviewWealth, reviewNarratorFacts, extractReviewEconomicSnapshot } from './variableReviewEconomy';
 import { createVariableReviewBusinessSnapshot, stableVariableReviewJson, variableReviewRoots, isVariableReviewExcludedField, variableReviewCommandTouchesExcludedData, extractVariableReviewBusinessState } from './variableReviewSnapshot';
 import { resolveVariableReviewApi, type VariableReviewSettings } from '../../utils/variableReviewSettings';
+import { reconcileVariableReviewResult, type ReconciledVariableReviewResult } from './variableReviewResult';
 
 const reviewRoots = variableReviewRoots;
-const excludeReviewField = isVariableReviewExcludedField;
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 export interface VariableReviewChange { path: string; before: unknown; after: unknown }
 export interface VariableReviewRejectedCommand { command: TavernCommand; code: VariableCommandRejectionCode | 'alreadySettled' | 'ineffective'; reason: string }
@@ -40,6 +40,9 @@ export interface VariableReviewResult {
     coverage: { roots: readonly string[]; truncated: boolean; warnings: string[]; excluded: string[] };
     rawText: string;
     model: string;
+    capacity?: VariableReviewCapacity;
+    reconciled?: ReconciledVariableReviewResult;
+    rawDiagnostics?: string[];
 }
 export interface VariableReviewInput {
     currentState: 响应命令处理状态;
@@ -50,12 +53,14 @@ export interface VariableReviewInput {
     stateVersion?: string | number;
     turnInProgress?: boolean;
     maxArrayItems?: number;
-    maxContextChars?: number;
+    absoluteCharacterCap?: number;
 }
 export interface VariableReviewDependencies {
     apiConfig: any;
     reviewApi?: ReturnType<typeof resolveVariableReviewApi>;
     reviewSettings?: VariableReviewSettings;
+    reviewModelMetadata?: ReviewModelCapacity;
+    onCapacity?: (capacity: VariableReviewCapacity) => void;
     gameConfig: any;
     openingConfig?: OpeningConfig;
     promptPool?: 提示词结构[];
@@ -77,28 +82,35 @@ export const assertVariableReviewPreviewCurrent = async (result: VariableReviewR
 export const prepareVariableReview = async (input: VariableReviewInput) => {
     // 先定位目标回合，再冻结完整业务数据；不复制全历史和图片，AI裁剪不影响指纹。
     const snapshot = createVariableReviewBusinessSnapshot(input);
-    const frozen = { currentState: snapshot.state, maxArrayItems: input.maxArrayItems, maxContextChars: input.maxContextChars };
+    assertReviewAbsoluteSize({ state: snapshot.state, before: snapshot.beforeTurn?.state, logs: snapshot.logs, commands: snapshot.originalCommands, originalInput: snapshot.originalPlayerInput, notes: input.reviewNotes }, input.absoluteCharacterCap);
+    const frozen = { currentState: snapshot.state, maxArrayItems: input.maxArrayItems, absoluteCharacterCap: input.absoluteCharacterCap };
     const turn = { response: { logs: snapshot.logs, tavern_commands: [] } as GameResponse, sourceTurnId: snapshot.sourceTurnId, originalCommands: snapshot.originalCommands };
     const warnings: string[] = [];
     const pick = (state: any) => Object.fromEntries(reviewRoots.map(root => [root, state[root]]));
-    const maxArrayItems = Math.max(1, Math.min(500, Math.floor(frozen.maxArrayItems ?? 120)));
-    const clean = (state: any, label: string) => 清理变量模型上下文(pick(state), '', path => warnings.push(`${label}.${path}`), '', maxArrayItems, excludeReviewField);
+    // 默认保留完整业务数组，不继承普通变量生成的社交60/地图30等固定截取。
+    const maxArrayItems = frozen.maxArrayItems === undefined ? Infinity : Math.max(1, Math.floor(frozen.maxArrayItems));
+    const limitArrays = (value: any, path: string): any => {
+        if (Array.isArray(value)) {
+            if (value.length > maxArrayItems) warnings.push(`${path}：${value.length}项仅读取前${maxArrayItems}项`);
+            return value.slice(0, maxArrayItems).map((item, i) => limitArrays(item, `${path}[${i}]`));
+        }
+        if (!value || typeof value !== 'object') return value;
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, limitArrays(item, `${path}.${key}`)]));
+    };
+    const clean = (state: any, label: string) => maxArrayItems === Infinity ? pick(state) : limitArrays(pick(state), label);
     const stateJson = JSON.stringify(clean(frozen.currentState, '当前状态'));
     const beforeState = snapshot.beforeTurn?.state;
     if (input.beforeTurn && !beforeState) warnings.push('回合前快照来源不可信或与正文不匹配，未使用该快照。');
     if (!beforeState) warnings.push('缺少可信真实回合前基准，金额及库存数量修复只报告疑点。');
     const beforeStateJson = beforeState ? JSON.stringify(clean(beforeState, '回合前状态')) : undefined;
-    const originalCommands = 清理变量模型上下文(turn.originalCommands, '', path => warnings.push(`原命令.${path}`), '原命令', maxArrayItems, excludeReviewField) as TavernCommand[];
+    const originalCommands = turn.originalCommands;
     const registryTruncated = 构建变量路径登记表(frozen.currentState, { maxLines: 221 }).length > 220;
-    if (registryTruncated) warnings.push('变量路径提示索引仅展示前220项；实际路径合法性仍按当前状态校验。');
+    if (registryTruncated) warnings.push('变量路径提示索引仅展示前220项；完整业务变量仍已发送，实际路径合法性按完整当前状态校验。');
     const reviewContext: VariableReviewTaskContext = { sourceTurnId: turn.sourceTurnId, beforeStateJson,
         originalCommands, originalPlayerInput: snapshot.originalPlayerInput,
         reviewNotes: input.reviewNotes, coverageWarnings: warnings };
-    if ((stateJson.length + (beforeStateJson?.length || 0) + JSON.stringify(reviewContext).length + JSON.stringify(turn.response.logs).length) > (frozen.maxContextChars ?? 160000)) {
-        throw new Error('变量审查上下文过大，未发起请求；不能静默截断并宣称完成全量审查。');
-    }
     return { input: frozen, response: turn.response, sourceTurnId: turn.sourceTurnId, beforeState, stateJson, reviewContext,
-        coverage: { roots: reviewRoots, truncated: registryTruncated || warnings.some(w => w.includes('仅读取')), warnings,
+        coverage: { roots: reviewRoots, truncated: warnings.some(w => w.includes('仅读取')), warnings,
             excluded: ['图片、base64、缓存、纯UI状态', '剧情、规划、记忆及非MVP变量域'] }, stateFingerprint: await fingerprintSnapshot(snapshot) };
 };
 type Prepared = Awaited<ReturnType<typeof prepareVariableReview>>;
@@ -107,6 +119,15 @@ export const generateVariableReview = async (prepared: Prepared, deps: VariableR
     const api = deps.reviewApi || (deps.reviewSettings ? resolveVariableReviewApi(deps.reviewSettings, deps.apiConfig) : 获取变量计算接口配置(deps.apiConfig, { manualReview: true }));
     const reviewContext = { ...prepared.reviewContext, reviewStrategy: deps.reviewSettings?.customPrompt };
     if (!接口配置是否可用(api)) throw new Error('请先配置可用的变量计算 API / 模型。');
+    const manualWindow = deps.reviewSettings?.contextWindowMode === 'manual' || deps.reviewSettings?.contextWindowMode === 'custom';
+    if (manualWindow && !validReviewContextTokens(deps.reviewSettings?.contextWindowTokens)) throw new VariableReviewCapacityError('请填写有效的上下文窗口：4096～16000000 的整数 tokens。');
+    assertReviewAbsoluteSize({ stateJson: prepared.stateJson, reviewContext, logs: prepared.response.logs }, prepared.input.absoluteCharacterCap);
+    const rules = buildVariableReviewRules(prepared.input.currentState, deps.promptPool?.length ? deps.promptPool : 默认提示词, deps.gameConfig);
+    const capacity = calculateVariableReviewCapacity({ messages: buildVariableReviewMessages(prepared.stateJson, prepared.response, reviewContext, rules), model: api.model,
+        maxOutputTokens: api.maxTokens ?? 32768, contextWindowTokens: manualWindow ? deps.reviewSettings?.contextWindowTokens : undefined,
+        metadata: deps.reviewModelMetadata, absoluteCharacterCap: prepared.input.absoluteCharacterCap });
+    deps.onCapacity?.(capacity);
+    assertVariableReviewCapacity(capacity);
     const controller = new AbortController();
     let rejectAbort: (error: Error) => void;
     const aborted = new Promise<never>((_, reject) => { rejectAbort = reject; });
@@ -122,12 +143,6 @@ export const generateVariableReview = async (prepared: Prepared, deps: VariableR
         clearTimeout(timer);
         timer = setTimeout(() => { timedOut = true; controller.abort(); }, idle ? timeouts.idleMs || 45000 : timeouts.firstResponseMs || 90000);
     };
-    const rules = [构建变量相关规则提示词({ promptPool: deps.promptPool?.length ? deps.promptPool : 默认提示词, gameConfig: deps.gameConfig }), 构建变量路径登记提示(prepared.input.currentState)].filter(Boolean).join('\n\n');
-    if (rules.length + variableReviewSystemPrompt.length + buildVariableReviewTaskPrompt(prepared.stateJson, prepared.response, reviewContext).length > (prepared.input.maxContextChars ?? 160000)) {
-        deps.signal?.removeEventListener('abort', abort);
-        controller.signal.removeEventListener('abort', rejectOnAbort);
-        throw new Error('变量结构规则与审查数据合计过大，未发起请求。');
-    }
     const request = (stream: boolean, onStreamEnd?: (info: any) => void) => generateVariableCalibrationUpdate({
         taskMode: 'review', stateJson: prepared.stateJson, response: prepared.response,
         reviewContext, calibrationRulesContext: rules
@@ -149,7 +164,7 @@ export const generateVariableReview = async (prepared: Prepared, deps: VariableR
             }, 发起非流式请求: () => request(false)
         })]);
         if (controller.signal.aborted) throw new DOMException('已取消变量审查', 'AbortError');
-        return { ...result.结果, model: api!.model };
+        return { ...result.结果, model: api!.model, capacity };
     } catch (error) {
         if (timedOut) throw new Error('变量审查请求超时，未生成可应用预览。');
         throw error;
@@ -215,7 +230,7 @@ export const executeVariableReviewCommands = (prepared: Prepared, validation: Aw
         const acceptedCommands: TavernCommand[] = [];
         const previewState = 执行响应命令处理({ ...prepared.response, tavern_commands: commands }, prepared.input.currentState,
             { ...processorDeps, 境界配置: 获取境界配置(deps.openingConfig?.题材模式, deps.openingConfig?.modeRuntimeProfile), 角色规范化选项: { 题材模式: deps.openingConfig?.题材模式 } }, undefined,
-            { executionMode, applyState: false, reviewNameContext: validation.nameContext, onCommandDiagnostic: diagnostic => {
+            { executionMode, applyState: false, reviewTimeReference: prepared.beforeState?.环境?.时间, reviewNameContext: validation.nameContext, onCommandDiagnostic: diagnostic => {
                 if (diagnostic.status === 'accepted') acceptedCommands.push(diagnostic.command);
                 else rejectedCommands.push({ command: diagnostic.command, code: diagnostic.code || 'safety', reason: diagnostic.reason || '未通过执行保护' });
             } });
@@ -266,10 +281,12 @@ export const runVariableReview = async (input: VariableReviewInput, deps: Variab
     const validation = await validateVariableReviewCommands(prepared, generated.commands, deps);
     deps.onStage?.('simulate');
     const simulation = simulateVariableReview(prepared, validation, deps);
+    const reconciled = reconcileVariableReviewResult({ ...simulation, reports: generated.reports, before: prepared.input.currentState, after: simulation.previewState,
+        body: prepared.response.logs.map(log => log.text).join('\n') });
     const status = simulation.changes.length > 0 ? 'changesProposed' : simulation.rejectedCommands.some(cmd => cmd.code !== 'alreadySettled') ? 'blocked'
-        : generated.reviewStatus === 'insufficientEvidence' ? 'insufficientEvidence' : 'noChanges';
-    return { status, summary: status === 'noChanges' ? '当前审查范围内未发现需要修改的内容。' : generated.reports.join('\n'),
-        issues: [...generated.reports.map(description => ({ description })), ...simulation.rejectedCommands.map(cmd => ({ description: cmd.reason, code: cmd.code }))],
+        : reconciled.issues.length ? 'insufficientEvidence' : 'noChanges';
+    return { status, summary: reconciled.summary,
+        issues: reconciled.issues, reconciled, rawDiagnostics: generated.reports,
         proposedCommands: clone(generated.commands), ...simulation, stateFingerprint: prepared.stateFingerprint,
-        sourceTurnId: prepared.sourceTurnId, coverage: prepared.coverage, rawText: generated.rawText, model: generated.model };
+        sourceTurnId: prepared.sourceTurnId, coverage: prepared.coverage, rawText: generated.rawText, model: generated.model, capacity: generated.capacity };
 };

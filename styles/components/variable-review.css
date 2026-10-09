@@ -19,6 +19,8 @@
 .variable-review-secondary { background: transparent; color: inherit; }
 .variable-review-primary:disabled, .variable-review-secondary:disabled { opacity: .55; cursor: not-allowed; }
 .variable-review-muted { color: #dac9b2; }
+.variable-review-counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.variable-review-counts span { min-width: 0; padding: 8px; border: 1px solid #99816a; border-radius: 8px; background: rgba(180, 155, 116, .12); overflow-wrap: anywhere; }
 .variable-review-wrap, .variable-review-modal pre { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
 .variable-review-modal pre { font-size: 12px; max-height: 260px; overflow-y: auto; margin: 6px 0; }
 .variable-review-modal summary { cursor: pointer; overflow-wrap: anywhere; }

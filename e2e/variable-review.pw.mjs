@@ -4,10 +4,11 @@ import { test, expect } from '@playwright/test';
 test.use({ channel: 'chrome', baseURL: process.env.VARIABLE_REVIEW_TEST_URL || 'http://127.0.0.1:4173' });
 const completedBody = '卡尔走进大厅，介绍自己是长期同行的旅人。';
 const repair = `<说明>状态：需要修复\n正文中的卡尔尚未记录，建议补充档案。</说明><命令>push 社交 = ${JSON.stringify({ id: 'NPC-CARL', 姓名: '卡尔', 性别: '男', 身份: '旅人', 简介: '背景资料'.repeat(300) })}</命令>`;
-async function enterGame(page, theme) {
+async function enterGame(page, theme, fixture = {}) {
     await page.goto('/');
     await page.waitForFunction(() => !!document.querySelector('button'));
-    await page.evaluate(async ({ theme, completedBody }) => {
+    const body = fixture.body || completedBody;
+    await page.evaluate(async ({ theme, completedBody, fixture }) => {
         const db = await import('/services/dbService.ts');
         const transforms = await import('/hooks/useGame/stateTransforms.ts');
         const api = await import('/utils/apiConfig.ts');
@@ -15,13 +16,13 @@ async function enterGame(page, theme) {
         await db.保存设置('api_settings', settings);
         await db.保存设置('app_theme', theme);
         await db.保存存档({ 类型: 'manual', 时间戳: Date.now(), 游戏时间: '1:01:01:08:00',
-            角色数据: transforms.规范化角色物品容器映射({ 姓名: '林岳', 性别: '男', 年龄: 18, 金钱: { 金元宝: 100 }, 物品列表: [] }),
+            角色数据: transforms.规范化角色物品容器映射({ 姓名: '林岳', 性别: '男', 年龄: 18, 金钱: { 金元宝: 100 }, 物品列表: [], ...(fixture.role || {}) }),
             环境信息: { 时间: '1:01:01:08:00', 大地点: '城中', 中地点: '广场', 小地点: '客栈', 具体地点: '大厅' },
-            社交: [], 世界: {}, 战斗: { 是否战斗中: false, 敌方: [] }, 玩家门派: {}, 任务列表: [], 约定列表: [], 剧情: {}, 剧情规划: {},
+            社交: fixture.social || [], 世界: {}, 战斗: { 是否战斗中: false, 敌方: [] }, 玩家门派: {}, 任务列表: [], 约定列表: [], 剧情: {}, 剧情规划: {},
             历史记录: [{ role: 'user', content: '走进大厅', timestamp: 1 }, { role: 'assistant', content: completedBody, timestamp: 2, structuredResponse: { logs: [{ sender: '旁白', text: completedBody }], tavern_commands: [] } }],
             记忆系统: { 即时记忆: [], 短期记忆: [], 中期记忆: [], 长期记忆: [], 回忆档案: [] }, 元数据: { 主角姓名: '林岳', 历史记录条数: 2, 游戏回合数: 1 }
         });
-    }, { theme, completedBody });
+    }, { theme, completedBody: body, fixture });
     await page.reload();
     const releaseClose = page.getByRole('button', { name: '关闭更新日志' });
     if (await releaseClose.isVisible().catch(() => false)) await releaseClose.click();
@@ -32,7 +33,7 @@ async function enterGame(page, theme) {
     const load = page.getByRole('button', { name: '读取最新存档' });
     if (await load.isVisible().catch(() => false)) await load.click();
     await page.getByRole('button', { name: '读取', exact: true }).click();
-    await expect(page.getByText(completedBody, { exact: false }).first()).toBeVisible();
+    await expect(page.getByText(body, { exact: false }).first()).toBeVisible();
     await page.evaluate(theme => document.documentElement.setAttribute('data-theme', theme), theme);
     const direct = page.getByRole('button', { name: '变量管理', exact: true }).first();
     if (await direct.isVisible().catch(() => false)) await direct.click();
@@ -41,6 +42,34 @@ async function enterGame(page, theme) {
         await page.getByRole('button', { name: '变量', exact: true }).first().click();
     }
     await page.getByRole('button', { name: '变量审查', exact: true }).click();
+}
+for (const mobile of [false, true]) {
+    test(`${mobile ? '手机' : '桌面'} day：明确修正与清理只展示实际diff，冲突保留为未处理疑点`, async ({ page }) => {
+        await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1280, height: 900 });
+        const body = '1年1月2日清晨六点已到。沈清辞换上居家服并走进卫生间。强行压制情欲效果已经结束，状态恢复。林开泰的位置线索冲突，无法确认最新位置。';
+        const commands = [{ action: 'set', key: '环境.时间', value: '1:01:02:06:00' }, { action: 'set', key: '社交[0].衣着风格', value: '居家服' }, { action: 'set', key: '社交[0].当前位置', value: '卫生间' }, { action: 'delete', key: '角色.玩家BUFF[0]' }];
+        const reports = ['环境.时间', '社交[0].衣着风格', '社交[0].当前位置', '角色.玩家BUFF[0]', '社交[1].当前位置'].map(path => `疑点：${JSON.stringify({ path, description: '无法确认最新状态', evidence: body })}`);
+        const content = `<说明>状态：需要修复\n${reports.join('\n')}</说明><命令>${commands.map(command => `${command.action} ${command.key}${command.action === 'delete' ? '' : ` = ${JSON.stringify(command.value)}`}`).join('\n')}</命令>`;
+        await page.route('https://review.test/**', async route => {
+            const headers = { 'access-control-allow-origin': '*' };
+            if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { ...headers, 'access-control-allow-headers': '*' } });
+            const request = JSON.parse(route.request().postData());
+            return route.fulfill(request.stream ? { headers, contentType: 'text/event-stream', body: `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\ndata: [DONE]\n\n` } : { headers, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content } }] }) });
+        });
+        await enterGame(page, 'day', { body, social: [{ id: 'A', 姓名: '沈清辞', 衣着风格: '冬装', 当前位置: '客厅' }, { id: 'B', 姓名: '林开泰', 当前位置: '书房' }], role: { 玩家BUFF: [{ 名称: '强行压制情欲', 描述: '临时效果', 效果: '精神稳定性提高20%', 结束时间: '1:01:02:23:00' }] } });
+        await page.getByRole('button', { name: '开始变量审查' }).click();
+        const dialog = page.getByRole('dialog', { name: '变量审查' });
+        await expect(dialog.getByText('清理：1 项')).toBeVisible();
+        await expect(dialog.getByRole('region', { name: '修正' }).getByText('环境 · 时间')).toBeVisible();
+        await expect(dialog.getByRole('region', { name: '修正' }).getByText('沈清辞 · 衣着风格')).toBeVisible();
+        const issues = dialog.getByRole('region', { name: '仍需确认的疑点' });
+        await expect(issues.getByText(/林开泰.*本次未修改/)).toBeVisible();
+        await expect(issues.getByText(/沈清辞|环境 · 时间/)).toHaveCount(0);
+        expect(await dialog.locator('.variable-review-diagnostics').evaluate(el => el.open)).toBe(false);
+        expect(await dialog.locator('.variable-review-body').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+        await page.getByRole('button', { name: '应用修复', exact: true }).click();
+        await expect(dialog.getByText(/变量修复已应用，共修改/)).toBeVisible();
+    });
 }
 for (const mobile of [false, true]) for (const theme of ['day', 'ink']) {
     test(`${mobile ? '手机' : '桌面'} ${theme}：实际游戏审查、布局、确认保存`, async ({ page }) => {
@@ -62,9 +91,13 @@ for (const mobile of [false, true]) for (const theme of ['day', 'ink']) {
             await page.setViewportSize({ width: 390, height: 844 });
         }
         await page.getByRole('button', { name: '开始变量审查' }).click();
-        await expect(dialog.getByText(/实际变量变化（/)).toBeVisible();
+        await expect(dialog.getByText(/本次将应用的修改/)).toBeVisible();
+        await expect(dialog.getByText('补齐：1 项')).toBeVisible();
+        await expect(dialog.getByText('清理：0 项')).toBeVisible();
+        await expect(dialog.getByText('未发现需要玩家额外确认的问题。')).toBeVisible();
+        expect(await dialog.locator('.variable-review-diagnostics').evaluate(el => el.open)).toBe(false);
         await dialog.getByText('展开对象 / 长内容').last().click();
-        await dialog.getByText(/命令诊断：/).click();
+        await dialog.getByText(/技术详情 · /).click();
         expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
         expect(await dialog.locator('.variable-review-body').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
         if (theme === 'day') {
@@ -96,7 +129,7 @@ for (const mobile of [false, true]) {
             if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { ...headers, 'access-control-allow-headers': '*' } });
             if (request.method() === 'GET') {
                 modelRequests.push({ url: request.url(), auth: request.headers().authorization });
-                return route.fulfill({ headers, contentType: 'application/json', body: JSON.stringify({ data: [{ id: 'review-gpt-id', display_name: '[按次] Gemini Flash' }, { id: 'other-model' }] }) });
+                return route.fulfill({ headers, contentType: 'application/json', body: JSON.stringify({ data: [{ id: 'review-gpt-id', display_name: '[按次] Gemini Flash', context_window: 200000 }, { id: 'other-model' }] }) });
             }
             aiRequests++;
             const body = JSON.parse(request.postData());
@@ -157,15 +190,28 @@ for (const mobile of [false, true]) {
         const colors = await dialog.locator('#review-model-id').evaluate(el => ({ foreground: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor }));
         expect(colors.foreground).toBe('rgb(56, 46, 36)'); expect(['rgb(255, 254, 249)', 'rgba(255, 255, 255, 0.9)']).toContain(colors.background);
         await page.screenshot({ path: `/tmp/variable-review-settings-${mobile ? 'mobile' : 'desktop'}-day.png` });
+        const windowGroup = page.getByRole('group', { name: '审查上下文窗口' });
+        await windowGroup.getByRole('button', { name: '自动', exact: true }).click();
+        await page.getByRole('button', { name: '自定义', exact: true }).click();
+        await page.getByLabel('自定义上下文窗口 Token').fill('-1'); await page.getByLabel('自定义上下文窗口 Token').blur();
+        await expect(page.getByLabel('自定义上下文窗口 Token')).toHaveValue('4096');
+        await page.getByRole('button', { name: '开始变量审查' }).click();
+        await expect(page.getByText('上下文容量不足', { exact: true })).toBeVisible();
+        await expect(page.getByRole('region', { name: '审查容量诊断' })).toContainText('4,096');
+        expect(aiRequests).toBe(0);
+        await windowGroup.getByRole('button', { name: '自定义', exact: true }).click();
+        await page.getByRole('button', { name: '200K', exact: true }).click();
         await page.getByRole('button', { name: '开始变量审查' }).click();
         await expect(dialog.getByText('在本次审查范围内，未发现需要修改的变量。')).toBeVisible();
         expect(reviewRequests).toHaveLength(1);
         expect(reviewRequests[0].url).toContain('own-review.test');
         expect(reviewRequests[0].auth).toBe('Bearer own-test-key');
         expect(reviewRequests[0].body).toMatchObject({ model: 'review-gpt-id', top_p: 0.8, temperature: 2 });
+        await expect(page.getByRole('region', { name: '审查容量诊断' })).toContainText('200,000');
         await page.getByRole('button', { name: '关闭变量审查' }).click(); await page.reload();
         const persisted = await page.evaluate(async () => (await import('/services/dbService.ts')).读取设置('variable_review_settings'));
         expect(persisted.customPrompt).toBe('浏览器重载后保留的审查策略'); expect(persisted.apiKey).toBe('own-test-key');
+        expect(persisted.contextWindowTokens).toBe(200000); expect(persisted.contextWindowMode).toBe('manual');
     });
 }
 

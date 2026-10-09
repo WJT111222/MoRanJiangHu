@@ -5,23 +5,25 @@ import { variableReviewBusinessSeal, mergeVariableReviewBusinessState } from './
 import { prepareVariableReview, runVariableReview, assertVariableReviewPreviewCurrent, validateVariableReviewCommands, executeVariableReviewCommands, type VariableReviewInput, type VariableReviewResult, type VariableReviewDependencies, type VariableReviewChange } from './variableReviewWorkflow';
 import type { VariableReviewConfiguration, VariableReviewSettings, VariableReviewModelOption } from '../../utils/variableReviewSettings';
 import { normalizeVariableReviewSettings, resolveVariableReviewApi } from '../../utils/variableReviewSettings';
+import type { VariableReviewCapacity, ReviewModelCapacity } from '../../utils/variableReviewBudget';
 
-export type VariableReviewErrorCode = 'apiConfig' | 'request' | 'api' | 'truncated' | 'parse' | 'stale' | 'applyValidation' | 'saveFailed' | 'consumed' | 'busy' | 'cancelled';
+export type VariableReviewErrorCode = 'capacity' | 'apiConfig' | 'request' | 'api' | 'truncated' | 'parse' | 'stale' | 'applyValidation' | 'saveFailed' | 'consumed' | 'busy' | 'cancelled';
 export class VariableReviewError extends Error {
     constructor(public code: VariableReviewErrorCode, message: string, public applied = false) { super(message); this.name = 'VariableReviewError'; }
 }
-export const variableReviewErrorMessage = (error: any): { code: VariableReviewErrorCode; message: string; applied: boolean } => {
+export const variableReviewErrorMessage = (error: any): { code: VariableReviewErrorCode; message: string; applied: boolean; capacity?: VariableReviewCapacity } => {
     if (error instanceof VariableReviewError) return error;
     const message = error?.message || '请求失败，请重试。';
     const code: VariableReviewErrorCode = error?.name === 'AbortError' ? 'cancelled'
+        : error?.name === 'VariableReviewCapacityError' ? 'capacity'
         : error?.name === 'VariableReviewApiConfigurationError' || /配置.*API|API.*配置/.test(message) ? 'apiConfig'
         : /掐断|截断|流式.*完整/.test(message) ? 'truncated'
         : /解析失败|协议/.test(message) ? 'parse'
         : /API Error|HTTP|API failed/.test(message) ? 'api' : 'request';
-    return { code, message: code === 'apiConfig' && error?.name !== 'VariableReviewApiConfigurationError' ? '请先配置变量计算 API。' : code === 'cancelled' ? '审查已取消。' : message, applied: false };
+    return { code, message: code === 'apiConfig' && error?.name !== 'VariableReviewApiConfigurationError' ? '请先配置变量计算 API。' : code === 'cancelled' ? '审查已取消。' : message, applied: false, capacity: error?.capacity };
 };
 export type VariableReviewProgress = 'prepare' | 'generate' | 'validate' | 'simulate';
-export interface VariableReviewOptions { settings?: VariableReviewSettings; reviewNotes?: string; onProgress?: (stage: VariableReviewProgress) => void }
+export interface VariableReviewOptions { settings?: VariableReviewSettings; reviewNotes?: string; onProgress?: (stage: VariableReviewProgress) => void; onCapacity?: (capacity: VariableReviewCapacity) => void }
 export interface VariableReviewApplyResult { changesCount: number; saved: true }
 export interface VariableReviewActions {
     getVariableReviewConfiguration?: () => Promise<VariableReviewConfiguration>;
@@ -51,6 +53,7 @@ export const createVariableReviewActions = (deps: {
     getInput: () => VariableReviewInput;
     getDependencies: () => VariableReviewDependencies;
     saveSettings?: (settings: VariableReviewSettings) => Promise<void>;
+    getModelMetadata?: (settings: VariableReviewSettings) => ReviewModelCapacity | undefined;
     commitState: (state: 响应命令处理状态, changes: VariableReviewChange[]) => void;
     saveState: (state: 响应命令处理状态, history: 聊天记录结构[]) => Promise<unknown>;
 }): VariableReviewActions => {
@@ -79,12 +82,13 @@ export const createVariableReviewActions = (deps: {
                 const dependencies = deps.getDependencies();
                 const settings = options.settings ? normalizeVariableReviewSettings(options.settings) : dependencies.reviewSettings && clone(dependencies.reviewSettings);
                 const frozenDependencies = { ...dependencies, apiConfig: clone(dependencies.apiConfig), reviewSettings: settings,
+                    reviewModelMetadata: settings ? clone(deps.getModelMetadata?.(settings) || dependencies.reviewModelMetadata || {}) : dependencies.reviewModelMetadata,
                     reviewApi: settings ? resolveVariableReviewApi(settings, dependencies.apiConfig) : undefined };
                 const input = { ...deps.getInput(), reviewNotes: options.reviewNotes };
                 if (options.settings && deps.saveSettings) await deps.saveSettings(settings!);
                 ensureActive(controller);
                 const result = await runVariableReview(input, {
-                    ...frozenDependencies, signal: controller.signal, onStage: options.onProgress,
+                    ...frozenDependencies, signal: controller.signal, onStage: options.onProgress, onCapacity: options.onCapacity,
                     onStreamDelta: () => options.onProgress?.('generate')
                 });
                 ensureActive(controller);

@@ -2,6 +2,7 @@ import type { 接口设置结构, 接口供应商类型 } from '../types';
 import { 供应商标签, VariableReviewApiConfigurationError, type 当前可用接口结构 } from './apiConfig';
 import { DEFAULT_VARIABLE_REVIEW_PROMPT } from '../prompts/runtime/variableReview';
 import { supportsVariableReviewTopP, variableReviewSamplingLimits } from './variableReviewSampling';
+import { validReviewContextTokens, readReviewModelCapacity, type ReviewModelCapacity } from './variableReviewBudget';
 
 export const VARIABLE_REVIEW_SETTINGS_KEY = 'variable_review_settings';
 export interface VariableReviewSettings {
@@ -15,13 +16,16 @@ export interface VariableReviewSettings {
     maxOutputTokens?: number;
     temperature?: number;
     topP?: number;
+    contextWindowMode?: 'auto' | 'manual' | 'custom';
+    contextWindowTokens?: number;
     customPrompt: string;
 }
 export interface VariableReviewConfiguration {
     settings: VariableReviewSettings;
     library: Array<{ id: string; name: string; model: string; baseUrl?: string; provider?: 接口供应商类型 }>;
+    modelMetadata?: VariableReviewModelOption[];
 }
-export interface VariableReviewModelOption { id: string; label: string }
+export interface VariableReviewModelOption extends ReviewModelCapacity { id: string; label: string }
 const text = (v: unknown) => typeof v === 'string' ? v.trim() : '';
 const number = (v: unknown, min: number, max: number) => v !== '' && v !== null && v !== undefined && Number.isFinite(Number(v))
     ? Math.max(min, Math.min(max, Number(v))) : undefined;
@@ -31,13 +35,14 @@ export const normalizeVariableReviewSettings = (raw: any, api?: 接口设置结�
     const legacy = configs.find(c => c.id === api?.功能模型占位?.变量计算渠道ID);
     const initial = legacy || configs.find(c => c.id === api?.activeConfigId);
     const defaults: VariableReviewSettings = { apiMode: 'main-library', mainConfigId: initial?.id || '', mainConfigName: initial?.名称 || '',
-        provider: 'openai_compatible', baseUrl: '', apiKey: '', model: (legacy ? text(api?.功能模型占位?.变量计算使用模型) : '') || text(initial?.model), customPrompt: DEFAULT_VARIABLE_REVIEW_PROMPT };
+        provider: 'openai_compatible', baseUrl: '', apiKey: '', model: (legacy ? text(api?.功能模型占位?.变量计算使用模型) : '') || text(initial?.model), contextWindowMode: 'auto', customPrompt: DEFAULT_VARIABLE_REVIEW_PROMPT };
     if (!raw || typeof raw !== 'object') return defaults;
     const tokens = number(raw.maxOutputTokens, 1024, 262144);
     return { apiMode: raw.apiMode === 'independent' ? 'independent' : 'main-library', mainConfigId: text(raw.mainConfigId), mainConfigName: text(raw.mainConfigName),
         provider: Object.hasOwn(供应商标签, raw.provider) ? raw.provider : defaults.provider,
         baseUrl: text(raw.baseUrl), apiKey: text(raw.apiKey), model: text(raw.model), maxOutputTokens: tokens === undefined ? undefined : Math.floor(tokens),
         temperature: number(raw.temperature, 0, 2), topP: number(raw.topP, 0, 1),
+        contextWindowMode: raw.contextWindowMode === 'manual' || raw.contextWindowMode === 'custom' ? raw.contextWindowMode : 'auto', contextWindowTokens: validReviewContextTokens(raw.contextWindowTokens),
         customPrompt: typeof raw.customPrompt === 'string' ? raw.customPrompt : DEFAULT_VARIABLE_REVIEW_PROMPT };
 };
 // 保留 API 时仅保留连接、模型与采样参数；Prompt 在清理后使用当前代码默认值。
@@ -76,6 +81,6 @@ export const normalizeVariableReviewModelOptions = (values: unknown[]): Variable
         const id = text(typeof v === 'string' ? v : v?.id);
         if (!id || seen.has(id)) return [];
         seen.add(id);
-        return [{ id, label: text(typeof v === 'object' ? v.label || v.name : '') || id }];
+        return [{ id, label: text(typeof v === 'object' ? v.label || v.name : '') || id, ...readReviewModelCapacity(v) }];
     });
 };

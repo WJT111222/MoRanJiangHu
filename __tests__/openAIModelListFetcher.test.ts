@@ -27,10 +27,10 @@ const { 获取OpenAI兼容模型列表, 获取OpenAI兼容模型元数据 } = aw
 describe('OpenAI 兼容模型列表获取', () => {
     it('元数据从真实响应保留label/display_name/name，缺少展示名称时使用ID', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
-            { id: 'gemini-3-flash', label: '[按次] Gemini Flash' }, { id: 'gpt', display_name: 'GPT显示名' }, { id: 'claude', name: 'Claude显示名' }, { id: 'custom' }, { id: 123 }
+            { id: 'gemini-3-flash', label: '[按次] Gemini Flash', context_window: 200000 }, { id: 'gpt', display_name: 'GPT显示名' }, { id: 'claude', name: 'Claude显示名' }, { id: 'custom' }, { id: 123 }
         ] }), { status: 200 })));
         expect(await 获取OpenAI兼容模型元数据({ baseUrl: 'https://test/v1', apiKey: 'test-key' })).toEqual([
-            { id: 'gemini-3-flash', label: '[按次] Gemini Flash' }, { id: 'gpt', label: 'GPT显示名' }, { id: 'claude', label: 'Claude显示名' }, { id: 'custom', label: 'custom' }
+            { id: 'gemini-3-flash', label: '[按次] Gemini Flash', contextWindowTokens: 200000 }, { id: 'gpt', label: 'GPT显示名' }, { id: 'claude', label: 'Claude显示名' }, { id: 'custom', label: 'custom' }
         ]);
     });
     beforeEach(() => {

@@ -18,9 +18,10 @@ beforeEach(() => {
     // jsdom的XHR没有路由服务；走客户端同一HTTP body构造后的fetch传输。
     vi.stubGlobal('XMLHttpRequest', undefined);
     vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit = {}) => {
-        if (!options.body) return new Response(JSON.stringify({ data: [{ id: 'gemini-3-flash', display_name: '[按次] Gemini Flash' }, { id: 'id-only' }] }), { headers: { 'content-type': 'application/json' } });
+        if (!options.body) return new Response(JSON.stringify({ data: [{ id: 'gemini-3-flash', display_name: '[按次] Gemini Flash', context_length: 200000 }, { id: 'id-only' }] }), { headers: { 'content-type': 'application/json' } });
         const body = JSON.parse(String(options.body));
         requests.push({ url: String(url), body, headers: options.headers });
+        if (body.stream) return new Response(`data: ${JSON.stringify({ choices: [{ delta: { content: reviewOutput() } }] })}\n\ndata: [DONE]\n\n`, { headers: { 'content-type': 'text/event-stream' } });
         return new Response(JSON.stringify(body.agent ? { status: 'completed', output_text: reviewOutput() } : { choices: [{ message: { content: reviewOutput() } }] }), { headers: { 'content-type': 'application/json' } });
     }));
 });
@@ -33,7 +34,7 @@ const uiRig = () => {
     const storage = { read: vi.fn(async (key: string) => stored.get(key)), write: vi.fn(async (key: string, value: unknown) => { stored.set(key, structuredClone(value)); }) };
     const config = createVariableReviewConfigurationActions(() => rig.dependencies.apiConfig, storage);
     const actions = { ...createVariableReviewActions({ getInput: () => rig.source,
-        getDependencies: () => ({ ...rig.dependencies, reviewSettings: config.peekSettings() }), saveSettings: config.saveVariableReviewSettings,
+        getDependencies: () => ({ ...rig.dependencies, reviewSettings: config.peekSettings() }), saveSettings: config.saveVariableReviewSettings, getModelMetadata: config.getVariableReviewModelMetadata,
         commitState: rig.commit, saveState: rig.save }), ...config };
     return { ...rig, actions, stored, storage, config };
 };
@@ -75,6 +76,31 @@ describe('变量审查真实HTTP与配置生产链路', () => {
         await screen.findByText('在本次审查范围内，未发现需要修改的变量。');
         expect(requests[0].body.model).toBe('gemini-3-flash');
         expect(requests[0].url).toContain('review.test');
+        expect(screen.getByRole('region', { name: '审查容量诊断' }).textContent).toContain('200,000');
+        expect(screen.getByRole('region', { name: '审查容量诊断' }).textContent).toContain('当前接口模型metadata');
+    });
+    it('UI自定义窗口持久化、超限无HTTP、增大容量后可请求；刷新不覆盖手动值', async () => {
+        const rig = uiRig(); render(<VariableReviewModal actions={rig.actions} onClose={vi.fn()} />);
+        await screen.findByLabelText('审查提示词');
+        const group = screen.getByRole('group', { name: '审查上下文窗口' });
+        fireEvent.click(within(group).getByRole('button', { name: /^自动$/ }));
+        fireEvent.click(screen.getByRole('button', { name: /^自定义$/ }));
+        const context = screen.getByLabelText('自定义上下文窗口 Token');
+        fireEvent.change(context, { target: { value: '32000' } }); fireEvent.blur(context);
+        const output = screen.getByLabelText('最大输出 Token'); fireEvent.change(output, { target: { value: '8192' } }); fireEvent.blur(output);
+        fireEvent.change(screen.getByLabelText('审查提示词'), { target: { value: '核对事实与变量'.repeat(10000) } });
+        await waitFor(() => expect(rig.config.peekSettings()).toMatchObject({ contextWindowMode: 'custom', contextWindowTokens: 32000 }));
+        fireEvent.click(screen.getByRole('button', { name: '开始变量审查' }));
+        await screen.findByText('上下文容量不足'); expect(requests).toHaveLength(0);
+        expect(screen.getByRole('region', { name: '审查容量诊断' }).textContent).toContain('32,000');
+        const next = screen.getByLabelText('自定义上下文窗口 Token'); fireEvent.change(next, { target: { value: '400000' } }); fireEvent.blur(next);
+        fireEvent.click(screen.getByRole('button', { name: '刷新模型' }));
+        await screen.findByText('当前审查模型不在最新模型列表中，请重新选择。');
+        expect((screen.getByLabelText('自定义上下文窗口 Token') as HTMLInputElement).value).toBe('400000');
+        fireEvent.click(screen.getByRole('button', { name: '开始变量审查' }));
+        await screen.findByText('在本次审查范围内，未发现需要修改的变量。');
+        expect(requests).toHaveLength(1); expect(rig.commit).not.toHaveBeenCalled();
+        expect((rig.stored.get(VARIABLE_REVIEW_SETTINGS_KEY) as any).contextWindowTokens).toBe(400000);
     });
     it('点击后保存延迟期间改A连接并切B，本次仍使用A快照，下一次使用B', async () => {
         const rig = uiRig();

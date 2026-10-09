@@ -62,4 +62,20 @@ describe('变量审查独立应用设置与严格API解析', () => {
         await expect(service.refreshVariableReviewModels(settings())).rejects.toThrow('已不存在');
         expect(models.获取OpenAI兼容模型元数据).not.toHaveBeenCalled();
     });
+    it('容量metadata按实际连接和模型隔离，刷新不修改手动窗口设置', async () => {
+        const root = structuredClone(api);
+        const storage = { read: vi.fn(async () => undefined), write: vi.fn(async () => undefined) };
+        const service = createVariableReviewConfigurationActions(() => root, storage);
+        const selected = { ...settings(), contextWindowMode: 'custom' as const, contextWindowTokens: 400000 };
+        await service.saveVariableReviewSettings(selected);
+        vi.mocked(models.获取OpenAI兼容模型元数据).mockResolvedValue([{ id: 'review-GPT', label: 'Review', contextWindowTokens: 200000 }]);
+        await service.refreshVariableReviewModels(selected);
+        expect(service.getVariableReviewModelMetadata(selected)).toMatchObject({ contextWindowTokens: 200000 });
+        expect(service.peekSettings()).toMatchObject({ contextWindowMode: 'custom', contextWindowTokens: 400000 });
+        expect(service.getVariableReviewModelMetadata({ ...selected, model: 'other' })).toBeUndefined();
+        expect(service.getVariableReviewModelMetadata({ ...selected, mainConfigId: 'B' })).toBeUndefined();
+        root.configs[0].apiKey = 'different-account';
+        expect(service.getVariableReviewModelMetadata(selected)).toBeUndefined();
+        expect(storage.write).toHaveBeenCalledTimes(1);
+    });
 });

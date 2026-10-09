@@ -1,4 +1,5 @@
 import type { TavernCommand } from '../../types';
+import { hasExplicitReviewTimeEvidence, reviewNarratorTimeFacts } from './variableReviewTimeEvidence';
 import { 校准角色数值范围 } from './variableCalibration';
 import { validateVariableCommandBasics, 校验变量命令角色安全, variableCommandProtectionCode, type VariableCommandRejectionCode } from './variableCommandValidation';
 import type { NpcTemplateNameContext } from '../../utils/npcTemplateNamePolicy';
@@ -1632,6 +1633,7 @@ export const 执行响应命令处理 = (
         applyState?: boolean;
         executionMode?: 'normal' | 'review-preview' | 'review-apply';
         reviewNameContext?: NpcTemplateNameContext;
+        reviewTimeReference?: unknown;
         onCommandDiagnostic?: (diagnostic: { command: TavernCommand; status: 'accepted' | 'rejected'; code?: VariableCommandRejectionCode; reason?: string }) => void;
         heroinePlanEnabled?: boolean;
     }
@@ -1719,8 +1721,13 @@ export const 执行响应命令处理 = (
             const executableCmd = normalizedSafeKey === 'gameState.社交' && safeCmd.action === 'add'
                 ? { ...safeCmd, action: 'push' as const }
                 : safeCmd;
-            if (是否游戏初始时间命令(safeCmd.key) || (reviewPreview && /^gameState\.环境\.时间(?:\.|$)/.test(normalizedSafeKey))) {
+            if (是否游戏初始时间命令(safeCmd.key)) {
                 rejectCommand(cmd, '审查不允许更新时间'); return;
+            }
+            if (reviewPreview && /^gameState\.环境\.时间(?:[.\[]|$)/.test(normalizedSafeKey) &&
+                (normalizedSafeKey !== 'gameState.环境.时间' || safeCmd.action !== 'set' ||
+                    !hasExplicitReviewTimeEvidence(safeCmd.value, reviewNarratorTimeFacts(response.logs || []), options?.reviewTimeReference))) {
+                rejectCommand(cmd, '审查不允许更新时间：缺少可核实的明确正文时间证据', 'insufficientEvidence'); return;
             }
             if (是否环境时间命令(safeCmd.key) && safeCmd.action === 'set') {
                 if (是否时间回退或异常重置(envBuffer?.时间, safeCmd.value)) {
@@ -1779,7 +1786,8 @@ export const 执行响应命令处理 = (
             // 只执行候选命令及必要的目标域规范化。不得进入下方回合事实补全、结算和推进链路。
             if (touchedRoots.has('角色')) {
                 charBuffer = 同步金钱命令写入(charBuffer, 提取金钱命令字段(executedCommands));
-                charBuffer = deps.规范化角色物品容器映射(charBuffer, { 当前时间: envBuffer, ...deps.角色规范化选项 });
+                // 时间纠错不能让角色规范化按新时刻触发BUFF到期或恢复结算。
+                charBuffer = deps.规范化角色物品容器映射(charBuffer, { 当前时间: baseState?.环境 || currentState.环境, ...deps.角色规范化选项 });
                 校准角色数值范围(charBuffer);
             }
             if (touchedRoots.has('社交')) {

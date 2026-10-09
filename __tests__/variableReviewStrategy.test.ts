@@ -53,8 +53,9 @@ describe('审查策略使用用户数据消息，核心规则/执行保护不变
         expect(result.acceptedCommands).toEqual([]); expect(result.previewState.角色.物品列表[0].名称).toBe('手机');
     });
     it('证据不足仅展示疑点；重复/污染建议不能绕过程序路径和身份保护', async () => {
-        const rig = withSettings('正文没有说明库存或NPC变化。');
-        vi.mocked(client.请求模型文本).mockResolvedValue('<说明>状态：证据不足\n疑似重复记录，无法确认身份，未删除。</说明><命令></命令>');
+        const rig = withSettings('Alice的位置线索彼此矛盾，尚无法确认最新位置。');
+        rig.source.currentState.社交 = 规范化社交列表([{ id: 'NPC001', 姓名: 'Alice', 当前位置: '客厅' }]);
+        vi.mocked(client.请求模型文本).mockResolvedValue('<说明>状态：证据不足\n疑点：{"path":"社交[0].当前位置","description":"位置冲突，无法确认最新位置","evidence":"Alice的位置线索彼此矛盾，尚无法确认最新位置。"}</说明><命令></命令>');
         const result = await runVariableReview(rig.source, rig.deps);
         expect(result.status).toBe('insufficientEvidence'); expect(result.acceptedCommands).toEqual([]); expect(result.issues.length).toBeGreaterThan(0);
     });
