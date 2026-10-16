@@ -69,7 +69,7 @@ git diff --check
 
 验收结果：定向测试 41 项通过；全量 273 个文件、2284 项通过，13 项跳过；`npm run build`、浏览器端到端检查、`git diff --check` 均通过。未发现新增 Blocking / High 风险。
 
-文风改善程度依赖模型遵循提示词的能力，本次没有调用真实 AI 做主观写作质量评测，也未执行真机 APK 安装。本轮保留 `feat/natural-prose-enhancement`，未提交、推送、创建 PR、部署或修改版本号。
+文风改善程度依赖模型遵循提示词的能力，本次没有调用真实 AI 做主观写作质量评测，也未执行真机 APK 安装。本轮改动位于 `feat/natural-prose-enhancement` 分支（PR #106），未部署或修改版本号。
 
 ## 面向玩家的更新说明（未发布）
 

@@ -24,7 +24,7 @@ try {
     const origin = `http://127.0.0.1:${server.address().port}`;
     await page.route('**/*', route => route.request().url().startsWith(origin) || route.request().url().startsWith('data:') ? route.continue() : route.abort());
     const errors = [];
-    const deadline = setTimeout(() => { console.error('Browser verification exceeded 90s'); void browser?.close(); }, 90000);
+    const deadline = setTimeout(() => { console.error('Browser verification exceeded 90s'); void browser?.close(); process.exit(1); }, 90000);
     deadline.unref();
     page.on('pageerror', error => errors.push(error.message));
     page.setDefaultTimeout(15000);
