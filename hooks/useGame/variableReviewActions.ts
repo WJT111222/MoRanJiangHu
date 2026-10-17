@@ -92,12 +92,15 @@ export const createVariableReviewActions = (deps: {
                 ensureActive(controller);
                 const receive = createVariableReviewStreamParser(items => {
                     ensureActive(controller);
-                    options.onCandidates?.(items.map(item => {
-                        const path = item.path.replace(/^gameState\./u, '');
-                        const npc = path.match(/^社交\[(\d+)\]\.当前装备(?:\.|$)/u);
-                        const equipmentOwner = npc ? input.currentState.社交[Number(npc[1])]?.姓名 : /^角色\.装备(?:\.|$)/u.test(path) ? input.currentState.角色?.姓名 || '主角' : undefined;
-                        return { ...item, category: equipmentOwner && item.category !== '待确认' ? '修正' as const : item.category, equipmentOwner, current: readVariableCommandValue(input.currentState, item.path) };
-                    }));
+                    // 候选预览失败（映射或 UI 回调抛错）不能中断在途审查请求；完整结果仍由最终校验把关。
+                    try {
+                        options.onCandidates?.(items.map(item => {
+                            const path = item.path.replace(/^gameState\./u, '');
+                            const npc = path.match(/^社交\[(\d+)\]\.当前装备(?:\.|$)/u);
+                            const equipmentOwner = npc ? input.currentState.社交[Number(npc[1])]?.姓名 : /^角色\.装备(?:\.|$)/u.test(path) ? input.currentState.角色?.姓名 || '主角' : undefined;
+                            return { ...item, category: equipmentOwner && item.category !== '待确认' ? '修正' as const : item.category, equipmentOwner, current: readVariableCommandValue(input.currentState, item.path) };
+                        }));
+                    } catch { /* 预览异常不影响审查主流程。 */ }
                 });
                 const result = await runVariableReview(input, {
                     ...frozenDependencies, signal: controller.signal, onStage: options.onProgress, onCapacity: options.onCapacity,
